@@ -1,0 +1,27 @@
+\name{summary.pffr}
+\alias{summary.pffr}
+\title{Summary for a pffr fit}
+\usage{
+\method{summary}{pffr} (object, ...)
+}
+\arguments{
+  \item{object}{a fitted \code{pffr}-object}
+
+  \item{...}{see \code{\link[mgcv]{summary.gam}()} for
+  options.}
+}
+\value{
+  A list with summary information, see
+  \code{\link[mgcv]{summary.gam}()}
+}
+\description{
+  Take a fitted \code{pffr}-object and produce summaries
+  from it. See \code{\link[mgcv]{summary.gam}()} for
+  details.
+}
+\author{
+  Fabian Scheipl, adapted from
+  \code{\link[mgcv]{summary.gam}()} by Simon Wood, Henric
+  Nilsson
+}
+

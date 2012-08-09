@@ -1,0 +1,31 @@
+\name{gasoline}
+\docType{data}
+\alias{gasoline}
+\title{Octane numbers and NIR spectra of gasoline}
+\description{
+  Near-infrared reflectance spectra and octane numbers of 60 gasoline samples.
+  Each NIR spectrum consists of log(1/reflectance) measurements at 401 wavelengths, in 2-nm intervals 
+  from 900 nm to 1700 nm.
+  We thank Prof. John Kalivas for making this data set available.
+}
+\usage{data(gasoline)}
+\format{
+  A data frame comprising
+  \describe{
+    \item{\code{octane}}{a numeric vector of octane numbers for the 60 samples.}
+    \item{\code{NIR}}{a 60 x 401 matrix of NIR spectra.}
+  }
+}
+\source{Kalivas, John H. (1997).
+  Two data sets of near infrared spectra.
+  \emph{Chemometrics and Intelligent Laboratory Systems}, 37, 255--259.}
+
+\references{
+For applications of functional principal component regression to this data set: 
+
+Reiss, P. T., and Ogden, R. T. (2007).  Functional principal component regression and functional partial least squares.  \emph{Journal of the American Statistical Association}, 102, 984--996.
+
+Reiss, P. T., and Ogden, R. T. (2009).  Smoothing parameter selection for a class of semiparametric linear models.   \emph{Journal of the Royal Statistical Society, Series B}, 71(2), 505--523.
+}
+\seealso{\code{\link{fpcr}}, \code{\link{wcr}}, \code{\link{wnet}}}
+\keyword{datasets}

@@ -1,0 +1,106 @@
+\name{fosr}
+\Rdversion{1.1}
+\alias{fosr}
+%- Also NEED an '\alias' for EACH other topic documented here.
+\title{
+Function-on-scalar regression}
+\description{
+  Fit linear regression with functional responses and scalar predictors,
+  with efficient selection of optimal smoothing parameters.
+}
+\usage{
+fosr(Y = NULL, fdobj = NULL, X, con = NULL, argvals = NULL, method = c("OLS", "GLS"), 
+     gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"), 
+     cov.method = c("naive", "mod.chol"), lambda = NULL, 
+     nbasis = 15, norder = 4, pen.order = 2, 
+     multi.sp = ifelse(method == "OLS", FALSE, TRUE), max.iter = 1, 
+     maxlam = NULL, cv1 = FALSE, scale = FALSE)
+}
+%- maybe also 'usage' for other objects documented here.
+\arguments{
+  \item{Y,fdobj}{
+the functional responses, given as either an \eqn{n\times d} matrix \code{Y} or a functional data object (class \code{"\link[fda]{fd}"}) as in the \pkg{fda} package.}
+  \item{X}{
+the model matrix, whose columns represent scalar predictors. Should ordinarily include a column of 1s.}
+  \item{con}{
+a row vector or matrix of linear contrasts of the coefficient functions, to be constrained to equal zero.}
+  \item{argvals}{
+the \eqn{d} argument values at which the coefficient functions will be evaluated.}
+  \item{method}{
+estimation method: \code{"OLS"} for penalized ordinary least squares, \code{"GLS"} for penalized generalized least squares.}
+  \item{gam.method}{
+smoothing parameter selection method, to be passed to \code{\link[mgcv]{gam}}: \code{"REML"} for restricted maximum likelihood, \code{"GCV.Cp"} for generalized cross-validation.}
+  \item{cov.method}{covariance estimation method: the current options are naive or modified Cholesky. See Details.}
+  \item{lambda}{smoothing parameter value.  If \code{NULL}, the smoothing parameter(s) will be estimated.  See Details.}
+  \item{nbasis, norder}{number of basis functions, and order of splines (the default, 4, gives cubic splines), for the B-spline basis used to represent the coefficient functions. When the functional responses are supplied using \code{fdobj}, these arguments are ignored in favor of the values pertaining to the supplied object.}
+  \item{pen.order}{order of derivative penalty.}
+  \item{multi.sp}{
+a logical value indicating whether separate smoothing parameters should be estimated for each coefficient function.  Currently must be \code{FALSE} if \code{method = "OLS"}.}
+  \item{max.iter}{
+maximum number of iterations if \code{method = "GLS"}.}
+  \item{maxlam}{
+maximum smoothing parameter value to consider (when \code{lamvec=NULL}; see \code{\link{lofocv}}).}
+  \item{cv1}{
+logical value indicating whether a cross-validation score should be computed even if a single fixed \code{lambda} is specified (when \code{method = "OLS"}).}
+  \item{scale}{
+logical value or vector determining scaling of the matrix \code{X} (see \code{\link{scale}}, to which the value of this argument is passed).}
+}
+\details{The GLS method requires estimating the residual covariance matrix, which has dimension \eqn{d\times d} when the responses are given by \code{Y}, or \eqn{nbasis\times nbasis} when they are given by \code{fdobj}. When \code{cov.method = "naive"}, the ordinary sample covariance is used. But this will be singular, or nonsingular but unstable, in high-dimensional settings, which are typical. \code{cov.method = "mod.chol"} implements the modified Cholesky method of Pourahmadi (1999) for estimation of covariance matrices whose inverse is banded. The number of bands is chosen to maximize the p-value for a sphericity test (Ledoit and Wolf, 2002) applied to the "prewhitened" residuals. Note, however, that the banded inverse covariance assumption is sometimes inappropriate, e.g., for periodic functional responses.
+	
+	There are three types of values for argument \code{lambda}:\enumerate{\item if \code{NULL}, the smoothing parameter is estimated by \code{\link[mgcv]{gam}} (package \pkg{mgcv}) if \code{method = "GLS"}, or by \code{optimize} if \code{method = "OLS"};
+\item if a scalar, this value is used as the smoothing parameter (but only for the initial model, if \code{method = "GLS"});
+\item if a vector, this is used as a grid of values for optimizing the cross-validation score (provided \code{method = "OLS"}; otherwise an error message is issued).}
+
+Please note that currently, if \code{multi.sp = TRUE}, then \code{lambda} must be \code{NULL} and \code{method} must be \code{"GLS"}.
+}
+\value{
+An object of class \code{fosr}, which is a list with the following elements:
+\item{B}{matrix of basis coefficients for the estimated coefficient functions.}
+\item{yhat}{an object, of the same form as the functional responses (see arguments \code{Y} and \code{fdobj}), giving the fitted values.}
+\item{est.func}{matrix of values of the coefficient function estimates at the points given by \code{argvals}.}
+\item{se.func}{matrix of values of the standard error estimates for the coefficient functions, at the points given by \code{argvals}.}
+\item{argvals}{points at which the coefficient functions are evaluated.}
+\item{fit}{fit object outputted by \code{\link{amc}}.}
+\item{edf}{effective degrees of freedom of the fit.}
+\item{lambda}{smoothing parameter, or vector of smoothing parameters.}
+\item{cv}{cross-validated integrated squared error if \code{method="OLS"}, otherwise \code{NULL}.}
+\item{roughness}{value of the roughness penalty.}
+}
+\references{
+Ledoit, O., and Wolf, M. (2002). Some hypothesis tests for the covariance matrix when the dimension is large compared to the sample size. \emph{Annals of Statistics}, 30(4), 1081--1102.
+
+Pourahmadi, M. (1999). Joint mean-covariance models with applications to longitudinal data: unconstrained parameterisation. \emph{Biometrika}, 86(3), 677--690.
+
+Ramsay, J. O., and Silverman, B. W. (2005).  \emph{Functional Data Analysis}, 2nd ed., Chapter 13.  New York: Springer.
+
+Reiss, P. T., Huang, L., and Mennes, M. (2010).  Fast function-on-scalar regression with penalized basis expansions.  \emph{International Journal of Biostatistics}, 6(1), article 28.  Available at \url{http://works.bepress.com/phil_reiss/16/}
+}
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org}, Lan Huo, and Fabian Scheipl}
+
+
+%% ~Make other sections like Warning with \section{Warning }{....} ~
+
+\seealso{
+\code{\link{plot.fosr}}
+}
+\examples{
+# The first two lines, adapted from help(fRegress) in package fda,
+# set up a functional data object representing daily average 
+# temperatures at 35 sites in Canada
+daybasis25 <- create.fourier.basis(rangeval=c(0, 365), nbasis=25,
+                  axes=list('axesIntervals'))
+Temp.fd <- with(CanadianWeather, smooth.basisPar(day.5,
+                dailyAv[,,'Temperature.C'], daybasis25)$fd)
+
+modmat = cbind(1, model.matrix(~ factor(CanadianWeather$region) - 1))
+constraints = matrix(c(0,1,1,1,1), 1)
+
+# Penalized OLS with smoothing parameter chosen by grid search
+olsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="OLS", lambda=100*10:30)
+plot(olsmod, 1)
+\dontrun{
+# Penalized GLS
+glsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="GLS")
+plot(glsmod, 1)
+}}
