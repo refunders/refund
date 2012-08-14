@@ -1,0 +1,27 @@
+\name{residuals.pffr}
+\alias{residuals.pffr}
+\title{Obtain residuals for a pffr fit}
+\usage{
+\method{residuals}{pffr} (object, reformat = TRUE, ...)
+}
+\arguments{
+  \item{object}{a fitted \code{pffr}-object}
+
+  \item{reformat}{logical, defaults to TRUE. Should
+  residuals be returned in \code{n x yindex} matrix form
+  (default) or in the long vector shape returned by
+  \code{resid.gam()}?}
+
+  \item{...}{other arguments, passed to
+  \code{\link[mgcv]{residuals.gam}}.}
+}
+\value{
+  A matrix or vector of residuals
+}
+\description{
+  Obtain residuals for a pffr fit
+}
+\author{
+  Fabian Scheipl
+}
+
