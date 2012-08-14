@@ -2,7 +2,7 @@
 \alias{peer}
 \title{Functional models with structured penalties}
 \description{
-Implements functional model with structured penalties (Randloph et al., 2012) with scalar outcome and single functional predictor through mixed model equivalence.
+Implements functional model with structured penalties (Randolph et al., 2012) with scalar outcome and single functional predictor through mixed model equivalence.
 }
 \usage{
 peer(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL, a=10^3, se=FALSE, ...)
