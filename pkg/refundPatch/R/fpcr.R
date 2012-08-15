@@ -33,16 +33,16 @@ fpcr <- function(y, xfuncs = NULL, fdobj = NULL, ncomp=NULL, pve = 0.99, nbasis 
             d2 <- dim(xfuncs)[3L]
             siglength <- d1 * d2
         }
-        if (cv1 || length(ncomp) + nrow(nbs) > 2) do.cv <- TRUE
+        if (cv1 || nrow(nbs) > 2 || (!is.null(ncomp) && length(ncomp) > 1)) do.cv <- TRUE
     } 
-    else if (cv1 || length(ncomp) > 1) do.cv <- TRUE 
+    else if (cv1 || (!is.null(ncomp) && length(ncomp) > 1)) do.cv <- TRUE 
     if (!do.cv) {
         store.cv <- FALSE
         nfold <- 1
     }
     groups <- split(sample(1:n), rep(1:nfold, length = n))   
     n.unpen.cols <- 1 + mean.signal.term + ifelse(is.null(covt), 0, ncol(as.matrix(covt)))
-    cv.table <- array(0, dim = c(ifelse(is.null(fdobj),nrow(nbs), 1), length(ncomp)))
+    cv.table <- array(0, dim = c(ifelse(is.null(fdobj),nrow(nbs), 1), ifelse(is.null(ncomp), 1, length(ncomp))))
     for (inb in 1 : dim(cv.table)[1]){
     	st <- fpcr.setup(y = y, xfuncs = xfuncs, fdobj = fdobj, nbasis = if (is.null(fdobj)) nbs[inb,] else NULL, 
     	                 basismat = basismat, penmat = penmat, argvals = argvals, covt = covt, 
