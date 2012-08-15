@@ -47,17 +47,21 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
         dec <- decomp
         rec <- reconstr
     } 
-    else {
+    else if (dim.sig == 2){
         wave.decomp <- imwd
         dec <- decomp2d
         rec <- reconstr2d	
+    } else {
+    	wave.decomp <- wd3D
+    	dec <- decomp3d
+    	rec <- reconstr3d
     }
     wdobjs <- apply(xfuncs, 1, wave.decomp, filter.number = filter.number, family = wavelet.family)
     temp <- dec(wdobjs[[1]]) 
     p <- length(temp$coef)
     n.unpen.cols <- 1 + mean.signal.term + ifelse(is.null(covt), 0, ncol(as.matrix(covt)))
     fhat.eigen <- array(0, dim = c(max(ncomp), d^dim.sig))
-    if (dim.sig == 2) dim(xfuncs) <- c(n, d^dim.sig)
+    dim(xfuncs) <- c(n, d^dim.sig)
   
     # Begin CV
     cv.table <- array(0, dim = c(length(min.scale), length(nfeatures), length(ncomp)))
@@ -167,7 +171,7 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
     	colnames(obje$undecor.coef) <- if (is.null(dimnames(covt)) || is.null(dimnames(covt)[[2]])) 
                                            paste("X", 0:(n.unpen.cols-1), sep="")
     	                               else c("Intercept", dimnames(covt)[[2]])
-        if (dim.sig == 2) dim(fhat) <- c(d, d)
+        dim(fhat) <- rep(d, dim.sig)
         obje$fhat <- fhat	
         obje$min.scale <- min.scale
         obje$nfeatures <- nfeatures

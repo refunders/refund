@@ -20,4 +20,3 @@ function(x, split=NULL, titles=NULL, xlabel="", ylabel="Coefficient function", s
 	    }
 	}
 }
-
