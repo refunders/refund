@@ -279,7 +279,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
     names(ret)<- c("fit", "BetaHat", "fitted.vals",
                    "GammaHat", "AIC", "BIC", "logLik", "lpeerobj",
                    "lambda", "N", "K", "TotalObs", "Sigma.u", "sigma", "d", "status")
-    class(ret) = "lpeer"
+    class(ret) <- "lpeer"
     return(ret)
   }
   
