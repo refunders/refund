@@ -31,10 +31,9 @@ Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for func
 }
 
 \examples{
-\dontrun{
 data(DTI)
 cca = DTI$cca[which(DTI$case == 1),]
 DTI = DTI[which(DTI$case == 1),]
 fit.cca.lpeer1 = lpeer(Y=DTI$pasat, t=DTI$visit, subj=DTI$ID, funcs = cca)
-plot(fit.cca.lpeer1)
-}}
+	plot(fit.cca.lpeer1)
+}
