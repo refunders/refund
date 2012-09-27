@@ -2,6 +2,8 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
                  pentype='Ridge', L.user=NULL, f_t=NULL, Q=NULL, a=10^3,
                  se=FALSE, ...)
 {
+  require(nlme)
+  require(magic)
   lobj=TRUE
   
   W<- as.matrix(funcs)
@@ -108,6 +110,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
       L.user<- L1.user
     }
     
+    #Check 6.2: Removing rows containing missing and infinite values
     L<- L[which(apply(is.na(L), 1, sum)==0),]
     L<- L[which(apply(is.infinite(L), 1, sum)==0),]
     L<- matrix(L, ncol=K)
@@ -147,7 +150,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
           tL_PEER<- D.2
         } else
           if(toupper(pentype)=='USER'){
-            tL_PEER<- L.user[,(i*K+1):((i+1)*K)]
+            tL_PEER<- L.user
           } 
     v<- diag(K)
     if(K>N) v<-  svd((data.matrix(W)*f_t[,(i+1)])%*% solve(tL_PEER))$v
@@ -165,8 +168,6 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
   }
   
   #Input for random argument of lme function 
-  pd1=pd2=pd3=pd4=pd5=pd6=NULL
-
   for(i in 0:d) assign(paste('pd', i+1, sep=''), 
                        pdIdent(form=as.formula(paste('~W', i+1, '_PEER -1', sep=''))))
   pdid<- pdIdent(~Z-1)
@@ -199,7 +200,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
           tL_PEER<- D.2
         } else
           if(toupper(pentype)=='USER'){
-            tL_PEER<- L.user[,(i*K+1):((i+1)*K)]
+            tL_PEER<- L.user
           } 
     v<- diag(K)
     if(K>N) v<-  svd((data.matrix(W)*f_t[,(i+1)])%*% solve(tL_PEER))$v
@@ -223,7 +224,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
   AIC<- summary(out_PEER)$AIC
   BIC<- summary(out_PEER)$BIC
   
-  tVarCorr<- VarCorr(out_PEER, rdig=4)[,2]
+  tVarCorr<- nlme:::VarCorr(out_PEER, rdig=4)[,2]
   for(i in 0:d) assign(paste('lambda', i, sep=''), 
                        1/ as.numeric(unique(tVarCorr[(i*r+1):((i+1)*r)])))
   for(i in 0:d)
@@ -259,7 +260,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
           tL_PEER<- D.2
         } else
           if(toupper(pentype)=='USER'){
-            tL_PEER<- L.user[,(i*K+1):((i+1)*K)]
+            tL_PEER<- L.user
           } 
     tsigma<- as.numeric(unique(tVarCorr[(i*r+1):((i+1)*r)]))
     if(i==0) LL.inv<- tsigma^2*solve(t(tL_PEER)%*%tL_PEER) 
