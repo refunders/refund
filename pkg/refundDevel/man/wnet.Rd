@@ -10,8 +10,8 @@ Performs generalized linear scalar-on-function or scalar-on-image regression in 
 \usage{
 wnet(y, xfuncs, min.scale, alpha, lambda = NULL, standardize = FALSE, covt = NULL, 
      pen.covt = FALSE, filter.number = 10, wavelet.family = "DaubLeAsymm",
-     family = "gaussian", nfold = 5, compare.fits = FALSE, 
-     store.cv = FALSE, \dots)
+     family = "gaussian", nfold = 5, nsplit = 1, compare.fits = FALSE, 
+     store.cv = FALSE, seed = NULL, \dots)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -53,11 +53,17 @@ generalized linear model family. Current version supports \code{"gaussian"} (the
   \item{nfold}{
 the number of validation sets ("folds") into which the data are divided.
 }
+  \item{nsplit}{
+the number of independent splits.
+}
   \item{compare.fits}{
 logical: if \code{TRUE}, the pairwise distances among training-set coefficient function estimates are computed.
 }
   \item{store.cv}{
 logical: should the output include a CV result table?
+}
+  \item{seed}{
+the seed for random data division. If \code{seed = NULL}, a random seed is used.
 }
 \item{\dots}{
 other arguments passed to \code{\link[glmnet]{glmnet}}.
@@ -118,6 +124,21 @@ mm.wnet <- wnet(yy, xfuncs = ii, min.scale = 4, alpha = 1)
 
 image(ftrue)
 contour(mm.wnet$fhat, add=TRUE)
+
+### 3D functional predictor example ###
+
+n = 200; d = 16
+
+# Create true coefficient function
+ftrue = array(0,dim = rep(d, 3))
+ftrue[10:16,12:15, 4:8] = 1
+
+# Generate random functional predictors, and scalar responses
+ii = array(rnorm(n*d^3), dim=c(n,rep(d,3)))
+iimat = ii; dim(iimat) = c(n,d^3)
+yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
+
+mmm.wnet <- wnet(yy, xfuncs = ii, min.scale = 2, alpha = 1)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

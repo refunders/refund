@@ -11,8 +11,8 @@ Performs generalized linear scalar-on-function or scalar-on-image regression in 
 wcr(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
     mean.signal.term = FALSE, covt = NULL, filter.number = 10, 
     wavelet.family = "DaubLeAsymm", family = "gaussian", 
-    cv1 = FALSE, nfold = 5, compare.fits = FALSE, store.cv = FALSE,
-    store.glm = TRUE)
+    cv1 = FALSE, nfold = 5, nsplit = 1, compare.fits = FALSE, 
+    store.cv = FALSE, store.glm = TRUE, seed = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -52,7 +52,10 @@ generalized linear model family. Current version supports \code{"gaussian"} (the
 logical: should cross-validation be performed (to estimate prediction error) even if a single value is provided for each of \code{min.scale}, \code{nfeatures} and \code{ncomp}? By default, \code{FALSE}. Note that if multiple candidate values are provided for at least one of these tuning parameters, CV is always performed to select the best model. 
 }
   \item{nfold}{
-the number of validation sets ("folds") into which the data are divided.
+the number of validation sets ("folds") into which the data are divided for a split.
+}
+  \item{nsplit}{
+the number of independent splits.
 }
   \item{compare.fits}{
 logical: if \code{TRUE}, the pairwise differences among training-set coefficient function estimates are computed.
@@ -62,6 +65,9 @@ logical: should the output include a CV result table?
 }
   \item{store.glm}{
 logical: should the output include the fitted \code{\link{glm}}? Defaults to \code{TRUE}, but may need to be set to \code{FALSE} for simulations.
+}
+  \item{seed}{
+the seed for random data division. If \code{seed = NULL}, a random seed is used.
 }
 }
 \details{
@@ -126,6 +132,23 @@ mm.wpls <- wcr(yy, xfuncs = ii, min.scale = 4, nfeatures = 20, ncomp = 6,
                 method = "pls")
 image(ftrue)
 contour(mm.wpls$fhat, add=TRUE)
+
+### 3D functional predictor example ###
+
+n = 200; d = 16
+
+# Create true coefficient function
+ftrue = array(0,dim = rep(d, 3))
+ftrue[10:16,12:15, 4:8] = 1
+
+# Generate random functional predictors, and scalar responses
+ii = array(rnorm(n*d^3), dim=c(n,rep(d,3)))
+iimat = ii; dim(iimat) = c(n,d^3)
+yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
+
+mmm.wpls <- wcr(yy, xfuncs = ii, min.scale = 2, nfeatures = 20, ncomp = 6,
+                method = "pls")
+
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

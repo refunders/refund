@@ -9,11 +9,16 @@ This function assesses statistical significance of a \code{\link{wcr}} fit by re
 }
 \usage{
 wcr.perm(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
-         covt = NULL, nperm = 20, perm.method = "responses", ...)
+         covt = NULL, nsplit = 10, nperm = 20, 
+         perm.method = c('responses', 'y.residuals', 'x.residuals'), 
+         family = "gaussian", ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y,xfuncs,min.scale,nfeatures,ncomp,method,covt}{arguments passed to \code{\link{wcr}}.}
+  \item{y,xfuncs,min.scale,nfeatures,ncomp,method,covt,family}{arguments passed to \code{\link{wcr}}.}
+  \item{nsplit}{
+number of splits to estimate the true cv.
+}
   \item{nperm}{
 number of permutations. The default is set to a very low value in view of the .
 }
@@ -68,8 +73,7 @@ yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
 
 cv.obj <- wcr.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 20, ncomp = 6, cv1 = TRUE,
                    method = "pls", nperm = 10)
-hist(cv.obj$cv.perm, xlab = "CV", main = "permutation test", xlim = range(c(cv.obj$cv, cv.obj$cv.perm)))
-abline(v = cv.obj$cv, col = "red")
-}}
+}
+}
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
