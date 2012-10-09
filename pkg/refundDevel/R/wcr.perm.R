@@ -1,19 +1,21 @@
 wcr.perm <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
-                     covt = NULL, nperm = 20, perm.method = "responses", ...){
+                     covt = NULL, nsplit = 10, nperm = 20, 
+                     perm.method = c('responses', 'y.residuals', 'x.residuals'), family = "gaussian", ...){
+    perm.method = match.arg(perm.method)
     if (is.null(covt) && perm.method == "x.residuals"){
     	stop("'x.residuals' method is unavailable when 'covt' is NULL.")
     }
-    require(wavethresh)
-    require(MASS)
-    cv <- wcr(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, ncomp = ncomp, 
-              method = method, covt = covt, store.glm = FALSE, ...)$cv
+    cv <- mean(replicate(nsplit, expr = {
+    	       wcr(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, ncomp = ncomp, 
+                   method = method, covt = covt, store.glm = FALSE, family = family, ...)$cv
+               }))
     if (perm.method == "y.residuals") {
         obje <- wcr(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, ncomp = ncomp, 
-                    method = method, covt = covt, store.glm = FALSE, ...)
+                    method = method, covt = covt, store.glm = FALSE, family = family, ...)
         y.resid <- obje$fitted - y
     } 
     else if (perm.method == "x.residuals") {
-    	X = covt
+    	X = as.matrix(covt)
     	Y = matrix(xfuncs, nrow = length(y))
         XtX.inv = solve(crossprod(X))
         coef = XtX.inv %*% crossprod(X, Y)
