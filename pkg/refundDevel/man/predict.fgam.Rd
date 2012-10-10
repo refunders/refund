@@ -1,0 +1,63 @@
+\name{predict.fgam}
+\Rdversion{1.0}
+\alias{predict.fgam}
+%- Also NEED an '\alias' for EACH other topic documented here.
+\title{
+Prediction a from fitted FGAM model
+}
+\description{
+Takes a fitted \code{\link{fgam}}-object produced by \code{fgam} and produces predictions given a new set of values for the model covariates or the original values used for the model fit. Predictions can be accompanied by standard errors, based on the posterior distribution of the model coefficients. This is a wrapper function for \code{\link{predict.gam}}().
+}
+\usage{
+## S3 method for class 'fgam'
+\method{predict}{fgam}(object, newdata, type = "response", se.fit = FALSE, terms = NULL, PredOutOfRange = FALSE, ...)
+}
+%- maybe also 'usage' for other objects documented here.
+\arguments{
+  \item{object}{
+a fitted \code{fgam} object as produced by \code{fgam}
+}
+  \item{newdata}{
+a named list containing the values of the model covariates at which predictions are required. If this is not provided then predictions corresponding to the original data are returned. All variables provided to newdata should be in the format supplied to \code{fgam}, i.e., functional predictors must be supplied as matrices with each row corresponding to one observed function. Index variables for the functional covariates are reused from the fitted model object or alternatively can be supplied as attributes of the matrix of functional predictor values. Any variables in the model not specified in newdata are set to their average values from the data supplied during fitting the model.
+}
+  \item{type}{
+see \code{\link{predict.gam}} for details.
+}
+  \item{se.fit}{
+see \code{\link{predict.gam}} for details.
+}
+  \item{terms}{
+see \code{\link{predict.gam}} for details.
+}
+  \item{PredOutOfRange}{
+if this argument is true then any functional predictor values in newdata corresponding to \code{fgam} terms that are greater[less] than the maximum[minimum] of the domain of the marginal basis for the rows of the tensor product smooth are set to the maximum[minimum] of the domain.  If this argument is false, attempting to predict a value of the functional predictor outside the range of this basis produces an error.
+}
+  \item{\dots}{
+additional arguments passed on to \code{\link{predict.gam}}.
+}
+}
+\value{
+If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long format. If \code{se == TRUE}, a list with entries fit and se.fit containing fits and standard errors, respectively. If \code{type == "terms" or "iterms"} each of these lists is a list of matrices of the same dimension as the response for newdata containing the linear predictor and its se for each term.
+}
+\author{
+Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl
+}
+\seealso{
+\code{\link{fgam}}, \code{\link{predict.gam}}
+}
+\examples{
+######### Octane data example #########
+data(gasoline)
+N <- length(gasoline$octane)
+wavelengths = 2*450:850
+nir = matrix(NA, 60,401)
+test <- sample(60,20)
+for (i in 1:60) nir[i,] = gasoline$NIR[i, ] #changes class from AsIs to matrix
+y <- gasoline$octane
+fit <- fgam(y~af(nir,xind=wavelengths,splinepars=list(k=c(6,6),m=list(c(2,2),c(2,2)))),
+              subset=(1:N)[-test])
+preds <- predict(fit,newdata=list(nir=nir[test,]),type='response')
+plot(preds,y[test])
+abline(a=0,b=1)
+}
+\keyword{methods}
