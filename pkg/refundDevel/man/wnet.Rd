@@ -18,7 +18,7 @@ wnet(y, xfuncs, min.scale, alpha, lambda = NULL, standardize = FALSE, covt = NUL
   \item{y}{
 scalar outcome vector.}
   \item{xfuncs}{
-functional predictors. For 1D predictors, an \eqn{n \times d} matrix of signals, where \eqn{n} is the length of \code{y} and \eqn{d} is the number of sites at which each signal is observed. For 2D predictors, an \eqn{n \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d}. Note that \eqn{d} must be a power of 2.
+functional predictors. For 1D predictors, an \eqn{n \times d} matrix of signals, where \eqn{n} is the length of \code{y} and \eqn{d} is the number of sites at which each signal is observed. For 2D predictors, an \eqn{n \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d}. For 3D predictors, an \eqn{n \times d \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d \times d}. Note that \eqn{d} must be a power of 2.
 }
   \item{min.scale}{
 either a scalar, or a vector of candidate values to be compared. Used to control the coarseness level of the wavelet decomposition.  The maximum value of \code{min.scale} is \eqn{log_2(d) - 1}.
@@ -41,10 +41,10 @@ logical: should the scalar covariates be penalized? If \code{FALSE} (the default
 
 
   \item{filter.number}{
-passed to \code{\link[wavethresh]{wd}} or \code{\link[wavethresh]{imwd}}, in the \pkg{wavethresh} package, to select the smoothness of the wavelets; defaults to \code{10}. 
+passed to \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}}, in the \pkg{wavethresh} package, to select the smoothness of the wavelets; defaults to \code{10}. 
 }
   \item{wavelet.family}{
-family of wavelets: passed to \code{\link[wavethresh]{wd}} or \code{\link[wavethresh]{imwd}}. Defaults to \code{"DaubLeAsymm"}.
+family of wavelets: passed to \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}}. Defaults to \code{"DaubLeAsymm"}.
 }
   \item{family}{
 generalized linear model family. Current version supports \code{"gaussian"} (the default) and \code{"binomial"}.

@@ -20,7 +20,7 @@ wcr(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"),
 scalar outcome vector.
 }
   \item{xfuncs}{
-functional predictors. For 1D predictors, an \eqn{n \times d} matrix of signals, where \eqn{n} is the length of \code{y} and \eqn{d} is the number of sites at which each signal is defined. For 2D predictors, an \eqn{n \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d}. Note that \eqn{d} must be a power of \eqn{2}.}
+functional predictors. For 1D predictors, an \eqn{n \times d} matrix of signals, where \eqn{n} is the length of \code{y} and \eqn{d} is the number of sites at which each signal is defined. For 2D predictors, an \eqn{n \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d}. For 3D predictors, an \eqn{n \times d \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d \times d}. Note that \eqn{d} must be a power of \eqn{2}.}
   \item{min.scale}{
 either a scalar, or a vector of values to be compared. Used to control the coarseness level of wavelet decomposition.  The maximum value of \code{min.scale} is \eqn{log_2(d) - 1}.
 }
@@ -40,10 +40,10 @@ logical: should the mean of each subject's signal be included as a covariate? By
 covariates: an \eqn{n}-row matrix, or a vector of length \eqn{n}; defaults to \code{NULL}.
 }
   \item{filter.number}{
-argument passed to function \code{\link[wavethresh]{wd}} or \code{\link[wavethresh]{imwd}} in the \pkg{wavethresh} package. Used to select the smoothness of wavelet in the decomposition; defaults to \code{10}. 
+argument passed to function \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}} in the \pkg{wavethresh} package. Used to select the smoothness of wavelet in the decomposition; defaults to \code{10}. 
 }
   \item{wavelet.family}{
-family of wavelets: passed to functions \code{\link[wavethresh]{wd}} or \code{\link[wavethresh]{imwd}}; defaults to \code{"DaubLeAsymm"}.
+family of wavelets: passed to functions \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or\code{\link[wavethresh]{wd3D}}; defaults to \code{"DaubLeAsymm"}.
 }
   \item{family}{
 generalized linear model family. Current version supports \code{"gaussian"} (the default) and \code{"binomial"}.
