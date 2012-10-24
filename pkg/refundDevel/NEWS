@@ -1,0 +1,10 @@
+               CHANGES in `refundDevel' VERSION 0.2-0 
+rev 20
+  o added FGAM functionality
+
+rev 21/22
+  o added (experimental) pffr-functionality for non-independent non-homogeneous errors: pffrGLS, coefboot.pffr
+  o added (experimental) FPC-based random effect functionality for pffr
+  o changed "fitter" argument for pffr to  "algorithm" due to argument name clash with gam's "fit"-argument
+  o added (experimental) option for "sandwich" variability estimates to coef.pffr
+  o added pffr references to documentation  
