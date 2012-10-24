@@ -2,7 +2,7 @@
 \alias{plot.pffr}
 \title{Plot a pffr fit}
 \usage{
-\method{plot}{pffr} (x, ...)
+  \method{plot}{pffr} (x, ...)
 }
 \arguments{
   \item{x}{a fitted \code{pffr}-object}

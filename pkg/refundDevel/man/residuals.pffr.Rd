@@ -2,7 +2,7 @@
 \alias{residuals.pffr}
 \title{Obtain residuals for a pffr fit}
 \usage{
-\method{residuals}{pffr} (object, reformat = TRUE, ...)
+  \method{residuals}{pffr} (object, reformat = TRUE, ...)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-object}

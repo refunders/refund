@@ -2,23 +2,23 @@
 \alias{predict.pffr}
 \title{Prediction for penalized function-on-function regression}
 \usage{
-\method{predict}{pffr}(object, newdata, reformat = TRUE, type = "link", se.fit = FALSE,
-        terms = NULL, ...)
+  \method{predict}{pffr} (object, newdata, reformat = TRUE,
+    type = "link", se.fit = FALSE, terms = NULL, ...)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-object}
 
-  \item{newdata}{a named list containing the values of the
-  model covariates at which predictions are required. If
+  \item{newdata}{A named list containing the values of the
+  model covariates at which predictions are required.  If
   this is not provided then predictions corresponding to
-  the original data are returned. If \code{newdata} is
+  the original data are returned.  If \code{newdata} is
   provided then it should contain all the variables needed
   for prediction, in the format supplied to \code{pffr},
   i.e., functional predictors must be supplied as matrices
   with each row corresponding to one observed function.
   Index variables for the functional covariates are reused
   from the fitted model object and cannot be supplied with
-  newdata. Prediction is always for the entire range of
+  newdata.  Prediction is always for the entire range of
   \eqn{Y(t)} as defined in the original fit.}
 
   \item{reformat}{logical, defaults to TRUE. Should
@@ -26,17 +26,17 @@
   the long vector shape returned by \code{predict.gam()}?}
 
   \item{type}{see \code{\link[mgcv]{predict.gam}()} for
-  details. Note that \code{type == "lpmatrix"} will force
+  details.  Note that \code{type == "lpmatrix"} will force
   \code{reformat} to FALSE.}
 
   \item{se.fit}{see \code{\link[mgcv]{predict.gam}()}}
 
-  \item{terms}{if \code{type=="terms"} or \code{"iterms"}
+  \item{terms}{If \code{type=="terms"} or \code{"iterms"}
   then only results for the terms given in this array will
   be returned. Note that these are the term-labels used in
   the gam-fit, not those in the original \code{pffr}-model
   specification -- these labels can be requested via
-  \code{names(object$smooth)}. See
+  \code{names(object$smooth)}.  See
   \code{\link[mgcv]{predict.gam}()} for details. <NOT YET
   IMPLEMENTED>}
 
@@ -45,9 +45,9 @@
 }
 \value{
   If \code{type == "lpmatrix"}, the design matrix for the
-  supplied covariate values in long format. If \code{se ==
+  supplied covariate values in long format.  If \code{se ==
   TRUE}, a list with entries \code{fit} and \code{se.fit}
-  containing fits and standard errors, respectively. If
+  containing fits and standard errors, respectively.  If
   \code{type == "terms"} or \code{"iterms"} each of these
   lists is a list of matrices of the same dimension as the
   response for \code{newdata} containing the linear

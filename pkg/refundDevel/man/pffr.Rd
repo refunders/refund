@@ -2,9 +2,10 @@
 \alias{pffr}
 \title{Penalized function-on-function regression}
 \usage{
-pffr(formula, yind, fitter = NA, method = "REML", tensortype = c("te", "t2"), 
-     bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)), 
-     bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
+  pffr(formula, yind, algorithm = NA, method = "REML",
+    tensortype = c("te", "t2"),
+    bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+    bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
 }
 \arguments{
   \item{formula}{a formula with special terms as for
@@ -13,19 +14,20 @@ pffr(formula, yind, fitter = NA, method = "REML", tensortype = c("te", "t2"),
 
   \item{yind}{a vector with length equal to the number of
   columns of the matrix of functional responses giving the
-  vector of evaluation points \eqn{(t_1, \dots ,t_{G})}. If
-  \code{formula} contains an \code{\link{ff}}-term which
+  vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
+  If \code{formula} contains an \code{\link{ff}}-term which
   specifies \code{yind} this is used. If neither is given,
   \code{yind} is \code{1:ncol(<response>)}.}
 
-  \item{fitter}{the name of the function used to estimate
-  the model. Defaults to \code{\link[mgcv]{gam}} if the
-  matrix of functional responses has less than \code{2e5}
-  data points and to \code{\link[mgcv]{bam}} if not. "gamm"
-  (see \code{\link[mgcv]{gamm}}) and "gamm4" (see
-  \code{\link[gamm4]{gamm4}}) are valid options as well.}
+  \item{algorithm}{the name of the function used to
+  estimate the model. Defaults to \code{\link[mgcv]{gam}}
+  if the matrix of functional responses has less than
+  \code{2e5} data points and to \code{\link[mgcv]{bam}} if
+  not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4"
+  (see \code{\link[gamm4]{gamm4}}) are valid options as
+  well.}
 
-  \item{method}{defaults to \code{"REML"}-estimation,
+  \item{method}{Defaults to \code{"REML"}-estimation,
   including of unknown scale. See \code{\link[mgcv]{gam}}
   for details.}
 
@@ -52,8 +54,8 @@ pffr(formula, yind, fitter = NA, method = "REML", tensortype = c("te", "t2"),
 \value{
   a fitted \code{pffr}-object, which is a
   \code{\link[mgcv]{gam}}-object with some additional
-  information in an \code{pffr}-entry. If \code{fitter} is
-  \code{"gamm"} or \code{"gamm4"}, only the \code{$gam}
+  information in an \code{pffr}-entry. If \code{algorithm}
+  is \code{"gamm"} or \code{"gamm4"}, only the \code{$gam}
   part of the returned list is modified in this way.
 }
 \description{
@@ -145,5 +147,19 @@ pffr(formula, yind, fitter = NA, method = "REML", tensortype = c("te", "t2"),
 }
 \author{
   Fabian Scheipl, Sonja Greven
+}
+\references{
+  Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S.
+  (2012).  Penalized function-on-function regression.
+  (submitted)
+  \url{http://biostats.bepress.com/jhubiostat/paper240/}
+
+  Scheipl, F., Staicu, A.-M. and Greven, S. (2012).
+  Additive Mixed Models for Correlated Functional Data.
+  (submitted) \url{http://arxiv.org/abs/1207.5947}
+}
+\seealso{
+  ?smooth.terms on details of mgcv syntax and available
+  spline bases
 }
 

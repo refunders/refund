@@ -2,9 +2,12 @@
 \alias{ff}
 \title{Construct a function-on-function regression term}
 \usage{
-ff(X, yind, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"), 
-   integration = c("simpson", "trapezoidal", "riemann"), L = NULL, limits = NULL,
-   splinepars = list(bs = "ps", m = list(c(2, 1), c(2, 1))), check.ident = TRUE)
+  ff(X, yind, xind = seq(0, 1, l = ncol(X)),
+    basistype = c("te", "t2", "s"),
+    integration = c("simpson", "trapezoidal", "riemann"),
+    L = NULL, limits = NULL,
+    splinepars = list(bs = "ps", m = list(c(2, 1), c(2, 1))),
+    check.ident = TRUE)
 }
 \arguments{
   \item{X}{an n by \code{ncol(xind)} matrix of function
@@ -20,7 +23,7 @@ ff(X, yind, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"),
 
   \item{basistype}{defaults to "\code{\link[mgcv]{te}}",
   i.e. a tensor product spline to represent
-  \eqn{\beta(t,s)}. Alternatively, use \code{"s"} for
+  \eqn{\beta(t,s)}.  Alternatively, use \code{"s"} for
   bivariate basis functions (see \code{mgcv}'s
   \code{\link[mgcv]{s}}) or \code{"t2"} for an alternative
   parameterization of tensor product splines (see
@@ -28,7 +31,7 @@ ff(X, yind, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"),
 
   \item{integration}{method used for numerical integration.
   Defaults to \code{"simpson"}'s rule for calculating
-  entries in \code{L}. Alternatively and for
+  entries in \code{L}.  Alternatively and for
   non-equidistant grids, \code{"trapezoidal"} or
   \code{"riemann"}. \code{"riemann"} integration is always
   used if \code{limits} is specified}
@@ -56,7 +59,7 @@ ff(X, yind, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"),
   \code{mgcv} for details}
 
   \item{check.ident}{check rank of
-  \eqn{Cov(X_i(s),X_i(s'))} and adjust
+  \eqn{\operatorname{Cov}(X_i(s),X_i(s'))} and adjust
   number of basis functions if necessary. See Details.
   Defaults to TRUE.}
 }

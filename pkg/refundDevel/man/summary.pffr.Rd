@@ -2,7 +2,7 @@
 \alias{summary.pffr}
 \title{Summary for a pffr fit}
 \usage{
-\method{summary}{pffr} (object, ...)
+  \method{summary}{pffr} (object, ...)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-object}

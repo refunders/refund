@@ -1,0 +1,58 @@
+\name{coefboot.pffr}
+\alias{coefboot.pffr}
+\title{Simple bootstrap CIs for pffr}
+\usage{
+  coefboot.pffr(object, n1 = 100, n2 = 40, n3 = 20,
+    B = 100, ncpus = getOption("mc.cores"),
+    parallel = ifelse(Sys.info()["sysname"] == "Windows", "no", "multicore"),
+    conf = c(0.9, 0.95), type = "percent",
+    showProgress = TRUE, ...)
+}
+\arguments{
+  \item{object}{a fitted \code{\link{pffr}}-model}
+
+  \item{n1}{see \code{\link{coef.pffr}}}
+
+  \item{n2}{see \code{\link{coef.pffr}}}
+
+  \item{n3}{see \code{\link{coef.pffr}}}
+
+  \item{B}{number of bootstrap replicates, defaults to (a
+  measly) 100}
+
+  \item{parallel}{see \code{\link[boot]{boot}}}
+
+  \item{ncpus}{see \code{\link[boot]{boot}}. Defaults to
+  \code{getOption("mc.cores")}, if that is not set to
+  \code{getOption("boot.ncpus", 1L)} (like \code{boot}).}
+
+  \item{conf}{desired levels of bootstrap CIs, defaults to
+  0.90 and 0.95}
+
+  \item{type}{type of bootstrap interval, see
+  \code{\link[boot]{boot.ci}}. Defaults to "percent" for
+  percentile-based CIs.}
+
+  \item{showProgress}{TRUE/FALSE}
+
+  \item{...}{not used}
+}
+\value{
+  a list with similar structure as the return value of
+  \code{\link{coef.pffr}}, containing the original point
+  estimates of the various terms along with their bootstrap
+  CIs.
+}
+\description{
+  This function resamples observations in the data set to
+  obtain approximate CIs for different terms and
+  coefficient functions that correct for the effects of
+  dependency and heteroskedasticity of the residuals along
+  the index of the functional response, i.e., it helps with
+  doing correct inference if the residuals along the index
+  of the functional response are not i.i.d).
+}
+\author{
+  Fabian Scheipl
+}
+

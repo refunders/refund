@@ -4,14 +4,14 @@
 # 13.06.2011, 10:54:19: initial commit
 #
 # TODO: add functionality for concurrent model
-# TODO: suppliying k as a variable name breaks down because it is propagated without evaluation
+# TODO: supplying k as a variable name breaks down because it is propagated without evaluation
 #       and so k is a list(<expression>, default.k)  where a vector is expected.
 ###############################################################################
 #' Penalized function-on-function regression
 #' 
 #' Implements additive regression for functional and scalar covariates and functional responses.
 #' This function is a wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to fit models of the general form \cr
-#' \eqn{E(Y_i(t)) = g(\mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots} )\cr
+#' \eqn{E(Y_i(t)) = g(\mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots }\cr
 #' with a functional (but not necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
 #' (optional) smooth intercept \eqn{\mu(t)}, (multiple) functional covariates \eqn{X(t)} and scalar covariates
 #' \eqn{z_1}, \eqn{z_2}, etc. 
@@ -45,7 +45,7 @@
 #' into one long vector and the covariates are expanded/repeated correspondingly. This means the models get quite big fairly fast,
 #' since the effective number of rows in the design matrix is number of observations times number of evaluations of \eqn{Y(t)} per observation.\cr 
 #' 
-#' Note that pffr overrides the default identifiability constraints (\eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0) implemented in \code{mgcv} 
+#' Note that pffr overrides the default identifiability constraints (\eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0}) implemented in \code{mgcv} 
 #' for tensor product terms whose marginal terms include the index of the functional response \eqn{t}.  Instead, \eqn{\sum_i \hat f(z_i, x_i, t) = 0} for all \eqn{t}
 #' is enforced, so that effects varying over \eqn{t} can be interpreted as deviations from the global functional intercept.
 #' I recommend using centered scalar covariates for terms like
@@ -55,7 +55,7 @@
 #' @param formula a formula with special terms as for \code{\link[mgcv]{gam}}, with additional special terms \code{\link{ff}()} and \code{c()}
 #' @param yind a vector with length equal to the number of columns of the matrix of functional responses giving the vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
 #' 	If \code{formula} contains an \code{\link{ff}}-term which specifies \code{yind} this is used. If neither is given, \code{yind} is \code{1:ncol(<response>)}.   
-#' @param fitter the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
+#' @param algorithm the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
 #' 	 and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4" (see \code{\link[gamm4]{gamm4}}) are valid options as well.  
 #' @param method Defaults to \code{"REML"}-estimation, including of unknown scale. See \code{\link[mgcv]{gam}} for details.  
 #' @param bs.yindex a named (!) list giving the parameters for spline bases on the index of the functional response. 
@@ -64,13 +64,20 @@
 #'  Defaults to \code{list(bs="ps", k=20, m=c(2, 1))}, i.e. 20 cubic B-splines bases with first order difference penalty.  
 #' @param tensortype which typ of tenor product splines to use. One of "\code{\link[mgcv]{te}}" or "\code{\link[mgcv]{t2}}", defaults to \code{te}
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. \code{weights, subset, offset} are not yet implemented!
-#' @return a fitted \code{pffr}-object, which is a \code{\link[mgcv]{gam}}-object with some additional information in an \code{pffr}-entry. If \code{fitter} is
+#' @return a fitted \code{pffr}-object, which is a \code{\link[mgcv]{gam}}-object with some additional information in an \code{pffr}-entry. If \code{algorithm} is
 #'   \code{"gamm"} or \code{"gamm4"}, only the \code{$gam} part of the returned list is modified in this way.
 #' @author Fabian Scheipl, Sonja Greven
+#' @seealso ?smooth.terms on details of mgcv syntax and available spline bases
+#' @references Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2012). 
+#'  Penalized function-on-function regression. (submitted) 
+#' \url{http://biostats.bepress.com/jhubiostat/paper240/}
+#' 
+#'  Scheipl, F., Staicu, A.-M. and Greven, S. (2012). Additive Mixed Models for Correlated Functional Data.
+#'  (submitted) \url{http://arxiv.org/abs/1207.5947}
 pffr <- function(
 		formula,
 		yind,
-		fitter = NA, 
+		algorithm = NA, 
         method="REML",
         tensortype = c("te", "t2"),
 		bs.yindex = list(bs="ps", k=5, m=c(2, 1)), # only bs, k, m are propagated...
@@ -88,7 +95,7 @@ pffr <- function(
     ## warn if any entries in ... are not arguments for gam/gam.fit or gamm4/lmer 
     dots <- list(...)
     if(length(dots)){
-        validDots <- if(!is.na(fitter) && fitter=="gamm4"){
+        validDots <- if(!is.na(algorithm) && algorithm=="gamm4"){
                  c(names(formals(gamm4)), names(formals(lmer)))         
         } else {
             c(names(formals(gam)), names(formals(gam.fit)))
@@ -125,22 +132,22 @@ pffr <- function(
 	#start new formula
 	newfrml <- paste(responsename, "~", sep="")
 	newfrmlenv <- new.env()
-	evalenv <- if("data" %in% names(call)) eval(call$data) else NULL
+	evalenv <- if("data" %in% names(call)) eval.parent(call$data) else NULL
 	
 	nobs <- nrow(eval(responsename,  envir=evalenv, enclos=frmlenv))
 	nyindex <- ncol(eval(responsename,  envir=evalenv, enclos=frmlenv))
 	
 	
-	if(missing(fitter)||is.na(fitter)){
-		fitter <- ifelse(nobs > 1e5, "bam", "gam")
+	if(missing(algorithm)||is.na(algorithm)){
+		algorithm <- ifelse(nobs > 1e5, "bam", "gam")
 	} 
-	fitter <- as.symbol(fitter)
-	if(as.character(fitter)=="bam" && !("chunk.size" %in% names(call))){
+	algorithm <- as.symbol(algorithm)
+	if(as.character(algorithm)=="bam" && !("chunk.size" %in% names(call))){
 		call$chunk.size <- max(nobs/5, 10000) 
 		#same default as in bam
 	}
     ## no te-terms possible in gamm4
-	if(as.character(fitter)=="gamm4") stopifnot(length(where.te)<1)
+	if(as.character(algorithm)=="gamm4") stopifnot(length(where.te)<1)
     
 	
 	#if missing, define y-index or get it from first ff/sff-term, then assign expanded versions to newfrmlenv
@@ -293,9 +300,9 @@ pffr <- function(
     makeSTeT2 <- function(x){
         
         xnew <- x
-        if(deparse(x[[1]]) == "te" && as.character(fitter) == "gamm4") xnew[[1]] <- quote(t2)
+        if(deparse(x[[1]]) == "te" && as.character(algorithm) == "gamm4") xnew[[1]] <- quote(t2)
         if(deparse(x[[1]]) == "s"){
-            xnew[[1]] <- if(as.character(fitter) != "gamm4") {
+            xnew[[1]] <- if(as.character(algorithm) != "gamm4") {
                         tensortype 
                     } else quote(t2)
             #accomodate multivariate s()-terms
@@ -419,7 +426,7 @@ pffr <- function(
 	#... & assign expanded/additional variables to newfrmlenv
     where.notff <- c(where.c, where.par, where.s, where.te, where.t2)
 	if(length(where.notff)){
-        if("data" %in% names(call)) frmlenv <- list2env(eval(call$data), frmlenv) 
+        if("data" %in% names(call)) frmlenv <- list2env(eval.parent(call$data), frmlenv) 
         lapply(terms[where.notff], 
                 function(x){
                     #nms <- all.vars(x)
@@ -457,16 +464,16 @@ pffr <- function(
 	
 	newcall <- expand.call(pffr, call)
     newcall$yind <- newcall$tensortype <- newcall$bs.int <-
-            newcall$bs.yindex <- newcall$fitter <- NULL
+            newcall$bs.yindex <- newcall$algorithm <- NULL
 	newcall$formula <- newfrml
 	newcall$data <- quote(pffrdata)
-	newcall[[1]] <- fitter
+	newcall[[1]] <- algorithm
 	
     
     # add appropriate centering constraints for smooth effects
     # (not possible for gamm4, as the constraint destroys the simple 
     # diagonal structure of the t2-penalties)
-    if(!(as.character(fitter) %in% c("gamm4"))){
+    if(!(as.character(algorithm) %in% c("gamm4"))){
         suppressMessages(
                 trace(mgcv:::smooth.construct.tensor.smooth.spec, 
                         at = max(which(sapply(as.list(body(mgcv:::smooth.construct.tensor.smooth.spec)), function(x) any(grepl(x, pattern="object$C", fixed=TRUE))))) + 1, 
@@ -534,9 +541,9 @@ pffr <- function(
     
     
     
-	# call fitter to estimate model
+	# call algorithm to estimate model
     m <- eval(newcall)
-    m.smooth <- if(as.character(fitter) %in% c("gamm4","gamm")){
+    m.smooth <- if(as.character(algorithm) %in% c("gamm4","gamm")){
         m$gam$smooth
     } else m$smooth
     
@@ -596,13 +603,15 @@ pffr <- function(
     }
     
     names(m.smooth) <- lbls
-    if(as.character(fitter) %in% c("gamm4","gamm")){
+    if(as.character(algorithm) %in% c("gamm4","gamm")){
         m$gam$smooth <- m.smooth 
     } else{
         m$smooth  <- m.smooth
     } 
     
-    ret <-  list(formula=formula, 
+    ret <-  list(
+            call=call,
+            formula=formula, 
             termmap=trmmap, 
             labelmap=labelmap, 
             responsename = responsename,
@@ -623,7 +632,7 @@ pffr <- function(
             ff=ffterms,
             ffpc=ffpcterms)
     
-    if(as.character(fitter) %in% c("gamm4","gamm")){
+    if(as.character(algorithm) %in% c("gamm4","gamm")){
         m$gam$pffr <- ret
         class(m$gam) <- c("pffr", class(m$gam))
     } else {

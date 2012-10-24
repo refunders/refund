@@ -2,8 +2,10 @@
 \alias{sff}
 \title{Construct a smooth function-on-function regression term}
 \usage{
-sff(X, yind, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"), 
-    integration = c("simpson", "trapezoidal"), L = NULL, limits = NULL, 
+  sff(X, yind, xind = seq(0, 1, l = ncol(X)),
+    basistype = c("te", "t2", "s"),
+    integration = c("simpson", "trapezoidal"), L = NULL,
+    limits = NULL,
     splinepars = list(bs = "ps", m = c(2, 2, 2)))
 }
 \arguments{
@@ -21,13 +23,13 @@ sff(X, yind, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"),
 
   \item{basistype}{defaults to "\code{\link[mgcv]{te}}",
   i.e. a tensor product spline to represent \eqn{f(X_i(s),
-  t)}. Alternatively, use \code{"s"} for bivariate basis
+  t)}.  Alternatively, use \code{"s"} for bivariate basis
   functions (see \code{\link[mgcv]{s}}) or \code{"t2"} for
   an alternative parameterization of tensor product splines
   (see \code{\link[mgcv]{t2}}).}
 
   \item{integration}{method used for numerical integration.
-  Defaults to \code{"simpson"}'s rule. Alternatively and
+  Defaults to \code{"simpson"}'s rule.  Alternatively and
   for non-equidistant grids, \code{"trapezoidal"}.}
 
   \item{L}{optional: an n by \code{ncol(xind)} giving the
