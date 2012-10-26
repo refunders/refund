@@ -31,6 +31,7 @@ type of basis used. The basis is created by an appropriate constructor function 
 Unlike \code{\link{fosr}} and \code{\link{pffr}}, which obtain smooth coefficient functions by minimizing a penalized criterion, this function introduces smoothing only as a second step. The idea was proposed by Fan and Zhang (2000), who employed local polynomials rather than roughness penalization for the smoothing step.
 }
 \value{
+An object of class \code{fosr}, which is a list with the following elements:
   \item{fd}{object of class \code{"\link{fd}"} representing the estimated coefficient functions. Its main components are a basis and a matrix of coefficients with respect to that basis.
 }
   \item{raw.coef}{\eqn{d\times p} matrix of coefficient estimates from regressing on \code{X} separately at each point along the function.
@@ -63,6 +64,7 @@ tempmat = t(CanadianWeather$dailyAv[,,1])
 latmat = cbind(1, scale(CanadianWeather$coord[ , 1], TRUE, FALSE))  # centred!
 fzmod <- fosr2s(tempmat, latmat, argvals=day.5, basistype="fourier", nbasis=25)
 
+#plot(fzmod, split = 1)
 par(mfrow=1:2)
 ylabs = c("Intercept", "Latitude effect")
 for (k in 1:2) {
