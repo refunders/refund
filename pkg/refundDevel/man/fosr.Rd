@@ -9,11 +9,11 @@ Function-on-scalar regression}
   with efficient selection of optimal smoothing parameters.
 }
 \usage{
-fosr(Y = NULL, fdobj = NULL, X, con = NULL, argvals = NULL, method = c("OLS", "GLS"), 
+fosr(Y = NULL, fdobj = NULL, X, con = NULL, argvals = NULL, method = c("OLS", "GLS", "mix"), 
      gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"), 
      cov.method = c("naive", "mod.chol"), lambda = NULL, 
      nbasis = 15, norder = 4, pen.order = 2, 
-     multi.sp = ifelse(method == "OLS", FALSE, TRUE), max.iter = 1, 
+     multi.sp = ifelse(method == "OLS", FALSE, TRUE), pve = 0.99, max.iter = 1, 
      maxlam = NULL, cv1 = FALSE, scale = FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -27,7 +27,7 @@ a row vector or matrix of linear contrasts of the coefficient functions, to be c
   \item{argvals}{
 the \eqn{d} argument values at which the coefficient functions will be evaluated.}
   \item{method}{
-estimation method: \code{"OLS"} for penalized ordinary least squares, \code{"GLS"} for penalized generalized least squares.}
+estimation method: \code{"OLS"} for penalized ordinary least squares, \code{"GLS"} for penalized generalized least squares, \code{"mix"} for mixed effect models.}
   \item{gam.method}{
 smoothing parameter selection method, to be passed to \code{\link[mgcv]{gam}}: \code{"REML"} for restricted maximum likelihood, \code{"GCV.Cp"} for generalized cross-validation.}
   \item{cov.method}{covariance estimation method: the current options are naive or modified Cholesky. See Details.}
@@ -36,6 +36,8 @@ smoothing parameter selection method, to be passed to \code{\link[mgcv]{gam}}: \
   \item{pen.order}{order of derivative penalty.}
   \item{multi.sp}{
 a logical value indicating whether separate smoothing parameters should be estimated for each coefficient function.  Currently must be \code{FALSE} if \code{method = "OLS"}.}
+  \item{pve}{if \code{method = 'mix'}, the percentage of variance explained by the principal components; defaults to 0.99.  	
+}
   \item{max.iter}{
 maximum number of iterations if \code{method = "GLS"}.}
   \item{maxlam}{
@@ -55,8 +57,10 @@ Please note that currently, if \code{multi.sp = TRUE}, then \code{lambda} must b
 }
 \value{
 An object of class \code{fosr}, which is a list with the following elements:
-\item{B}{matrix of basis coefficients for the estimated coefficient functions.}
-\item{yhat}{an object, of the same form as the functional responses (see arguments \code{Y} and \code{fdobj}), giving the fitted values.}
+\item{fd}{object of class \code{"\link{fd}"} representing the estimated coefficient functions. Its main components are a basis and a matrix of coefficients with respect to that basis.}
+\item{pca.resid}{if \code{method = "mix"}, an object representing a functional PCA of the residuals, performed by \code{\link{fpca.sc}} if the responses are in raw form or by \code{\link[fda]{pca.fd}} if in functional-data-object form.}
+\item{U}{if \code{method = "mix"}, an \eqn{n\times m} matrix of random effects, where \eqn{m} is the number of functional PC's needed to explain proportion \code{pve} of the residual variance. These random effects can be interpreted as shrunken FPC scores.}
+\item{yhat, resid}{objects of the same form as the functional responses (see arguments \code{Y} and \code{fdobj}), giving the fitted values and residuals.}
 \item{est.func}{matrix of values of the coefficient function estimates at the points given by \code{argvals}.}
 \item{se.func}{matrix of values of the standard error estimates for the coefficient functions, at the points given by \code{argvals}.}
 \item{argvals}{points at which the coefficient functions are evaluated.}
@@ -65,6 +69,7 @@ An object of class \code{fosr}, which is a list with the following elements:
 \item{lambda}{smoothing parameter, or vector of smoothing parameters.}
 \item{cv}{cross-validated integrated squared error if \code{method="OLS"}, otherwise \code{NULL}.}
 \item{roughness}{value of the roughness penalty.}
+\item{resp.type}{\code{"raw"} or \code{"fd"}, indicating whether the responses were supplied in raw or functional-data-object form.}
 }
 \references{
 Ledoit, O., and Wolf, M. (2002). Some hypothesis tests for the covariance matrix when the dimension is large compared to the sample size. \emph{Annals of Statistics}, 30(4), 1081--1102.

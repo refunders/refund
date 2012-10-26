@@ -1,6 +1,6 @@
 plot.fosr <-
 function(x, split=NULL, titles=NULL, xlabel="", ylabel="Coefficient function", set.mfrow=TRUE, ...) {
-	nplots = nrow(x$B)
+	nplots = ncol(x$fd$coef)
 	if (set.mfrow) {
 	    nro = floor(sqrt(nplots))
 	    nco = ceiling(nplots / nro)

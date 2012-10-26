@@ -25,7 +25,7 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
     
     if (resp.type=="raw") {
         bss = create.bspline.basis(range(argvals), nbasis=nbasis, norder=norder)
-        bmat <- Theta <- eval.basis(argvals, bss)
+        Bmat <- Theta <- eval.basis(argvals, bss)
         respmat <- Y 
     }
     else if (resp.type=="fd") {
@@ -36,7 +36,7 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
         C = t(fdobj$coefs)
         J = getbasispenalty(bss, 0)
         svdJ = svd(J)
-        bmat <- J12 <- svdJ$u %*% diag(sqrt(svdJ$d)) %*% t(svdJ$u)
+        Bmat <- J12 <- svdJ$u %*% diag(sqrt(svdJ$d)) %*% t(svdJ$u)
         respmat <- C %*% J12
     }
     
@@ -59,7 +59,7 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
     cv = NULL
     if (method == "OLS") {
         if (length(lambda) != 1 | cv1) {
-            lofo <- lofocv(respmat, X.sc %x% bmat, S1 = pen[[1]],
+            lofo <- lofocv(respmat, X.sc %x% Bmat, S1 = pen[[1]],
                     lamvec = lambda, constr = constr, maxlam = maxlam)
             cv = if (is.null(lambda))
                         lofo$objective
@@ -70,23 +70,23 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
         }
     }
     
-    firstfit <- amc(as.vector(t(respmat)), X.sc %x% bmat,
+    firstfit <- amc(as.vector(t(respmat)), X.sc %x% Bmat,
             gam.method = gam.method, S = pen, C = constr, lambda = lambda)
     
-    B = B.ols = t(matrix(firstfit$coef, ncol = q))
+    coefmat = coefmat.ols = t(matrix(firstfit$coef, ncol = q))
     se = NULL
     if (method != "OLS") {
         iter = 0
-        B.old = 3 * B.ols
+        coefmat.old = 3 * coefmat.ols
         newfit = NULL
         if (!is.null(lambda) & max.iter > 0)
             warning("Given lambda used for initial fit only")
-        while (any(abs((B - B.old)/B.old) > 0.001) & (iter < max.iter)) {
+        while (any(abs((coefmat - coefmat.old)/coefmat.old) > 0.001) & (iter < max.iter)) {
             iter = iter + 1
             if (max.iter > 1) cat("Refit", iter, "\n")
             oldfit = if (!is.null(newfit)) newfit else firstfit
-            B.old = B
-            residvec <- as.vector(t(respmat)) - (X.sc %x% bmat) %*% oldfit$coef[1:(q*nbasis)]
+            coefmat.old = coefmat
+            residvec <- as.vector(t(respmat)) - (X.sc %x% Bmat) %*% oldfit$coef[1:(q*nbasis)]
             residmat = t(matrix(residvec, ncol = ncurve))
             if (method == "GLS") {
                 # Estimate symmetric square root of the precision matrix
@@ -125,10 +125,10 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
                     #F start iterations at last solution for quicker convergence
                     #F (maybe? not sure this has much effect, but it surely won't hurt):
                     newfit <- amc(as.vector(tcrossprod(sqrt.prec, respmat)), 
-                            X.sc %x% (sqrt.prec %*% bmat), 
+                            X.sc %x% (sqrt.prec %*% Bmat), 
                             gam.method = gam.method, S = pen, C = constr, 
-                            start = if (is.null(con)) as.vector(t(B)) else NULL)
-                    B = t(matrix(newfit$coef, ncol = q))	
+                            start = if (is.null(con)) as.vector(t(coefmat)) else NULL)
+                    coefmat = t(matrix(newfit$coef, ncol = q))	
                 } #end GLS
                 else if (method == "mix") {                     
                     if (resp.type=="fd") {
@@ -139,7 +139,7 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
                         }
                         else pca.resid <- pca.fd(resid.fd, nharm=npc)
                         evalues <- pca.resid$values[1:npc]
-                        efuncmat.scaled <- bmat %*% t(t(pca.resid$harmonics$coef[ , 1:npc]) * sqrt(evalues))
+                        efuncmat.scaled <- Bmat %*% t(t(pca.resid$harmonics$coef[ , 1:npc]) * sqrt(evalues))
                     }
                     else if (resp.type=="raw") {
                         if (iter==1) {                           
@@ -162,7 +162,7 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
                     constr.aug <- if (is.null(constr)) NULL else cbind(constr, matrix(0, nrow(constr), npc*ncurve))
                     #F
                     startB <- if(iter==1){
-                                c(as.vector(t(B)), rep(0, ncurve*npc))
+                                c(as.vector(t(coefmat)), rep(0, ncurve*npc))
                             } else {
                                 newfit$coefficients
                             }
@@ -170,21 +170,21 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
                     #browser()
 
                     newfit <- amc(as.vector(t(respmat)), 
-                            cbind(X.sc %x% bmat,diag(ncurve) %x% efuncmat.scaled),
+                            cbind(X.sc %x% Bmat,diag(ncurve) %x% efuncmat.scaled),
                             gam.method = gam.method, S = pen.aug, C = constr.aug, 
                             start=if (is.null(constr.aug)) startB else NULL)      
                     
                     
                     vecBt = newfit$coef[1:(q*nbasis)]
                     vecUt = newfit$coef[(q*nbasis+1):(q*nbasis+npc*ncurve)]
-                    B = t(matrix(vecBt, ncol=q))
+                    coefmat = t(matrix(vecBt, ncol=q))
                     U <- t(matrix(vecUt, ncol=ncurve))
                 } #end mix
         } #end while 
     } # end !OLS
     
     if (method == "OLS" | max.iter == 0) {
-        residvec <- as.vector(t(respmat)) - (X.sc %x% bmat) %*% firstfit$coef
+        residvec <- as.vector(t(respmat)) - (X.sc %x% Bmat) %*% firstfit$coef
         covmat = ((ncurve - 1)/ncurve) * cov(t(matrix(residvec, ncol = ncurve)))
         var.b = firstfit$GinvXT %*% (diag(ncurve) %x% covmat) %*% t(firstfit$GinvXT)
     }
@@ -197,18 +197,19 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
         se.func[ , j] = sqrt(rowSums((Theta %*% var.b[(nbasis * (j - 1) + 1):(nbasis * j), 
                                             (nbasis * (j - 1) + 1):(nbasis * j)]) * Theta))
     }
-    est.func = eval.fd(argvals, fd(t(B), bss))
+    fd = fd(t(coefmat), bss)
+    est.func = eval.fd(argvals, fd)
     fit <- if (method == "mix" & max.iter > 0) newfit else firstfit
-    roughness = diag(B %*% getbasispenalty(bss, pen.order) %*% t(B))
+    roughness = diag(coefmat %*% getbasispenalty(bss, pen.order) %*% t(coefmat))
     skale = attr(X.sc, "scaled:scale")
     if (!is.null(skale)) {
-        B = t(scale(t(B), center = FALSE, scale = skale))
+        coefmat = t(scale(t(coefmat), center = FALSE, scale = skale))
         est.func = scale(est.func, center = FALSE, scale = skale)
         se.func = scale(se.func, center = FALSE, scale = skale)
         roughness = roughness/skale^2
     }
-    yhat = if (resp.type=="raw") X %*% tcrossprod(B, Theta) else fd(t(X %*% B), bss)
-    llist = list(B = B, U = U, pca.resid = pca.resid,
+    yhat = if (resp.type=="raw") X %*% tcrossprod(coefmat, Theta) else fd(t(X %*% coefmat), bss)
+    llist = list(fd = fd, pca.resid = pca.resid, U = U, 
             yhat = yhat, resid = if (resp.type == 'raw') Y - yhat else fdobj - yhat,
             est.func = est.func,  se.func = se.func, argvals = argvals, fit = fit, 
             edf = sum(fit$gam$edf), 
