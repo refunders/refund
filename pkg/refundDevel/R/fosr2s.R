@@ -31,7 +31,7 @@ fosr2s <- function (Y, X, argvals = seq(0,1,,ncol(Y)), nbasis = 15, norder = 4,
     	se.func[ , j] <- sqrt(XtX.inv[j,j] * rowSums(m1 * (m1 %*% Bt.Sig.B)))
     }
     
-    list(fd=fd(coef=coefmat, basis=bss), raw.coef=raw.coef, raw.se=raw.se,
+    list(fd=fd(coef=coefmat, basisobj=bss), raw.coef=raw.coef, raw.se=raw.se,
          yhat=tcrossprod(X, est.func),
          est.func=est.func, se.func=se.func, argvals=argvals, lambda=lambda)
 }
