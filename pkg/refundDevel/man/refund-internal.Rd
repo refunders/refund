@@ -14,6 +14,7 @@
 \alias{safeDeparse}
 \alias{getShrtlbls}
 \alias{list2df}
+\alias{smooth.construct.pcre.smooth.spec}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Internal functions for the refund package

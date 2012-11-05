@@ -23,8 +23,7 @@ Depends:
     wavethresh,
     Matrix,
     gamm4,
-    boot,
-    multicore
+    boot
 Description: developer version of refund
 License: GPL (>= 2)
 LazyLoad: yes

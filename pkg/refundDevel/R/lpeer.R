@@ -5,7 +5,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
   require(nlme)
   require(magic)
   lobj=TRUE
-  
+  pd1=pd2=pd3=pd4=pd5=pd6=NULL
   W<- as.matrix(funcs)
   norm<- sqrt(diag(W%*%t(W)))
   W<- W/norm

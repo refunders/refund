@@ -2,7 +2,7 @@ predict.fgam <- function(object,newdata,type='response',
                          se.fit=FALSE,terms=NULL,PredOutOfRange=FALSE,...){
   
   call <- match.call()
-  
+  string <- NULL
   if (!missing(newdata)) {
     nobs <- nrow(as.matrix(newdata[[1]]))
     

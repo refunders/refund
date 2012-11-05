@@ -46,7 +46,7 @@ pffrGLS <- function(
     
     call <- match.call()
     tensortype <- as.symbol(match.arg(tensortype))
-    
+    intcall <- NULL
     ## warn if any entries in ... are not arguments for gam/gam.fit or gamm4/lmer 
     dots <- list(...)
     if(length(dots)){
@@ -88,8 +88,8 @@ pffrGLS <- function(
     newfrmlenv <- new.env()
     evalenv <- if("data" %in% names(call)) eval.parent(call$data) else NULL
     
-    nobs <- nrow(eval(responsename,  env=evalenv, enclos=frmlenv))
-    nyindex <- ncol(eval(responsename,  env=evalenv, enclos=frmlenv))
+    nobs <- nrow(eval(responsename,  envir=evalenv, enclos=frmlenv))
+    nyindex <- ncol(eval(responsename,  envir=evalenv, enclos=frmlenv))
     
     
     if(missing(algorithm)||is.na(algorithm)){
@@ -112,7 +112,7 @@ pffrGLS <- function(
                 ffcall <- expand.call(ff, as.call(terms[where.ff][1])[[1]])  
             }  else ffcall <- expand.call(sff, as.call(terms[where.sff][1])[[1]]) 
             if(!is.null(ffcall$yind)){
-                yind <- eval(ffcall$yind, env=evalenv, enclos=frmlenv)
+                yind <- eval(ffcall$yind, envir=evalenv, enclos=frmlenv)
                 yindname <- deparse(ffcall$yind)
             } else {
                 yind <- 1:nyindex
@@ -149,10 +149,10 @@ pffrGLS <- function(
     } 
     originalresponsename <- paste(deparse(responsename),".Original", sep="")
     assign(x=originalresponsename, 
-            value=as.vector(t(eval(responsename, env=evalenv, enclos=frmlenv))), 
+            value=as.vector(t(eval(responsename, envir=evalenv, enclos=frmlenv))), 
             envir=newfrmlenv)
     ## 'decorrelate' Y
-    ytilde <- sqrtSigmaInv%*%t(eval(responsename, env=evalenv, enclos=frmlenv))
+    ytilde <- sqrtSigmaInv%*%t(eval(responsename, envir=evalenv, enclos=frmlenv))
     #assign (decorrelated) response in _long_ format to newfrmlenv
     assign(x=deparse(responsename), value=as.vector(ytilde), 
             envir=newfrmlenv)
@@ -196,7 +196,7 @@ pffrGLS <- function(
     #prep function-on-function-terms
     if(length(c(where.ff, where.sff))){ 
         ffterms <- lapply(terms[c(where.ff, where.sff)], function(x){
-                    eval(x, env=evalenv, enclos=frmlenv)
+                    eval(x, envir=evalenv, enclos=frmlenv)
                 })
         
         newtrmstrings[c(where.ff, where.sff)] <- sapply(ffterms, function(x) {
@@ -214,7 +214,7 @@ pffrGLS <- function(
     } else ffterms <- NULL
     if(length(where.ffpc)){
         ffpcterms <- lapply(terms[where.ffpc], function(x){
-                    eval(x, env=evalenv, enclos=frmlenv)
+                    eval(x, envir=evalenv, enclos=frmlenv)
                 })
         #assign newly created data to newfrmlenv
         lapply(ffpcterms, function(trm){
@@ -244,7 +244,7 @@ pffrGLS <- function(
     #prep PC-based random effects
     if(length(where.pcre)){
         pcreterms <- lapply(terms[where.pcre], function(x){
-                    eval(x, env=evalenv, enclos=frmlenv)
+                    eval(x, envir=evalenv, enclos=frmlenv)
                 })
         #assign newly created data to newfrmlenv
         lapply(pcreterms, function(trm){
@@ -721,7 +721,7 @@ coefboot.pffr <- function(object,
         parallel = ifelse(Sys.info()["sysname"] == "Windows",
                 "no", "multicore"), 
         conf=c(.9,.95), type="percent", showProgress=TRUE, ...){
-    
+    mclapply <- NULL
     if(is.null(ncpus)) ncpus <- getOption("boot.ncpus", 1L) 
     ## 
     modcall <- object$pffr$call
