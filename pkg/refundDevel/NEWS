@@ -1,4 +1,4 @@
-               CHANGES in `refundDevel' VERSION 0.2-0 
+               CHANGES in `refundDevel' 
 rev 20
   o added FGAM functionality
 
@@ -8,3 +8,7 @@ rev 21/22
   o changed "fitter" argument for pffr to  "algorithm" due to argument name clash with gam's "fit"-argument
   o added (experimental) option for "sandwich" variability estimates to coef.pffr
   o added pffr references to documentation  
+  
+rev 32/33
+  o incremented version to 0.2-0
+  o fixed documentation

@@ -82,12 +82,12 @@
   covariance \eqn{K(t,t')}, we can construct an estimator
   for \eqn{K(t,t')} from the n replicates of the observed
   residual vectors. The covariance matrix of the stacked
-  observations \eqn{\operatorname{vec}(Y_i(t))} is then
-  given by a blockdiagonal matrix with n copies of the
-  estimated \eqn{K(t,t')} on the diagonal. This
-  block-diagonal matrix is then used to construct the
-  "meat" of a sandwich covariance estimator, similar to
-  Chen et al. (2012), see reference below.
+  observations vec\eqn{(Y_i(t))} is then given by a
+  block-diagonal matrix with n copies of the estimated
+  \eqn{K(t,t')} on the diagonal. This block-diagonal matrix
+  is used to construct the "meat" of a sandwich covariance
+  estimator, similar to Chen et al. (2012), see reference
+  below.
 }
 \author{
   Fabian Scheipl

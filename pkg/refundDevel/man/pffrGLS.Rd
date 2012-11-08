@@ -28,7 +28,7 @@
 
   \item{hatSigma}{(an estimate of) the within-observation
   covariance (along the responses' index), evaluated at
-  \code{yind}.}
+  \code{yind}. See Details.}
 
   \item{method}{See \code{\link[refund]{pffr}}}
 
@@ -61,7 +61,15 @@
   K(t,t'))} are assumed to be i.i.d. realizations of a
   Gaussian process. An estimate of the covariance operator
   \eqn{K(t,t')} evaluated on \code{yind} has to be supplied
-  in the \code{hatSigma}-argument.
+  in the \code{hatSigma}-argument. Note that this has to be
+  positive definite. If \code{hatSigma} is close to
+  positive \emph{semi-}definite or badly conditioned,
+  estimated standard errors become unstable (typically much
+  too small). \code{pffrGLS} will try to diagnose this and
+  issue a warning. The danger is especially big if the
+  number of functional observations is smaller than the
+  number of gridpoints (i.e, \code{length(yind)}), since
+  the raw covariance estimate will not have full rank.
 }
 \section{Details}{
   Please see \code{\link[refund]{pffr}} for details on

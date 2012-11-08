@@ -1,8 +1,8 @@
 Package: refundDevel
 Type: Package
 Title: developer version of refund: Regression with Functional Data
-Version: 0.1-6
-Date: 2012-08-16
+Version: 0.2-0
+Date: 2012-11-06
 Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     "ccrainic@jhsph.edu"), person("Philip Reiss", role = "aut", email =
     "phil.reiss@nyumc.org"), person("Jeff Goldsmith", role = "aut", email =
@@ -29,3 +29,52 @@ Description: developer version of refund
 License: GPL (>= 2)
 LazyLoad: yes
 Repository: CRAN
+Collate:
+    'Omegas.R'
+    'af.R'
+    'amc.R'
+    'ccb.fpc.R'
+    'decomp.R'
+    'decomp2d.R'
+    'decomp3d.R'
+    'fgam.R'
+    'first.last_test.R'
+    'fosr.R'
+    'fosr.perm.R'
+    'fosr.perm.fit.R'
+    'fosr.perm.test.R'
+    'fosr2s.R'
+    'fpca.sc.R'
+    'fpcr.R'
+    'fpcr.setup.R'
+    'imwd_test.R'
+    'lf.R'
+    'lofocv.R'
+    'lpeer.R'
+    'lpfr.R'
+    'lw.test.R'
+    'osplinepen2d.R'
+    'peer.R'
+    'pffr-ff.R'
+    'pffr-methods.R'
+    'pffr-pcre.R'
+    'pffr-robust.R'
+    'pffr-sff.R'
+    'pffr-utilities.R'
+    'pffr.R'
+    'pfr.R'
+    'plot.fosr.R'
+    'plot.fosr.perm.R'
+    'plot.fpcr.R'
+    'plot.lpeer.R'
+    'plot.peer.R'
+    'predict.fgam.R'
+    'pwcv.R'
+    'reconstr.R'
+    'reconstr2d.R'
+    'reconstr3d.R'
+    'vis.fgam.R'
+    'wcr.R'
+    'wcr.perm.R'
+    'wnet.R'
+    'wnet.perm.R'

@@ -2,8 +2,8 @@
 \alias{pffr}
 \title{Penalized function-on-function regression}
 \usage{
-  pffr(formula, yind, algorithm = NA, method = "REML",
-    tensortype = c("te", "t2"),
+  pffr(formula, yind, data = NULL, algorithm = NA,
+    method = "REML", tensortype = c("te", "t2"),
     bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
     bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
 }
@@ -26,6 +26,19 @@
   not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4"
   (see \code{\link[gamm4]{gamm4}}) are valid options as
   well.}
+
+  \item{data}{an (optional) \code{data.frame} or a named
+  list containing the data. The functional response and
+  functional covariates have to be supplied as n by <no. of
+  evaluations> matrices, i.e. each row is one functional
+  observation. The model is then fitted with the data in
+  long format, i.e., the rows of the matrix of the
+  functional response evaluations \eqn{Y_i(t)} are stacked
+  into one long vector and the covariates are
+  expanded/repeated correspondingly. This means the models
+  get quite big fairly fast, since the effective number of
+  rows in the design matrix is number of observations times
+  number of evaluations of \eqn{Y(t)} per observation.\cr}
 
   \item{method}{Defaults to \code{"REML"}-estimation,
   including of unknown scale. See \code{\link[mgcv]{gam}}
@@ -64,8 +77,8 @@
   wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its
   siblings to fit models of the general form \cr
   \eqn{E(Y_i(t)) = g(\mu(t) + \int X_i(s)\beta(s,t)ds +
-  f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots}
-  )\cr with a functional (but not necessarily continuous)
+  f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots }\cr
+  with a functional (but not necessarily continuous)
   response \eqn{Y(t)}, response function \eqn{g},
   (optional) smooth intercept \eqn{\mu(t)}, (multiple)
   functional covariates \eqn{X(t)} and scalar covariates
@@ -109,15 +122,17 @@
   numeric variable \code{u} via \code{~s(g, u,
   bs="re")}).\cr The marginal spline basis used for the
   index of the the functional response is specified via the
-  global argument \code{bs.yindex}. If necessary, this can
-  be overriden for any term by supplying a
-  \code{bs.yindex}-argument, e.g. \code{~s(x,
-  bs.yindex=list(bs="tp", k=7)} would yield a tensor
-  product spline for which the marginal basis for the index
-  of the response are 7 cubic thin-plate spline
-  functions.\cr Use \code{~-1 + c(1) + ...} to specify a
-  model with only a constant and no functional intercept.
-  \cr
+  \emph{global} argument \code{bs.yindex}. If necessary,
+  this can be overriden for any specific term by supplying
+  a \code{bs.yindex}-argument to that term in the formula,
+  e.g. \code{~s(x, bs.yindex=list(bs="tp", k=7))} would
+  yield a tensor product spline for which the marginal
+  basis for the index of the response are 7 cubic
+  thin-plate spline functions overriding the global default
+  for the basis and penalty on the index of the response
+  given by the \emph{global} \code{bs.yindex}-argument .\cr
+  Use \code{~-1 + c(1) + ...} to specify a model with only
+  a constant and no functional intercept. \cr
 
   The functional response and functional covariates have to
   be supplied as n by <no. of evaluations> matrices, i.e.
@@ -144,6 +159,34 @@
   with \eqn{\sum_i X_i(t) = 0} for all \eqn{t} in
   \code{ff}-terms so that the global functional intercept
   can be interpreted as the global mean function.
+}
+\examples{
+###############################################################################
+# univariate model:
+# Y(t) = f(t)  + \\int X1(s)\\beta(s,t)ds + eps
+data1 <- pffrSim(scenario="1")
+t <- attr(data1, "yindex")
+s <- attr(data1, "xindex")
+m1 <- pffr(Y ~ ff(X1, yind=t, xind=s), data=data1)
+summary(m1)
+plot(m1, pers=TRUE)
+
+###############################################################################
+# multivariate model:
+# Y(t) = f0(t)  + \\int X1(s)\\beta1(s,t)ds + \\int X2(s)\\beta2(s,t)ds +
+#		xlin \\beta3(t) + f1(xte1, xte2) + f2(xsmoo, t) + beta4 xconst + eps
+data2 <- pffrSim(scenario="2", n=200)
+t <- attr(data2, "yindex")
+s <- attr(data2, "xindex")
+m2 <- pffr(Y ~  ff(X1, xind=s, yind=t) + #linear function-on-function
+                ff(X2, xind=s, yind=t) + #linear function-on-function
+                xlin  +  #varying coefficient term
+                c(te(xte1, xte2)) + #bivariate smooth constant over Y-index
+                s(xsmoo) + #smooth effect varying over Y-index
+                c(xconst), # linear effect constant over Y-index
+        data=data2)
+summary(m2)
+plot(m2, pers=TRUE)
 }
 \author{
   Fabian Scheipl, Sonja Greven

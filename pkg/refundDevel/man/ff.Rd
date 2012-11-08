@@ -59,9 +59,8 @@
   \code{mgcv} for details}
 
   \item{check.ident}{check rank of
-  \eqn{\operatorname{Cov}(X_i(s),X_i(s'))} and adjust
-  number of basis functions if necessary. See Details.
-  Defaults to TRUE.}
+  Cov\eqn{(X_i(s),X_i(s'))} and adjust number of basis
+  functions if necessary. See Details. Defaults to TRUE.}
 }
 \value{
   a list containing \itemize{ \item \code{call} a "call" to
