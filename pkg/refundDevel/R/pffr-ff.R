@@ -31,7 +31,7 @@
 #' well tested yet, use at your own risk.   
 #' @param splinepars optional arguments supplied to the \code{basistype}-term. Defaults to a cubic tensor product 
 #' 	B-spline with marginal first difference penalties, i.e. \code{list(bs="ps", m=c(2, 1))} See \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} in \code{mgcv} for details
-#' @param check.ident check rank of \eqn{\operatorname{Cov}(X_i(s),X_i(s'))} and adjust number of basis functions 
+#' @param check.ident check rank of Cov\eqn{(X_i(s),X_i(s'))} and adjust number of basis functions 
 #'  if necessary. See Details. Defaults to TRUE.
 #' 
 #' 

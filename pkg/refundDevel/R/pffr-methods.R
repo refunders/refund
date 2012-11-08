@@ -27,10 +27,6 @@
 #' @param type see \code{\link[mgcv]{predict.gam}()} for details. 
 #'  Note that \code{type == "lpmatrix"} will force \code{reformat} to FALSE.
 #' @param se.fit see \code{\link[mgcv]{predict.gam}()}
-#' @param terms If  \code{type=="terms"} or \code{"iterms"} then only results for the terms given
-#'   in this array will be returned. Note that these are the term-labels used in the gam-fit, 
-#'   not those in the original \code{pffr}-model specification -- these labels can be requested via \code{names(object$smooth)}.  
-#'   See \code{\link[mgcv]{predict.gam}()} for details. <NOT YET IMPLEMENTED>
 #' @param ...  additional arguments passed on to \code{\link[mgcv]{predict.gam}()}
 #' @seealso \code{\link[mgcv]{predict.gam}()}
 #' @return If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long format.
@@ -39,24 +35,17 @@
 #'  containing the linear predictor and its se for each term. 
 #' @method predict pffr
 #' @author Fabian Scheipl
-#  TODO: fix broken terms-option 
 predict.pffr <- function(object,
         newdata,
         reformat=TRUE,
         type = "link",
         se.fit = FALSE,
-        terms = NULL,
         ...){
     #browser()
     
     call <- match.call()
     nyindex <- object$pffr$nyindex
-    
-    #FIXME: fix broken terms-option
-    if(!is.null(terms)) {
-        warning("<terms> argument not implemented yet, ignored.")
-        terms <- NULL
-    }
+
     
     if(!missing(newdata)){
         nobs <- nrow(as.matrix(newdata[[1]]))
@@ -85,6 +74,7 @@ predict.pffr <- function(object,
             for(cov in names(newdata)){
                 #find the term(s) its associated with
                 trms <- which(sapply(varmap, function(x) any(grep(paste("^",cov,"$",sep=""), x)))) 
+                if(!is.null(terms)) trms <- trms[names(trms) %in% terms]
                 if(length(trms)!=0){
                     for(trm in trms){
                         is.ff <- trm %in% object$pffr$where$where.ff
@@ -148,10 +138,16 @@ predict.pffr <- function(object,
             gamdata <- list2df(gamdata)
             call[["newdata"]] <- gamdata
         } 
+        
+        
+        
     } else {
         call$newdata <- eval(call$newdata)
-        nobs <- object$pffr$nobs  
+        nobs <- object$pffr$nobs
     }
+    
+ 
+    
     
     
     #call predict.gam
@@ -165,34 +161,45 @@ predict.pffr <- function(object,
     }
     
     #reformat into matrices with same shape as <Response>
+
     if(reformat){
+        
+        if(missing(newdata) && !is.null(object$pffr$missingind)){
+            #add NAs at the appropriate locations so that fits are nobs x nyindex:
+            insertNA <- function(x){
+                tmp <- rep(NA, nobs*object$pffr$nyindex)
+                tmp[-object$pffr$missingind] <- x
+                return(tmp)     
+            }
+        } else insertNA <- function(x) x
+        
+        
         if(se.fit){
             if(type %in% c("terms", "iterms")){
                 ret <- lapply(ret, function(x)
                             do.call(list,
                                     sapply(1:ncol(x), function(i){
                                                 #browser()
-                                                d <- list(I(matrix(x[,i], nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)))
+                                                d <- list(I(matrix(insertNA(x[,i]), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)))
                                                 names(d)  <- colnames(x)[i]
                                                 return(d)
                                             })))
             } else {
-                ret <- lapply(ret, function(x) matrix(x, nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE))  
+                ret <- lapply(ret, function(x) matrix(insertNA(x), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE))  
             } 
         } else {
             if(type %in% c("terms", "iterms")){
                 ret <- do.call(list, sapply(1:ncol(ret), function(i){
                                     #browser()
-                                    d <- list(I(matrix(ret[,i], nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)))
+                                    d <- list(I(matrix(insertNA(ret[,i]), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)))
                                     names(d)  <- colnames(ret)[i]
                                     return(d)
                                 }))
-            } else ret <- matrix(ret, nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)
+            } else ret <- matrix(insertNA(ret), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)
         }
-        if(!missing(terms) && (type %in% c("terms", "iterms"))){
-            ind <- sapply(terms, function(x)
-                        sapply(x, function(x)
-                                    which(x == unlist(object$pffr$labelmap))))
+        if(type %in% c("terms", "iterms")){
+            ind <- sapply(attr(ret, "names"), function(x)
+                                    which(x == unlist(object$pffr$labelmap)))
             attr(ret, "names") <- names(object$pffr$labelmap)[ind]
         }
     }
@@ -251,7 +258,14 @@ fitted.pffr <- function (object, reformat=TRUE, ...)
     if (!inherits(object, "pffr")) 
         stop("`object' is not of class \"pffr\"")
     ret <- object$fitted.values
-    if(reformat) ret <- matrix(ret, nrow=object$pffr$nobs, ncol=object$pffr$nyindex, byrow=TRUE)
+    if(reformat){
+        if(!is.null(object$pffr$missingind)){
+            tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)
+            tmp[-object$pffr$missingind] <- ret
+            ret <- tmp
+        }
+        ret <- matrix(ret, nrow=object$pffr$nobs, ncol=object$pffr$nyindex, byrow=TRUE)  
+    } 
     return(ret)
 }
 

@@ -1,5 +1,6 @@
 #' Penalized function-on-function regression with non-i.i.d. residuals
 #' 
+#' THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
 #' Implements additive regression for functional and scalar covariates and functional responses.
 #' This function is a wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to fit models of the general form \cr
 #' \eqn{Y_i(t) = \mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots  + E_i(t))}\cr
@@ -7,7 +8,11 @@
 #' (optional) smooth intercept \eqn{\mu(t)}, (multiple) functional covariates \eqn{X(t)} and scalar covariates
 #' \eqn{z_1}, \eqn{z_2}, etc. The residual functions \eqn{E_i(t) \sim GP(0, K(t,t'))} are assumed to be i.i.d. 
 #' realizations of a Gaussian process. An estimate of the covariance operator \eqn{K(t,t')} evaluated on \code{yind} 
-#' has to be supplied in the \code{hatSigma}-argument.    
+#' has to be supplied in the \code{hatSigma}-argument.
+#' Note that this has to be positive definite. If \code{hatSigma} is close to positive \emph{semi-}definite or badly conditioned, 
+#' estimated standard errors become unstable (typically much too small). \code{pffrGLS} will try to diagnose this and issue a warning.
+#' The danger is especially big if the number of functional observations is smaller than the number of gridpoints 
+#' (i.e, \code{length(yind)}), since the raw covariance estimate will not have full rank.     
 #' 
 #' @section Details: 
 #' Please see \code{\link[refund]{pffr}} for details on model specification and 
@@ -18,7 +23,7 @@
 #'   see \code{\link[refund]{pffr}}
 #' @param algorithm the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
 #' 	 and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4" (see \code{\link[gamm4]{gamm4}}) are valid options as well.  
-#' @param hatSigma (an estimate of) the within-observation covariance (along the responses' index), evaluated at \code{yind}. 
+#' @param hatSigma (an estimate of) the within-observation covariance (along the responses' index), evaluated at \code{yind}. See Details.
 #' @param method See \code{\link[refund]{pffr}}
 #' @param bs.yindex See \code{\link[refund]{pffr}}
 #' @param bs.int See \code{\link[refund]{pffr}}
@@ -46,7 +51,7 @@ pffrGLS <- function(
     
     call <- match.call()
     tensortype <- as.symbol(match.arg(tensortype))
-    intcall <- NULL
+    
     ## warn if any entries in ... are not arguments for gam/gam.fit or gamm4/lmer 
     dots <- list(...)
     if(length(dots)){
@@ -112,7 +117,7 @@ pffrGLS <- function(
                 ffcall <- expand.call(ff, as.call(terms[where.ff][1])[[1]])  
             }  else ffcall <- expand.call(sff, as.call(terms[where.sff][1])[[1]]) 
             if(!is.null(ffcall$yind)){
-                yind <- eval(ffcall$yind, envir=evalenv, enclos=frmlenv)
+                yind <- eval(ffcall$yind, env=evalenv, enclos=frmlenv)
                 yindname <- deparse(ffcall$yind)
             } else {
                 yind <- 1:nyindex
@@ -139,20 +144,27 @@ pffrGLS <- function(
     
     
     ###<GLS
+    sqrtSigmaInv <- {
+        eSigma <- eigen(hatSigma, symmetric=TRUE)
+        cond <- max(eSigma$values)/min(eSigma$values)
+        if(cond > 1e5){
+            warning("hatSigma badly conditioned with condition number ", round(cond),
+                    " -- estimated SE's will not be reliable.")
+            eSigma$values <- pmax(eSigma$values, max(eSigma$values)/1e5)
+           }
+        with(eSigma, vectors%*%diag(1/sqrt(values))%*%t(vectors))
+    } 
+    
     hatSigmaname <- deparse(substitute(hatSigmaname))
     assign(x=deparse(hatSigmaname), value=hatSigma, envir=frmlenv)
     
-    sqrtSigmaInv <- {
-        eSigma <- eigen(hatSigma, symmetric=TRUE)
-        eSigma$values <- pmax(eSigma$values, max(eSigma$values)/1e5)
-        with(eSigma, vectors%*%diag(1/sqrt(values))%*%t(vectors))
-    } 
+   
     originalresponsename <- paste(deparse(responsename),".Original", sep="")
     assign(x=originalresponsename, 
-            value=as.vector(t(eval(responsename, envir=evalenv, enclos=frmlenv))), 
+            value=as.vector(t(eval(responsename, env=evalenv, enclos=frmlenv))), 
             envir=newfrmlenv)
     ## 'decorrelate' Y
-    ytilde <- sqrtSigmaInv%*%t(eval(responsename, envir=evalenv, enclos=frmlenv))
+    ytilde <- sqrtSigmaInv%*%t(eval(responsename, env=evalenv, enclos=frmlenv))
     #assign (decorrelated) response in _long_ format to newfrmlenv
     assign(x=deparse(responsename), value=as.vector(ytilde), 
             envir=newfrmlenv)
@@ -196,7 +208,7 @@ pffrGLS <- function(
     #prep function-on-function-terms
     if(length(c(where.ff, where.sff))){ 
         ffterms <- lapply(terms[c(where.ff, where.sff)], function(x){
-                    eval(x, envir=evalenv, enclos=frmlenv)
+                    eval(x, env=evalenv, enclos=frmlenv)
                 })
         
         newtrmstrings[c(where.ff, where.sff)] <- sapply(ffterms, function(x) {
@@ -214,7 +226,7 @@ pffrGLS <- function(
     } else ffterms <- NULL
     if(length(where.ffpc)){
         ffpcterms <- lapply(terms[where.ffpc], function(x){
-                    eval(x, envir=evalenv, enclos=frmlenv)
+                    eval(x, env=evalenv, enclos=frmlenv)
                 })
         #assign newly created data to newfrmlenv
         lapply(ffpcterms, function(trm){
@@ -244,7 +256,7 @@ pffrGLS <- function(
     #prep PC-based random effects
     if(length(where.pcre)){
         pcreterms <- lapply(terms[where.pcre], function(x){
-                    eval(x, envir=evalenv, enclos=frmlenv)
+                    eval(x, env=evalenv, enclos=frmlenv)
                 })
         #assign newly created data to newfrmlenv
         lapply(pcreterms, function(trm){
@@ -721,7 +733,7 @@ coefboot.pffr <- function(object,
         parallel = ifelse(Sys.info()["sysname"] == "Windows",
                 "no", "multicore"), 
         conf=c(.9,.95), type="percent", showProgress=TRUE, ...){
-    mclapply <- NULL
+    
     if(is.null(ncpus)) ncpus <- getOption("boot.ncpus", 1L) 
     ## 
     modcall <- object$pffr$call

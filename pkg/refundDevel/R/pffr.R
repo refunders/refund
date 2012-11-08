@@ -35,9 +35,11 @@
 #' Functional random intercepts \eqn{B_{0g(i)}(t)} for a grouping variable \code{g} can be specified via \code{~s(g, bs="re")}),
 #' functional random slopes \eqn{u_i B_{1g(i)}(t)} in a numeric variable \code{u} via \code{~s(g, u, bs="re")}).\cr 
 #' The marginal spline basis used for the index of the 
-#' the functional response is specified via the global argument \code{bs.yindex}. If necessary, this can be overriden for any term by 
-#' supplying a \code{bs.yindex}-argument, e.g. \code{~s(x, bs.yindex=list(bs="tp", k=7)} would yield a tensor product spline for which
-#' the marginal basis for the index of the response are 7 cubic thin-plate spline functions.\cr 
+#' the functional response is specified via the \emph{global} argument \code{bs.yindex}. If necessary, this can be overriden for any specific term by 
+#' supplying a \code{bs.yindex}-argument to that term in the formula, e.g. \code{~s(x, bs.yindex=list(bs="tp", k=7))} would yield a tensor
+#' product spline for which
+#' the marginal basis for the index of the response are 7 cubic thin-plate spline functions overriding the global default for the basis and penalty on
+#' the index of the response given by the \emph{global} \code{bs.yindex}-argument .\cr 
 #' Use \code{~-1 + c(1) + ...} to specify a model with only a constant and no functional intercept. \cr
 #' 
 #' The functional response and functional covariates have to be supplied as n by <no. of evaluations> matrices, i.e. each row is one functional observation.
@@ -57,6 +59,12 @@
 #' 	If \code{formula} contains an \code{\link{ff}}-term which specifies \code{yind} this is used. If neither is given, \code{yind} is \code{1:ncol(<response>)}.   
 #' @param algorithm the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
 #' 	 and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4" (see \code{\link[gamm4]{gamm4}}) are valid options as well.  
+#' @param data an (optional) \code{data.frame} or a named list containing the data. 
+#' The functional response and functional covariates have to be supplied as n by <no. of evaluations> matrices, i.e. each row is one functional observation.
+#' The model is then fitted with the data in long format, i.e., the rows of the matrix of the functional response evaluations \eqn{Y_i(t)} are stacked
+#' into one long vector and the covariates are expanded/repeated correspondingly. This means the models get quite big fairly fast,
+#' since the effective number of rows in the design matrix is number of observations times number of evaluations of \eqn{Y(t)} per observation.\cr 
+
 #' @param method Defaults to \code{"REML"}-estimation, including of unknown scale. See \code{\link[mgcv]{gam}} for details.  
 #' @param bs.yindex a named (!) list giving the parameters for spline bases on the index of the functional response. 
 #'  Defaults to \code{list(bs="ps", k=5, m=c(2, 1))}, i.e. 5 cubic B-splines bases with first order difference penalty. 
@@ -74,9 +82,37 @@
 #' 
 #'  Scheipl, F., Staicu, A.-M. and Greven, S. (2012). Additive Mixed Models for Correlated Functional Data.
 #'  (submitted) \url{http://arxiv.org/abs/1207.5947}
+#' @examples  
+#' ###############################################################################
+#' # univariate model: 
+#' # Y(t) = f(t)  + \int X1(s)\beta(s,t)ds + eps  
+#' data1 <- pffrSim(scenario="1")
+#' t <- attr(data1, "yindex")
+#' s <- attr(data1, "xindex")
+#' m1 <- pffr(Y ~ ff(X1, yind=t, xind=s), data=data1)
+#' summary(m1)
+#' plot(m1, pers=TRUE)
+#' 
+#' ###############################################################################
+#' # multivariate model: 
+#' # Y(t) = f0(t)  + \int X1(s)\beta1(s,t)ds + \int X2(s)\beta2(s,t)ds +
+#' #		xlin \beta3(t) + f1(xte1, xte2) + f2(xsmoo, t) + beta4 xconst + eps  
+#' data2 <- pffrSim(scenario="2", n=200)
+#' t <- attr(data2, "yindex")
+#' s <- attr(data2, "xindex")
+#' m2 <- pffr(Y ~  ff(X1, xind=s, yind=t) + #linear function-on-function		
+#'                 ff(X2, xind=s, yind=t) + #linear function-on-function
+#'                 xlin  +  #varying coefficient term
+#'                 c(te(xte1, xte2)) + #bivariate smooth constant over Y-index
+#'                 s(xsmoo) + #smooth effect varying over Y-index
+#'                 c(xconst), # linear effect constant over Y-index
+#'         data=data2)
+#' summary(m2)
+#' plot(m2, pers=TRUE)
 pffr <- function(
 		formula,
 		yind,
+        data=NULL,
 		algorithm = NA, 
         method="REML",
         tensortype = c("te", "t2"),
@@ -189,12 +225,14 @@ pffr <- function(
     #assign index values of missing y-values in _long_ format to .GlobaleEnv 
     #s.t. smooth.construct.tensor.smooth.spec can access it later.
     if(any(is.na(get(as.character(responsename), newfrmlenv)))){
-        assign(x=".PFFRmissingResponses", value=which(is.na(get(as.character(responsename), newfrmlenv))), 
-                envir=.GlobalEnv)     
-    }
+        missingindname <- paste0(".PFFRmissingResponses.", paste(sample(letters, 6), collapse=""))
+        missingind <- which(is.na(get(as.character(responsename), newfrmlenv)))
+        assign(x=missingindname, value=missingind, 
+                envir=.GlobalEnv)
+    } else missingind <- NULL
     ## FIXME: this is really ugly but since the impose.ffregC argument has to be propagated without evaluating
     ## and smooth.construct.tensor.smooth.spec cannot access the model frame, I can't think of another way to do this.
-    ## The long and weird variable name should help avoid overwriting user-generated stuff in GlobalEnv. 
+    ## Long weird variable name to avoid overwriting user-generated stuff in GlobalEnv and identify model 
 	
 	##################################################################################
 	#modify formula terms.... 
@@ -376,9 +414,19 @@ pffr <- function(
                                 names(lst[[i]])[length(names(lst[[i]]))] <- "impose.ffregC"
                                 lst[[i]][[llst+2]] <- nobs
                                 names(lst[[i]])[length(names(lst[[i]]))] <- "nobs"
+                                if(exists("missingindname")){
+                                    lst[[i]][[llst+3]] <- missingindname
+                                    names(lst[[i]])[length(names(lst[[i]]))] <- "missingindname"
+                                }
                             } else {
-                                lst[[i]] <- bquote(list(impose.ffregC = .(TRUE), 
-                                                nobs=.(nobs)))
+                                if(exists("missingindname")){
+                                    lst[[i]] <-   bquote(list(impose.ffregC = .(TRUE), 
+                                                    nobs=.(nobs),
+                                                    missingindname=.(missingindname)))
+                                } else {
+                                    lst[[i]] <- bquote(list(impose.ffregC = .(TRUE), 
+                                                    nobs=.(nobs)))
+                                }
                             }
                         }    
                         return(lst)
@@ -391,12 +439,26 @@ pffr <- function(
                                                         x$xt[[i]][[1]] == as.symbol("list") ||
                                                                 is.null(eval(x$xt[[i]][[1]])))))
                     xtra <- add.impose(x$xt)
-                    xtra[[length(xnew$d)+1]] <- bquote(list(impose.ffregC = .(TRUE), 
-                                    nobs=.(nobs)))
+                   
+                    append <- if(exists("missingindname")) {
+                         bquote(list(impose.ffregC = .(TRUE), 
+                                                nobs=.(nobs),
+                                                missingindname=.(missingindname)))
+                    } else {
+                        bquote(list(impose.ffregC = .(TRUE), 
+                                        nobs=.(nobs)))
+                    }
+                    xtra[[length(xnew$d)+1]] <- append
                     xtra
                 } else {
-                    imposearg <- bquote(list(impose.ffregC = .(TRUE), 
-                                            nobs=.(nobs)))
+                    imposearg <- if(exists("missingindname")) {
+                                bquote(list(impose.ffregC = .(TRUE), 
+                                                nobs=.(nobs),
+                                                missingindname=.(missingindname)))
+                            } else {
+                                bquote(list(impose.ffregC = .(TRUE), 
+                                                nobs=.(nobs)))
+                            }
                     
                     xtra <- bquote(list(.(imposearg)))
                     for (i in 3:(length(xnew$d)+1)) 
@@ -491,7 +553,7 @@ pffr <- function(
                                         Ctmp <- kronecker(t(rep(1, object$margin[[length(object$margin)]]$xt$nobs)), diag(nygrid))
                                         if(ncol(Ctmp) > nrow(object$X)){
                                             #drop rows for missing obs.
-                                            Ctmp <- Ctmp[, - get(".PFFRmissingResponses", .GlobalEnv)]
+                                            Ctmp <- Ctmp[, - get(object$margin[[length(object$margin)]]$xt$missingindname, .GlobalEnv)]
                                         }
                                         C <- Ctmp %*% object$X
                                         
@@ -519,7 +581,7 @@ pffr <- function(
                                         Ctmp <- kronecker(t(rep(1, object$margin[[length(object$margin)]]$xt$nobs)), diag(nygrid))
                                         if(ncol(Ctmp) > nrow(object$X)){
                                             #drop rows for missing obs.
-                                            Ctmp <- Ctmp[, - get(".PFFRmissingResponses", .GlobalEnv)]
+                                            Ctmp <- Ctmp[, - get(object$margin[[length(object$margin)]]$xt$missingindname, .GlobalEnv)]
                                         }
                                         C <- Ctmp %*% object$X
                                         
@@ -630,7 +692,8 @@ pffr <- function(
                     where.par=where.par
             ),
             ff=ffterms,
-            ffpc=ffpcterms)
+            ffpc=ffpcterms,
+            missingind = missingind)
     
     if(as.character(algorithm) %in% c("gamm4","gamm")){
         m$gam$pffr <- ret
