@@ -1,6 +1,6 @@
 \name{pffrSim}
 \alias{pffrSim}
-\title{Simulate example data for pffr()}
+\title{Simulate example data for pffr}
 \usage{
   pffrSim(scenario = 1, n = 100, nxgrid = 40, nygrid = 60,
     SNR = 10)
@@ -25,7 +25,7 @@
   components of the predictor etc as attributes.
 }
 \description{
-  Simulates example data for \code{\link{pffr()}}. Scenario
+  Simulates example data for \code{\link{pffr}}. Scenario
   1 generates data from a simple univariate model
   \eqn{Y_i(t) = \mu(t) +\int X_i(s)\beta(s,t)ds +
   \epsilon_i(t)}. Scenario 2 generates data from a complex

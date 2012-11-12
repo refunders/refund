@@ -110,9 +110,9 @@ getShrtlbls <- function(object){
     return(ret)
 }
 
-#' Simulate example data for pffr()
+#' Simulate example data for pffr
 #' 
-#' Simulates example data for \code{\link{pffr()}}.
+#' Simulates example data for \code{\link{pffr}}.
 #' Scenario 1 generates data from a simple univariate model 
 #' \eqn{Y_i(t) = \mu(t) +\int X_i(s)\beta(s,t)ds + \epsilon_i(t)}.
 #' Scenario 2 generates data from a complex multivariate model 

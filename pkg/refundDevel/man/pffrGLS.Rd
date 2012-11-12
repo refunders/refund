@@ -47,6 +47,8 @@
   \code{\link[refund]{pffr}}.
 }
 \description{
+  THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
+  
   Implements additive regression for functional and scalar
   covariates and functional responses. This function is a
   wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its
@@ -73,14 +75,15 @@
 }
 \section{Details}{
   Please see \code{\link[refund]{pffr}} for details on
-  model specification and implementation. THIS IS AN
-  EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT
+  model specification and implementation. 
+  
+  THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT
   YOUR OWN RISK.
 }
 \author{
   Fabian Scheipl
 }
 \seealso{
-  pffr, fpca.sc
+  \code{\link[refund]{pffr}}, \code{\link[refund]{fpca.sc}}
 }
 

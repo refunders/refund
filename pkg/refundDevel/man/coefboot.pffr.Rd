@@ -48,9 +48,9 @@
   obtain approximate CIs for different terms and
   coefficient functions that correct for the effects of
   dependency and heteroskedasticity of the residuals along
-  the index of the functional response, i.e., it helps with
-  doing correct inference if the residuals along the index
-  of the functional response are not i.i.d).
+  the index of the functional response, i.e., it aims for 
+  correct inference if the residuals along the index
+  of the functional response are not i.i.d.
 }
 \author{
   Fabian Scheipl

@@ -64,7 +64,6 @@
 #' The model is then fitted with the data in long format, i.e., the rows of the matrix of the functional response evaluations \eqn{Y_i(t)} are stacked
 #' into one long vector and the covariates are expanded/repeated correspondingly. This means the models get quite big fairly fast,
 #' since the effective number of rows in the design matrix is number of observations times number of evaluations of \eqn{Y(t)} per observation.\cr 
-
 #' @param method Defaults to \code{"REML"}-estimation, including of unknown scale. See \code{\link[mgcv]{gam}} for details.  
 #' @param bs.yindex a named (!) list giving the parameters for spline bases on the index of the functional response. 
 #'  Defaults to \code{list(bs="ps", k=5, m=c(2, 1))}, i.e. 5 cubic B-splines bases with first order difference penalty. 
@@ -75,7 +74,7 @@
 #' @return a fitted \code{pffr}-object, which is a \code{\link[mgcv]{gam}}-object with some additional information in an \code{pffr}-entry. If \code{algorithm} is
 #'   \code{"gamm"} or \code{"gamm4"}, only the \code{$gam} part of the returned list is modified in this way.
 #' @author Fabian Scheipl, Sonja Greven
-#' @seealso ?smooth.terms on details of mgcv syntax and available spline bases
+#' @seealso \code{\link[mgcv]{smooth.terms}} for details of \code{mgcv} syntax and available spline bases
 #' @references Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2012). 
 #'  Penalized function-on-function regression. (submitted) 
 #' \url{http://biostats.bepress.com/jhubiostat/paper240/}

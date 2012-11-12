@@ -1,6 +1,6 @@
 #' Penalized function-on-function regression with non-i.i.d. residuals
 #' 
-#' THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
+#' THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.\cr
 #' Implements additive regression for functional and scalar covariates and functional responses.
 #' This function is a wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to fit models of the general form \cr
 #' \eqn{Y_i(t) = \mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots  + E_i(t))}\cr
@@ -16,7 +16,7 @@
 #' 
 #' @section Details: 
 #' Please see \code{\link[refund]{pffr}} for details on model specification and 
-#' implementation. THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
+#' implementation. \cr THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
 #'  
 #' @param formula a formula with special terms as for \code{\link[mgcv]{gam}}, with additional special terms \code{\link{ff}()} and \code{c()}. See \code{\link[refund]{pffr}}.
 #' @param yind a vector with length equal to the number of columns of the matrix of functional responses giving the vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
@@ -31,7 +31,7 @@
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. See \code{\link[refund]{pffr}}.
 #' 
 #' @return a fitted \code{pffr}-object, see \code{\link[refund]{pffr}}.
-#' @seealso pffr, fpca.sc
+#' @seealso \code{\link[refund]{pffr}}, \code{\link[refund]{fpca.sc}}
 #' @author Fabian Scheipl
 pffrGLS <- function(
         formula,
@@ -117,7 +117,7 @@ pffrGLS <- function(
                 ffcall <- expand.call(ff, as.call(terms[where.ff][1])[[1]])  
             }  else ffcall <- expand.call(sff, as.call(terms[where.sff][1])[[1]]) 
             if(!is.null(ffcall$yind)){
-                yind <- eval(ffcall$yind, env=evalenv, enclos=frmlenv)
+                yind <- eval(ffcall$yind, envir=evalenv, enclos=frmlenv)
                 yindname <- deparse(ffcall$yind)
             } else {
                 yind <- 1:nyindex
@@ -161,10 +161,10 @@ pffrGLS <- function(
    
     originalresponsename <- paste(deparse(responsename),".Original", sep="")
     assign(x=originalresponsename, 
-            value=as.vector(t(eval(responsename, env=evalenv, enclos=frmlenv))), 
+            value=as.vector(t(eval(responsename, envir=evalenv, enclos=frmlenv))), 
             envir=newfrmlenv)
     ## 'decorrelate' Y
-    ytilde <- sqrtSigmaInv%*%t(eval(responsename, env=evalenv, enclos=frmlenv))
+    ytilde <- sqrtSigmaInv%*%t(eval(responsename, envir=evalenv, enclos=frmlenv))
     #assign (decorrelated) response in _long_ format to newfrmlenv
     assign(x=deparse(responsename), value=as.vector(ytilde), 
             envir=newfrmlenv)
@@ -184,6 +184,7 @@ pffrGLS <- function(
         # have to jump thru some hoops to get bs.yindex handed over properly 
         # without having yind evaluated within the call    
         arglist <- c(name="s", x = as.symbol(yindvecname), bs.int)
+        intcall <- NULL
         assign(x= "intcall", value= do.call("call", arglist, envir=newfrmlenv), envir=newfrmlenv)
         newfrmlenv$intcall$x <- as.symbol(yindvecname)  
         
@@ -208,7 +209,7 @@ pffrGLS <- function(
     #prep function-on-function-terms
     if(length(c(where.ff, where.sff))){ 
         ffterms <- lapply(terms[c(where.ff, where.sff)], function(x){
-                    eval(x, env=evalenv, enclos=frmlenv)
+                    eval(x, envir=evalenv, enclos=frmlenv)
                 })
         
         newtrmstrings[c(where.ff, where.sff)] <- sapply(ffterms, function(x) {
@@ -226,7 +227,7 @@ pffrGLS <- function(
     } else ffterms <- NULL
     if(length(where.ffpc)){
         ffpcterms <- lapply(terms[where.ffpc], function(x){
-                    eval(x, env=evalenv, enclos=frmlenv)
+                    eval(x, envir=evalenv, enclos=frmlenv)
                 })
         #assign newly created data to newfrmlenv
         lapply(ffpcterms, function(trm){
@@ -256,7 +257,7 @@ pffrGLS <- function(
     #prep PC-based random effects
     if(length(where.pcre)){
         pcreterms <- lapply(terms[where.pcre], function(x){
-                    eval(x, env=evalenv, enclos=frmlenv)
+                    eval(x, envir=evalenv, enclos=frmlenv)
                 })
         #assign newly created data to newfrmlenv
         lapply(pcreterms, function(trm){
@@ -709,8 +710,8 @@ pffrGLS <- function(
 #' 
 #' This function resamples observations in the data set to obtain approximate CIs for different
 #' terms and coefficient functions that correct for the effects of dependency and heteroskedasticity
-#' of the residuals along the index of the functional response, i.e., it helps with doing correct inference
-#' if the residuals along the index of the functional response are not i.i.d).
+#' of the residuals along the index of the functional response, i.e., it aims for correct inference
+#' if the residuals along the index of the functional response are not i.i.d.
 #' 
 #' @param object a fitted \code{\link{pffr}}-model 
 #' @param n1 see \code{\link{coef.pffr}}
@@ -807,7 +808,7 @@ coefboot.pffr <- function(object,
     
     ## get bootstrap CIs
     cat("calculating bootstrap CIs....")
-    mylapply <- if(parallel=="multicore") mclapply else lapply 
+    mylapply <- if(parallel=="multicore") multicore::mclapply else lapply 
     
     getCIs <- function(which=1:length(bootreps$t0), conf=.95, type="bca"){
         ret <- mylapply(which, function(i){

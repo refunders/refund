@@ -101,7 +101,7 @@
   Spline6.pdf}
 }
 \seealso{
-  mgcv::plot.gam, mgcv::predict.gam which this routine is
+  \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
   based on.
 }
 

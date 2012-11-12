@@ -202,7 +202,7 @@ plot(m2, pers=TRUE)
   (submitted) \url{http://arxiv.org/abs/1207.5947}
 }
 \seealso{
-  ?smooth.terms on details of mgcv syntax and available
+  \code{\link[mgcv]{smooth.terms}} on details of \code{mgcv} syntax and available
   spline bases
 }
 
