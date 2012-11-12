@@ -10,5 +10,6 @@ rev 21/22
   o added pffr references to documentation  
   
 rev 32/33
+  o added explicit data argument to pffr	
   o incremented version to 0.2-0
   o fixed documentation
