@@ -148,10 +148,12 @@ pffrGLS <- function(
         eSigma <- eigen(hatSigma, symmetric=TRUE)
         cond <- max(eSigma$values)/min(eSigma$values)
         if(cond > 1e5){
-            warning("hatSigma badly conditioned with condition number ", round(cond),
-                    " -- estimated SE's will not be reliable.")
-            eSigma$values <- pmax(eSigma$values, max(eSigma$values)/1e5)
-           }
+            diag(hatSigma) <- 1.05*diag(hatSigma)
+            eSigma <- eigen(hatSigma, symmetric = TRUE) 
+            condnew <- max(eSigma$values)/min(eSigma$values)
+            warning("Supplied hatSigma badly conditioned with condition number ", round(cond),
+                    "\n   -- inflated diagonal for new working covariance matrix (new condition number: ", round(condnew),").")
+        }
         with(eSigma, vectors%*%diag(1/sqrt(values))%*%t(vectors))
     } 
     
