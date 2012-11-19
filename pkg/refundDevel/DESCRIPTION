@@ -13,7 +13,7 @@ Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     "ctb"), person("Jaroslaw Harezlak", role="ctb"), person("Madan Gopal
     Kundu", role="ctb"), person("Yihong Zhao", role="ctb"))
 Depends:
-    R (>= 2.9.0),
+    R (>= 2.14.0),
     mgcv (>= 1.7-8),
     fda,
     MASS,
