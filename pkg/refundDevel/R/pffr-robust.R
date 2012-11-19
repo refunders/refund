@@ -721,8 +721,8 @@ pffrGLS <- function(
 #' @param n3 see \code{\link{coef.pffr}}
 #' @param B  number of bootstrap replicates, defaults to (a measly) 100
 #' @param parallel see \code{\link[boot]{boot}}
-#' @param ncpus see \code{\link[boot]{boot}}. Defaults to \code{getOption("mc.cores")}, 
-#' if that is not set to \code{getOption("boot.ncpus", 1L)} (like \code{boot}).
+#' @param cl see \code{\link[boot]{boot}}
+#' @param ncpus see \code{\link[boot]{boot}}. Defaults to \code{getOption("boot.ncpus", 1L)} (like \code{boot}).
 #' @param conf desired levels of bootstrap CIs, defaults to 0.90 and 0.95
 #' @param type type of bootstrap interval, see \code{\link[boot]{boot.ci}}. Defaults to "percent" for percentile-based CIs. 
 #' @param showProgress TRUE/FALSE 
@@ -732,9 +732,8 @@ pffrGLS <- function(
 #' @author Fabian Scheipl
 coefboot.pffr <- function(object,  
         n1=100, n2=40, n3=20, 
-        B = 100, ncpus = getOption("mc.cores"),
-        parallel = ifelse(Sys.info()["sysname"] == "Windows",
-                "no", "multicore"), 
+        B = 100, ncpus = getOption("boot.ncpus", 1),
+        parallel = c("no", "multicore", "snow"), cl=NULL,
         conf=c(.9,.95), type="percent", showProgress=TRUE, ...){
     
     if(is.null(ncpus)) ncpus <- getOption("boot.ncpus", 1L) 
@@ -765,7 +764,6 @@ coefboot.pffr <- function(object,
     # check whether this is already a child process, and
     # switch of parallelization if yes
     if(parallel:::isChild()) parallel <- "no"
-    if(parallel == "multicore") stopifnot(require("multicore"))
     bootfct <- function(modcall, data, indices) {
         modcall$weights <- rep(table(factor(indices, levels=1:nrow(data))), each = length(yind))
         #modcall$G$w <- rep(table(factor(indices, levels=1:nrow(data))), each = length(yind))        
@@ -810,7 +808,24 @@ coefboot.pffr <- function(object,
     
     ## get bootstrap CIs
     cat("calculating bootstrap CIs....")
-    mylapply <- if(parallel=="multicore") multicore::mclapply else lapply 
+    mylapply <- if(parallel=="multicore"){
+                parallel::mclapply  
+            } else {
+                if(parallel=="snow"){
+                    if(is.null(cl)){
+                        cl <- parallel::makePSOCKcluster(rep("localhost", 
+                                        ncpus))  
+                    } 
+                    if (RNGkind()[1L] == "L'Ecuyer-CMRG") {
+                        parallel::clusterSetRNGStream(cl)
+                    }
+                    function(X, FUN) {
+                        res <- parallel::parLapply(cl, X, FUN)
+                        parallel::stopCluster(cl)
+                        return(res)
+                    }    
+                } else lapply
+            }    
     
     getCIs <- function(which=1:length(bootreps$t0), conf=.95, type="bca"){
         ret <- mylapply(which, function(i){

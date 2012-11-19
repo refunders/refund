@@ -24,7 +24,6 @@ Depends:
     Matrix,
     gamm4,
     boot
-Suggests: multicore
 Description: developer version of refund
 License: GPL (>= 2)
 LazyLoad: yes
