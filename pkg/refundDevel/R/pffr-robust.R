@@ -28,6 +28,8 @@
 #' @param bs.yindex See \code{\link[refund]{pffr}}
 #' @param bs.int See \code{\link[refund]{pffr}}
 #' @param tensortype See \code{\link[refund]{pffr}}
+#' @param cond.cutoff if the condition number of \code{hatSigma} is greater than this,  \code{hatSigma} is 
+#'    made ``more'' positive-definite via \code{\link[Matrix]{nearPD}} to ensure a condition number equal to cond.cutoff. Defaults to 500.
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. See \code{\link[refund]{pffr}}.
 #' 
 #' @return a fitted \code{pffr}-object, see \code{\link[refund]{pffr}}.
@@ -42,6 +44,7 @@ pffrGLS <- function(
         tensortype = c("te", "t2"),
         bs.yindex = list(bs="ps", k=5, m=c(2, 1)), # only bs, k, m are propagated...
         bs.int = list(bs="ps", k=20, m=c(2, 1)), # only bs, k, m are propagated...
+        cond.cutoff=5e2,
         ...
 ){
     # TODO: need check whether yind supplied in ff-terms and pffr are identical!  
@@ -147,12 +150,15 @@ pffrGLS <- function(
     sqrtSigmaInv <- {
         eSigma <- eigen(hatSigma, symmetric=TRUE)
         cond <- max(eSigma$values)/min(eSigma$values)
-        if(cond > 1e5){
-            diag(hatSigma) <- 1.05*diag(hatSigma)
-            eSigma <- eigen(hatSigma, symmetric = TRUE) 
-            condnew <- max(eSigma$values)/min(eSigma$values)
-            warning("Supplied hatSigma badly conditioned with condition number ", round(cond),
-                    "\n   -- inflated diagonal for new working covariance matrix (new condition number: ", round(condnew),").")
+        if(cond > cond.cutoff){
+#            diag(hatSigma) <- 1.05*diag(hatSigma)
+#            eSigma <- eigen(hatSigma, symmetric = TRUE) 
+#            condnew <- max(eSigma$values)/min(eSigma$values)
+             hatSigmaPD <- nearPD(hatSigma, keepDiag = TRUE, ensureSymmetry=TRUE, do2eigen = TRUE,
+                     posd.tol=1/cond.cutoff)
+             warning("Supplied <hatSigma> had condition number ", round(cond),
+                    "\n   -- projected further into pos.-definite cone (new condition number: ", cond.cutoff,").")
+             eSigma <-  eigen(as(hatSigmaPD$mat, "matrix"), symmetric=TRUE)
         }
         with(eSigma, vectors%*%diag(1/sqrt(values))%*%t(vectors))
     } 
