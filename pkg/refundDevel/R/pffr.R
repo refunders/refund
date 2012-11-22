@@ -333,7 +333,7 @@ pffr <- function(
         pcereterms <- lapply(pcreterms, function(x) x[names(x)!="data"])
     }else pcreterms <- NULL
     
-    #transform: s(x, ...), te(x, z,...), t2(x, z, ...) --> te(x, (z,)  yindex, ..., <bs.yindex>)
+    #transform: s(x, ...), te(x, z,...), t2(x, z, ...) --> <te|t2>(x, <z,> yindex, ..., <bs.yindex>)
     makeSTeT2 <- function(x){
         
         xnew <- x
@@ -491,6 +491,7 @@ pffr <- function(
         lapply(terms[where.notff], 
                 function(x){
                     #nms <- all.vars(x)
+              
                     if(any(unlist(lapply(terms[where.c], function(s) 
                                                 if(length(s)==1){
                                                     s==x
@@ -504,7 +505,7 @@ pffr <- function(
                     } 
                     ## remove names in xt, k, bs,  information (such as variable names for MRF penalties etc)
                     nms <- if(!is.null(names(x))){
-                                all.vars(x[names(x) == ""]) 
+                                all.vars(x[names(x) %in% c("", "by")]) 
                             }  else all.vars(x)
                     
                     
@@ -620,12 +621,18 @@ pffr <- function(
     lbls <- sapply(m.smooth, function(x) x$label)
     if(length(c(where.par, where.ffpc))){
         if(length(where.par)){
-            for(w in where.par) 
-                labelmap[[w]] <- {
-                    #covariates for parametric terms become by-variables:   
-                    where <- sapply(m.smooth, function(x) x$by) == names(labelmap)[w]
-                    sapply(m.smooth[where], function(x) x$label)
+            for(w in where.par){
+                # only combine if <by>-variable is a factor!
+                if(is.factor(get(names(labelmap)[w], envir=newfrmlenv))){
+                    labelmap[[w]] <- {
+                        #covariates for parametric terms become by-variables:   
+                        where <- sapply(m.smooth, function(x) x$by) == names(labelmap)[w]   
+                        sapply(m.smooth[where], function(x) x$label)
+                    }    
+                } else {
+                    labelmap[[w]] <- paste0("s(",yindvecname,"):",names(labelmap)[w])
                 }
+            }
         }
         if(length(where.ffpc)){
             ind <- 1

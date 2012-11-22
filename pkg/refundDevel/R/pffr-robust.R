@@ -542,7 +542,7 @@ pffrGLS <- function(
     if(as.character(algorithm) == "bam"){
         trace(bam, at=40, quote({
                             #browser()
-                            cat("premultiply Design...\n")
+                            #cat("premultiply Design...\n")
                             GLSinfo <- list(...)$GLSinfo
                              # modify design matrix: premultiply submatrix for each obs by sqrt(hatSigma)^-1
                             obsvec <- seq(1, GLSinfo$nobs*length(GLSinfo$yind), by=length(GLSinfo$yind))
@@ -706,7 +706,7 @@ pffrGLS <- function(
         class(m) <- c("pffr", class(m))
     }
     return(m)
-}# end pffr()
+}# end pffrGLS()
 
 #' Simple bootstrap CIs for pffr
 #' 
@@ -849,3 +849,5 @@ coefboot.pffr <- function(object,
     
     return(structure(coefboot, call=match.call()))
 }
+
+
