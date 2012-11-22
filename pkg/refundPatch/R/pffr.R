@@ -1,4 +1,3 @@
-# wrapper functions: do penalized function-on-function via mgcv::gam(m)
 # 
 # Author: fabians
 # 13.06.2011, 10:54:19: initial commit
@@ -436,7 +435,7 @@ pffr <- function(
                     } 
                     ## remove names in xt, k, bs,  information (such as variable names for MRF penalties etc)
                     nms <- if(!is.null(names(x))){
-                                all.vars(x[names(x) == ""]) 
+                                all.vars(x[names(x) %in% c("", "by")]) 
                             }  else all.vars(x)
                     
                     
@@ -552,12 +551,18 @@ pffr <- function(
     lbls <- sapply(m.smooth, function(x) x$label)
     if(length(c(where.par, where.ffpc))){
         if(length(where.par)){
-            for(w in where.par) 
-                labelmap[[w]] <- {
-                    #covariates for parametric terms become by-variables:   
-                    where <- sapply(m.smooth, function(x) x$by) == names(labelmap)[w]
-                    sapply(m.smooth[where], function(x) x$label)
+            for(w in where.par){
+                # only combine if <by>-variable is a factor!
+                if(is.factor(get(names(labelmap)[w], envir=newfrmlenv))){
+                    labelmap[[w]] <- {
+                        #covariates for parametric terms become by-variables:   
+                        where <- sapply(m.smooth, function(x) x$by) == names(labelmap)[w]   
+                        sapply(m.smooth[where], function(x) x$label)
+                    }    
+                } else {
+                    labelmap[[w]] <- paste0("s(",yindvecname,"):",names(labelmap)[w])
                 }
+            }
         }
         if(length(where.ffpc)){
             ind <- 1
