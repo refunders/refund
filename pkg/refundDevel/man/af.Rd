@@ -24,7 +24,7 @@ defaults to "\code{te}", i.e. a tensor product spline to represent \eqn{F(x,t)} 
   \item{L}{
    optional: an \code{N} by \code{ncol(xind)} matrix giving the weights for the numerical integration over \code{t}.}
      \item{splinepars}{
-   optional arguments specifying options for representing and penalizing the function \eqn{F(x,t)}. Defaults to a cubic tensor product B-spline with marginal second-order difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 1), c(2, 1))}, see \code{\link{te}} or \code{\link{s}} in \code{mgcv} for details.}
+   optional arguments specifying options for representing and penalizing the function \eqn{F(x,t)}. Defaults to a cubic tensor product B-spline with marginal second-order difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 2), c(2, 2))}, see \code{\link{te}} or \code{\link{s}} in \code{mgcv} for details.}
      \item{presmooth}{
    If true, the functional predictor is pre-smoothed prior to fitting.  See \code{\link{smooth.basisPar}} in package \code{\link{fda}}}
      \item{Xrange}{
