@@ -19,7 +19,7 @@ a formula with special terms as for gam, with additional special terms \code{\li
 the name of the function used to estimate the model. Defaults to \code{\link{gam}} if the matrix of functional responses has less than 2e5 data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}}) and "gamm4" (see \code{\link{gamm4}}) are valid options as well.}
 \item{tensortype}{which type of tenor product splines to use. One of "te" or "t2", defaults to te}
   \item{...}{
-   additional arguments that are valid for gam or bam, for example, specify \code{method="REML"} to change to using REML for estimation of smoothing parameters (default is GCV).}
+   additional arguments that are valid for gam or bam; for example, specify a \code{gamma} > 1 to increase amount of smoothing when using GCV to choose smoothing parameters or \code{method="REML"} to change to REML for estimation of smoothing parameters (default is GCV).}
 }
 
 \section{Warning}{

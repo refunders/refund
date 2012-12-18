@@ -1,6 +1,7 @@
 af <- function(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te","t2", "s"), 
                integration = c("simpson", "trapezoidal", "riemann"), 
-                L = NULL, splinepars = list(bs = "ps", k= rep(min(ceiling(sqrt(nrow(X))),20),2),
+                L = NULL, splinepars = list(bs = "ps", 
+                k= c(min(ceiling(nrow(X)/5),20),min(ceiling(ncol(X)/5),20)),
                 m = list(c(2, 2), c(2, 2))), presmooth = TRUE,Xrange=range(X),Qtransform=FALSE) {
       
   n=nrow(X)
@@ -8,7 +9,8 @@ af <- function(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te","t2", "s"),
   basistype <- match.arg(basistype)
   integration <- match.arg(integration)
   if(is.null(splinepars$bs)) splinepars$bs <- 'ps'
-  if(is.null(splinepars$k)) splinepars$k <- rep(min(ceiling(sqrt(nrow(X))),20),2)
+  if(is.null(splinepars$k)) splinepars$k <- c(min(ceiling(nrow(X)/5),20),
+                                                min(ceiling(ncol(X)/5),20))
   if(is.null(splinepars$m)) splinepars$m = list(c(2, 2), c(2, 2))
 
   xindname <- paste(deparse(substitute(X)), ".omat", sep = "")

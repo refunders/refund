@@ -101,7 +101,7 @@ predict.fgam <- function(object,newdata,type='response',
 #                 predL <- matrix(L[1, ], byrow = TRUE,
 #                                 nrow = nrow(newdata[[cov]]), ncol = ncol(L))
                 
-                if(af$presmooth){
+                if(lf$presmooth){
                   newXfd <- fd(tcrossprod(lf$Xfd$y2cMap,newdata[[cov]]),lf$Xfd$basis)
                   newdata[[cov]] <- t(eval.fd(lf$xind,newXfd))
                 }
