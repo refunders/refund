@@ -35,7 +35,7 @@ vis.fgam=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, the
       tvar <- paste('\n',tvar,sep='')
       vis.gam(object,view=c(paste(af.term,'.omat',sep=''),paste(af.term,'.tmat',sep='')),cond=temp,
             ticktype=ticktype,theta=theta,contour.col=rev(heat.colors(100)),
-            xlab=tvar,ylab='\nt',main=mtitle,...)
+            xlab=tvar,ylab='\nt',zlab='',main=mtitle,...)
 
     }else if(plot.type=='contour'){
       # not making use of vis.gam because want colour key/legend

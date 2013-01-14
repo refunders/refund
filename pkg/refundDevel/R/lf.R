@@ -1,7 +1,7 @@
 lf <- function(X, xind = seq(0, 1, l = ncol(X)), 
                integration = c("simpson", "trapezoidal", "riemann"), 
                L = NULL, splinepars = list(bs = "ps", k= min(ceiling(n/4),40),
-                                  m = c(2, 2)), presmooth = TRUE, Xrange=range(X)) {
+                                  m = c(2, 2)), presmooth = TRUE) {
   
   n=nrow(X)
   nt=ncol(X)
@@ -34,14 +34,6 @@ lf <- function(X, xind = seq(0, 1, l = ncol(X)),
     Xfd <- temp$fd
     Xfd$y2cMap <-temp$y2cMap
     X <- t(sapply(1:n,function(i){eval.fd(xind[i,],Xfd[i])}))
-    
-    # need to check that smoothing didn't change range of data
-    if(max(X)>Xrange[2]){
-      Xranges[2] <- max(X)
-    } 
-    if(min(X)<Xrange[1]){
-      Xranges[1] <- min(X)
-    }
   }
   
   if (!is.null(L)) {
@@ -69,7 +61,7 @@ lf <- function(X, xind = seq(0, 1, l = ncol(X)),
   call <- as.call(c(list(splinefun, x = as.symbol(substitute(tindname)), 
                          by = as.symbol(substitute(LXname))),frmls))
   res <-list(call = call, data = data, xind = xind[1,], L = L, tindname=tindname,
-             LXname=LXname,presmooth=presmooth,Xrange=Xrange)
+             LXname=LXname,presmooth=presmooth)
   if(presmooth) res$Xfd <- Xfd
   return(res)
 }

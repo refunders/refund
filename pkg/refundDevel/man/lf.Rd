@@ -8,7 +8,7 @@ Construct an FLM regression term}
 \usage{
 lf(X, xind = seq(0, 1, l = ncol(X)), integration = c("simpson", "trapezoidal", "riemann"), 
                L = NULL, splinepars = list(bs = "ps", k= min(ceiling(n/4), 40), m = c(2, 2)), 
-               presmooth = TRUE, Xrange=range(X))
+               presmooth = TRUE)
 }
 \arguments{
   \item{X}{
@@ -22,8 +22,6 @@ matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
    optional arguments specifying options for representing and penalizing the functional coefficient \eqn{\beta(t)}. Defaults to a cubic B-spline with second-order difference penalties, i.e. \code{list(bs="ps", m=c(2, 1))} See \code{\link{te}} or \code{\link{s}} in \code{mgcv} for details.}
      \item{presmooth}{
    If true, the functional predictor is pre-smoothed prior to fitting.  See \code{\link{smooth.basisPar}} in package \code{\link{fda}}}
-     \item{Xrange}{
-   Range to use when specifying the marginal basis for the \emph{x}-axis.  It may be desired to increase this slightly over the default of \code{range(X)} if concerned about predicting for future observed curves that take values outside of \code{range(X)}.}
 }
 
 \value{
@@ -35,7 +33,6 @@ a list with the following entries
 \item{tindname}{the name used for \code{xind} variable in the \code{formula} used by \code{mgcv}.}
 \item{LXname}{ the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}.}
 \item{presmooth}{the \code{presmooth} argument supplied to \code{lf}.}
-\item{Xrange}{the \code{Xrange} argument supplied to \code{lf}.}
 \item{Xfd}{an \code{fd} object from presmoothing the functional predictors using \code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}.}
 }
 \author{Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl}
