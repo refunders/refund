@@ -106,11 +106,18 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
                             Ddiag[k] <- var(qr.resid(qrResCent, res.cent[ , k]))
                         }
                         prec = scale(t(TT), FALSE, Ddiag) %*% TT
-                        svdp = eigen(prec, symmetric=TRUE)
-                        sqrt.prec.list[[nband]] = svdp$vectors %*% tcrossprod(diag(sqrt(svdp$values)), svdp$vectors)
-                        lwprec = lw.test(residmat %*% sqrt.prec.list[[nband]])	
+                        #svdp = eigen(prec, symmetric=TRUE)
+                        #sqrt.prec.list[[nband]] = svdp$vectors %*% tcrossprod(diag(sqrt(svdp$values)), svdp$vectors)
+                        #F avoid unnecessary additional eigen-decomp
+                        sqrt.prec.list[[nband]] = scale(t(TT), FALSE, sqrt(Ddiag))
+                        lwprec = lw.test(residmat %*% sqrt.prec.list[[nband]])
                         lwstat[nband] = lwprec$stat; lwpval[nband] = lwprec$pvalue  
-                        if (lwstat[nband] < -5) break      
+                        if (lwstat[nband] < -5) break  
+                        #F insert abort to avoid running into numerical problems for thick bands with 
+                        #F  poor fit (i.e.: worse than 1-band and the previous iteration). 
+                        if(nband > 5){
+                          if (lwstat[nband] > lwstat[1] && lwstat[nband] > lwstat[nband-1]) break
+                        } 
                     }
                     
                     nband.best = which.max(lwpval)
