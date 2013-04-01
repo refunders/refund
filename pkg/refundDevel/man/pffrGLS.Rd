@@ -5,7 +5,7 @@
   pffrGLS(formula, yind, hatSigma, algorithm = NA,
     method = "REML", tensortype = c("te", "t2"),
     bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
-    bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
+    bs.int = list(bs = "ps", k = 20, m = c(2, 1)), cond.cutoff=5e2, ...)
 }
 \arguments{
   \item{formula}{a formula with special terms as for
@@ -37,6 +37,8 @@
   \item{bs.int}{See \code{\link[refund]{pffr}}}
 
   \item{tensortype}{See \code{\link[refund]{pffr}}}
+  
+  \item{cond.cutoff}{cutoff threshold}
 
   \item{...}{additional arguments that are valid for
   \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. See

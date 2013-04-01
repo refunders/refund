@@ -4,7 +4,7 @@
 \usage{
   coefboot.pffr(object, n1 = 100, n2 = 40, n3 = 20,
     B = 100, ncpus = getOption("mc.cores"),
-    parallel = ifelse(Sys.info()["sysname"] == "Windows", "no", "multicore"),
+    parallel = ifelse(Sys.info()["sysname"] == "Windows", "no", "multicore"), cl=NULL,
     conf = c(0.9, 0.95), type = "percent",
     showProgress = TRUE, ...)
 }
@@ -34,6 +34,8 @@
   percentile-based CIs.}
 
   \item{showProgress}{TRUE/FALSE}
+  
+  \item{cl}{parameter for parallel computing}
 
   \item{...}{not used}
 }

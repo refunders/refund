@@ -161,6 +161,7 @@
   can be interpreted as the global mean function.
 }
 \examples{
+\dontrun{
 ###############################################################################
 # univariate model:
 # Y(t) = f(t)  + \\int X1(s)\\beta(s,t)ds + eps
@@ -187,6 +188,7 @@ m2 <- pffr(Y ~  ff(X1, xind=s, yind=t) + #linear function-on-function
         data=data2)
 summary(m2)
 plot(m2, pers=TRUE)
+}
 }
 \author{
   Fabian Scheipl, Sonja Greven

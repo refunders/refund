@@ -738,8 +738,8 @@ pffrGLS <- function(
 #' @author Fabian Scheipl
 coefboot.pffr <- function(object,  
         n1=100, n2=40, n3=20, 
-        B = 100, ncpus = getOption("boot.ncpus", 1),
-        parallel = c("no", "multicore", "snow"), cl=NULL,
+        B = 100, ncpus = getOption("mc.cores"),
+        parallel = ifelse(Sys.info()["sysname"] == "Windows", "no", "multicore"), cl=NULL,
         conf=c(.9,.95), type="percent", showProgress=TRUE, ...){
     
     if(is.null(ncpus)) ncpus <- getOption("boot.ncpus", 1L) 

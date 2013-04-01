@@ -1,4 +1,4 @@
-predict.wnet <- function(object, newx, covt = NULL){
+predict.wnet <- function(object, newx, covt = NULL, ...){
 	dim(newx) = c(nrow(newx), prod(dim(newx)[-1]))
 	fhat = object$fhat
 	dim(fhat) = c(prod(dim(fhat)), 1)
