@@ -75,6 +75,8 @@ Essentially, the algorithm works by (1) applying the discrete wavelet transform 
 
 This function supports only the standard DWT (see argument \code{type} in \code{\link[wavethresh]{wd}}) with periodic boundary handling (see argument \code{bc} in \code{\link[wavethresh]{wd}}).
 
+For 2D predictors, setting \code{min.scale=1} will lead to an error, due to a technical detail regarding \code{\link[wavethresh]{imwd}}. Please contact the author if a workaround is needed.
+
 See the Details for \code{\link{fpcr}} for a note regarding decorrelation.
 }
 \value{
