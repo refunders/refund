@@ -34,12 +34,14 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots){
 #' 
 #' \code{efunctions} and \code{evalues} are typically eigenfunctions and eigenvalues of an estimated 
 #' covariance operator for the functional process to be modeled, i.e., they are
-#' a functional principal components basis. 
-#' 
+#' a functional principal components basis. \cr \code{pcre()} IS AN EXPERIMENTAL FEATURE AND
+#' NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
+#'  
 #' @param id grouping variable a factor
-#' @param efunctions matrix of eigenfunction evaluations on gripoints \code{yind} (<length of \code{yind}> x <no. of used eigenfunctions>)
+#' @param efunctions matrix of eigenfunction evaluations on gridpoints \code{yind} (<length of \code{yind}> x <no. of used eigenfunctions>)
 #' @param evalues eigenvalues associated with \code{efunctions}
 #' @param yind vector of gridpoints on which responses \eqn{Y(t)} are evaluated.
+#' @param ... not used
 #' @return a list used internally for constructing an appropriate call to \code{mgcv::gam}
 #' @author Fabian Scheipl 
 #' @examples \dontrun{
@@ -78,15 +80,16 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots){
 #' layout(t(matrix(1:4,2,2)))
 #' matplot(t(E), lty=1, type="l", ylim=range(E, t1[[2]]))
 #' matplot(t(t1[[2]]), lty=1, type="l", ylim=range(E, t1[[2]]))
-#' plot(m1, select=1, main="m0", ylim=range(Y))
+#' plot(m1, select=1, main="m1", ylim=range(Y))
 #' lines(t, int[1,], col=rgb(1,0,0,.5))
-#' plot(m0, select=1, main="m1", ylim=range(Y))
+#' plot(m0, select=1, main="m0", ylim=range(Y))
 #' lines(t, int[1,], col=rgb(1,0,0,.5))
 #' }
 pcre <- function(id, 
         efunctions,
         evalues,
-        yind
+        yind,
+        ...
 ){
     
     # check args
@@ -115,5 +118,5 @@ pcre <- function(id,
                     sapply(colnames(efunctions), function(x) as.symbol(x)),
                     bs=c("pcre")))
     
-    return(list(data=data, efunctions=efunctions, yind=yind, id=id, call=call))
+    return(list(data=data, efunctions=efunctions, yind=yind, id=id, call=call, ...))
 }#end pcre()
