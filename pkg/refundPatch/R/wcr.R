@@ -3,8 +3,6 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
                 wavelet.family = "DaubLeAsymm", family = "gaussian", 
                 cv1 = FALSE, nfold = 5, compare.fits = FALSE, store.cv = FALSE, 
                 store.glm = TRUE) {
-    require(wavethresh)
-    require(MASS)
     method <- match.arg(method)
     # Error handling
     n <- length(y)

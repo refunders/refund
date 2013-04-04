@@ -1,6 +1,5 @@
 lofocv <-
 function(Y, X, S1, lamvec=NULL, constr=NULL, maxlam=NULL) {
-	require(mgcv)
 	nn = nrow(X)
 	N = NROW(Y); K = NCOL(Y)
 	if (N*K!=nn) stop('Number of elements of Y must equal number of rows of X')

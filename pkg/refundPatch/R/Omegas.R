@@ -1,5 +1,4 @@
 Omegas = function(bspline.basis, ss)   {
-    require(fda)
     k.n = length(bspline.basis$params)
     k = c(rep(bspline.basis$rangeval[1],4), bspline.basis$params, rep(bspline.basis$rangeval[2],4))
     hh = rep(NA, k.n+7)

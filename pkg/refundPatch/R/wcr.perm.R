@@ -3,8 +3,6 @@ wcr.perm <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "
     if (is.null(covt) && perm.method == "x.residuals"){
     	stop("'x.residuals' method is unavailable when 'covt' is NULL.")
     }
-    require(wavethresh)
-    require(MASS)
     cv <- wcr(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, ncomp = ncomp, 
               method = method, covt = covt, store.glm = FALSE, ...)$cv
     if (perm.method == "y.residuals") {
