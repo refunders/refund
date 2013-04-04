@@ -1,3 +1,205 @@
+#' Simple bootstrap CIs for pffr
+#' 
+#' This function resamples observations in the data set to obtain approximate CIs for different
+#' terms and coefficient functions that correct for the effects of dependency and heteroskedasticity
+#' of the residuals along the index of the functional response, i.e., it aims for correct inference
+#' if the residuals along the index of the functional response are not i.i.d.
+#' 
+#' @param object a fitted \code{\link{pffr}}-model 
+#' @param n1 see \code{\link{coef.pffr}}
+#' @param n2 see \code{\link{coef.pffr}}
+#' @param n3 see \code{\link{coef.pffr}}
+#' @param B  number of bootstrap replicates, defaults to (a measly) 100
+#' @param parallel see \code{\link[boot]{boot}}
+#' @param cl see \code{\link[boot]{boot}}
+#' @param ncpus see \code{\link[boot]{boot}}. Defaults to \code{getOption("boot.ncpus", 1L)} (like \code{boot}).
+#' @param conf desired levels of bootstrap CIs, defaults to 0.90 and 0.95
+#' @param type type of bootstrap interval, see \code{\link[boot]{boot.ci}}. Defaults to "percent" for percentile-based CIs. 
+#' @param method either "resample" (default) to resample response trajectories, or "residual" to resample residual trajectories.
+#' @param showProgress TRUE/FALSE 
+#' @param ... not used
+#' @return a list with similar structure as the return value of \code{\link{coef.pffr}}, containing the 
+#'         original point estimates of the various terms along with their bootstrap CIs.
+#' @author Fabian Scheipl
+coefboot.pffr <- function(object,  
+        n1=100, n2=40, n3=20, 
+        B = 100, ncpus = getOption("boot.ncpus", 1),
+        parallel = c("no", "multicore", "snow"), cl=NULL,
+        conf=c(.9,.95), type="percent",
+        method="resample",
+        showProgress=TRUE, ...){
+    
+    if(is.null(ncpus)) ncpus <- getOption("boot.ncpus", 1L) 
+    ## 
+    modcall <- object$pffr$call
+    modcall$formula <- object$pffr$formula
+    modcall$data <- environment(object$pffr$formula)$data
+    #modcall$fit <- FALSE
+    if(is.symbol(modcall$yind)){
+        modcall$yind <- eval(modcall$yind, environment(object$pffr$formula))   
+    }
+    if(is.symbol(modcall$hatSigma)){
+        modcall$hatSigma <- eval(modcall$hatSigma, environment(object$pffr$formula))   
+    }
+    
+    if(!is.null(modcall$algorithm)){
+        if(modcall$algorithm != "gam"){
+            stop("bootstrap implemented only for gam-fits.\n")
+        }
+    }
+    #modcall$start <- object$coefficients
+    #modcall$G <- eval(modcall)
+    modcall$fit <- TRUE
+    yind <- modcall$yind 
+    
+    ## refit models on bootstrap data sets & save fits
+    cat("starting bootstrap ")
+    # check whether this is already a child process, and
+    # switch of parallelization if yes
+    if(parallel:::isChild()) parallel <- "no"
+    
+    # resample Y
+#    bootfct.resample <- function(modcall, data, indices) {
+#        modcall$weights <- rep(table(factor(indices, levels=1:nrow(data))), each = length(yind))
+#        #modcall$G$w <- rep(table(factor(indices, levels=1:nrow(data))), each = length(yind))        
+#        mb <- eval(as.call(modcall))
+#        coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
+#        ##save results as one long vector as boot can't deal with lists
+#        coefvec <- c(coefs$pterms[,"value"], 
+#                sapply(coefs$smterms, function(x) x$value))
+#        if(showProgress) cat(".")
+#        return(unlist(coefvec))
+#    }
+    bootfct.resample <- function(modcall, data, indices) {
+        dataB <- data[indices,]
+        modcall$data <- dataB
+        #modcall$G$w <- rep(table(factor(indices, levels=1:nrow(data))), each = length(yind))        
+        mb <- eval(as.call(modcall))
+        coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
+        ##save results as one long vector as boot can't deal with lists
+        coefvec <- c(coefs$pterms[,"value"], 
+                sapply(coefs$smterms, function(x) x$value))
+        if(showProgress) cat(".")
+        return(unlist(coefvec))
+    }    
+    
+    
+    #resample residuals
+    bootfct.resid <- function(modcall, data, indices) {
+        dataB <- data
+        fitted <- fitted(object)
+        resid <- resid(object)[indices,]
+        dataB[[deparse(object$formula[[2]])]] <- fitted + resid
+        modcall$data <- dataB
+        
+        mb <- eval(as.call(modcall))
+        coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
+        ##save results as one long vector as boot can't deal with lists
+        coefvec <- c(coefs$pterms[,"value"], 
+                sapply(coefs$smterms, function(x) x$value))
+        if(showProgress) cat(".")
+        return(unlist(coefvec))
+    }
+    #resample residuals
+    bootfct.residc <- function(modcall, data, indices) {
+        dataB <- data
+        fitted <- fitted(object)
+        resid <- resid(object)[indices,]
+        resid <- resid - colMeans(resid)
+        dataB[[deparse(object$formula[[2]])]] <- fitted + resid
+        modcall$data <- dataB
+        
+        mb <- eval(as.call(modcall))
+        coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
+        ##save results as one long vector as boot can't deal with lists
+        coefvec <- c(coefs$pterms[,"value"], 
+                sapply(coefs$smterms, function(x) x$value))
+        if(showProgress) cat(".")
+        return(unlist(coefvec))
+    }
+    
+    
+    bootreps <- boot(data=modcall$data, 
+            statistic=switch(method, 
+                    "resample"=bootfct.resample,
+                    "residual"=bootfct.resid,
+                    "residual.c"=bootfct.residc),
+            R=B, 
+            modcall=modcall, parallel=parallel, ncpus=ncpus)
+    if(showProgress) cat("done.\n")
+    
+    ## disentangle bootreps
+    coefboot <- coef(object, se = FALSE, n1=n1, n2=n2, n3=n3)
+    
+    ptrms <- rownames(coefboot$pterms)
+    ptrmsboot <- matrix(bootreps$t[,1:length(ptrms)], )
+    ptrmsboot <- t(ptrmsboot)
+    
+    smtrms <- names(coefboot$smterms)
+    smtrmvallengths <- sapply(coefboot$smterms, function(x) length(x$value))
+    
+    #drop NULL-entries
+    NULLentries <- smtrmvallengths==0
+    if(any(NULLentries)){
+        smtrms <- smtrms[!NULLentries]
+        smtrmvallengths <- smtrmvallengths[!NULLentries]
+        coefboot$smterms <- coefboot$smterms[!NULLentries]
+    }
+    
+    start <- c(1, cumsum(head(smtrmvallengths,-1))+1) 
+    stop <- cumsum(smtrmvallengths)
+    smtrmsboot <- vector(length(smtrms), mode="list")
+    for(i in 1:length(start)){
+        smtrmsboot[[i]] <- t((bootreps$t[,-(1:length(ptrms))])[,start[i]:stop[i]])
+    }
+    names(smtrmsboot) <- smtrms
+    
+    
+    ## get bootstrap CIs
+    cat("calculating bootstrap CIs....")
+    mylapply <- if(parallel=="multicore"){
+                parallel::mclapply  
+            } else {
+                if(parallel=="snow"){
+                    if(is.null(cl)){
+                        cl <- parallel::makePSOCKcluster(rep("localhost", 
+                                        ncpus))  
+                    } 
+                    if (RNGkind()[1L] == "L'Ecuyer-CMRG") {
+                        parallel::clusterSetRNGStream(cl)
+                    }
+                    function(X, FUN) {
+                        res <- parallel::parLapply(cl, X, FUN)
+                        parallel::stopCluster(cl)
+                        return(res)
+                    }    
+                } else lapply
+            }    
+    
+    getCIs <- function(which=1:length(bootreps$t0), conf=.95, type="bca"){
+        ret <- mylapply(which, function(i){
+                    ci <- boot.ci(bootreps, conf=conf, index=i, 
+                            #fix stupidity in boot.ci: option name has to be "perc", 
+                            # return value is named "percent"
+                            type=ifelse(type=="percent", "perc", type))
+                    ret <- ci[[type]][,4:5]
+                    return(as.vector(ret))          
+                })
+        ret <- do.call(cbind, ret)
+        rownames(ret) <- paste(c(((1-conf)/2), 1-(1-conf)/2)*100,"%", sep="")
+        return(t(ret))
+    }
+    coefboot$pterms <- cbind(coefboot$pterms, getCIs(which=1:length(ptrms), conf=conf, type=type))
+    for(i in 1:length(start)){
+        coefboot$smterms[[i]] <- cbind(coefboot$smterms[[i]]$coef,
+                getCIs(which=length(ptrms)+(start[i]:stop[i]), conf=conf, type=type))
+    }
+    names(coefboot$smterms) <- smtrms
+    
+    return(structure(coefboot, call=match.call()))
+}
+
+
 #' Penalized function-on-function regression with non-i.i.d. residuals
 #' 
 #' THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.\cr
@@ -154,11 +356,11 @@ pffrGLS <- function(
 #            diag(hatSigma) <- 1.05*diag(hatSigma)
 #            eSigma <- eigen(hatSigma, symmetric = TRUE) 
 #            condnew <- max(eSigma$values)/min(eSigma$values)
-             hatSigmaPD <- nearPD(hatSigma, keepDiag = TRUE, ensureSymmetry=TRUE, do2eigen = TRUE,
-                     posd.tol=1/cond.cutoff)
-             warning("Supplied <hatSigma> had condition number ", round(cond),
+            hatSigmaPD <- nearPD(hatSigma, keepDiag = TRUE, ensureSymmetry=TRUE, do2eigen = TRUE,
+                    posd.tol=1/cond.cutoff)
+            warning("Supplied <hatSigma> had condition number ", round(cond),
                     "\n   -- projected further into pos.-definite cone (new condition number: ", cond.cutoff,").")
-             eSigma <-  eigen(as(hatSigmaPD$mat, "matrix"), symmetric=TRUE)
+            eSigma <-  eigen(as(hatSigmaPD$mat, "matrix"), symmetric=TRUE)
         }
         with(eSigma, vectors%*%diag(1/sqrt(values))%*%t(vectors))
     } 
@@ -166,7 +368,7 @@ pffrGLS <- function(
     hatSigmaname <- deparse(substitute(hatSigmaname))
     assign(x=deparse(hatSigmaname), value=hatSigma, envir=frmlenv)
     
-   
+    
     originalresponsename <- paste(deparse(responsename),".Original", sep="")
     assign(x=originalresponsename, 
             value=as.vector(t(eval(responsename, envir=evalenv, enclos=frmlenv))), 
@@ -550,7 +752,7 @@ pffrGLS <- function(
                             #browser()
                             #cat("premultiply Design...\n")
                             GLSinfo <- list(...)$GLSinfo
-                             # modify design matrix: premultiply submatrix for each obs by sqrt(hatSigma)^-1
+                            # modify design matrix: premultiply submatrix for each obs by sqrt(hatSigma)^-1
                             obsvec <- seq(1, GLSinfo$nobs*length(GLSinfo$yind), by=length(GLSinfo$yind))
                             from <- 1
                             to <- length(GLSinfo$yind)
@@ -566,7 +768,7 @@ pffrGLS <- function(
     
     m <- eval(newcall)
     # browser()
-     
+    
     # overwrite decorrelated response, fitted values etc s.t. summary etc are (more) correct
     m$y <- newfrmlenv[[originalresponsename]]
     # check that we really fitted the object 
@@ -593,8 +795,8 @@ pffrGLS <- function(
 #                                kronecker(Diagonal(nobs), sqrtSigmaInv))%*%X))
 #        }
 #        Vp <- solve(XWX)
-    
-    
+        
+        
 #        XtildeWXtilde <- {
 #           xcall <- newcall
 #           xcall$fit <- FALSE
@@ -714,146 +916,5 @@ pffrGLS <- function(
     return(m)
 }# end pffrGLS()
 
-#' Simple bootstrap CIs for pffr
-#' 
-#' This function resamples observations in the data set to obtain approximate CIs for different
-#' terms and coefficient functions that correct for the effects of dependency and heteroskedasticity
-#' of the residuals along the index of the functional response, i.e., it aims for correct inference
-#' if the residuals along the index of the functional response are not i.i.d.
-#' 
-#' @param object a fitted \code{\link{pffr}}-model 
-#' @param n1 see \code{\link{coef.pffr}}
-#' @param n2 see \code{\link{coef.pffr}}
-#' @param n3 see \code{\link{coef.pffr}}
-#' @param B  number of bootstrap replicates, defaults to (a measly) 100
-#' @param parallel see \code{\link[boot]{boot}}
-#' @param cl see \code{\link[boot]{boot}}
-#' @param ncpus see \code{\link[boot]{boot}}. Defaults to \code{getOption("boot.ncpus", 1L)} (like \code{boot}).
-#' @param conf desired levels of bootstrap CIs, defaults to 0.90 and 0.95
-#' @param type type of bootstrap interval, see \code{\link[boot]{boot.ci}}. Defaults to "percent" for percentile-based CIs. 
-#' @param showProgress TRUE/FALSE 
-#' @param ... not used
-#' @return a list with similar structure as the return value of \code{\link{coef.pffr}}, containing the 
-#'         original point estimates of the various terms along with their bootstrap CIs.
-#' @author Fabian Scheipl
-coefboot.pffr <- function(object,  
-        n1=100, n2=40, n3=20, 
-        B = 100, ncpus = getOption("mc.cores"),
-        parallel = ifelse(Sys.info()["sysname"] == "Windows", "no", "multicore"), cl=NULL,
-        conf=c(.9,.95), type="percent", showProgress=TRUE, ...){
-    
-    if(is.null(ncpus)) ncpus <- getOption("boot.ncpus", 1L) 
-    ## 
-    modcall <- object$pffr$call
-    modcall$formula <- object$pffr$formula
-    modcall$data <- environment(object$pffr$formula)$data
-    #modcall$fit <- FALSE
-    if(is.symbol(modcall$yind)){
-        modcall$yind <- eval(modcall$yind, environment(object$pffr$formula))   
-    }
-    if(is.symbol(modcall$hatSigma)){
-        modcall$hatSigma <- eval(modcall$hatSigma, environment(object$pffr$formula))   
-    }
-
-    if(!is.null(modcall$algorithm)){
-        if(modcall$algorithm != "gam"){
-            stop("bootstrap implemented only for gam-fits.\n")
-        }
-    }
-    #modcall$start <- object$coefficients
-    #modcall$G <- eval(modcall)
-    modcall$fit <- TRUE
-    yind <- modcall$yind 
-    
-    ## refit models on bootstrap data sets & save fits
-    cat("starting bootstrap ")
-    # check whether this is already a child process, and
-    # switch of parallelization if yes
-    if(parallel:::isChild()) parallel <- "no"
-    bootfct <- function(modcall, data, indices) {
-        modcall$weights <- rep(table(factor(indices, levels=1:nrow(data))), each = length(yind))
-        #modcall$G$w <- rep(table(factor(indices, levels=1:nrow(data))), each = length(yind))        
-        mb <- eval(as.call(modcall))
-        coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
-        ##save results as one long vecotr as boot can't deal with lists
-        coefvec <- c(coefs$pterms[,"value"], 
-                sapply(coefs$smterms, function(x) x$value))
-        if(showProgress) cat(".")
-        return(unlist(coefvec))
-    }
-    bootreps <- boot(data=modcall$data, statistic=bootfct, R=B, 
-            modcall=modcall, parallel=parallel, ncpus=ncpus)
-    if(showProgress) cat("done.\n")
-    
-    ## disentangle bootreps
-    coefboot <- coef(object, se = FALSE, n1=n1, n2=n2, n3=n3)
-    
-    ptrms <- rownames(coefboot$pterms)
-    ptrmsboot <- matrix(bootreps$t[,1:length(ptrms)], )
-    ptrmsboot <- t(ptrmsboot)
-    
-    smtrms <- names(coefboot$smterms)
-    smtrmvallengths <- sapply(coefboot$smterms, function(x) length(x$value))
-    
-    #drop NULL-entries
-    NULLentries <- smtrmvallengths==0
-    if(any(NULLentries)){
-        smtrms <- smtrms[!NULLentries]
-        smtrmvallengths <- smtrmvallengths[!NULLentries]
-        coefboot$smterms <- coefboot$smterms[!NULLentries]
-    }
-        
-    start <- c(1, cumsum(head(smtrmvallengths,-1))+1) 
-    stop <- cumsum(smtrmvallengths)
-    smtrmsboot <- vector(length(smtrms), mode="list")
-    for(i in 1:length(start)){
-        smtrmsboot[[i]] <- t((bootreps$t[,-(1:length(ptrms))])[,start[i]:stop[i]])
-    }
-    names(smtrmsboot) <- smtrms
-    
-    
-    ## get bootstrap CIs
-    cat("calculating bootstrap CIs....")
-    mylapply <- if(parallel=="multicore"){
-                parallel::mclapply  
-            } else {
-                if(parallel=="snow"){
-                    if(is.null(cl)){
-                        cl <- parallel::makePSOCKcluster(rep("localhost", 
-                                        ncpus))  
-                    } 
-                    if (RNGkind()[1L] == "L'Ecuyer-CMRG") {
-                        parallel::clusterSetRNGStream(cl)
-                    }
-                    function(X, FUN) {
-                        res <- parallel::parLapply(cl, X, FUN)
-                        parallel::stopCluster(cl)
-                        return(res)
-                    }    
-                } else lapply
-            }    
-    
-    getCIs <- function(which=1:length(bootreps$t0), conf=.95, type="bca"){
-        ret <- mylapply(which, function(i){
-                    ci <- boot.ci(bootreps, conf=conf, index=i, 
-                            #fix stupidity in boot.ci: option name has to be "perc", 
-                            # return value is named "percent"
-                            type=ifelse(type=="percent", "perc", type))
-                    ret <- ci[[type]][,4:5]
-                    return(as.vector(ret))          
-                })
-        ret <- do.call(cbind, ret)
-        rownames(ret) <- paste(c(((1-conf)/2), 1-(1-conf)/2)*100,"%", sep="")
-        return(t(ret))
-    }
-    coefboot$pterms <- cbind(coefboot$pterms, getCIs(which=1:length(ptrms), conf=conf, type=type))
-    for(i in 1:length(start)){
-        coefboot$smterms[[i]] <- cbind(coefboot$smterms[[i]]$coef,
-                getCIs(which=length(ptrms)+(start[i]:stop[i]), conf=conf, type=type))
-    }
-    names(coefboot$smterms) <- smtrms
-    
-    return(structure(coefboot, call=match.call()))
-}
 
 
