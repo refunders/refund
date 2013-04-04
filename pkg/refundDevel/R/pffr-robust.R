@@ -21,6 +21,7 @@
 #' @return a list with similar structure as the return value of \code{\link{coef.pffr}}, containing the 
 #'         original point estimates of the various terms along with their bootstrap CIs.
 #' @author Fabian Scheipl
+#' @import boot
 coefboot.pffr <- function(object,  
         n1=100, n2=40, n3=20, 
         B = 100, ncpus = getOption("boot.ncpus", 1),

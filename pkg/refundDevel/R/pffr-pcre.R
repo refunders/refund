@@ -1,5 +1,15 @@
-## gam-constructor for PC-basis functional random effects.
-## (almost the same as smooth.construct.re.smooth.spec)
+#' mgcv-style constructor for PC-basis functional random effects
+#' 
+#' Sets up design matrix for functional random effects based on the PC loadings
+#' of the covariance operator of the random effect process. 
+#' See \code{\link[mgcv]{smooth.construct.re.smooth.spec}} for more details on \code{mgcv}-style smoother specification
+#' and \code{\link{pcre}} for the corresponding \code{pffr()}-formula wrapper. 
+#' 
+#' @param object a smooth specification object, see \code{\link[mgcv]{smooth.construct}}
+#' @param data  see \code{\link[mgcv]{smooth.construct}}
+#' @param knots see \code{\link[mgcv]{smooth.construct}}
+#' @return An object of class \code{"random.effect"}. See \code{\link[mgcv]{smooth.construct}} 
+#'  for the elements that this object will contain. 
 smooth.construct.pcre.smooth.spec <- function(object, data, knots){
     if (!is.null(object$id)) 
         stop("random effects don't work with ids.")

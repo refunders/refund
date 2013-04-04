@@ -8,9 +8,9 @@
   \item{object}{a smooth specification object, see
   \code{\link[mgcv]{smooth.construct}}}
 
-  \item{data}{}
+  \item{data}{see \code{\link[mgcv]{smooth.construct}}}
 
-  \item{knots}{}
+  \item{knots}{see \code{\link[mgcv]{smooth.construct}}}
 }
 \value{
   An object of class \code{"random.effect"}. See
@@ -22,6 +22,8 @@
   on the PC loadings of the covariance operator of the
   random effect process. See
   \code{\link[mgcv]{smooth.construct.re.smooth.spec}} for
-  more details.
+  more details on \code{mgcv}-style smoother specification
+  and \code{\link{pcre}} for the corresponding
+  \code{pffr()}-formula wrapper.
 }
 
