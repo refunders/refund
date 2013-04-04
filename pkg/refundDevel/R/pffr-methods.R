@@ -184,6 +184,7 @@ predict.pffr <- function(object,
                                                 names(d)  <- colnames(x)[i]
                                                 return(d)
                                             })))
+                                               
             } else {
                 ret <- lapply(ret, function(x) matrix(insertNA(x), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE))  
             } 
@@ -196,11 +197,6 @@ predict.pffr <- function(object,
                                     return(d)
                                 }))
             } else ret <- matrix(insertNA(ret), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)
-        }
-        if(type %in% c("terms", "iterms")){
-            ind <- sapply(attr(ret, "names"), function(x)
-                                    which(x == unlist(object$pffr$labelmap)))
-            attr(ret, "names") <- names(object$pffr$labelmap)[ind]
         }
     }
     return(ret)
@@ -298,8 +294,8 @@ plot.pffr <- function (x, ...)
 #' The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
 #' The \code{sandwich}-options works as follows: Assuming that the residual vectors \eqn{\epsilon_i(t), i=1,\dots,n} are i.i.d.
 #' realizations of a mean zero Gaussian process with covariance \eqn{K(t,t')}, we can construct an estimator for  
-#' \eqn{K(t,t')} from the n replicates of the observed residual vectors. The covariance matrix of the stacked observations
-#' vec\eqn{(Y_i(t))} is then given by a block-diagonal matrix with n copies of the estimated \eqn{K(t,t')} on the diagonal.
+#' \eqn{K(t,t')} from the \eqn{n} replicates of the observed residual vectors. The covariance matrix of the stacked observations
+#' vec\eqn{(Y_i(t))} is then given by a block-diagonal matrix with \eqn{n} copies of the estimated \eqn{K(t,t')} on the diagonal.
 #' This block-diagonal matrix is used to construct the "meat" of a sandwich covariance estimator, similar to Chen et al. (2012), 
 #' see reference below.  
 #' 
@@ -492,7 +488,9 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
                 stopifnot(require(Matrix))
                 Ktt <- Reduce("+",  lapply(1:nrow(res), function(i) tcrossprod(res[i,])))/nrow(res)
             }
-            meat <- (t(X)%*%kronecker(Diagonal(nrow(res)), Ktt))%*%X
+            #Chen/Wang, Sec. 2.1: M = X' V^-1 (Y-eta)(Y-eta)' V^-1 X  with V ^-1 = diag(sigma^-2) 
+            # since the estimate is under working independence.... 
+            meat <- (t(X)%*%kronecker(Diagonal(nrow(res)), Ktt))%*%X / (object$scale^2)
             covmat <- as.matrix(bread %*% meat %*% bread)
         } else {
             covmat <- bread
