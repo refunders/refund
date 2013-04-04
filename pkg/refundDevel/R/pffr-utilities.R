@@ -90,7 +90,7 @@ getShrtlbls <- function(object){
             })
     # correct labels for factor variables:
     if(any(sapply(labelmap, length) > 1 & !sapply(names(labelmap), function(x) grepl("^ffpc", x)))){
-        which <- which(sapply(labelmap, length) > 1)
+        which <- which(sapply(labelmap, length) > 1 & !sapply(names(labelmap), function(x) grepl("^ffpc", x)))
         inds <- c(0, cumsum(sapply(labelmap, length)))
         for(w in which){
             ret[(inds[w]+1):inds[w+1]] <- {
@@ -137,28 +137,28 @@ pffrSim <- function(
         SNR = 10
 ){
     ## generates random functions...
-    rf <- function(x=seq(0,1,length=100)) { 
-        m <- ceiling(runif(1)*25) ## number of components 
-        f <- x*0; 
-        mu <- runif(m,min(x),max(x))
-        sig <- (runif(m)+.5)*(max(x)-min(x))/10 
-        for (i in 1:m) f <- f + sample(c(1,-1),1) * dnorm(x,mu[i],sig[i]) 
-        f + rnorm(1, sd=sd(f)/2)
+    rf <- function(x=seq(0,1,length=100), bs.dim=7, center=FALSE) {
+      nk <- bs.dim - 2
+      xu <- max(x)
+      xl <- min(x)
+      xr <- xu - xl
+      xl <- xl - xr * 0.001
+      xu <- xu + xr * 0.001
+      dx <- (xu - xl)/(nk - 1)
+      kn <- seq(xl - dx * 3, xu + dx * 3, 
+          length = nk + 4 + 2) 
+      X <- splines::spline.des(kn, x, 4, x * 0)$design
+      
+      drop(X %*% rnorm(bs.dim))
     } 
     
-    ## beta(s,t)
     test1 <- function(s, t){
-        2 + sin(s*2*t*pi)*log(1+s+t) + s*t*2 + exp(s)*t^2
+      s*cos(pi*abs(s-t)) - .19
     }
-    
-    
-    # (from ?gam example)	
     test2 <- function(s, t, ss=0.3, st=0.4)
     { 
-        (pi^ss*st)*(1.2*exp(-(s-0.2)^2/ss^2-(t-0.3)^2/st^2) +
-                    0.8*exp(-(s-0.7)^2/ss^2-(t-0.8)^2/st^2))
+      cos(pi*s)*sin(pi*t) + (s*t)^2 - 0.11
     }
-    
     s <- seq(0, 1, length=nxgrid)
     t <- seq(0, 1, length=nygrid)
     
@@ -167,32 +167,34 @@ pffrSim <- function(
     
     data <- list()
     etaTerms <- list()
+    etaTerms$int <- mu.t
     
     #functional covariates
-    data$X1 <- t(replicate(n, rf(s)))
+    data$X1 <- I(t(replicate(n, rf(s))))
+    
     L <- matrix(1/nxgrid, ncol=nxgrid, nrow=n)
     LX1 <- L*data$X1 
     beta1.st <- outer(s, t, test1)
     etaTerms$X1 <- LX1%*%beta1.st
     
-    data$X2 <- t(replicate(n, rf(s)))
+    data$X2 <- I(t(replicate(n, rf(s))))
     LX2 <- L*data$X2 
     beta2.st <- outer(s, t, test2)
     etaTerms$X2 <- LX2%*%beta2.st
     
     #scalar covariates
-    data$xlin <- rnorm(n)
+    data$xlin <- I(rnorm(n))
     beta.t <- matrix(scale(-dnorm(4*(t-.2))), nrow=n, ncol=nygrid, byrow=T)
     etaTerms$xlin <- data$xlin*beta.t
     
-    data$xsmoo <- rnorm(n)
+    data$xsmoo <- I(rnorm(n))
     etaTerms$xsmoo <- outer(drop(scale(cos(data$xsmoo))), (t-.5), "*")
     
-    data$xte1 <- rnorm(n)
-    data$xte2 <- rnorm(n)
+    data$xte1 <- I(rnorm(n))
+    data$xte2 <- I(rnorm(n))
     etaTerms$xte <- drop(scale(-data$xte1*data$xte2^2))
     
-    data$xconst <- rnorm(n)
+    data$xconst <- I(rnorm(n))
     etaTerms$xconst <- 2*data$xconst
     
     eta <- mu.t + switch(scenario,
@@ -200,8 +202,8 @@ pffrSim <- function(
             "2" = Reduce("+", etaTerms))
     
     eps <-  sd(as.vector(eta))/sqrt(SNR) * matrix(scale(rnorm(n*nygrid)), nrow=n)
-    data$Y <- eta + eps
+    data$Y <- I(eta + eps)
     
-    return(structure(data, xindex=s, yindex=t, 
+    return(structure(as.data.frame(data), xindex=s, yindex=t, 
                     truth=list(eta=eta, etaTerms=etaTerms), call=match.call()))
 }
