@@ -1,7 +1,7 @@
 Package: refundDevel
 Type: Package
 Title: developer version of refund: Regression with Functional Data
-Version: 0.2-1
+Version: 0.2-2
 Date: 2012-11-06
 Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     "ccrainic@jhsph.edu"), person("Philip Reiss", role = "aut", email =
@@ -11,7 +11,8 @@ Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     "lan.huo@nyumc.org"), person("Fabian Scheipl", role = "aut", email =
     "fabian.scheipl@stat.uni-muenchen.de"), person("Sonja Greven", role =
     "ctb"), person("Jaroslaw Harezlak", role="ctb"), person("Madan Gopal
-    Kundu", role="ctb"), person("Yihong Zhao", role="ctb"), person("Matt McLean", role="ctb"))
+    Kundu", role="ctb"), person("Yihong Zhao", role="ctb"), person("Matt
+    McLean", role="ctb"))
 Depends:
     R (>= 2.14.0),
     mgcv (>= 1.7-8),
@@ -37,7 +38,6 @@ Collate:
     'decomp2d.R'
     'decomp3d.R'
     'fgam.R'
-    'first.last_test.R'
     'fosr.R'
     'fosr.perm.R'
     'fosr.perm.fit.R'
@@ -46,7 +46,6 @@ Collate:
     'fpca.sc.R'
     'fpcr.R'
     'fpcr.setup.R'
-    'imwd_test.R'
     'lf.R'
     'lofocv.R'
     'lpeer.R'
@@ -78,3 +77,4 @@ Collate:
     'wcr.perm.R'
     'wnet.R'
     'wnet.perm.R'
+    'pffr-ffpc.R'
