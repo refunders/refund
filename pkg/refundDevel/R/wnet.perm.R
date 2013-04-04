@@ -4,8 +4,6 @@ wnet.perm <- function(y, xfuncs, min.scale, alpha, lambda = NULL, covt = NULL, n
     if (is.null(covt) && perm.method == "x.residuals"){
     	stop("'x.residuals' method is unavailable when 'covt' is NULL.")
     }
-    require(wavethresh)
-    require(MASS)
     cv <- mean(replicate(nsplit, expr = {
     	            wnet(y = y, xfuncs = xfuncs, min.scale = min.scale, alpha = alpha, lambda = lambda, 
                     covt = covt, family = family, ...)$cv.table

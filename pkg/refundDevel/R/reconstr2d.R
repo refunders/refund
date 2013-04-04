@@ -5,7 +5,6 @@ reconstr2d <- function(decomp2dobj){
 	} else if (ctmp != 'decomp2d'){
 	    stop('decomp2dobj is not of class decomp2d')
 	}
-	require("wavethresh")
     rowNum <- decomp2dobj$rowNum
     min.scale <- decomp2dobj$callInfo$min.scale
     filter.number <- decomp2dobj$callInfo$filter$filter.number

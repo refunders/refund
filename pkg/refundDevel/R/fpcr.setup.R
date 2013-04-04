@@ -1,8 +1,5 @@
 fpcr.setup <- function(y, xfuncs = NULL, nbasis = NULL, basismat = NULL, penmat = NULL, argvals = NULL,  
                        covt = NULL, mean.signal.term = FALSE, spline.order = NULL, fdobj = NULL, pen.order = 2) {
-    require(mgcv)
-    require(fda)
-    require(MASS)
     if (!is.null(fdobj)) {
     	# cat("performing scalar on functional regression\n")
     	basis <- fdobj$basis

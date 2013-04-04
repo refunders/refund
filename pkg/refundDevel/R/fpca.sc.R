@@ -3,9 +3,6 @@
 fpca.sc <-
 function(Y, Y.pred=NULL, nbasis = 10, pve = .99, npc = NULL, var = FALSE, simul = FALSE, sim.alpha = .95,
         useSymm = FALSE, makePD = FALSE){
-  require(mgcv)
-  require(MASS)
-
   ## if Y.pred is not provided, use Y
   if (is.null(Y.pred)) Y.pred = Y
   

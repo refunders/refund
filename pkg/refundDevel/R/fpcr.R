@@ -2,9 +2,6 @@ fpcr <- function(y, xfuncs = NULL, fdobj = NULL, ncomp=NULL, pve = 0.99, nbasis 
                  penmat = NULL, argvals = NULL, covt = NULL, mean.signal.term = FALSE, 
                  spline.order = NULL, family = "gaussian", method = "REML", sp = NULL, 
                  pen.order = 2, cv1 = FALSE, nfold = 5, store.cv = FALSE, store.gam = TRUE, ...){
-    require(mgcv)
-    require(fda)
-    require(MASS)
     # Error handling
     n <- length(y)
     do.cv <- FALSE
