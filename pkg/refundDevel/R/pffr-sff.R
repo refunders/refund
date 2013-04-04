@@ -7,7 +7,8 @@
 #' Defaults to a cubic tensor product B-spline with marginal second differences penalties for \eqn{f(X_i(s), s, t)} and
 #' integration over the entire range \eqn{[s_{lo, i}, s_{hi, i}] = [\min(s_i), \max(s_i)]}. 
 #' Can't deal with any missing \eqn{X(s)}, unequal lengths of \eqn{X_i(s)} not (yet?) possible.
-#' Unequal ranges for different \eqn{X_i(s)} should work. \eqn{X_i(s)} is assumed to be numeric.
+#' Unequal ranges for different \eqn{X_i(s)} should work. \eqn{X_i(s)} is assumed to be numeric.\cr \code{sff()} IS AN EXPERIMENTAL FEATURE AND
+#' NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
 #' 
 #' @param X an n by \code{ncol(xind)} matrix of function evaluations \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
 #' @param yind matrix (or vector) of indices of evaluations of \eqn{Y_i(t)}; i.e. matrix with rows \eqn{(t_{i1},\dots,t_{iT})}
