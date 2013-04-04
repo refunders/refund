@@ -3,10 +3,10 @@
 \title{Simple bootstrap CIs for pffr}
 \usage{
   coefboot.pffr(object, n1 = 100, n2 = 40, n3 = 20,
-    B = 100, ncpus = getOption("mc.cores"),
-    parallel = ifelse(Sys.info()["sysname"] == "Windows", "no", "multicore"), cl=NULL,
+    B = 100, ncpus = getOption("boot.ncpus", 1),
+    parallel = c("no", "multicore", "snow"), cl = NULL,
     conf = c(0.9, 0.95), type = "percent",
-    showProgress = TRUE, ...)
+    method = "resample", showProgress = TRUE, ...)
 }
 \arguments{
   \item{object}{a fitted \code{\link{pffr}}-model}
@@ -22,8 +22,9 @@
 
   \item{parallel}{see \code{\link[boot]{boot}}}
 
+  \item{cl}{see \code{\link[boot]{boot}}}
+
   \item{ncpus}{see \code{\link[boot]{boot}}. Defaults to
-  \code{getOption("mc.cores")}, if that is not set to
   \code{getOption("boot.ncpus", 1L)} (like \code{boot}).}
 
   \item{conf}{desired levels of bootstrap CIs, defaults to
@@ -33,9 +34,11 @@
   \code{\link[boot]{boot.ci}}. Defaults to "percent" for
   percentile-based CIs.}
 
+  \item{method}{either "resample" (default) to resample
+  response trajectories, or "residual" to resample residual
+  trajectories.}
+
   \item{showProgress}{TRUE/FALSE}
-  
-  \item{cl}{parameter for parallel computing}
 
   \item{...}{not used}
 }
@@ -50,9 +53,9 @@
   obtain approximate CIs for different terms and
   coefficient functions that correct for the effects of
   dependency and heteroskedasticity of the residuals along
-  the index of the functional response, i.e., it aims for 
-  correct inference if the residuals along the index
-  of the functional response are not i.i.d.
+  the index of the functional response, i.e., it aims for
+  correct inference if the residuals along the index of the
+  functional response are not i.i.d.
 }
 \author{
   Fabian Scheipl

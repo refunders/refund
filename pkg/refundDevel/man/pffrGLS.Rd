@@ -5,7 +5,8 @@
   pffrGLS(formula, yind, hatSigma, algorithm = NA,
     method = "REML", tensortype = c("te", "t2"),
     bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
-    bs.int = list(bs = "ps", k = 20, m = c(2, 1)), cond.cutoff=5e2, ...)
+    bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+    cond.cutoff = 500, ...)
 }
 \arguments{
   \item{formula}{a formula with special terms as for
@@ -37,8 +38,12 @@
   \item{bs.int}{See \code{\link[refund]{pffr}}}
 
   \item{tensortype}{See \code{\link[refund]{pffr}}}
-  
-  \item{cond.cutoff}{cutoff threshold}
+
+  \item{cond.cutoff}{if the condition number of
+  \code{hatSigma} is greater than this, \code{hatSigma} is
+  made ``more'' positive-definite via
+  \code{\link[Matrix]{nearPD}} to ensure a condition number
+  equal to cond.cutoff. Defaults to 500.}
 
   \item{...}{additional arguments that are valid for
   \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. See
@@ -49,23 +54,23 @@
   \code{\link[refund]{pffr}}.
 }
 \description{
-  THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
-  
-  Implements additive regression for functional and scalar
-  covariates and functional responses. This function is a
-  wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its
-  siblings to fit models of the general form \cr
-  \eqn{Y_i(t) = \mu(t) + \int X_i(s)\beta(s,t)ds +
-  f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots +
-  E_i(t))}\cr with a functional (but not necessarily
-  continuous) response \eqn{Y(t)}, (optional) smooth
-  intercept \eqn{\mu(t)}, (multiple) functional covariates
-  \eqn{X(t)} and scalar covariates \eqn{z_1}, \eqn{z_2},
-  etc. The residual functions \eqn{E_i(t) \sim GP(0,
-  K(t,t'))} are assumed to be i.i.d. realizations of a
-  Gaussian process. An estimate of the covariance operator
-  \eqn{K(t,t')} evaluated on \code{yind} has to be supplied
-  in the \code{hatSigma}-argument. Note that this has to be
+  THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET
+  -- USE AT YOUR OWN RISK.\cr Implements additive
+  regression for functional and scalar covariates and
+  functional responses. This function is a wrapper for
+  \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to
+  fit models of the general form \cr \eqn{Y_i(t) = \mu(t) +
+  \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) +
+  z_{3i} \beta_3(t) + \dots + E_i(t))}\cr with a functional
+  (but not necessarily continuous) response \eqn{Y(t)},
+  (optional) smooth intercept \eqn{\mu(t)}, (multiple)
+  functional covariates \eqn{X(t)} and scalar covariates
+  \eqn{z_1}, \eqn{z_2}, etc. The residual functions
+  \eqn{E_i(t) \sim GP(0, K(t,t'))} are assumed to be i.i.d.
+  realizations of a Gaussian process. An estimate of the
+  covariance operator \eqn{K(t,t')} evaluated on
+  \code{yind} has to be supplied in the
+  \code{hatSigma}-argument. Note that this has to be
   positive definite. If \code{hatSigma} is close to
   positive \emph{semi-}definite or badly conditioned,
   estimated standard errors become unstable (typically much
@@ -77,9 +82,8 @@
 }
 \section{Details}{
   Please see \code{\link[refund]{pffr}} for details on
-  model specification and implementation. 
-  
-  THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT
+  model specification and implementation. \cr THIS IS AN
+  EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT
   YOUR OWN RISK.
 }
 \author{

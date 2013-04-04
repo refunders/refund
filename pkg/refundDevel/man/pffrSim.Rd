@@ -25,14 +25,13 @@
   components of the predictor etc as attributes.
 }
 \description{
-  Simulates example data for \code{\link{pffr}}. Scenario
-  1 generates data from a simple univariate model
-  \eqn{Y_i(t) = \mu(t) +\int X_i(s)\beta(s,t)ds +
-  \epsilon_i(t)}. Scenario 2 generates data from a complex
-  multivariate model \eqn{Y_i(t) = \mu(t) + \int
-  X_{1i}(s)\beta_1(s,t)ds + \int X_{2i}(s)\beta_2(s,t)ds +
-  x_3 \beta_3(t) + f(x_4, x_5) + f(x6, t) + \beta_4 x_7 +
-  \epsilon_i(t)}.
+  Simulates example data for \code{\link{pffr}}. Scenario 1
+  generates data from a simple univariate model \eqn{Y_i(t)
+  = \mu(t) +\int X_i(s)\beta(s,t)ds + \epsilon_i(t)}.
+  Scenario 2 generates data from a complex multivariate
+  model \eqn{Y_i(t) = \mu(t) + \int X_{1i}(s)\beta_1(s,t)ds
+  + \int X_{2i}(s)\beta_2(s,t)ds + x_3 \beta_3(t) + f(x_4,
+  x_5) + f(x6, t) + \beta_4 x_7 + \epsilon_i(t)}.
 }
 \details{
   See source code for details.

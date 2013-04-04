@@ -2,13 +2,13 @@
 \alias{pcre}
 \title{pffr-constructor for functional principal component-based functional random effects.}
 \usage{
-  pcre(id, efunctions, evalues, yind)
+  pcre(id, efunctions, evalues, yind, ...)
 }
 \arguments{
   \item{id}{grouping variable a factor}
 
   \item{efunctions}{matrix of eigenfunction evaluations on
-  gripoints \code{yind} (<length of \code{yind}> x <no. of
+  gridpoints \code{yind} (<length of \code{yind}> x <no. of
   used eigenfunctions>)}
 
   \item{evalues}{eigenvalues associated with
@@ -16,6 +16,8 @@
 
   \item{yind}{vector of gridpoints on which responses
   \eqn{Y(t)} are evaluated.}
+
+  \item{...}{not used}
 }
 \value{
   a list used internally for constructing an appropriate
@@ -42,7 +44,9 @@
   \code{efunctions} and \code{evalues} are typically
   eigenfunctions and eigenvalues of an estimated covariance
   operator for the functional process to be modeled, i.e.,
-  they are a functional principal components basis.
+  they are a functional principal components basis. \cr
+  \code{pcre()} IS AN EXPERIMENTAL FEATURE AND NOT WELL
+  TESTED YET -- USE AT YOUR OWN RISK.
 }
 \examples{
 \dontrun{
@@ -81,9 +85,9 @@ mean((E-t1[[2]])^2)
 layout(t(matrix(1:4,2,2)))
 matplot(t(E), lty=1, type="l", ylim=range(E, t1[[2]]))
 matplot(t(t1[[2]]), lty=1, type="l", ylim=range(E, t1[[2]]))
-plot(m1, select=1, main="m0", ylim=range(Y))
+plot(m1, select=1, main="m1", ylim=range(Y))
 lines(t, int[1,], col=rgb(1,0,0,.5))
-plot(m0, select=1, main="m1", ylim=range(Y))
+plot(m0, select=1, main="m0", ylim=range(Y))
 lines(t, int[1,], col=rgb(1,0,0,.5))
 }
 }

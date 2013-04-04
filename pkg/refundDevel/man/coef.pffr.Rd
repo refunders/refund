@@ -80,14 +80,14 @@
   the residual vectors \eqn{\epsilon_i(t), i=1,\dots,n} are
   i.i.d. realizations of a mean zero Gaussian process with
   covariance \eqn{K(t,t')}, we can construct an estimator
-  for \eqn{K(t,t')} from the n replicates of the observed
-  residual vectors. The covariance matrix of the stacked
-  observations vec\eqn{(Y_i(t))} is then given by a
-  block-diagonal matrix with n copies of the estimated
-  \eqn{K(t,t')} on the diagonal. This block-diagonal matrix
-  is used to construct the "meat" of a sandwich covariance
-  estimator, similar to Chen et al. (2012), see reference
-  below.
+  for \eqn{K(t,t')} from the \eqn{n} replicates of the
+  observed residual vectors. The covariance matrix of the
+  stacked observations vec\eqn{(Y_i(t))} is then given by a
+  block-diagonal matrix with \eqn{n} copies of the
+  estimated \eqn{K(t,t')} on the diagonal. This
+  block-diagonal matrix is used to construct the "meat" of
+  a sandwich covariance estimator, similar to Chen et al.
+  (2012), see reference below.
 }
 \author{
   Fabian Scheipl
@@ -101,7 +101,8 @@
   Spline6.pdf}
 }
 \seealso{
-  \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
+  \code{\link[mgcv]{plot.gam}},
+  \code{\link[mgcv]{predict.gam}} which this routine is
   based on.
 }
 

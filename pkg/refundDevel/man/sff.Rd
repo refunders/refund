@@ -65,7 +65,9 @@
   \max(s_i)]}. Can't deal with any missing \eqn{X(s)},
   unequal lengths of \eqn{X_i(s)} not (yet?) possible.
   Unequal ranges for different \eqn{X_i(s)} should work.
-  \eqn{X_i(s)} is assumed to be numeric.
+  \eqn{X_i(s)} is assumed to be numeric.\cr \code{sff()} IS
+  AN EXPERIMENTAL FEATURE AND NOT WELL TESTED YET -- USE AT
+  YOUR OWN RISK.
 }
 \author{
   Fabian Scheipl, based on Sonja Greven's trick for fitting

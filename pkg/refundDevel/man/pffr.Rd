@@ -161,7 +161,6 @@
   can be interpreted as the global mean function.
 }
 \examples{
-\dontrun{
 ###############################################################################
 # univariate model:
 # Y(t) = f(t)  + \\int X1(s)\\beta(s,t)ds + eps
@@ -182,13 +181,12 @@ s <- attr(data2, "xindex")
 m2 <- pffr(Y ~  ff(X1, xind=s, yind=t) + #linear function-on-function
                 ff(X2, xind=s, yind=t) + #linear function-on-function
                 xlin  +  #varying coefficient term
-                c(te(xte1, xte2)) + #bivariate smooth constant over Y-index
-                s(xsmoo) + #smooth effect varying over Y-index
-                c(xconst), # linear effect constant over Y-index
+                c(te(xte1, xte2)) + #bivariate smooth term in xte1 & xte2, const. over Y-index
+                s(xsmoo) + #smooth effect of xsmoo varying over Y-index
+                c(xconst), # linear effect of xconst constant over Y-index
         data=data2)
 summary(m2)
 plot(m2, pers=TRUE)
-}
 }
 \author{
   Fabian Scheipl, Sonja Greven
@@ -204,7 +202,7 @@ plot(m2, pers=TRUE)
   (submitted) \url{http://arxiv.org/abs/1207.5947}
 }
 \seealso{
-  \code{\link[mgcv]{smooth.terms}} on details of \code{mgcv} syntax and available
-  spline bases
+  \code{\link[mgcv]{smooth.terms}} for details of
+  \code{mgcv} syntax and available spline bases
 }
 
