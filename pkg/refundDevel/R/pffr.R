@@ -57,7 +57,8 @@
 #' @param formula a formula with special terms as for \code{\link[mgcv]{gam}}, with additional special terms \code{\link{ff}()} and \code{c()}
 #' @param yind a vector with length equal to the number of columns of the matrix of functional responses giving the vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
 #' 	If \code{formula} contains an \code{\link{ff}}-term which specifies \code{yind} this is used. If neither is given, \code{yind} is \code{1:ncol(<response>)}.   
-#' @param algorithm the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
+#' @param algorithm the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if
+#' the matrix of functional responses has less than \code{2e5} data points
 #' 	 and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4" (see \code{\link[gamm4]{gamm4}}) are valid options as well.  
 #' @param data an (optional) \code{data.frame} or a named list containing the data. 
 #' The functional response and functional covariates have to be supplied as n by <no. of evaluations> matrices, i.e. each row is one functional observation.
@@ -102,9 +103,9 @@
 #' m2 <- pffr(Y ~  ff(X1, xind=s, yind=t) + #linear function-on-function		
 #'                 ff(X2, xind=s, yind=t) + #linear function-on-function
 #'                 xlin  +  #varying coefficient term
-#'                 c(te(xte1, xte2)) + #bivariate smooth constant over Y-index
-#'                 s(xsmoo) + #smooth effect varying over Y-index
-#'                 c(xconst), # linear effect constant over Y-index
+#'                 c(te(xte1, xte2)) + #bivariate smooth term in xte1 & xte2, const. over Y-index
+#'                 s(xsmoo) + #smooth effect of xsmoo varying over Y-index
+#'                 c(xconst), # linear effect of xconst constant over Y-index
 #'         data=data2)
 #' summary(m2)
 #' plot(m2, pers=TRUE)
@@ -221,17 +222,11 @@ pffr <- function(
 	assign(x=deparse(responsename), value=as.vector(t(eval(responsename, envir=evalenv, enclos=frmlenv))), 
 			envir=newfrmlenv)
     
-    #assign index values of missing y-values in _long_ format to .GlobaleEnv 
-    #s.t. smooth.construct.tensor.smooth.spec can access it later.
+   
     if(any(is.na(get(as.character(responsename), newfrmlenv)))){
         missingindname <- paste0(".PFFRmissingResponses.", paste(sample(letters, 6), collapse=""))
         missingind <- which(is.na(get(as.character(responsename), newfrmlenv)))
-        assign(x=missingindname, value=missingind, 
-                envir=.GlobalEnv)
     } else missingind <- NULL
-    ## FIXME: this is really ugly but since the impose.ffregC argument has to be propagated without evaluating
-    ## and smooth.construct.tensor.smooth.spec cannot access the model frame, I can't think of another way to do this.
-    ## Long weird variable name to avoid overwriting user-generated stuff in GlobalEnv and identify model 
 	
 	##################################################################################
 	#modify formula terms.... 
@@ -545,7 +540,7 @@ pffr <- function(
                                     
                                     if(!is.null(object$margin[[length(object$margin)]]$xt$impose.ffregC)){
                                         ## constraint: sum_i f(z_i, t) = 0 \forall t
-                                        cat("imposing constraints..\n")
+                                        #cat("imposing constraints..\n")
                                         nygrid <- length(unique(data[[object$margin[[length(object$margin)]]$term]]))
                                                                               
                                         
@@ -553,7 +548,8 @@ pffr <- function(
                                         Ctmp <- kronecker(t(rep(1, object$margin[[length(object$margin)]]$xt$nobs)), diag(nygrid))
                                         if(ncol(Ctmp) > nrow(object$X)){
                                             #drop rows for missing obs.
-                                            Ctmp <- Ctmp[, - get(object$margin[[length(object$margin)]]$xt$missingindname, .GlobalEnv)]
+                                            #Ctmp <- Ctmp[, - get(object$margin[[length(object$margin)]]$xt$missingindname, .GlobalEnv)]
+                                            Ctmp <- Ctmp[, -get("missingind", envir=sys.frame(3))]
                                         }
                                         C <- Ctmp %*% object$X
                                         
@@ -574,14 +570,15 @@ pffr <- function(
                                     if(!is.null(object$margin[[length(object$margin)]]$xt$impose.ffregC) &&
                                                             object$margin[[length(object$margin)]]$xt$impose.ffregC){
                                         ## constraint: sum_i f(z_i, t) = 0 \forall t
-                                        cat("imposing constraints..\n")
+                                        #cat("imposing constraints..\n")
                                         nygrid <- length(unique(data[[object$margin[[length(object$margin)]]$term]]))
                                        
                                         ## C = ((1,...,1) \otimes I_G) * B
                                         Ctmp <- kronecker(t(rep(1, object$margin[[length(object$margin)]]$xt$nobs)), diag(nygrid))
                                         if(ncol(Ctmp) > nrow(object$X)){
                                             #drop rows for missing obs.
-                                            Ctmp <- Ctmp[, - get(object$margin[[length(object$margin)]]$xt$missingindname, .GlobalEnv)]
+                                            #Ctmp <- Ctmp[, - get(object$margin[[length(object$margin)]]$xt$missingindname, .GlobalEnv)]
+                                            Ctmp <- Ctmp[, -get("missingind", envir=sys.frame(3))]
                                         }
                                         C <- Ctmp %*% object$X
                                         
