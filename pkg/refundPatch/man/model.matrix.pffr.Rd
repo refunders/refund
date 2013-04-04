@@ -2,7 +2,7 @@
 \alias{model.matrix.pffr}
 \title{Obtain model matrix for a pffr fit}
 \usage{
-\method{model.matrix}{pffr} (object, ...)
+  \method{model.matrix}{pffr} (object, ...)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-object}

@@ -2,8 +2,9 @@
 \alias{print.summary.pffr}
 \title{Print method for summary of a pffr fit}
 \usage{
-\method{print}{summary.pffr} (x, digits = max(3, getOption("digits") - 3), 
-       signif.stars = getOption("show.signif.stars"), ...)
+  \method{print}{summary.pffr} (x,
+    digits = max(3, getOption("digits") - 3),
+    signif.stars = getOption("show.signif.stars"), ...)
 }
 \arguments{
   \item{x}{a fitted \code{pffr}-object}
@@ -11,7 +12,7 @@
   \item{digits}{controls number of digits printed in
   output.}
 
-  \item{signif.stars}{should significance stars be printed
+  \item{signif.stars}{Should significance stars be printed
   alongside output?}
 
   \item{...}{not used}

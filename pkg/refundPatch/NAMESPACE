@@ -11,5 +11,6 @@ import(
   nlme,
   wavethresh,
   Matrix,
-  gamm4
+  gamm4, 
+  boot
 )
