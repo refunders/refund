@@ -46,6 +46,7 @@ neuronal tract measurements. \emph{Journal of the Royal Statistical Society: Ser
 Jeff Goldsmith <jeff.goldsmith@columbia.edu>
 }
 \examples{
+\dontrun{
 ##################################################################
 # use longitudinal data to regress continuous outcomes on 
 # functional predictors (continuous outcomes only recorded for 
@@ -89,5 +90,5 @@ matplot(cbind(fit.cca.rcst$BetaHat[[1]], fit.cca.rcst$Bounds[[1]]),
 matplot(cbind(fit.cca.rcst$BetaHat[[2]], fit.cca.rcst$Bounds[[2]]),
   type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
   main = "RCST")
-
+}
 }
