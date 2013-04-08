@@ -1,20 +1,18 @@
-wcr.perm <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
-                     covt = NULL, nsplit = 10, nperm = 20, 
-                     perm.method = c('responses', 'y.residuals', 'x.residuals'), family = "gaussian", ...){
+wnet.perm <- function(y, xfuncs, min.scale, alpha, lambda = NULL, covt = NULL, nsplit = 10, nperm = 20, 
+                      perm.method = c("responses", "y.residuals", "x.residuals"), family = "gaussian",...){
     perm.method = match.arg(perm.method)
     if (is.null(covt) && perm.method == "x.residuals"){
     	stop("'x.residuals' method is unavailable when 'covt' is NULL.")
     }
     cv <- mean(replicate(nsplit, expr = {
-    	       wcr(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, ncomp = ncomp, 
-                   method = method, covt = covt, store.glm = FALSE, family = family, ...)$cv
-               }))
+    	            wnet(y = y, xfuncs = xfuncs, min.scale = min.scale, alpha = alpha, lambda = lambda, 
+                    covt = covt, family = family, ...)$cv.table
+                    }))
     if (perm.method == "y.residuals") {
-        obje <- wcr(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, ncomp = ncomp, 
-                    method = method, covt = covt, store.glm = FALSE, family = family, ...)
+        obje <- wnet(y = y, xfuncs = xfuncs, min.scale = min.scale, alpha = alpha, lambda = lambda, 
+                     covt = covt, ...)
         y.resid <- obje$fitted - y
-    } 
-    else if (perm.method == "x.residuals") {
+    }  else if (perm.method == "x.residuals") {
     	X = as.matrix(covt)
     	Y = matrix(xfuncs, nrow = length(y))
         XtX.inv = solve(crossprod(X))
@@ -35,11 +33,9 @@ wcr.perm <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "
         	yperm <- y
         	xperm <- xfuncs + x.resid[sample(1:dim(xfuncs)[1]),,]
         }
-        cv.perm[i] <- min(wcr(y = yperm, xfuncs = xperm, min.scale = min.scale, nfeatures = nfeatures, 
-                         ncomp = ncomp, method = method, covt = covt, store.glm = FALSE, ...)$cv)
-    }
+        cv.perm[i] <- min(wnet(y = yperm, xfuncs = xperm, min.scale = min.scale, alpha = alpha, lambda = lambda, 
+                               covt = covt, family = family, ...)$cv.table)                      
+    }    
     pvalue <- (1 + sum(cv.perm < cv)) / (1 + nperm)
-    list(cv = cv, cv.perm = cv.perm, pvalue = pvalue)
+    list(cv = cv, cv.perm = cv.perm, pvalue = pvalue)                   	
 }
-
-

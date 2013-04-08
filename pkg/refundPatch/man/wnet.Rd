@@ -8,20 +8,26 @@ Generalized elastic net in the wavelet domain
 Performs generalized linear scalar-on-function or scalar-on-image regression in the wavelet domain, by  (naive) elastic net.
 }
 \usage{
-wnet(y, xfuncs, min.scale, alpha, lambda = NULL, standardize = FALSE, covt = NULL, 
+wnet(y, xfuncs, covt = NULL, min.scale, nfeatures, alpha, lambda = NULL, standardize = FALSE,
      pen.covt = FALSE, filter.number = 10, wavelet.family = "DaubLeAsymm",
-     family = "gaussian", nfold = 5, compare.fits = FALSE, 
-     store.cv = FALSE, \dots)
+     family = "gaussian", nfold = 5, nsplit = 1, compare.fits = FALSE, 
+     store.cv = FALSE, seed = NULL, \dots)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{y}{
 scalar outcome vector.}
   \item{xfuncs}{
-functional predictors. For 1D predictors, an \eqn{n \times d} matrix of signals, where \eqn{n} is the length of \code{y} and \eqn{d} is the number of sites at which each signal is observed. For 2D predictors, an \eqn{n \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d}. Note that \eqn{d} must be a power of 2.
+functional predictors. For 1D predictors, an \eqn{n \times d} matrix of signals, where \eqn{n} is the length of \code{y} and \eqn{d} is the number of sites at which each signal is observed. For 2D predictors, an \eqn{n \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d}. For 3D predictors, an \eqn{n \times d \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d \times d}. Note that \eqn{d} must be a power of 2.
+}
+  \item{covt}{
+covariates, if any: an \eqn{n}-row matrix, or a vector of length \eqn{n}.
 }
   \item{min.scale}{
 either a scalar, or a vector of candidate values to be compared. Used to control the coarseness level of the wavelet decomposition.  The maximum value of \code{min.scale} is \eqn{log_2(d) - 1}.
+}
+  \item{nfeatures}{
+number(s) of features, i.e. wavelet coefficients, to retain for prediction of \code{y}: either a scalar, or a vector of values to be compared.  	
 }
   \item{alpha}{
 elastic net mixing parameter, used by \code{\link[glmnet]{glmnet}}: either a scalar, or a vector of values to be compared. \code{alpha=1} gives the lasso penalty, while \code{alpha=0} yields the ridge penalty.
@@ -32,19 +38,16 @@ a vector of candidate regularization parameter values. If not supplied, \code{\l
   \item{standardize}{
 logical, passed to \code{\link[glmnet]{glmnet}}: should the predictor variables be standardized?  Defaults to \code{FALSE}, but either way, the coefficients are returned on the original scale.
 }
-  \item{covt}{
-covariates, if any: an \eqn{n}-row matrix, or a vector of length \eqn{n}.
-}
   \item{pen.covt}{
 logical: should the scalar covariates be penalized? If \code{FALSE} (the default), penalization is suppressed by setting the appropriate components of \code{penalty.factor} to 0 in the call to \code{\link[glmnet]{glmnet}}.
 }
 
 
   \item{filter.number}{
-passed to \code{\link[wavethresh]{wd}} or \code{\link[wavethresh]{imwd}}, in the \pkg{wavethresh} package, to select the smoothness of the wavelets; defaults to \code{10}. 
+passed to \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}}, in the \pkg{wavethresh} package, to select the smoothness of the wavelets; defaults to \code{10}. 
 }
   \item{wavelet.family}{
-family of wavelets: passed to \code{\link[wavethresh]{wd}} or \code{\link[wavethresh]{imwd}}. Defaults to \code{"DaubLeAsymm"}.
+family of wavelets: passed to \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}}. Defaults to \code{"DaubLeAsymm"}.
 }
   \item{family}{
 generalized linear model family. Current version supports \code{"gaussian"} (the default) and \code{"binomial"}.
@@ -53,11 +56,17 @@ generalized linear model family. Current version supports \code{"gaussian"} (the
   \item{nfold}{
 the number of validation sets ("folds") into which the data are divided.
 }
+  \item{nsplit}{
+the number of independent splits.
+}
   \item{compare.fits}{
 logical: if \code{TRUE}, the pairwise distances among training-set coefficient function estimates are computed.
 }
   \item{store.cv}{
 logical: should the output include a CV result table?
+}
+  \item{seed}{
+the seed for random data division. If \code{seed = NULL}, a random seed is used.
 }
 \item{\dots}{
 other arguments passed to \code{\link[glmnet]{glmnet}}.
@@ -65,9 +74,12 @@ other arguments passed to \code{\link[glmnet]{glmnet}}.
 }
 \details{
 This function supports only the standard discrete wavelet transform (see argument \code{type} in \code{\link[wavethresh]{wd}}) with periodic boundary handling (see argument \code{bc} in \code{\link[wavethresh]{wd}}).
+
+For 2D predictors, setting \code{min.scale=1} will lead to an error, due to a technical detail regarding \code{\link[wavethresh]{imwd}}. Please contact the author if a workaround is needed.
+
 }
 \value{
-A list with the following components:
+An object of class \code{wnet} with the following components:
 \item{fitted.value, residuals}{the fitted values and residuals.}
 \item{param.coef}{parametric coefficient estimates, for the scalar covariates.}
 \item{fhat}{coefficient function estimate.}
@@ -76,6 +88,7 @@ A list with the following components:
 \item{lambda}{the \code{lambda} chosen by CV (or the specified \code{lambda}, if only a single value was supplied).}
 \item{cv.table}{if \code{store.cv = TRUE}, a table giving the CV criterion for each combination of \code{min.scale}, \code{alpha} and \code{lambda}. Otherwise, just the value for the optimized combination of \code{min.scale}, \code{alpha} and \code{lambda}.}
 \item{stability}{if \code{compare.fits = TRUE}, a table of stability measures for each combination of \code{min.scale}, \code{alpha} and \code{lambda}. The stability measure is derived by computing the sample variance of the training-set coefficient function estimates at each point, then averaging over all points.}
+\item{family}{The generalized linear model family.}
 }
 \references{
 Zhao, Y., Ogden, R. T., and Reiss, P. T. (2012). Wavelet-based LASSO in functional linear regression.  \emph{Journal of Computational and Graphical Statistics}, to appear.
@@ -118,6 +131,21 @@ mm.wnet <- wnet(yy, xfuncs = ii, min.scale = 4, alpha = 1)
 
 image(ftrue)
 contour(mm.wnet$fhat, add=TRUE)
+
+### 3D functional predictor example ###
+
+n = 200; d = 16
+
+# Create true coefficient function
+ftrue = array(0,dim = rep(d, 3))
+ftrue[10:16,12:15, 4:8] = 1
+
+# Generate random functional predictors, and scalar responses
+ii = array(rnorm(n*d^3), dim=c(n,rep(d,3)))
+iimat = ii; dim(iimat) = c(n,d^3)
+yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
+
+mmm.wnet <- wnet(yy, xfuncs = ii, min.scale = 2, alpha = 1)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

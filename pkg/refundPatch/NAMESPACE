@@ -3,6 +3,7 @@ exportPattern(".")
 
 # Import all packages listed as Imports or Depends
 import(
+  boot,
   mgcv,
   fda,
   MASS,
@@ -11,6 +12,5 @@ import(
   nlme,
   wavethresh,
   Matrix,
-  gamm4, 
-  boot
+  gamm4
 )

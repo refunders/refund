@@ -1,21 +1,20 @@
-\name{wcr.perm}
-\alias{wcr.perm}
+\name{wnet.perm}
+\alias{wnet.perm}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Permutation test for principal component regression and partial least squares in the wavelet domain
+Permutation test for (naive) elastic net in the wavelet domain
 }
 \description{
-This function assesses statistical significance of a \code{\link{wcr}} fit by referring the cross-validation criterion to a permutation distribution.
+This function assesses statistical significance of a \code{\link{wnet}} fit by referring the cross-validation criterion to a permutation distribution.
 }
 \usage{
-wcr.perm(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
-         covt = NULL, nsplit = 10, nperm = 20, 
+wnet.perm(y, xfuncs, min.scale, alpha, lambda, covt = NULL, nsplit = 10, nperm = 20, 
          perm.method = c('responses', 'y.residuals', 'x.residuals'), 
          family = "gaussian", ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y,xfuncs,min.scale,nfeatures,ncomp,method,covt,family}{arguments passed to \code{\link{wcr}}.}
+  \item{y,xfuncs,min.scale, alpha,lambda,covt,family}{arguments passed to \code{\link{wnet}}.}
   \item{nsplit}{
 number of splits to estimate the true cv.
 }
@@ -30,10 +29,10 @@ one of
 \item {\code{"x.residuals"}: permute the residuals upon regressing \code{xfuncs ~ covt}.}
 }
 See Details.}
-  \item{\dots}{other parameters passed to \code{\link{wcr}}.}
+  \item{\dots}{other parameters passed to \code{\link{wnet}}.}
 }
 \details{
-	Permutation tests of this type are discussed, in a classification setting, by Ojala and Garriga (2010). Permuting the responses is appropriate when regressing on functions/images only, with no scalar covariates. For linear regression with covariates, it is preferable to first regress on the covariates, and then permute the residuals. For logistic regression this is not feasible; but, following Potter (2005), one can instead permute the residuals from a regression of the functions/images on the covariates.
+see \code{\link{wcr.perm}}
 }
 \value{
   \item{cv}{ the CV criterion for the real data.
@@ -56,7 +55,7 @@ Lan Huo \email{lan.huo@nyumc.org}
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{wcr}}
+\code{\link{wnet}}, \code{\link{wcr.perm}}
 }
 \examples{
 \dontrun{
@@ -71,8 +70,7 @@ ii = array(rnorm(n*d^2), dim=c(n,d,d))
 iimat = ii; dim(iimat) = c(n,d^2)
 yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
 
-cv.obj <- wcr.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 20, ncomp = 6, cv1 = TRUE,
-                   method = "pls", nperm = 10)
+cv.obj <- wnet.perm(yy, xfuncs = ii, min.scale = 4, alpha = 1, nperm = 10)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

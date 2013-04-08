@@ -1,9 +1,4 @@
-amc <-
-function(y, Xmat, S, gam.method='REML', C=NULL, lambda=NULL,
-        #F allow propagating other args (like start values) to the fitter
-        ...
-        #/F
-        ) {
+amc <- function(y, Xmat, S, gam.method='REML', C=NULL, lambda=NULL, ...) {
 	n.p = length(S)
 	if (!is.null(C)) {
 		# The following is based on Wood (2006), p. 186
@@ -20,8 +15,6 @@ function(y, Xmat, S, gam.method='REML', C=NULL, lambda=NULL,
 	}
 
     fitter = if (length(y) > 10000) bam else gam
-	#F if (is.null(lambda)) fitobj = fitter(y ~ Xmat.-1, method=gam.method, paraPen=list(Xmat.=S.))
-	#F else fitobj = fitter(y ~ Xmat.-1, paraPen=list(Xmat.=S.), sp=lambda)
     if (is.null(lambda)) fitobj = fitter(y ~ Xmat.-1, method=gam.method, paraPen=list(Xmat.=S.), ...)
     else fitobj = fitter(y ~ Xmat.-1, paraPen=list(Xmat.=S.), sp=lambda, ...)
     
