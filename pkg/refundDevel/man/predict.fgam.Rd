@@ -10,7 +10,8 @@ Takes a fitted \code{\link{fgam}}-object produced by \code{fgam} and produces pr
 }
 \usage{
 ## S3 method for class 'fgam'
-\method{predict}{fgam}(object, newdata, type = "response", se.fit = FALSE, terms = NULL, PredOutOfRange = FALSE, ...)
+\method{predict}{fgam}(object, newdata, type = "response", se.fit = FALSE, terms = NULL, 
+PredOutOfRange = FALSE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

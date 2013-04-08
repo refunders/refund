@@ -56,7 +56,7 @@
   20 cubic B-splines bases with first order difference
   penalty.}
 
-  \item{tensortype}{which typ of tenor product splines to
+  \item{tensortype}{which type of tenor product splines to
   use. One of "\code{\link[mgcv]{te}}" or
   "\code{\link[mgcv]{t2}}", defaults to \code{te}}
 

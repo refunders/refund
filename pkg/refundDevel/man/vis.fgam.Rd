@@ -9,7 +9,8 @@ Visualization of FGAM objects
 Produces perspective or contour plot views of an estimated surface corresponding to \code{af} terms fit using \code{\link{fgam}} or plots "slices"" of the estimated surface or estimated second derivative surface with one of its arguments fixed and corresponding twice-standard error "Bayesian" confidence bands constructed using the method in Marra and Wood (2012).  See the details.
 }
 \usage{
-vis.fgam(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50, plot.type = "persp", ticktype = "detailed", ...)
+vis.fgam(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50, 
+plot.type = "persp", ticktype = "detailed", ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

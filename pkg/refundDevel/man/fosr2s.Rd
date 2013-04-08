@@ -6,7 +6,8 @@ Two-step function-on-scalar regression}
 \description{
 This function performs linear regression with functional responses and scalar predictors by (1) fitting a separate linear model at each point along the function, and then (2) smoothing the resulting coefficients to obtain coefficient functions.}
 \usage{
-fosr2s(Y, X, argvals = seq(0, 1, , ncol(Y)), nbasis = 15, norder = 4, pen.order = norder - 2, basistype = "bspline")
+fosr2s(Y, X, argvals = seq(0, 1, , ncol(Y)), nbasis = 15, norder = 4, 
+pen.order = norder - 2, basistype = "bspline")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
