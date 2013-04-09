@@ -87,7 +87,10 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale, nfeatures, alpha, lambda = N
 	            temp$callInfo$min.scale <- min.scale[ims]	
 	            for (infeatures in 1:length(nfeatures)){
 	            	coef.red <- subset[,1:nfeatures[infeatures]]
+	            	cat("min.scale:", min.scale[ims], "fold:", ifold, "\tnfeatures:", nfeatures[infeatures], 
+	            		    "\talpha: ")
 	            	for (ialpha in 1 : length(alpha)){
+	            		cat(alpha[ialpha], '\t')
 	            		if(!is.null(lambda)){
 	            			lambda.table[ims, infeatures, ialpha, ] <- lambda
 	            		} else if(sum(lambda.table[ims, infeatures, ialpha, ] !=0)==0){
@@ -98,8 +101,6 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale, nfeatures, alpha, lambda = N
 	            			templam <- range(obje$lambda)
 	            			lambda.table[ims,infeatures,ialpha,] <- seq(templam[1],templam[2],length=100)
 	            		}
-	            		cat("min.scale:", min.scale[ims], "\tnfeatures:", nfeatures[infeatures], 
-	            		    "\talpha:", alpha[ialpha], "fold:", ifold, "\n")
 	            		obje <- glmnet(x = as.matrix(cbind(covt, coef.red)[idxTrain,]), y = y[idxTrain], 
 	            		               lambda = lambda.table[ims, infeatures, ialpha,], family = family,
 	            		               alpha = alpha[ialpha], standardize = standardize, 
@@ -126,11 +127,12 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale, nfeatures, alpha, lambda = N
 	                                                              apply(as.matrix(log(yhat)[y[idxTest] == 1,]), 2, sum) - 
 	                                                              apply(as.matrix(log((1-yhat))[y[idxTest] == 0, ]), 2, sum)
 	            		}         
-	            	}
-	            }
-    		}
-    	}
-    }
+	            	} # alpha
+	                cat('\n')
+	            } # nfeatures
+    		} # fold
+    	} # min.scale
+    } # split
     if (do.cv){
     	idxmin <- which(cv.table == min(cv.table[cv.table != 0], na.rm = TRUE), arr.ind = TRUE)
     	if (nrow(idxmin) > 1) idxmin = idxmin[1,]

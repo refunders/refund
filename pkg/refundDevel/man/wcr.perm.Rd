@@ -15,12 +15,12 @@ wcr.perm(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"),
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y,xfuncs,min.scale,nfeatures,ncomp,method,covt,family}{arguments passed to \code{\link{wcr}}.}
+  \item{y, xfuncs, min.scale, nfeatures, ncomp, method, covt, family}{arguments passed to \code{\link{wcr}}.}
   \item{nsplit}{
 number of splits to estimate the true cv.
 }
   \item{nperm}{
-number of permutations. The default is set to a very low value in view of the .
+number of permutations. The default is meant for toy applications.
 }
   \item{perm.method}{
 one of

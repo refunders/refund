@@ -1,16 +1,16 @@
-wnet.perm <- function(y, xfuncs, min.scale, alpha, lambda = NULL, covt = NULL, nsplit = 10, nperm = 20, 
+wnet.perm <- function(y, xfuncs, min.scale, nfeatures, alpha, lambda = NULL, covt = NULL, nsplit = 10, nperm = 20, 
                       perm.method = c("responses", "y.residuals", "x.residuals"), family = "gaussian",...){
     perm.method = match.arg(perm.method)
     if (is.null(covt) && perm.method == "x.residuals"){
     	stop("'x.residuals' method is unavailable when 'covt' is NULL.")
     }
     cv <- mean(replicate(nsplit, expr = {
-    	            wnet(y = y, xfuncs = xfuncs, min.scale = min.scale, alpha = alpha, lambda = lambda, 
-                    covt = covt, family = family, ...)$cv.table
+    	            wnet(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, alpha = alpha, 
+    	                 lambda = lambda, covt = covt, family = family, ...)$cv.table
                     }))
     if (perm.method == "y.residuals") {
-        obje <- wnet(y = y, xfuncs = xfuncs, min.scale = min.scale, alpha = alpha, lambda = lambda, 
-                     covt = covt, ...)
+        obje <- wnet(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, alpha = alpha, 
+                     lambda = lambda, covt = covt, ...)
         y.resid <- obje$fitted - y
     }  else if (perm.method == "x.residuals") {
     	X = as.matrix(covt)
@@ -33,8 +33,8 @@ wnet.perm <- function(y, xfuncs, min.scale, alpha, lambda = NULL, covt = NULL, n
         	yperm <- y
         	xperm <- xfuncs + x.resid[sample(1:dim(xfuncs)[1]),,]
         }
-        cv.perm[i] <- min(wnet(y = yperm, xfuncs = xperm, min.scale = min.scale, alpha = alpha, lambda = lambda, 
-                               covt = covt, family = family, ...)$cv.table)                      
+        cv.perm[i] <- min(wnet(y = yperm, xfuncs = xperm, min.scale = min.scale, nfeatures = nfeatures, alpha = alpha, 
+                               lambda = lambda, covt = covt, family = family, ...)$cv.table)                      
     }    
     pvalue <- (1 + sum(cv.perm < cv)) / (1 + nperm)
     list(cv = cv, cv.perm = cv.perm, pvalue = pvalue)                   	
