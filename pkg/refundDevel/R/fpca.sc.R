@@ -2,7 +2,7 @@
 # npc=1 seems to give error
 fpca.sc <-
 function(Y, Y.pred=NULL, nbasis = 10, pve = .99, npc = NULL, var = FALSE, simul = FALSE, sim.alpha = .95,
-        useSymm = FALSE, makePD = FALSE){
+        useSymm = FALSE, makePD = FALSE, center=TRUE){
   ## if Y.pred is not provided, use Y
   if (is.null(Y.pred)) Y.pred = Y
   
@@ -11,13 +11,18 @@ function(Y, Y.pred=NULL, nbasis = 10, pve = .99, npc = NULL, var = FALSE, simul 
   I.pred = NROW(Y.pred)       # number of curves for prediction
   d.vec = rep(1:D, each = I)  # grid on which curves are observed
 
-  ## estimate the mean function
-  gam0 = gam(as.vector(Y) ~ s(d.vec, k = nbasis))
-  mu = predict(gam0, newdata = data.frame(d.vec = 1:D))
-
-  ## de-mean bootstrap curves
-  Y.tilde = Y - matrix(mu, I, D, byrow=TRUE)
-
+  if(center){
+      ## estimate the mean function
+      gam0 = gam(as.vector(Y) ~ s(d.vec, k = nbasis))
+      mu = predict(gam0, newdata = data.frame(d.vec = 1:D))
+      
+      ## de-mean bootstrap curves
+      Y.tilde = Y - matrix(mu, I, D, byrow=TRUE)
+  } else {
+      Y.tilde = Y
+      mu = rep(0, D)
+  }
+  
   ## estimate covariance functions using method of moments
   cov.sum = cov.count = cov.mean = matrix(0, D, D)
   for (i in 1:I){
