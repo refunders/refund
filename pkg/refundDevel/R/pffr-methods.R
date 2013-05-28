@@ -46,6 +46,15 @@ predict.pffr <- function(object,
     call <- match.call()
     nyindex <- object$pffr$nyindex
 
+    ## warn if any entries in ... are not arguments for predict.gam 
+    dots <- list(...)
+    if(length(dots)){
+        validDots <- names(formals(predict.gam))
+        notUsed <- names(dots)[!(names(dots) %in% validDots)]
+        if(length(notUsed))
+            warning("Arguments <", paste(notUsed, collapse=", "), "> supplied but not used." )
+    }
+    
     
     if(!missing(newdata)){
         nobs <- nrow(as.matrix(newdata[[1]]))
@@ -71,14 +80,18 @@ predict.pffr <- function(object,
             # which covariates occur in which terms?
             varmap <- sapply(names(object$pffr$labelmap), function(x) all.vars(formula(paste("~", x))))
             
-            for(cov in names(newdata)){
-                #find the term(s) its associated with
+            # don't include response
+            covnames <- names(newdata)[names(newdata)!=deparse(object$formula[[2]])]
+            for(cov in covnames){
+                #find the term(s) <cov> is associated with
                 trms <- which(sapply(varmap, function(x) any(grep(paste("^",cov,"$",sep=""), x)))) 
-                if(!is.null(terms)) trms <- trms[names(trms) %in% terms]
+                if(!is.null(dots$terms)) trms <- trms[names(trms) %in% dots$terms]
                 if(length(trms)!=0){
                     for(trm in trms){
                         is.ff <- trm %in% object$pffr$where$where.ff
                         is.sff <- trm %in% object$pffr$where$where.sff
+                        is.ffpc <- trm %in% object$pffr$where$where.ffpc
+                        is.pcre <- trm %in% object$pffr$where$where.pcre
                         #if ff(X) or sff(X), generate (X.mat), X.tmat, X.smat, L.X ...
                         if(is.ff){
                             ff <- object$pffr$ff[[grep(paste(cov,"[,\\)]",sep=""), names(object$pffr$ff))]]
@@ -104,7 +117,7 @@ predict.pffr <- function(object,
                                 gamdata[[paste(cov, ".tmat", sep="")]] <- 
                                         matrix(rep(ff$yind, times=nobs), ncol=length(ff$xind), nrow=nobs*nyindex)
                                 gamdata[[paste("L.", cov, sep="")]] <-  
-                                        (predL*newdata[[cov]])[rep(1:nobs, e=nyindex),]
+                                        (predL*newdata[[cov]])[rep(1:nobs, each=nyindex),]
                             }
                         }
                         if(is.sff){
@@ -127,9 +140,27 @@ predict.pffr <- function(object,
                                 gamdata[[paste("L.", cov, sep="")]] <-  predL[rep(1:nobs, e=nyindex),]
                             }
                         }
+                        if(is.pcre){
+                            pcre <- object$pffr$pcre[[grep(cov, names(object$pffr$pcre))]]
+                            gamdata[[paste(cov, ".vec", sep="")]] <- rep(pcre$id, each=nyindex)
+                            for(nm in colnames(pcre$efunctions)){
+                                gamdata[[nm]] <- pcre$efunctions[rep(1:nyindex, times=nobs), nm]
+                            }
+                        }
+                        if(is.ffpc){
+                            ffpc <- object$pffr$ffpc[[grep(paste(cov,"[,\\)]",sep=""), names(object$pffr$ffpc))]]
+                            
+                            # X' = Phi xi' + error --> get loadings for new data: 
+                            xiMat <- t(qr.coef(qr(ffpc$PCMat), t(newdata[[cov]])))
+                            colnames(xiMat) <- paste(make.names(cov),".PC", 1:ncol(xiMat), sep="")
+                            xiMat <- xiMat[rep(1:nobs, each=nyindex), ]
+                            for(nm in colnames(xiMat)){
+                                gamdata[[nm]] <- xiMat[,nm] 
+                            }
+                        }
                         if(!(is.ff || is.sff)) {
                             #just repeat each entry nyindex-times to correspond to vec(<Response>)  
-                            gamdata[[cov]] <- drop(newdata[[cov]])[rep(1:nobs, e=nyindex)]
+                            gamdata[[cov]] <- drop(newdata[[cov]])[rep(1:nobs, each=nyindex)]
                         }
                         
                     } 
@@ -138,9 +169,6 @@ predict.pffr <- function(object,
             gamdata <- list2df(gamdata)
             call[["newdata"]] <- gamdata
         } 
-        
-        
-        
     } else {
         call$newdata <- eval(call$newdata)
         nobs <- object$pffr$nobs
@@ -165,13 +193,17 @@ predict.pffr <- function(object,
     if(reformat){
         
         if(missing(newdata) && !is.null(object$pffr$missingind)){
-            #add NAs at the appropriate locations so that fits are nobs x nyindex:
+            #pad with NAs at the appropriate locations so that fits are nobs x nyindex:
             insertNA <- function(x){
-                tmp <- rep(NA, nobs*object$pffr$nyindex)
-                tmp[-object$pffr$missingind] <- x
-                return(tmp)     
+                if(length(x) != nobs*object$pffr$nyindex){
+                    tmp <- rep(NA, nobs*object$pffr$nyindex)
+                    tmp[-object$pffr$missingind] <- x
+                    return(tmp)
+                } else {
+                    return(x)
+                }
             }
-        } else insertNA <- function(x) x
+        } else insertNA <- function(x) return(x)
         
         
         if(se.fit){
@@ -232,7 +264,14 @@ residuals.pffr <- function (object, reformat=TRUE, ...)
     if (!inherits(object, "pffr")) 
         stop("`object' is not of class \"pffr\"")
     ret <- mgcv:::residuals.gam(object, ...)
-    if(reformat) ret <- matrix(ret, nrow=object$pffr$nobs, ncol=object$pffr$nyindex, byrow=TRUE)
+    if(reformat){
+        if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){
+            tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)
+            tmp[-object$pffr$missingind] <- ret
+            ret <- tmp
+        }
+        ret <- matrix(ret, nrow=object$pffr$nobs, ncol=object$pffr$nyindex, byrow=TRUE)  
+    } 
     return(ret)
 }
 
@@ -255,7 +294,7 @@ fitted.pffr <- function (object, reformat=TRUE, ...)
         stop("`object' is not of class \"pffr\"")
     ret <- object$fitted.values
     if(reformat){
-        if(!is.null(object$pffr$missingind)){
+        if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){
             tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)
             tmp[-object$pffr$missingind] <- ret
             ret <- tmp
