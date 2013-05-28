@@ -4,7 +4,6 @@
 \usage{
   ffpc(X, yind, xind = seq(0, 1, length = ncol(X)),
     splinepars = list(bs = "ps", m = c(2, 1), k = 8),
-    center = TRUE,
     decomppars = list(pve = 0.99, useSymm = TRUE),
     npc.max = 15)
 }
@@ -25,10 +24,7 @@
   first difference penalties and 8 basis functions for each
   \eqn{\tilde \beta_k(t)}.}
 
-  \item{center}{center \code{X} so that the mean of
-  \eqn{X(s)} is zero for each index value \eqn{s}?}
-
-  \item{decomppars}{paramters for the FPCA performed with
+  \item{decomppars}{parameters for the FPCA performed with
   \code{\link{fpca.sc}}.}
 
   \item{npc.max}{maximal number \eqn{K} of FPCs to use,
@@ -81,7 +77,7 @@ t <- seq(0,1, l=T)
 df <- 10
 B <- bs(s, df=df)
 X <- t(B \%*\% matrix(rt(n*df, df=3), nrow=df))
-beta.st <- outer(s,t, test2)
+beta.st <- outer(s,t, function(s,t) cos(2*pi*s*t))
 
 y <- (1/S*X)\%*\%beta.st
 

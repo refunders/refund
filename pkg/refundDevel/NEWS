@@ -13,3 +13,11 @@ rev 32/33
   o added explicit data argument to pffr	
   o incremented version to 0.2-0
   o fixed documentation
+  
+rev 79-84
+  o added smoothSVD: regularized FPCA by successively smoothing right singular vectors 
+  o fpca.sc: added <center> argument
+  o ffpc and pcre-terms now fully supported in pffr-methods, ffpc has its own plot-function
+  o adapted missing data handling in pffr-methods to recent changes in mgcv
+  o incremented version to 0.2-3
+ 

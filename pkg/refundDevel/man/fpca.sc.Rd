@@ -8,7 +8,7 @@ Decomposes functional observations using functional principal components analysi
 }
 \usage{
 fpca.sc(Y, Y.pred=NULL, nbasis = 10, pve = .99, npc = NULL, var = FALSE, 
-        simul = FALSE, sim.alpha = .95, useSymm = FALSE, makePD = FALSE)
+        simul = FALSE, sim.alpha = .95, useSymm = FALSE, makePD = FALSE, center=TRUE)
 }
 \arguments{
   \item{Y }{matrix of observed functions for which estimates and covariance matrices are desired.}
@@ -22,6 +22,8 @@ fpca.sc(Y, Y.pred=NULL, nbasis = 10, pve = .99, npc = NULL, var = FALSE,
   \item{useSymm }{\code{TRUE} or \code{FALSE}, indicating whether to do the smoothing based on the upper triagonal of the empiricial covariance or not.
       Can save computation time for large data and allows for covariance surfaces that are very peaked on the diagonal.}
   \item{makePD }{\code{TRUE} or \code{FALSE}, indicating whether to enforce positive definiteness of the estimated surface.}
+  \item{center }{\code{TRUE} or \code{FALSE}, indicating whether to substract the (smoothed) mean function from \code{Y} or not.}
+
 }
 \details{
   This function computes a FPC decomposition for a collection of observed curves. The curves may be sparsely observed or measured with error. After the decomposition is estimated, a mixed model framework is used to estimate curve-specific scores and variances.
@@ -31,7 +33,7 @@ FPCA via kernel smoothing of the covariance function, with the diagonal treated 
 \value{
   \item{Yhat }{\eqn{n \times d} matrix whose rows are the estimates (truncated FPC expansions) of the curves in Y.}
   \item{scores }{\eqn{n \times npc} matrix of estimated principal component scores.}
-  \item{mu }{estimated mean function.}
+  \item{mu }{estimated mean function (or a vector of zeroes if \code{center=FALSE}).}
   \item{efunctions }{\eqn{d \times npc} matrix of estimated eigenfunctions of the functional covariance operator, i.e., the FPC basis functions.}
   \item{evalues }{estimated eigenvalues of the covariance operator, i.e., variances of FPC scores.}
   \item{npc }{number of FPCs: either the supplied \code{npc}, or the minimum number of basis functions needed to explain proportion \code{pve} of the variance in the observed curves.}

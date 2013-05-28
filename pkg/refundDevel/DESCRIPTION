@@ -1,7 +1,7 @@
 Package: refundDevel
 Type: Package
 Title: developer version of refund: Regression with Functional Data
-Version: 0.2-2
+Version: 0.2-3
 Date: 2012-11-06
 Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     "ccrainic@jhsph.edu"), person("Philip Reiss", role = "aut", email =
@@ -25,7 +25,10 @@ Depends:
     Matrix,
     gamm4,
     boot
-Description: developer version of refund. Methods for regression for functional data, including function-on-scalar, scalar-on-function, and function-on-function regression. Some of the functions are applicable to image data.
+Description: developer version of refund. Methods for regression for functional
+    data, including function-on-scalar, scalar-on-function, and
+    function-on-function regression. Some of the functions are applicable to
+    image data.
 License: GPL (>= 2)
 LazyLoad: yes
 Repository: CRAN
@@ -54,6 +57,7 @@ Collate:
     'osplinepen2d.R'
     'peer.R'
     'pffr-ff.R'
+    'pffr-ffpc.R'
     'pffr-methods.R'
     'pffr-pcre.R'
     'pffr-robust.R'
@@ -72,9 +76,9 @@ Collate:
     'reconstr.R'
     'reconstr2d.R'
     'reconstr3d.R'
+    'smoothSVD.R'
     'vis.fgam.R'
     'wcr.R'
     'wcr.perm.R'
     'wnet.R'
     'wnet.perm.R'
-    'pffr-ffpc.R'
