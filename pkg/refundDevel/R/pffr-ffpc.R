@@ -23,8 +23,7 @@
 #' @param xind matrix (or vector) of indices of evaluations of \eqn{X_i(t)}, defaults to \code{seq(0, 1, length=ncol(X))}.
 #' @param splinepars optional arguments supplied to the \code{basistype}-term. Defaults to a cubic 
 #' 	B-spline with first difference penalties and 8 basis functions for each \eqn{\tilde \beta_k(t)}.
-#' @param center center \code{X} so that the mean of \eqn{X(s)} is zero for each index value \eqn{s}?
-#' @param decomppars  paramters for the FPCA performed with \code{\link{fpca.sc}}.
+#' @param decomppars  parameters for the FPCA performed with \code{\link{fpca.sc}}.
 #' @param npc.max maximal number \eqn{K} of FPCs to use, regardless of \code{decomppars}; defaults to 15
 #' @return a list containing the necessary information to construct a term to be included in a \code{mgcv::gam}-formula.
 #'  
@@ -39,7 +38,7 @@
 #' df <- 10
 #' B <- bs(s, df=df)
 #' X <- t(B %*% matrix(rt(n*df, df=3), nrow=df))
-#' beta.st <- outer(s,t, test2)
+#' beta.st <- outer(s,t, function(s,t) cos(2*pi*s*t))
 #' 
 #' y <- (1/S*X)%*%beta.st 
 #' 
@@ -68,11 +67,10 @@ ffpc <- function(X,
         yind,
         xind=seq(0, 1, length=ncol(X)),
         splinepars=list(bs="ps", m=c(2, 1), k=8),
-        center=TRUE,
         decomppars=list(pve = .99, useSymm = TRUE),
         npc.max=15
 ){
-# check & format index for Y 
+    # check & format index for Y 
     if(!missing(yind))
         if(is.null(dim(yind))){
             yind <- t(t(yind))
@@ -83,14 +81,118 @@ ffpc <- function(X,
     # check & format index for X
     stopifnot(length(xind) == ncol(X))
     stopifnot(all.equal(order(xind), 1:nxgrid))
-    if(center) decomppars$Y <- t(t(X) - colMeans(X)) 
-    message("")
+    
+    decomppars$Y <- X
     klX <- do.call(fpca.sc, decomppars)
-    xiMat <- klX$scores[,1:min(ncol(klX$scores),npc.max)]
+    xiMat <- klX$scores[,1:min(ncol(klX$scores),npc.max), drop=FALSE]
    
     #expand for stacked Y-observations and assign unique names based on the given args
-    colnames(xiMat) <- paste(deparse(substitute(X)),".PC", 1:ncol(xiMat), sep="")
-    xiMat <- xiMat[rep(1:nrow(xiMat), each=nygrid), ]
-    id <- paste(deparse(substitute(X)),".ffpc", sep="")
-    return(list(data=xiMat, PCMat=klX$efunctions[,1:min(ncol(klX$scores),npc.max)], xind=xind, id=id, splinepars=splinepars))
+    colnames(xiMat) <- paste(make.names(deparse(substitute(X))),".PC", 1:ncol(xiMat), sep="")
+    xiMat <- xiMat[rep(1:nrow(xiMat), each=nygrid), ,drop=FALSE]
+    id <- paste(make.names(deparse(substitute(X))),".ffpc", sep="")
+    return(list(data=xiMat, PCMat=klX$efunctions[,1:min(ncol(klX$scores),npc.max), drop=FALSE],
+                    meanX=klX$mu,
+                    eigenvalues=klX$evalues, 
+                    xind=xind, id=id, splinepars=splinepars))
 }#end ffpc()
+
+#' Plot PC-based function-on-function regression terms
+#' 
+#' Convenience function for graphical summaries of \code{ffpc}-terms from a 
+#' \code{pffr} fit.  
+#' 
+#' @param object a fitted \code{pffr}-model
+#' @param type one of "fpc+surf", "surf" or "fpc": "surf" shows a perspective plot of the coefficient surface implied 
+#'          by the estimated effect functions of the FPC loadings, "fpc" shows three plots: 
+#'          1) a scree-type plot of the estimated eigenvalues of the functional covariate, 2) the estimated eigenfunctions,
+#'          and 3) the estimated coefficient functions associated with the FPC loadings. Defaults to showing both.
+#' @param se.mult display estimated coefficient functions associated with the FPC loadings with plus/minus this number time the estimated standard error.
+#' Defaults to 2. 
+#' @param pages  the number of pages over which to spread the output. Defaults to 1. (Irrelevant if \code{auto.layout=FALSE}.)
+#' @param ticktype see \code{\link[graphics]{persp}}.
+#' @param theta see \code{\link[graphics]{persp}}.
+#' @param phi see \code{\link[graphics]{persp}}.
+#' @param plot Produce plots or only return plotting data? Defaults to \code{TRUE}. 
+#' @param auto.layout should the the function set a suitable layout automatically? Default to TRUE
+#' @return primarily produces plots, invisibly returns a list containing 
+#' the data used for the plots.
+#'  
+#' @author Fabian Scheipl
+ffpcplot <- function(object, type=c("fpc+surf", "surf", "fpc"), pages=1, 
+        se.mult=2,  ticktype="detailed", theta = 30, phi = 30, plot=TRUE, 
+        auto.layout=TRUE){
+   
+    type <- match.arg(type)
+    T <- object$pffr$nyindex
+    nterms <- length(object$pffr$ffpc)
+    ffpcnames <- names(object$pffr$ffpc)
+    
+    
+    betadata <- object$model[1:T,]
+    betadata[, grep(".PC[[:digit:]]+$", colnames(betadata))] <- 1
+    termsffpc <- predict.gam(object, newdata=betadata, type="iterms", se.fit=TRUE)
+    
+    betatilde <- termsffpc$fit[,grep(".PC[[:digit:]]+$", colnames(termsffpc$fit)), drop=FALSE]
+    betatilde.se <- termsffpc$se.fit[,grep(".PC[[:digit:]]+$", colnames(termsffpc$se.fit)), drop=FALSE]
+    betatilde.up <-  betatilde + se.mult*betatilde.se
+    betatilde.lo <-  betatilde - se.mult*betatilde.se
+    betatildemap <- lapply(ffpcnames, function(n) which(colnames(betatilde) %in% object$pffr$labelmap[[n]]))
+    
+    phibeta <- vector(length=nterms, mode="list")
+    names(phibeta) <- sapply(object$pffr$ffpc, "[[", "id")
+    for(i in 1:nterms){
+        ### betatilde_k (t) = \int phi_k(s) beta(s,t) ds \approx 1/S t(Phi_k) %*% beta(s,t)
+        ### --> beta(s,t) = S * Phi %*% [betatilde_1(t) ... betatilde_K(t)]
+        phibeta[[i]] <- length(object$pffr$ffpc[[i]]$xind) * object$pffr$ffpc[[i]]$PCMat %*% t(betatilde[,betatildemap[[i]], drop=FALSE])
+    }   
+    
+    
+   
+    if(plot){
+        if(auto.layout){
+            nplots <- switch(type,
+                    "surf"=nterms,
+                    "fpc"=3*nterms,
+                    "fpc+surf"=4*nterms)
+            
+            #define layout 
+            plotsperpage <- ceiling(nplots/pages)
+            columns <- switch(type,
+                    "surf"=plotsperpage,
+                    "fpc"=3,
+                    "fpc+surf"=4)
+            layout(matrix(1:plotsperpage, ncol=columns, nrow=ceiling(plotsperpage/columns), byrow=TRUE))
+        }
+        
+        for(i in 1:nterms){
+            trm <- object$pffr$ffpc[[i]]
+            if(type=="fpc+surf" | type=="fpc"){#
+                npc <- ncol(trm$PCMat)
+                plot(1:npc, trm$eigenvalues[1:npc], col=1:npc, xlab="FPC", type="b", pch=19,
+                        ylab=paste0("Estimated eigenvalues: ", trm$id), bty="n")
+                matplot(trm$xind, trm$PCMat[,npc:1], type="l", lty=1, col=npc:1, xlab = "", 
+                        ylab = paste0("Estimated FPCs: ", trm$id), bty="n")
+                matplot(object$pffr$yind, betatilde[,rev(betatildemap[[i]])], type="l", lty=1,
+                        ylim = range(betatilde.up[,betatildemap[[i]]], betatilde.lo[,betatildemap[[i]]]), col=npc:1,
+                        xlab = "", ylab = paste0("Effects of FPC loadings"), bty="n")
+                abline(h=0, col="grey", lwd=.5)
+                secol <- length(betatildemap[[i]])
+                for(j in rev(betatildemap[[i]])){
+                    polygon(cbind(x=c(object$pffr$yind, rev(object$pffr$yind))), 
+                            y=c(betatilde.up[,j], rev(betatilde.lo[,j])), 
+                            col=do.call(rgb, as.list(c(col2rgb(secol)/255,.1))), border=NA)
+                    secol <- secol-1
+                }
+            }
+            if(type=="fpc+surf" | type=="surf"){
+              
+                persp(trm$xind, object$pffr$yind,  z=phibeta[[i]],
+                        theta=theta, phi=phi,
+                        ticktype=ticktype, xlab="x.index", ylab="y.index", 
+                        zlim=range(as.vector(phibeta)),
+                        zlab=trm$id)
+            }
+        } #end for(i)
+    } 
+    invisible(list(betatilde=betatilde, betatilde.se=betatilde.se, phibeta=phibeta))
+}#end ffpcplot()
