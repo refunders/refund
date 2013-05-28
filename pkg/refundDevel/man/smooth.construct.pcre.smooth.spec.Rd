@@ -2,7 +2,8 @@
 \alias{smooth.construct.pcre.smooth.spec}
 \title{mgcv-style constructor for PC-basis functional random effects}
 \usage{
-  \method{smooth.construct}{pcre.smooth.spec}(object, data, knots)
+  \method{smooth.construct}{pcre.smooth.spec} (object,
+    data, knots)
 }
 \arguments{
   \item{object}{a smooth specification object, see

@@ -171,6 +171,7 @@ m1 <- pffr(Y ~ ff(X1, yind=t, xind=s), data=data1)
 summary(m1)
 plot(m1, pers=TRUE)
 
+\dontrun{
 ###############################################################################
 # multivariate model:
 # Y(t) = f0(t)  + \\int X1(s)\\beta1(s,t)ds + \\int X2(s)\\beta2(s,t)ds +
@@ -187,6 +188,7 @@ m2 <- pffr(Y ~  ff(X1, xind=s, yind=t) + #linear function-on-function
         data=data2)
 summary(m2)
 plot(m2, pers=TRUE)
+}
 }
 \author{
   Fabian Scheipl, Sonja Greven
