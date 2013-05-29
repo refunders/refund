@@ -1,17 +1,19 @@
 #' Construct a function-on-function regression term
 #' 
 #' Defines a term \eqn{\int^{s_{hi, i}}_{s_{lo, i}} X_i(s)\beta(t,s)ds} 
-#' for inclusion in an \code{mgcv::gam}-formula (or \code{bam} or \code{gamm} or \code{gamm4:::gamm}) as constructed
-#' by \code{\link{pffr}}.
+#' for inclusion in an \code{mgcv::gam}-formula (or \code{bam} or \code{gamm} or \code{gamm4:::gamm4}) as constructed
+#' by \code{\link{pffr}}. \cr
 #' Defaults to a cubic tensor product B-spline with marginal first difference penalties for \eqn{\beta(t,s)} and
 #' numerical integration over the entire range \eqn{[s_{lo, i}, s_{hi, i}] = [\min(s_i), \max(s_i)]} by using Simpson weights. 
 #' Can't deal with any missing \eqn{X(s)}, unequal lengths of \eqn{X_i(s)} not (yet?) possible.
-#' Unequal ranges for different \eqn{X_i(s)} should work. \eqn{X_i(s)} is assumed to be numeric.\cr
+#' Unequal integration ranges for different \eqn{X_i(s)} should work. \eqn{X_i(s)} is assumed to be numeric (duh...).
+#' 
 #' If \code{check.ident==TRUE} (the default), the routine tries to determine the effective rank of
 #' the covariance operator of the \eqn{X_i(s)} and, if necessary, adjusts the number of marginal
 #' basis functions for \code{xind} downwards from the default or supplied value in \code{splinepars} 
-#' to ensure identifiability of \eqn{\beta(s,t)}. Specifically, the number of basis functions is limited
-#' to be at most the number of eigenvalues accounting for at least .99 of the total variance in \eqn{X_i(s)}. 
+#' to reduce identifiability issues for \eqn{\beta(s,t)}. Specifically, the number of basis functions is limited
+#' to be at most the number of eigenvalues accounting for at least .99 of the total variance in \eqn{X_i(s)}.
+#' Using an \code{\link{ffpc}}-term may be preferable if \eqn{X_i(s)} is of low rank.
 #' 
 #' @param X an n by \code{ncol(xind)} matrix of function evaluations \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
 #' @param yind matrix (or vector) of indices of evaluations of \eqn{Y_i(t)}
@@ -23,7 +25,7 @@
 #'  Alternatively and for non-equidistant grids, \code{"trapezoidal"} or \code{"riemann"}. \code{"riemann"} integration is always used 
 #'  if \code{limits} is specified
 #' @param L optional: an n by \code{ncol(xind)} matrix giving the weights for the numerical integration over \eqn{s}. 
-#' @param limits : defaults to NULL for integration across the entire range of \eqn{X(s)}, otherwise 
+#' @param limits defaults to NULL for integration across the entire range of \eqn{X(s)}, otherwise 
 #' specifies the integration limits \eqn{s_{hi, i}, s_{lo, i}}:  
 #' either one of \code{"s<t"} or \code{"s<=t"} for \eqn{(s_{hi, i}, s_{lo, i}) = (0, t)} or 
 #' a function that takes \code{s} as the first and \code{t} as the second argument and returns TRUE for combinations

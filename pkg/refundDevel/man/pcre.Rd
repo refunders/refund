@@ -30,8 +30,8 @@
 \section{Details}{
   Fits functional random effects \eqn{B_i(t)} for a
   grouping variable \code{id} using as a basis the
-  functions \eqn{phi_m(t)} in \code{efunctions} with
-  variances \eqn{lambda_m} in \code{evalues}: \eqn{B_i(t)
+  functions \eqn{\phi_m(t)} in \code{efunctions} with
+  variances \eqn{\lambda_m} in \code{evalues}: \eqn{B_i(t)
   \approx \sum_m^M \phi_m(t)\delta_{im}} with independent
   \eqn{\delta_{im} \sim N(0, \sigma^2\lambda_m)}, where
   \eqn{\sigma^2} is (usually) estimated and controls the
@@ -44,9 +44,7 @@
   \code{efunctions} and \code{evalues} are typically
   eigenfunctions and eigenvalues of an estimated covariance
   operator for the functional process to be modeled, i.e.,
-  they are a functional principal components basis. \cr
-  \code{pcre()} IS AN EXPERIMENTAL FEATURE AND NOT WELL
-  TESTED YET -- USE AT YOUR OWN RISK.
+  they are a functional principal components basis.
 }
 \examples{
 \dontrun{

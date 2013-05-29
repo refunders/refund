@@ -54,35 +54,34 @@
   \code{\link[refund]{pffr}}.
 }
 \description{
-  THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET
-  -- USE AT YOUR OWN RISK.\cr Implements additive
-  regression for functional and scalar covariates and
-  functional responses. This function is a wrapper for
-  \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to
-  fit models of the general form \cr \eqn{Y_i(t) = \mu(t) +
-  \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) +
-  z_{3i} \beta_3(t) + \dots + E_i(t))}\cr with a functional
-  (but not necessarily continuous) response \eqn{Y(t)},
-  (optional) smooth intercept \eqn{\mu(t)}, (multiple)
-  functional covariates \eqn{X(t)} and scalar covariates
-  \eqn{z_1}, \eqn{z_2}, etc. The residual functions
-  \eqn{E_i(t) \sim GP(0, K(t,t'))} are assumed to be i.i.d.
-  realizations of a Gaussian process. An estimate of the
-  covariance operator \eqn{K(t,t')} evaluated on
-  \code{yind} has to be supplied in the
-  \code{hatSigma}-argument. Note that this has to be
-  positive definite. If \code{hatSigma} is close to
-  positive \emph{semi-}definite or badly conditioned,
-  estimated standard errors become unstable (typically much
-  too small). \code{pffrGLS} will try to diagnose this and
-  issue a warning. The danger is especially big if the
-  number of functional observations is smaller than the
-  number of gridpoints (i.e, \code{length(yind)}), since
-  the raw covariance estimate will not have full rank.
+  Implements additive regression for functional and scalar
+  covariates and functional responses. This function is a
+  wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its
+  siblings to fit models of the general form \cr
+  \eqn{Y_i(t) = \mu(t) + \int X_i(s)\beta(s,t)ds +
+  f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots +
+  E_i(t))}\cr with a functional (but not necessarily
+  continuous) response \eqn{Y(t)}, (optional) smooth
+  intercept \eqn{\mu(t)}, (multiple) functional covariates
+  \eqn{X(t)} and scalar covariates \eqn{z_1}, \eqn{z_2},
+  etc. The residual functions \eqn{E_i(t) \sim GP(0,
+  K(t,t'))} are assumed to be i.i.d. realizations of a
+  Gaussian process. An estimate of the covariance operator
+  \eqn{K(t,t')} evaluated on \code{yind} has to be supplied
+  in the \code{hatSigma}-argument.
 }
 \section{Details}{
-  Please see \code{\link[refund]{pffr}} for details on
-  model specification and implementation. \cr THIS IS AN
+  Note that \code{hatSigma} has to be positive definite. If
+  \code{hatSigma} is close to positive \emph{semi-}definite
+  or badly conditioned, estimated standard errors become
+  unstable (typically much too small). \code{pffrGLS} will
+  try to diagnose this and issue a warning. The danger is
+  especially big if the number of functional observations
+  is smaller than the number of gridpoints (i.e,
+  \code{length(yind)}), since the raw covariance estimate
+  will not have full rank.\cr Please see
+  \code{\link[refund]{pffr}} for details on model
+  specification and implementation. \cr THIS IS AN
   EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT
   YOUR OWN RISK.
 }

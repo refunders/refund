@@ -70,7 +70,6 @@
 #'                  mean + t(smooth$u%*%diag(smooth$d)%*%t(smooth$v))), 
 #'          xlab="", ylab="", 
 #'          type="l", lty=1,col=clrs, main="estimated smooth X", bty="n")
-# TODO: make <npc> data-dependent by comparing size of noise and signal s.vals?
 # TODO: use <irlba> for efficient SVD of noise component?
 smoothSVD <- function(X, npc=NA, center=TRUE,
         maxiter=15, tol=1e-4, 
@@ -123,9 +122,10 @@ smoothSVD <- function(X, npc=NA, center=TRUE,
 
         omega.beta <- .56*beta^3 - 0.95*beta^2 + 1.82*beta + 1.43
         y <- svd(X, nu=0, nv=0)$d 
+        rankY <- min(which(cumsum(y[y>0])/sum(y[y>0]) > .995))
         y.med <- median(y)
         
-        npc <- max(1, sum(y > omega.beta*y.med))
+        npc <- min(max(1, sum(y > omega.beta*y.med)),  rankY)
         if(verbose){
             cat("Using ", npc , "smooth components based on Donoho/Gavish (2013).\n")
         }
@@ -196,7 +196,7 @@ smoothSVD <- function(X, npc=NA, center=TRUE,
         
         U[,k] <- u/sqrt(sum(u^2))
         V[,k] <- vnew
-        d[k]  <- sqrt(sum(u^2)) #sqrt(sum(u^2))
+        d[k]  <- sqrt(sum(u^2)) 
         
         if(verbose){
             

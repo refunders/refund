@@ -36,7 +36,7 @@
   Defaults to \code{TRUE}.}
 
   \item{auto.layout}{should the the function set a suitable
-  layout automatically? Default to TRUE}
+  layout automatically? Defaults to TRUE}
 }
 \value{
   primarily produces plots, invisibly returns a list
@@ -45,6 +45,11 @@
 \description{
   Convenience function for graphical summaries of
   \code{ffpc}-terms from a \code{pffr} fit.
+}
+\examples{
+\dontrun{
+ #see ?ffpc
+}
 }
 \author{
   Fabian Scheipl

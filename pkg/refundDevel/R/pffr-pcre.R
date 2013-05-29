@@ -8,6 +8,7 @@
 #' @param object a smooth specification object, see \code{\link[mgcv]{smooth.construct}}
 #' @param data  see \code{\link[mgcv]{smooth.construct}}
 #' @param knots see \code{\link[mgcv]{smooth.construct}}
+#' @method smooth.construct pcre.smooth.spec
 #' @return An object of class \code{"random.effect"}. See \code{\link[mgcv]{smooth.construct}} 
 #'  for the elements that this object will contain. 
 smooth.construct.pcre.smooth.spec <- function(object, data, knots){
@@ -35,7 +36,7 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots){
 #' pffr-constructor for functional principal component-based functional random effects.
 #' 
 #' @section Details: Fits functional random effects \eqn{B_i(t)} for a grouping variable \code{id} 
-#' using as a basis the functions \eqn{phi_m(t)} in \code{efunctions} with variances \eqn{lambda_m} in \code{evalues}:
+#' using as a basis the functions \eqn{\phi_m(t)} in \code{efunctions} with variances \eqn{\lambda_m} in \code{evalues}:
 #' \eqn{B_i(t) \approx \sum_m^M \phi_m(t)\delta_{im}} with  
 #' independent \eqn{\delta_{im} \sim N(0, \sigma^2\lambda_m)}, where \eqn{\sigma^2}
 #' is (usually) estimated and controls the overall contribution of the \eqn{B_i(t)} while the relative importance
@@ -44,8 +45,7 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots){
 #' 
 #' \code{efunctions} and \code{evalues} are typically eigenfunctions and eigenvalues of an estimated 
 #' covariance operator for the functional process to be modeled, i.e., they are
-#' a functional principal components basis. \cr \code{pcre()} IS AN EXPERIMENTAL FEATURE AND
-#' NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
+#' a functional principal components basis. 
 #'  
 #' @param id grouping variable a factor
 #' @param efunctions matrix of eigenfunction evaluations on gridpoints \code{yind} (<length of \code{yind}> x <no. of used eigenfunctions>)
