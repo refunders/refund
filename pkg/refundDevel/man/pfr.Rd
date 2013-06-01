@@ -1,46 +1,104 @@
 \name{pfr}
 \alias{pfr}
 \title{
-Penalized functional regression
+Penalized functional regression and Longitudinal penalized functional regression
 }
 \description{
-Implements penalized functional regression (Goldsmith et al., 2011) for generalized linear functional models with scalar outcomes.
+Implements penalized functional regression (Goldsmith et al., 2011) for
+generalized linear functional models with scalar outcomes, as well as
+longitudinal penalized functional regression (Goldsmith et al., 2012)
+for generalized linear functional models with scalar outcomes and
+subject-specific random intercepts.  The function refund::lpfr is no
+longer supported.
 }
 \usage{
-pfr(Y, covariates = NULL, funcs, kz = 30, kb = 30, 
-  smooth.cov = FALSE, family = "gaussian", method = "REML", ...)
+pfr  <- function (Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,
+                            family = "gaussian", method="REML", ...)
 }
 \arguments{
   \item{Y }{vector of all outcomes over all visits}
+  \item{subj }{vector containing the subject number for each observation}
   \item{covariates }{matrix of scalar covariates}
   \item{funcs }{matrix, or list of matrices, containing observed functional predictors as rows. NA values are allowed.}
   \item{kz }{dimension of principal components basis for the observed functional predictors}
-  \item{kb }{dimension of the truncated power series spline basis for the coefficient function}
-  \item{smooth.cov }{logical; do you wish to smooth the covariance matrix of observed functions? This increases computation time, but results in smooth principal components}
+  \item{kb }{dimension of the B-spline basis for the coefficient
+    function (note: this is a change from versions 0.1-7 and previous) }
+  \item{nbasis }{passed to refund::fpca.sc (note: using fpca.sc is a
+    change from versions 0.1-7 and previous)}
   \item{family }{generalized linear model family}
   \item{method }{method for estimating the smoothing parameters; defaults to REML}
   \item{... }{additional arguments passed to \code{\link[mgcv]{gam}} to fit the regression model.}
 }
 \details{
-  Functional predictors are entered as a matrix or, in the case of multiple functional predictors, as a list of matrices using the \code{funcs} argument. Missing values are allowed in the functional predictors, but it is assumed that they are observed over the same grid. Functional coefficients and confidence bounds are returned as lists in the same order as provided in the \code{funcs} argument, as are principal component and spline bases.
+  Functional predictors are entered as a matrix or, in the case of
+  multiple functional predictors, as a list of matrices using the
+  \code{funcs} argument. Missing values are allowed in the functional
+  predictors, but it is assumed that they are observed over the same
+  grid. Functional coefficients and confidence bounds are returned as
+  lists in the same order as provided in the \code{funcs} argument, as
+  are principal component and spline bases.  Increasing values of
+  \code{nbasis} will increase computational time and the values of
+  \code{nbasis}, \code{kz}, and \code{kb} in relation to each other may
+  need 
+  to be adjusted in
+  application-specific ways.
 }
 \value{
   \item{fit }{result of the call to \code{gam}}
   \item{fitted.vals }{predicted outcomes}
+  \item{fitted.vals.level.0 }{predicted outcomes at population level}
+  \item{fitted.vals.level.1 }{predicted outcomes at subject-specific
+    level (if applicable)}
   \item{betaHat }{list of estimated coefficient functions}
   \item{beta.covariates }{parameter estimates for scalar covariates}
-  \item{X }{design matrix used in the model fit}
-  \item{phi }{list of truncated power series spline bases for the coefficient functions}
-  \item{psi }{list of principal components basis for the functional predictors}
   \item{varBetaHat }{list containing covariance matrices for the estimated coefficient functions}
   \item{Bounds }{list of bounds of a 95\% confidence interval for the estimated coefficient functions}
+  \item{X }{design matrix used in the model fit}
+  \item{D }{penalty matrix used in the model fit}
+  \item{phi }{list of B-spline bases for the coefficient functions}
+  \item{psi }{list of principal components basis for the functional predictors}
+
+  \item{C }{stacked row-specific prinicipal component scores}
+  \item{J }{transpose of psi matrix multiplied by phi}
+  \item{CJ }{C matrix multiplied J}
+  \item{Z1 }{design matrix of random intercepts}
+
+  \item{subj }{subject identifiers as specified by user}
+  \item{fixed.mat }{the fixed effects design matrix of the pfr as a
+  mixed model}
+  \item{rand.mat }{the fixed effects design matrix of the pfr as a mixed model}
+  \item{N_subj }{the number of unique subjects, if subj is specified}
+
+  \item{p }{number of scalar covariates}
+  \item{N.pred }{number of functional covariates}
+  \item{kz }{as specified}
+  \item{kb }{as specified}
+
+  \item{nbasis }{as specified}
+  \item{totD }{number of penalty matrices created for mgcv::gam}
+  \item{funcs }{as specified}
+  \item{covariates }{as specified}
+
+
+
 }
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 Penalized functional regression. \emph{Journal of Computational and Graphical Statistics}, 20(4), 830-851.
+
+Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012).
+Longitudinal penalized functional regression for cognitive outcomes on
+neuronal tract measurements. \emph{Journal of the Royal Statistical Society: Series C}, 61(3), 453--469.
+
+Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (July 2012).
+Testing For Functional Effects 
+\emph{Johns Hopkins University, Dept. of Biostatistics Working Papers. Working Paper 247.}
+http://biostats.bepress.com/jhubiostat/paper247
 }
+\seealso{\code{\link{test.pfr}}, \code{\link{predict.pfr}}}
 \author{
-Jeff Goldsmith <jeff.goldsmith@columbia.edu>
+  Jeff Goldsmith <jeff.goldsmith@columbia.edu>
+  Bruce Swihart <bswihart@jhsph.edu>
 }
 \examples{
 ##################################################################
@@ -48,47 +106,95 @@ Jeff Goldsmith <jeff.goldsmith@columbia.edu>
 ##################################################################
 
 ##################################################################
-# use baseline data to regress continuous outcomes on functional 
-# predictors (continuous outcomes only recorded for case == 1)
+# For more about this example, see Swihart et al. 2013
 ##################################################################
 
-data(DTI)
+## load and reassign the data;
+data(DTI2)
+Y  <- pasat ## PASAT outcome
+id <- id    ## subject id
+W1 <- cca   ## Corpus Callosum
+W2 <- rcst  ## Right corticospinal
+V  <- visit ## visit
 
-# subset data as needed for this example
-cca = DTI$cca[which(DTI$visit ==1 & DTI$case == 1),]
-rcst = DTI$rcst[which(DTI$visit ==1 & DTI$case == 1),]
-DTI = DTI[which(DTI$visit ==1 & DTI$case == 1),]
+## prep scalar covariate
+visit.1.rest <- matrix(as.numeric(V > 1), ncol=1)
+covar.in <- visit.1.rest 
 
 
-# note there is missingness in the functional predictors
-apply(is.na(cca), 2, mean)
-apply(is.na(rcst), 2, mean)
+## note there is missingness in the functional predictors
+apply(is.na(W1), 2, mean)
+apply(is.na(W2), 2, mean)
 
+## fit two univariate models, then one model with both functional predictors
+pfr.obj.t1 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
+pfr.obj.t2 <- pfr(Y = Y, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
+pfr.obj.t3 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
 
-# fit two models with single functional predictors and plot the results
-fit.cca = pfr(Y=DTI$pasat, funcs = cca, smooth.cov=FALSE)
-fit.rcst = pfr(Y=DTI$pasat, funcs = rcst, smooth.cov=FALSE)
-
-par(mfrow = c(1,2))
-matplot(cbind(fit.cca$BetaHat[[1]], fit.cca$Bounds[[1]]),
+## plot the coefficient function and bounds
+dev.new()
+par(mfrow=c(2,2))
+ran <- c(-2,.5)
+matplot(cbind(pfr.obj.t1$BetaHat[[1]], pfr.obj.t1$Bounds[[1]]),
   type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
-  main = "CCA")
-matplot(cbind(fit.rcst$BetaHat[[1]], fit.rcst$Bounds[[1]]),
+  main = "CCA", xlab="Location", ylim=ran)
+abline(h=0, col="blue")
+matplot(cbind(pfr.obj.t2$BetaHat[[1]], pfr.obj.t2$Bounds[[1]]),
   type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
-  main = "RCST")
+  main = "RCST", xlab="Location", ylim=ran)
+abline(h=0, col="blue")
+matplot(cbind(pfr.obj.t3$BetaHat[[1]], pfr.obj.t3$Bounds[[1]]),
+  type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
+  main = "CCA  - mult.", xlab="Location", ylim=ran)
+abline(h=0, col="blue")
+matplot(cbind(pfr.obj.t3$BetaHat[[2]], pfr.obj.t3$Bounds[[2]]),
+  type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
+  main = "RCST - mult.", xlab="Location", ylim=ran)
+abline(h=0, col="blue")
 
 
-# fit a model with two functional predictors and plot the results
-fit.cca.rcst = pfr(Y=DTI$pasat, funcs = list(cca, rcst), 
-  smooth.cov=FALSE)
+     ##################################################################
+     # use baseline data to regress continuous outcomes on functional 
+     # predictors (continuous outcomes only recorded for case == 1)
+     ##################################################################
+     
+     data(DTI)
+     
+     # subset data as needed for this example
+     cca = DTI$cca[which(DTI$visit ==1 & DTI$case == 1),]
+     rcst = DTI$rcst[which(DTI$visit ==1 & DTI$case == 1),]
+     DTI = DTI[which(DTI$visit ==1 & DTI$case == 1),]
+     
+     
+     # note there is missingness in the functional predictors
+     apply(is.na(cca), 2, mean)
+     apply(is.na(rcst), 2, mean)
+     
+     
+     # fit two models with single functional predictors and plot the results
+     fit.cca = pfr(Y=DTI$pasat, funcs = cca, kz=10, kb=50, nbasis=20)
+     fit.rcst = pfr(Y=DTI$pasat, funcs = rcst, kz=10, kb=50, nbasis=20)
+     
+     par(mfrow = c(1,2))
+     matplot(cbind(fit.cca$BetaHat[[1]], fit.cca$Bounds[[1]]),
+       type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
+       main = "CCA")
+     matplot(cbind(fit.rcst$BetaHat[[1]], fit.rcst$Bounds[[1]]),
+       type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
+       main = "RCST")
+     
+     
+     # fit a model with two functional predictors and plot the results
+     fit.cca.rcst = pfr(Y=DTI$pasat, funcs = list(cca, rcst), kz=10, kb=50, nbasis=20)
 
-par(mfrow = c(1,2))
-matplot(cbind(fit.cca.rcst$BetaHat[[1]], fit.cca.rcst$Bounds[[1]]),
-  type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
-  main = "CCA")
-matplot(cbind(fit.cca.rcst$BetaHat[[2]], fit.cca.rcst$Bounds[[2]]),
-  type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
-  main = "RCST")
+     
+     par(mfrow = c(1,2))
+     matplot(cbind(fit.cca.rcst$BetaHat[[1]], fit.cca.rcst$Bounds[[1]]),
+       type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
+       main = "CCA")
+     matplot(cbind(fit.cca.rcst$BetaHat[[2]], fit.cca.rcst$Bounds[[2]]),
+       type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat", 
+       main = "RCST")
 
 
 ##################################################################
@@ -105,10 +211,8 @@ DTI = DTI[which(DTI$visit == 1),]
 
 
 # fit two models with single functional predictors and plot the results
-fit.cca = pfr(Y=DTI$case, funcs = cca, smooth.cov=FALSE, 
-  family = "binomial")
-fit.rcst = pfr(Y=DTI$case, funcs = rcst, smooth.cov=FALSE, 
-  family = "binomial")
+fit.cca = pfr(Y=DTI$case, funcs = cca, family = "binomial")
+fit.rcst = pfr(Y=DTI$case, funcs = rcst, family = "binomial")
 
 par(mfrow = c(1,2))
 matplot(cbind(fit.cca$BetaHat[[1]], fit.cca$Bounds[[1]]),

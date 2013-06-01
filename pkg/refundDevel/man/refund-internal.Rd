@@ -14,6 +14,10 @@
 \alias{safeDeparse}
 \alias{getShrtlbls}
 \alias{list2df}
+\alias{preprocess.pfr}
+\alias{postprocess.pfr}
+\alias{parse.predict.pfr}
+
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Internal functions for the refund package
