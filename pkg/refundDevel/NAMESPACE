@@ -12,5 +12,9 @@ import(
   nlme,
   wavethresh,
   Matrix,
-  gamm4
+  gamm4,
+  matrixStats,
+  lme4,
+  splines,
+  RLRsim
 )
