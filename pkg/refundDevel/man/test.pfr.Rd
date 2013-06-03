@@ -19,7 +19,7 @@ test.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)}
     "inclusion"  will test functional form of the coefficient
     function of the last function listed in funcs in pfr.obj against the
     null of 0: that is, whether the functional predictor should be
-    included in the model.
+    included in the model.}
 }
 \details{
 A Penalized Functional Regression of family="gaussian" can be
@@ -43,8 +43,8 @@ representation.
 Therefore, the inclusion test is best for pfr objects with
 method="ML"; if the method was something else, a warning is printed
 and the model refit with "ML" and a test is then conducted.
-
 }
+
 \value{
   \item{p.val }{the p-value for the full model (alternative) against the
     null specified by the test}
@@ -57,6 +57,7 @@ and the model refit with "ML" and a test is then conducted.
   with mgcv::gam}
 
 }
+
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 Penalized functional regression. \emph{Journal of Computational and Graphical Statistics}, 20(4), 830-851.
@@ -79,6 +80,7 @@ Testing For Functional Effects
 \emph{Johns Hopkins University, Dept. of Biostatistics Working Papers. Working Paper 247.}
 http://biostats.bepress.com/jhubiostat/paper247
 }
+
 \seealso{\code{\link{pfr}}, \code{\link{predict.pfr}}, package \code{RLRsim}}
 \author{
   Jeff Goldsmith <jeff.goldsmith@columbia.edu>
