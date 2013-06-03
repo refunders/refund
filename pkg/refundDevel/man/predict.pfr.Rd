@@ -10,16 +10,16 @@ population and subject-specific scale.
 }
 
 \usage{
-predict.pfr <-
-function(pfr.obj=pfr.obj, new.data=NULL, levels=NULL)
+  \method{predict}{pfr}(object, new.data=NULL, levels=NULL, ...)
 }
 
 \arguments{
   \item{pfr.obj}{an object returned by pfr}
   \item{new.data}{the covariates and funcs to which the fit of pfr.obj
 is applied, yielding fitted values}
-  \item{levels} {currently not supported; both population and subject
+  \item{levels}{currently not supported; both population and subject
 level fitted values are returned}
+  \item{...}{additional arguments}
 }
 
 \details{
