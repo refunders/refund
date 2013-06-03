@@ -9,10 +9,14 @@ predict.pfr <- function(object, new.data=NULL, levels=NULL, ...){
     ## if new.data is not null, then we need to do a few parsing steps and calculate predictions.
     par <- parse.predict.pfr(object, new.data)
     ## prep new.data for matrix multiplication; calculate subject specific scores and loadings for funcs.new
-    pre      <- with(par,preprocess.pfr(subj=subj.new,
-                                        covariates=covariates.new, funcs=funcs.old, kz=kz.old, kb=kb.old,
-                                        nbasis=nbasis.old,
-                                        funcs.new=funcs.new))    
+    ## pre      <- with(par,preprocess.pfr(subj=subj.new,
+    ##                                     covariates=covariates.new, funcs=funcs.old, kz=kz.old, kb=kb.old,
+    ##                                     nbasis=nbasis.old,
+    ##                                     funcs.new=funcs.new))    
+    pre      <- preprocess.pfr(subj=par$subj.new,
+                               covariates=par$covariates.new, funcs=par$funcs.old, kz=par$kz.old, kb=par$kb.old,
+                               nbasis=par$nbasis.old,
+                               funcs.new=par$funcs.new)    
 #    psi            <- data.calc$psi
 #    C              <- data.calc$C
 #    Z1             <- data.calc$Z1
@@ -20,9 +24,11 @@ predict.pfr <- function(object, new.data=NULL, levels=NULL, ...){
     one.sum        <- rep(0, nrow(pre$C[[1]]))
     for(i in 1:length(pre$C)){one.sum <- one.sum + pre$C[[i]]%*%t(pre$psi[[i]])%*%(unlist(par$W[[i]]))}
     ## calc level 0 and level 1
-    fitted.vals.level.0 <- with(par,
-                                if(is.null(covariates.new)){ alpha.old + one.sum
-                                }else alpha.old + covariates.new%*%beta.old + one.sum)
+    ## fitted.vals.level.0 <- with(par,
+    ##                             if(is.null(covariates.new)){ alpha.old + one.sum
+    ##                             }else alpha.old + covariates.new%*%beta.old + one.sum)
+    fitted.vals.level.0 <- if(is.null(par$covariates.new)){ par$alpha.old + one.sum
+                                }else{ par$alpha.old + par$covariates.new%*%par$beta.old + one.sum}
     ## for Z1, need for loop to assign NAs into Z1 and replace NA intercepts with 0
     ## this is so that the fitted.vals.level.1 will be NA if the subj.new was not in subj.old
     if(!is.null(par$subj.new)){

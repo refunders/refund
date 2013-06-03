@@ -100,11 +100,11 @@ http://biostats.bepress.com/jhubiostat/paper247
 
 ## load and reassign the data;
 data(DTI2)
-Y  <- pasat ## PASAT outcome
-id <- id    ## subject id
-W1 <- cca   ## Corpus Callosum
-W2 <- rcst  ## Right corticospinal
-V  <- visit ## visit
+Y  <- DTI2$pasat ## PASAT outcome
+id <- DTI2$id    ## subject id
+W1 <- DTI2$cca   ## Corpus Callosum
+W2 <- DTI2$rcst  ## Right corticospinal
+V  <- DTI2$visit ## visit
 
 ## prep scalar covariate
 visit.1.rest <- matrix(as.numeric(V > 1), ncol=1)
