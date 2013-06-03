@@ -14,7 +14,7 @@ population and subject-specific scale.
 }
 
 \arguments{
-  \item{pfr.obj}{an object returned by pfr}
+  \item{object}{an object returned by pfr}
   \item{new.data}{the covariates and funcs to which the fit of pfr.obj
 is applied, yielding fitted values}
   \item{levels}{currently not supported; both population and subject

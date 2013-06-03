@@ -98,7 +98,7 @@ test.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
     fixed.mat <- fixed.mat[,c(1:(p+1),ncol(fixed.mat))]
     rand.mat  <- rand.mat[,(ncol(rand.mat)-kb+2):ncol(rand.mat)]
     rand.pen  <- D.m[[1]][-1*c(1:(2+p)),-1*c(1:(2+p))]
-    sample = RLRTSim(fixed.mat, rand.mat, q=qr(X), sqrt.Sigma = chol(cov2cor(rand.pen)),
+    sample = RLRTSim(fixed.mat, rand.mat, qrX=qr(X), sqrt.Sigma = chol(cov2cor(rand.pen)),
       seed = NA, nsim = 10000, log.grid.hi = 8, log.grid.lo = -10, gridlength = 200)
     test.stat <- rlrt.obs
     (p.val = mean(rlrt.obs < sample))

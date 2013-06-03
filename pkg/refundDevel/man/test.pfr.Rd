@@ -10,7 +10,8 @@ significantly improves the model (inclusion).  Based on work 0-variance
 component work of Crainiceanu et al. (2004) and Scheipl et al. (2008)
 and Swihart et al. (2012).}
 \usage{
-test.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)}
+test.pfr(pfr.obj=pfr.obj, test=NULL, ...)
+}
 \arguments{
   \item{pfr.obj}{an object returned by pfr}
   \item{test }{"constancy" will test functional form of the coefficient
@@ -20,6 +21,7 @@ test.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)}
     function of the last function listed in funcs in pfr.obj against the
     null of 0: that is, whether the functional predictor should be
     included in the model.}
+  \item{...}{additional arguments}
 }
 \details{
 A Penalized Functional Regression of family="gaussian" can be
