@@ -3,19 +3,25 @@
 \title{
 Prediction for penalized functional regression
 }
+
 \description{
 Given a pfr object and new data, produces fitted values on both a
-population and subject-specific scale.}
+population and subject-specific scale.
+}
+
 \usage{
 predict.pfr <-
-function(pfr.obj=pfr.obj, new.data=NULL, levels=NULL){
+function(pfr.obj=pfr.obj, new.data=NULL, levels=NULL)
+}
+
 \arguments{
   \item{pfr.obj}{an object returned by pfr}
-  \item{new.data }{the covariates and funcs to which the fit of pfr.obj
-is applied, yielding fitted values
-  \item{levels} currently not supported; both population and subject
-level fitted values are returned
+  \item{new.data}{the covariates and funcs to which the fit of pfr.obj
+is applied, yielding fitted values}
+  \item{levels} {currently not supported; both population and subject
+level fitted values are returned}
 }
+
 \details{
 Predicting for new data in a penalized functional regression setting
 takes care.  Utilizing refund::fpca.sc in both refund::pfr and
@@ -24,11 +30,13 @@ using the original fit's basis functions.  In the spirit of
 nlme::predict.lme, we can estimate for population and (if the subjects
 are in both the original and new data) subject-specific levels.
 }
+
 \value{
    \item{fitted.vals.level.0 }{predicted outcomes at population level}
   \item{fitted.vals.level.1 }{predicted outcomes at subject-specific
     level (if applicable)}
 }
+
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 Penalized functional regression. \emph{Journal of Computational and Graphical Statistics}, 20(4), 830-851.
@@ -37,17 +45,18 @@ Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012).
 Longitudinal penalized functional regression for cognitive outcomes on
 neuronal tract measurements. \emph{Journal of the Royal Statistical Society: Series C}, 61(3), 453--469.
 
-
 Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (2012).
 Testing For Functional Effects 
 \emph{Johns Hopkins University, Dept. of Biostatistics Working Papers. Working Paper 247.}
 http://biostats.bepress.com/jhubiostat/paper247
 }
+
 \seealso{\code{\link{pfr}}, \code{\link{test.pfr}}, \code{nlme::predict.lme}}
 \author{
   Jeff Goldsmith <jeff.goldsmith@columbia.edu>
   Bruce Swihart <bswihart@jhsph.edu>
 }
+
 \examples{
 ##################################################################
 #########               DTI Data Example                 #########
@@ -98,8 +107,5 @@ head(cbind(subset.inputs[[1]], subset.inputs[[2]]),12)
 ## compare the first 6 vs. the original full data: 6 on the 45 degree line and 6 off.
 plot(subset.inputs[[1]], same.inputs[[1]][1:12]); abline(a=0,b=1,col="blue")
 summary(subset.inputs[[1]] - same.inputs[[1]][1:12])
-
-
-
 
 }

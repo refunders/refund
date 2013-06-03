@@ -87,3 +87,8 @@ Collate:
     'wcr.perm.R'
     'wnet.R'
     'wnet.perm.R'
+    'parse.predict.pfr.R'
+    'postprocess.pfr.R'
+    'predict.pfr.R'
+    'preprocess.pfr.R'
+    'test.pfr.R'
