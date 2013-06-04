@@ -72,6 +72,10 @@ W1 <- DTI2$cca   ## Corpus Callosum
 W2 <- DTI2$rcst  ## Right corticospinal
 V  <- DTI2$visit ## visit
 
+## prep scalar covariate
+visit.1.rest <- matrix(as.numeric(V > 1), ncol=1)
+covar.in <- visit.1.rest 
+
 ## kz -- put it too high and the computation time bogs down.
 pfr.obj <- pfr(Y = Y, covariates=covar.in, funcs = list(W1), subj = id, kz = 10, kb = 50)
 ## first column is not using random effects; second column is

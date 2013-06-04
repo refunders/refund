@@ -232,7 +232,7 @@ funcs = gasoline$NIR
 wavelengths = as.matrix(2*450:850)
 
 # fit the model using pfr
-fit = pfr(Y=Y, funcs=funcs, kz=50, kb=50)
+fit = pfr(Y=Y, funcs=funcs, kz=15, kb=50, nbasis=15)
 
 # plot the estimated coefficient function
 matplot(wavelengths, cbind(fit$BetaHat[[1]], fit$Bounds[[1]]), 
