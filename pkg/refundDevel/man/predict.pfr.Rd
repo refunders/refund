@@ -58,6 +58,7 @@ http://biostats.bepress.com/jhubiostat/paper247
 }
 
 \examples{
+\dontrun{
 ##################################################################
 #########               DTI Data Example                 #########
 ##################################################################
@@ -107,5 +108,5 @@ head(cbind(subset.inputs[[1]], subset.inputs[[2]]),12)
 ## compare the first 6 vs. the original full data: 6 on the 45 degree line and 6 off.
 plot(subset.inputs[[1]], same.inputs[[1]][1:12]); abline(a=0,b=1,col="blue")
 summary(subset.inputs[[1]] - same.inputs[[1]][1:12])
-
+}
 }

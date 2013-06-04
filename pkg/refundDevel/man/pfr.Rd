@@ -151,7 +151,7 @@ matplot(cbind(pfr.obj.t3$BetaHat[[2]], pfr.obj.t3$Bounds[[2]]),
   main = "RCST - mult.", xlab="Location", ylim=ran)
 abline(h=0, col="blue")
 
-
+\dontrun{
      ##################################################################
      # use baseline data to regress continuous outcomes on functional 
      # predictors (continuous outcomes only recorded for case == 1)
@@ -184,7 +184,7 @@ abline(h=0, col="blue")
      
      
      # fit a model with two functional predictors and plot the results
-     fit.cca.rcst = pfr(Y=DTI$pasat, funcs = list(cca, rcst), kz=10, kb=50, nbasis=20)
+     fit.cca.rcst = pfr(Y=DTI$pasat, funcs = list(cca, rcst), kz=10, kb=30, nbasis=20)
 
      
      par(mfrow = c(1,2))
@@ -238,5 +238,5 @@ fit = pfr(Y=Y, funcs=funcs, kz=50, kb=50)
 matplot(wavelengths, cbind(fit$BetaHat[[1]], fit$Bounds[[1]]), 
   type='l', lwd=c(2,1,1), lty=c(1,2,2), xlab = "Wavelengths", 
   ylab = "Coefficient Function", col=1)
-
+}
 }

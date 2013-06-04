@@ -146,6 +146,8 @@ t1 <- test.pfr(pfr.obj.t1, "constancy")
 t2 <- test.pfr(pfr.obj.t2, "constancy")
 t3 <- test.pfr(pfr.obj.t3, "inclusion")
 
+\dontrun{
+
 t1$test.stat
 t1$p.val
 
@@ -173,7 +175,5 @@ t2$p.val
 
 t3$test.stat
 t3$p.val
-
-
-
+}
 }
