@@ -158,7 +158,7 @@ predict.pffr <- function(object,
                                 gamdata[[nm]] <- xiMat[,nm] 
                             }
                         }
-                        if(!(is.ff || is.sff)) {
+                        if(!(is.ff | is.sff | is.ffpc | is.pcre)) {
                             #just repeat each entry nyindex-times to correspond to vec(<Response>)  
                             gamdata[[cov]] <- drop(newdata[[cov]])[rep(1:nobs, each=nyindex)]
                         }
