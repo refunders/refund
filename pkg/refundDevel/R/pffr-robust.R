@@ -362,7 +362,7 @@ pffrGLS <- function(
                     "\n   -- projected further into pos.-definite cone (new condition number: ", cond.cutoff,").")
             eSigma <-  eigen(as(hatSigmaPD$mat, "matrix"), symmetric=TRUE)
         }
-        with(eSigma, vectors%*%diag(1/sqrt(values))%*%t(vectors))
+        eSigma$vectors%*%diag(1/sqrt(eSigma$values))%*%t(eSigma$vectors)
     } 
     
     hatSigmaname <- deparse(substitute(hatSigmaname))
