@@ -8,9 +8,10 @@ Generalized elastic net in the wavelet domain
 Performs generalized linear scalar-on-function or scalar-on-image regression in the wavelet domain, by  (naive) elastic net.
 }
 \usage{
-wnet(y, xfuncs, covt = NULL, min.scale, nfeatures, alpha, lambda = NULL, standardize = FALSE,
-     pen.covt = FALSE, filter.number = 10, wavelet.family = "DaubLeAsymm",
-     family = "gaussian", nfold = 5, nsplit = 1, compare.fits = FALSE, 
+wnet(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha = 1, 
+     lambda = NULL, standardize = FALSE, pen.covt = FALSE, 
+     filter.number = 10, wavelet.family = "DaubLeAsymm",
+     family = "gaussian", nfold = 5, nsplit = 1, decorrelate = FALSE, 
      store.cv = FALSE, seed = NULL, \dots)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -41,8 +42,6 @@ logical, passed to \code{\link[glmnet]{glmnet}}: should the predictor variables 
   \item{pen.covt}{
 logical: should the scalar covariates be penalized? If \code{FALSE} (the default), penalization is suppressed by setting the appropriate components of \code{penalty.factor} to 0 in the call to \code{\link[glmnet]{glmnet}}.
 }
-
-
   \item{filter.number}{
 passed to \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}}, in the \pkg{wavethresh} package, to select the smoothness of the wavelets; defaults to \code{10}. 
 }
@@ -59,8 +58,8 @@ the number of validation sets ("folds") into which the data are divided.
   \item{nsplit}{
 the number of independent splits.
 }
-  \item{compare.fits}{
-logical: if \code{TRUE}, the pairwise distances among training-set coefficient function estimates are computed.
+  \item{decorrelate}{
+logical: should regress \code{xfuncs} on \code{covt}, and use the residules as new \code{xfuncs}.
 }
   \item{store.cv}{
 logical: should the output include a CV result table?
@@ -80,14 +79,14 @@ For 2D predictors, setting \code{min.scale=1} will lead to an error, due to a te
 }
 \value{
 An object of class \code{wnet} with the following components:
-\item{fitted.value, residuals}{the fitted values and residuals.}
-\item{param.coef}{parametric coefficient estimates, for the scalar covariates.}
+\item{fitted.value}{the fitted values.}
+\item{const}{parametric coefficient estimates, for the scalar covariates.}
 \item{fhat}{coefficient function estimate.}
-\item{Rsq}{coefficient of determination.}
-\item{min.scale,alpha}{the supplied value, or the one chosen by CV, for each of these arguments.}
-\item{lambda}{the \code{lambda} chosen by CV (or the specified \code{lambda}, if only a single value was supplied).}
+\item{lambda.table}{the lambda candidates CV is choosen from.}
+\item{param}{the indexs and values of \code{min.scale}, \code{nfeatures}, \code{alpha} and \code{lambda} specified in the call, if a single value was supplied; otherwise, the values chosen by CV.}
 \item{cv.table}{if \code{store.cv = TRUE}, a table giving the CV criterion for each combination of \code{min.scale}, \code{alpha} and \code{lambda}. Otherwise, just the value for the optimized combination of \code{min.scale}, \code{alpha} and \code{lambda}.}
-\item{stability}{if \code{compare.fits = TRUE}, a table of stability measures for each combination of \code{min.scale}, \code{alpha} and \code{lambda}. The stability measure is derived by computing the sample variance of the training-set coefficient function estimates at each point, then averaging over all points.}
+\item{se.cv}{if \code{store.cv = TRUE}, the standard error of the CV estimate for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}.}
+\item{Rsq}{coefficient of determination.}
 \item{family}{The generalized linear model family.}
 }
 \references{
@@ -101,7 +100,7 @@ Lan Huo \email{lan.huo@nyumc.org} and Yihong Zhao
 \code{\link{wcr}}, \code{\link{fpcr}}
 }
 \examples{
-\dontrun{
+% \dontrun{
 ### 1D functional predictor example ###
 
 data(gasoline)
@@ -146,7 +145,7 @@ iimat = ii; dim(iimat) = c(n,d^3)
 yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
 
 mmm.wnet <- wnet(yy, xfuncs = ii, min.scale = 2, alpha = 1)
-}
+% }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

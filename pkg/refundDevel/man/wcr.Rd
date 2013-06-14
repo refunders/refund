@@ -11,8 +11,8 @@ Performs generalized linear scalar-on-function or scalar-on-image regression in 
 wcr(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
     mean.signal.term = FALSE, covt = NULL, filter.number = 10, 
     wavelet.family = "DaubLeAsymm", family = "gaussian", 
-    cv1 = FALSE, nfold = 5, nsplit = 1, compare.fits = FALSE, 
-    store.cv = FALSE, store.glm = TRUE, seed = NULL)
+    cv1 = FALSE, nfold = 5, nsplit = 1, store.cv = FALSE, 
+    store.glm = TRUE, seed = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -57,9 +57,6 @@ the number of validation sets ("folds") into which the data are divided for a sp
   \item{nsplit}{
 the number of independent splits.
 }
-  \item{compare.fits}{
-logical: if \code{TRUE}, the pairwise differences among training-set coefficient function estimates are computed.
-}
   \item{store.cv}{
 logical: should the output include a CV result table?
 }
@@ -81,11 +78,14 @@ See the Details for \code{\link{fpcr}} for a note regarding decorrelation.
 }
 \value{
 \item{glm}{if \code{store.glm = TRUE}, the fitted \code{\link{glm}} object.}
+\item{fitted}{the fitted values.}
+\item{const}{coefficients for covariates \emph{without} decorrelation. The model is fitted after decorrelating the functional predictors from any scalar covariates; but for CV, one needs the "undecorrelated" coefficients from the training-set models.}
 \item{fhat}{coefficient function estimate.}
-\item{undecor.coef}{coefficients for covariates \emph{without} decorrelation. The model is fitted after decorrelating the functional predictors from any scalar covariates; but for CV, one needs the "undecorrelated" coefficients from the training-set models.}
-\item{min.scale, nfeatures, ncomp}{the values of these arguments specified in the call, if a single value was supplied; otherwise, the values chosen by CV.}
+\item{param}{the indexs and values of \code{min.scale}, \code{nfeatures} and \code{ncomp} specified in the call, if a single value was supplied; otherwise, the values chosen by CV.}
 \item{cv.table}{a table giving the CV criterion for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}, if \code{store.cv = TRUE}; otherwise, the CV criterion only for the optimized combination of these parameters.  Set to \code{NULL} if CV is not performed.}
-\item{stability}{if \code{compare.fits = TRUE}, a table of stability measures for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}. The stability measure is derived by computing the sample variance of the training-set coefficient function estimates at each point, then averaging over all points.}
+\item{se.cv}{if \code{store.cv = TRUE}, the standard error of the CV estimate for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}.}
+\item{Rsq}{coefficient of determination.}
+\item{family}{generalized linear model family.}
 %% ...
 }
 \references{
@@ -101,7 +101,7 @@ Lan Huo \email{lan.huo@nyumc.org}
 \code{\link{wnet}}, \code{\link{fpcr}}
 }
 \examples{
-\dontrun{
+% \dontrun{
 ### 1D functional predictor example ###
 data(gasoline)
 
@@ -151,7 +151,7 @@ yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
 mmm.wpls <- wcr(yy, xfuncs = ii, min.scale = 2, nfeatures = 20, ncomp = 6,
                 method = "pls")
 
-}
+% }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

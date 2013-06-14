@@ -19,6 +19,11 @@
 \alias{postprocess.pfr}
 \alias{parse.predict.pfr}
 \alias{Predict.matrix.pss.smooth}
+\alias{checkError}
+\alias{getRsq}
+\alias{decorrelate}
+\alias{waveletGetResult}
+\alias{waveletSetup}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Internal functions for the refund package

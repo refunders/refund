@@ -92,3 +92,4 @@ Collate:
     'predict.pfr.R'
     'preprocess.pfr.R'
     'test.pfr.R'
+    'wUtil.R' 
