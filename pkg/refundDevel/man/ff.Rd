@@ -54,13 +54,12 @@
   \item{splinepars}{optional arguments supplied to the
   \code{basistype}-term. Defaults to a cubic tensor product
   B-spline with marginal first difference penalties, i.e.
-  \code{list(bs="ps", m=c(2, 1))} See
+  \code{list(bs="ps", m=list(c(2, 1), c(2,1)))}. See
   \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} in
   \code{mgcv} for details}
 
-  \item{check.ident}{check rank of
-  Cov\eqn{(X_i(s),X_i(s'))} and adjust number of basis
-  functions if necessary. See Details. Defaults to TRUE.}
+  \item{check.ident}{check identifiability of the model
+  spec. See Details and References. Defaults to TRUE.}
 }
 \value{
   a list containing \itemize{ \item \code{call} a "call" to
@@ -76,31 +75,41 @@
   \code{mgcv::gam}-formula (or \code{bam} or \code{gamm} or
   \code{gamm4:::gamm4}) as constructed by
   \code{\link{pffr}}. \cr Defaults to a cubic tensor
-  product B-spline with marginal first difference penalties
-  for \eqn{\beta(t,s)} and numerical integration over the
-  entire range \eqn{[s_{lo, i}, s_{hi, i}] = [\min(s_i),
-  \max(s_i)]} by using Simpson weights. Can't deal with any
-  missing \eqn{X(s)}, unequal lengths of \eqn{X_i(s)} not
-  (yet?) possible. Unequal integration ranges for different
-  \eqn{X_i(s)} should work. \eqn{X_i(s)} is assumed to be
-  numeric (duh...).
+  product B-spline with marginal first order differences
+  penalties for \eqn{\beta(t,s)} and numerical integration
+  over the entire range \eqn{[s_{lo, i}, s_{hi, i}] =
+  [\min(s_i), \max(s_i)]} by using Simpson weights. Can't
+  deal with any missing \eqn{X(s)}, unequal lengths of
+  \eqn{X_i(s)} not (yet?) possible. Unequal integration
+  ranges for different \eqn{X_i(s)} should work.
+  \eqn{X_i(s)} is assumed to be numeric (duh...).
 }
 \details{
-  If \code{check.ident==TRUE} (the default), the routine
-  tries to determine the effective rank of the covariance
-  operator of the \eqn{X_i(s)} and, if necessary, adjusts
-  the number of marginal basis functions for \code{xind}
-  downwards from the default or supplied value in
-  \code{splinepars} to reduce identifiability issues for
-  \eqn{\beta(s,t)}. Specifically, the number of basis
-  functions is limited to be at most the number of
-  eigenvalues accounting for at least .99 of the total
-  variance in \eqn{X_i(s)}. Using an
+  If \code{check.ident==TRUE} and \code{basistype!="s"}
+  (the default), the routine checks for overlap between the
+  kernels of Cov\eqn{(X(s))} and the marginal penalty over
+  \code{s}, as well as for sufficient rank of
+  Cov\eqn{(X(s))}. If there is overlap of the kernels, the
+  penalty and basis for the covariate direction are changed
+  to B-splines with a modified 'shrinkage' penalty, see
+  \code{\link{smooth.construct.pss.smooth.spec}}. A warning
+  is given if the effective rank of Cov\eqn{(X(s))}
+  (defined the number of eigenvalues accounting for at
+  least 0.995 of the total variance in \eqn{X_i(s)}) is
+  lower than the dimension of the basis for the covariate
+  direction. See reference for details. Using an
   \code{\link{ffpc}}-term may be preferable if \eqn{X_i(s)}
-  is of low rank.
+  is of very low rank.
 }
 \author{
   Fabian Scheipl, Sonja Greven
+}
+\references{
+  For background on \code{check.ident}:\cr Scheipl, F., &
+  Greven, S. (2012). Identifiability in penalized
+  function-on-function regression models.  LMU Munich,
+  Department of Statistics: Technical Report 125.
+  \url{http://epub.ub.uni-muenchen.de/13060/}
 }
 \seealso{
   \code{mgcv}'s \code{\link[mgcv]{linear.functional.terms}}

@@ -207,3 +207,80 @@ pffrSim <- function(
     return(structure(as.data.frame(data), xindex=s, yindex=t, 
                     truth=list(eta=eta, etaTerms=etaTerms), call=match.call()))
 }
+
+
+
+#' P-spline constructor with modified 'shrinkage' penalty
+#' 
+#' Construct a B-spline basis with a modified difference penalty
+#' of full rank (i.e., that also penalizes low-order polynomials).
+#' 
+#' This penalty-basis combination is useful to avoid non-identifiability issues for \code{\link{ff}} terms.
+#' See 'ts' or 'cs' in \code{\link[mgcv]{smooth.terms}} 
+#' for similar "shrinkage penalties" for thin plate and cubic regression splines.
+#' The basic idea is to replace the k-th zero eigenvalue of the original penalty by 
+#' \eqn{s^k \nu_m}, where \eqn{s} is the shrinkage factor (defaults to 0.1)
+#' and \eqn{\nu_m} is the smallest non-zero eigenvalue. See reference for the
+#' original idea, implentation follows that in the 'ts' and 'cs' constructors.
+#' 
+#' @param object see \code{\link[mgcv]{smooth.construct}}. The shrinkage factor can be speficied via \code{object$xt$shrink}
+#' @param data see \code{\link[mgcv]{smooth.construct}}.
+#' @param knots see \code{\link[mgcv]{smooth.construct}}.
+#' 
+#' @author Fabian Scheipl;  adapted from 'ts' and 'cs' constructors by S.N. Wood.
+#' 
+#' @references Marra, G., & Wood, S. N. (2011). Practical variable selection for generalized additive models. 
+#' \emph{Computational Statistics & Data Analysis}, 55(7), 2372-2387.
+smooth.construct.pss.smooth.spec<-function(object,data,knots)
+{ 
+  
+  shrink <- ifelse(is.null(object$xt$shrink), 0.1, object$xt$shrink)
+  stopifnot(shrink>0, shrink<1)
+  
+  object <- smooth.construct.ps.smooth.spec(object,data,knots)
+  nk <- object$bs.dim
+  difforder <- object$m[2]
+  ## add shrinkage term to penalty: 
+  ## Modify the penalty by increasing the penalty on the 
+  ## unpenalized space from zero... 
+  es <- eigen(object$S[[1]],symmetric=TRUE)
+  ## now add a penalty on the penalty null space
+  es$values[(nk-difforder+1):nk] <- es$values[nk-difforder]*shrink^(1:difforder) 
+  ## ... so penalty on null space is still less than that on range space.
+  object$S[[1]] <- es$vectors%*%(as.numeric(es$values)*t(es$vectors))
+  object$rank <- nk
+  object$null.space.dim <- 0
+  class(object) <- "pss.smooth"
+  object
+}
+
+Predict.matrix.pss.smooth<-function(object,data)
+{ 
+  Predict.matrix.pspline.smooth(object,data)
+}
+
+
+
+
+getSpandDist <- function(Ke1, Ke2){
+  #Rolf Larsson, Mattias Villani (2001) "A distance measure between cointegration spaces"
+  ## Ke1, Ke2 orthonormal!
+  if(NCOL(Ke1)==0 | NCOL(Ke2)==0){
+    return(1.0)  
+  } 
+  
+  if(NROW(Ke1) != NROW(Ke2) | NCOL(Ke1) > NROW(Ke1) | NCOL(Ke2) > NROW(Ke2)){
+    return(NA)
+  }
+  
+  if(NCOL(Ke2)<=NCOL(Ke1)){
+    Ke1orth <- MASS::Null(Ke1)
+    dist <- sum(diag(t(Ke2)%*%Ke1orth%*%t(Ke1orth)%*%Ke2))/min(NCOL(Ke2), NROW(Ke2)-NCOL(Ke2))
+  } else {
+    Ke2orth <- MASS::Null(Ke2)
+    dist <- sum(diag(t(Ke1)%*%Ke2orth%*%t(Ke2orth)%*%Ke1))/min(NCOL(Ke1), NROW(Ke1)-NCOL(Ke1))
+  } 
+  return(dist)
+}
+
+

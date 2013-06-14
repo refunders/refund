@@ -7,6 +7,7 @@
 \alias{reconstr3d}
 \alias{fpcr.setup}
 \alias{first.last_test}
+\alias{getSpandDist}
 \alias{imwd_test}
 \alias{osplinepen2d}
 \alias{Omegas}
@@ -17,7 +18,7 @@
 \alias{preprocess.pfr}
 \alias{postprocess.pfr}
 \alias{parse.predict.pfr}
-
+\alias{Predict.matrix.pss.smooth}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Internal functions for the refund package
