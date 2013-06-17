@@ -27,4 +27,8 @@
   and \code{\link{pcre}} for the corresponding
   \code{pffr()}-formula wrapper.
 }
+\author{
+  Fabian Scheipl; adapted from 're' constructor by S.N.
+  Wood.
+}
 

@@ -11,6 +11,7 @@
 #' @method smooth.construct pcre.smooth.spec
 #' @return An object of class \code{"random.effect"}. See \code{\link[mgcv]{smooth.construct}} 
 #'  for the elements that this object will contain. 
+#' @author Fabian Scheipl;  adapted from 're' constructor by S.N. Wood.
 smooth.construct.pcre.smooth.spec <- function(object, data, knots){
     if (!is.null(object$id)) 
         stop("random effects don't work with ids.")
