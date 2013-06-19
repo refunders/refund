@@ -1,11 +1,11 @@
 \name{peer}
 \alias{peer}
-\title{Functional models with structured penalties}
+\title{Functional Models with Structured Penalties}
 \description{
-Implements functional model with structured penalties (Randolph et al., 2012) with scalar outcome and single functional predictor through mixed model equivalence.
+Implements functional model with structured penalties (Randloph et al., 2012) with scalar outcome and single functional predictor through mixed model equivalence.
 }
 \usage{
-peer(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL, a=10^3, se=FALSE, ...)
+peer(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
 }
 
 \arguments{
@@ -15,7 +15,7 @@ peer(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL, a=10^3, se=FALSE, ...)
 Default is \code{RIDGE}.}
 \item{L.user}{penalty matrix. Need to be specified with \code{pentype='USER'}. Number of columns need to be equal with number of columns of matrix specified to \code{funcs}. Each row represents a constraint on functional predictor. This argument will be ignored when value of \code{pentype} is other than \code{USER}.}
 \item{Q}{Q matrix to derive decomposition based penalty. Need to be specified with \code{pentype='DECOMP'}. Number of columns need to be equal with number of columns of matrix specified to \code{funcs}. Each row represents a basis function where functional predictor is expected lie according to prior belief. This argument will be ignored when value of \code{pentype} is other than \code{DECOMP}.}
-\item{a}{scalar value of a in decomposition based penalty. Need to be specified with \code{pentype='DECOMP'}.}
+\item{phia}{Scalar value of a in decomposition based penalty. Need to be specified with \code{pentype='DECOMP'}.}
 \item{se}{logical; calculate standard error when \code{TRUE}.}
 \item{... }{additional arguments passed to the \code{\link{lme}} function.}
 
@@ -50,43 +50,41 @@ Default penalty is Ridge penalty and user needs to specify \code{RIDGE}. For sec
 
 \value{
 a list containing:
-\item{fit }{the result of the call to \code{\link{lme}}}
-\item{fitted.vals }{predicted outcomes}
-\item{Gamma}{estimates with standard error for regression function}
-\item{GammaHat}{estimates of regression function.}
-\item{se.Gamma}{standard error associated with \code{GammaHat}}
+\item{fit}{The result of the call to \code{lme}}
+\item{fitted.vals }{Predicted outcomes}
+\item{Gamma}{Estimates with standard error for regression function}
+\item{GammaHat}{Estimates of regression function.}
+\item{se.Gamma}{Standard error associated with \code{GammaHat}}
 \item{AIC }{AIC value of fit (smaller is better)}
 \item{BIC }{BIC value of fit (smaller is better)}
-\item{logLik}{(restricted) log-likelihood at convergence}
-\item{lambda}{estimates of smoothing parameter}
-\item{N}{number of subjects}
-\item{K}{number of sampling points in functional predictor}
-\item{sigma}{estimated within-group error standard deviation.}
+\item{logLik}{the (restricted) log-likelihood at convergence}
+\item{lambda}{Estimates of smoothing parameter}
+\item{N}{Number of subjects}
+\item{K}{Number of Sampling points in functional predictor}
+\item{sigma}{the estimated within-group error standard deviation.}
 }
 
 \author{ Madan Gopal Kundu \email{mgkundu@iupui.edu}}
 
 \references{
-
 Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (please contact J. Harezlak at harezlak@iupui.edu)
 
-Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. \emph{Electronic Journal of Statistics}, 6,323--353.
+Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. Electronic Journal of Statistic, 6:323--353.
 }
 
 \seealso{
-\code{\link{lpeer}}, \code{\link{plot.peer}}
+\code{lpeer}, \code{plot.peer}
 }
 
 \examples{
-\dontrun{
 #------------------------------------------------------------------------
-# Example 1: Estimation with Ridge penalites
+# Example 1: Estimation with D2 penalty
 #------------------------------------------------------------------------
 
 ##Load Data
 data(DTI)
 
-## Extract values for arguments for lpeer() from given data
+## Extract values for arguments for peer() from given data
 cca = DTI$cca[which(DTI$case == 1),]
 DTI = DTI[which(DTI$case == 1),]
 
@@ -95,24 +93,23 @@ fit.cca.peer1 = peer(Y=DTI$pasat, funcs = cca, pentype='D2', se=TRUE)
 plot(fit.cca.peer1)
 
 #------------------------------------------------------------------------
-# Example 2: Estimation with structured penalites (need structural 
+# Example 2: Estimation with structured penalty (need structural 
 #            information about regression function or predictor function)
 #------------------------------------------------------------------------
 
 ##Load Data
-data(PEER.Sim1)
+data(PEER.Sim)
 
-## Extract values for arguments for lpeer() from given data
-PEER.Sim<- subset(PEER.Sim1, t==0)
+## Extract values for arguments for peer() from given data
+PEER.Sim1<- subset(PEER.Sim, t==0)
 K<- 100
-W<- PEER.Sim[,c(3:(K+2))]
-Y<- PEER.Sim[,K+3]
+W<- PEER.Sim1[,c(3:(K+2))]
+Y<- PEER.Sim1[,K+3]
 
 ##Load Q matrix containing structural information
 data(Q)
 
 ##2.1 Fit the model 
-Fit1<- peer(Y=Y, funcs=W, pentype='Decomp', Q=Q)
+Fit1<- peer(Y=Y, funcs=W, pentype='Decomp', Q=Q, se=TRUE)
 plot(Fit1)
-}
 }

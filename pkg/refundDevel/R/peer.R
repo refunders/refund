@@ -1,23 +1,17 @@
 peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL, 
-                a=10^3, se=FALSE, ...)
+                phia=10^3, se=FALSE, ...)
 {
-  require(nlme)
-  require(magic)
-  lobj=TRUE
   
+  #Determining K, converting W and Y to matrix
   W<- as.matrix(funcs)
-  norm<- sqrt(diag(W%*%t(W)))
-  W<- W/norm
-  K<- ncol(W) 
-  
+  K<- ncol(W)
   Y<- as.matrix(Y)
   
   #Check 1:Making sure Y has only 1 column
   if(dim(Y)[2]>1) return(cat("Error: No. of column for Y cannot be greater than 1. \nThe peer() will not proceed further.\n"))
   
+  #Check 2: Check the dimension of Y, id, t, W and X
   Yl<- dim(Y)[1]
-  
-  #Check 3: Check the dimension of Y, id, t, W and X
   chk.eq<- ifelse(Yl==nrow(W), 0 ,1)
   if(chk.eq==1) return(cat("Error: Length of Y and number of rows of funcs are not equal.\n The peer() will not proceed further.\n"))
   
@@ -29,30 +23,44 @@ peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL,
   Y<- tdata$Y
   W.e<- dim(W)[2]+1; W<- as.matrix(tdata[,c(2:W.e)])
   
+  #Determine N
   N<- length(Y)
   
-  #Check 4.1: Compatibility of Q and W matrix
+  #Check 3: Checking entry for pentype
+  pentypecheck<- toupper(pentype) %in% c('DECOMP', 'DECOMPOSITION', 'RIDGE', 'D2', 'USER')
+  if(!pentypecheck)  return (cat("Error: Specify valid object for argument PENTYPE.\n"))
+  
+  #Check 4: Some checking/processing for decomposition type of penalty
   if(toupper(pentype)=='DECOMP' | toupper(pentype)=='DECOMPOSITION'){
-    if(ncol(Q)!=ncol(W)) return(cat('Error: number of columns of Q need to be equal with number of columns of funcs.\nThe peer() will not proceed further.\n'))
     
-    #Check 4.2: Removing rows containing missing and infinite values
+    #4.1: Removing rows containing missing and infinite values
     Q<- Q[which(apply(is.na(Q), 1, sum)==0),]
     Q<- Q[which(apply(is.infinite(Q), 1, sum)==0),]
     Q<- matrix(Q, ncol=K)
     
-    #Check 4.3: Singularity of Q matrix
+    #4.2: Compatibility of Q and W matrix
+    if(ncol(Q)!=ncol(W)) return(cat('Error: number of columns of Q need to be equal with number of columns of funcs.\nThe peer() will not proceed further.\n'))
+    
+    #4.3: Singularity of Q matrix
     Q.eig<- abs(eigen(Q %*% t(Q))$values)
     if(any(Q.eig<1e-12)) return(cat('Error: Q matrix is singular or near singular.\nThe peer() will not proceed further.\n'))
+    
+    #4.4: Checking for phia
+    if(!exists("phia")) return (cat("Error: Specify valid object for argument PHIA.\n"))
+    if(!is.numeric(phia)|is.matrix(phia)|is.matrix(phia)) return (cat("Error: Specify valid object for argument PHIA.\n"))
   }
   
-  #Check 5.1: Dimension of L matrix
+  #Check 5: Some checking/processing for user type of penalty
   if(toupper(pentype)=='USER'){
-    if(ncol(L)!=ncol(W)) return(cat('Error: number of columns of L need to be equal with number of columns of funcs.\nThe peer() will not proceed further.\n'))
+    L<- L.user
     
-    #Check 5.2: Removing rows containing missing and infinite values
+    #Check 5.1: Removing rows containing missing and infinite values
     L<- L[which(apply(is.na(L), 1, sum)==0),]
     L<- L[which(apply(is.infinite(L), 1, sum)==0),]
     L<- matrix(L, ncol=K)
+    
+    #Check 5.2: Dimension of L matrix
+    if(ncol(L)!=ncol(W)) return(cat('Error: number of columns of L need to be equal with number of columns of funcs.\nThe peer() will not proceed further.\n'))
     
     #Check 5.3: Singularity of L'L matrix
     LL<- t(L)%*%L
@@ -71,7 +79,7 @@ peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL,
   #Generate W* matrix
   if(toupper(pentype)=='DECOMP' | toupper(pentype)=='DECOMPOSITION'){
     P_Q <- t(Q) %*% solve(Q %*% t(Q)) %*% Q
-    L_PEER<- a*(diag(K)- P_Q) + 1*P_Q
+    L_PEER<- phia*(diag(K)- P_Q) + 1*P_Q
   } else
     if(toupper(pentype)=='RIDGE'){
       L_PEER<- diag(K)
@@ -80,7 +88,7 @@ peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL,
         L_PEER<- D.2
       } else
         if(toupper(pentype)=='USER'){
-          L_PEER<- L.user
+          L_PEER<- L
         } 
   
   v<- diag(K)
@@ -93,47 +101,44 @@ peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL,
                  random=list(id.bd1=pdIdent(~W1_PEER-1)),
                  ...
   ) 
-  
-  
   cat('The fit is successful.\n')
   
-  #Estimate
+  #Extracting estimates
   Gamma.PEER.hat<-matrix(out_PEER$coeff$random$id.bd1, ncol=1)
-  
   GammaHat <- solve(L_PEER) %*% v %*%Gamma.PEER.hat
-  
   colnames(GammaHat)<- c('Gamma')
+  fitted.vals<- summary(out_PEER)$fitted[,2]
   
-  fitted.vals<- summary(out_PEER)$tTable
+  #Extracting model diagnostics
   logLik<- summary(out_PEER)$logLik
   AIC<- summary(out_PEER)$AIC
   BIC<- summary(out_PEER)$BIC
   
+  #Extracting lambda and variances
   tVarCorr<- nlme:::VarCorr(out_PEER, rdig=4)[,2]
   r<- ncol(v)
   lambda<- 1/ as.numeric(unique(tVarCorr[1:r]))
-  
   print(lambda)
-  
   sigma<- out_PEER$sigma
-  
-  ###---- Standard Error
   sigma.e<- sigma
   
-  tsigma<- as.numeric(unique(tVarCorr[1:K]))
-  LL.inv<- lambda^(-2)*solve(t(L_PEER)%*%L_PEER) 
-  
+  #Returning output when se=F
   if(!se){
     status<- 0
-    ret <- list(out_PEER, fitted.vals, GammaHat,  lobj,
-                AIC, BIC, logLik,
+    ret <- list(out_PEER, fitted.vals, GammaHat,  
+                AIC, BIC, logLik, Y, W, L_PEER,
                 lambda, N, K, sigma.e, status)
-    names(ret)<- c("fit", "fitted.vals", "GammaHat", "peerobj",
-                   "AIC", "BIC", "logLik", 
+    names(ret)<- c("fit", "fitted.vals", "GammaHat", 
+                   "AIC", "BIC", "logLik", "Y", "W", "L",
                    "lambda", "N", "K", "sigma", "status")
+    
     class(ret) <- "peer"
     return(ret)
   }
+  
+  ###---- Standard Error
+  tsigma<- as.numeric(unique(tVarCorr[1:K]))
+  LL.inv<- lambda^(-2)*solve(t(L_PEER)%*%L_PEER) 
   
   V.1<- W%*%LL.inv%*%t(W)+sigma.e^2*diag(rep(1, N))
   V<- sigma.e^2*diag(rep(1, N))
@@ -146,25 +151,21 @@ peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL,
   p2<- V.1 - X%*%X.Vinv.X.inv%*%t(X)
   p3<- solve(V.1)
   p<- p1%*%p2%*%p3
+  vcov.gamma<- p%*%V%*%t(p)
   
-  se.Gamma<- sqrt(diag(p%*%V%*%t(p)))
+  se.Gamma<- sqrt(diag(vcov.gamma))
   Gamma<- cbind(GammaHat, se.Gamma)
   colnames(Gamma)<- c('Estimate', 'SE')
   
+  #Returning output when se=T
   status<- 1
-  ret <- list(out_PEER, fitted.vals, Gamma,  lobj,
-              GammaHat, se.Gamma, AIC, BIC, logLik,
+  ret <- list(out_PEER, fitted.vals, Gamma,  V, V.1, 
+              GammaHat, vcov.gamma, se.Gamma, AIC, BIC, logLik, Y, W, L_PEER,
               lambda, N, K, sigma.e, status)
-  names(ret)<- c("fit", "fitted.vals", "Gamma", "peerobj",
-                 "GammaHat", "se.Gamma", "AIC", "BIC", "logLik", 
+  names(ret)<- c("fit", "fitted.vals", "Gamma", "V", "V.1", 
+                 "GammaHat", "vcov.gamma", "se.Gamma", "AIC", "BIC", "logLik", "Y", "W", "L",
                  "lambda", "N", "K", "sigma", "status")
+  
   class(ret) <- "peer"
   ret
 }
-
-
-
-
-
-
-
