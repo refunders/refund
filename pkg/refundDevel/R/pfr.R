@@ -1,5 +1,5 @@
 pfr  <- function (Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,
-                            family = "gaussian", method="REML", ...)
+                            family = "gaussian", method="REML", smooth.option="fpca.sc",...)
 {
   ## Step 1:
   ## parse formulae, etc.
@@ -7,7 +7,7 @@ pfr  <- function (Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbas
 
   ## Step 2:
   ## Preprocess in prep for gam() fit.
-  pre <- preprocess.pfr(subj=subj, covariates=covariates, funcs, kz, kb, nbasis)
+  pre <- preprocess.pfr(subj=subj, covariates=covariates, funcs=funcs, kz=kz, kb=kb, nbasis=nbasis, smooth.option=smooth.option)
 
   ## Step 3:
   ## gam() fit.

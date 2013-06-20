@@ -12,7 +12,7 @@ subject-specific random intercepts.  The function refund::lpfr is no
 longer supported.
 }
 \usage{
-pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,family = "gaussian", method="REML", ...)
+pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,family = "gaussian", method="REML", smooth.option="fpca.sc", ...)
 }
 \arguments{
   \item{Y }{vector of all outcomes over all visits}
@@ -26,6 +26,7 @@ pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,family =
     change from versions 0.1-7 and previous)}
   \item{family }{generalized linear model family}
   \item{method }{method for estimating the smoothing parameters; defaults to REML}
+  \item{smooth.option}{method to do FPC decomposition on the predictors. Two options available -- "fpca.sc" or "face".}
   \item{... }{additional arguments passed to \code{\link[mgcv]{gam}} to fit the regression model.}
 }
 \details{

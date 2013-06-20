@@ -1,4 +1,4 @@
-preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb = NULL, nbasis=10, funcs.new=NULL){
+preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb = NULL, nbasis=10, funcs.new=NULL, smooth.option="fpca.sc"){
 ## TBD:  make kz,kb take the value from pfr.obj in predict.pfr() calls.
   N_subj = length(unique(subj))
   p = ifelse(is.null(covariates), 0, dim(covariates)[2])
@@ -22,17 +22,42 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
   if(is.null(funcs.new)){o.len <- nrow(as.matrix(Funcs[[1]]))
                        }else{o.len <- nrow(as.matrix(Funcs.new[[1]]))}
   t <- phi <- FPCA <- psi <- C <- J <- CJ <- D <- list()
+  
   ## obtain FPCA decomposition of each predictor
-  for(i in 1:N.Pred){
-    t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
-    ## for fpca() (not fpca.sc()):  when I have K=kz, I have to lower kz a bit
-    FPCA[[i]] = fpca.sc(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], pve=.99, nbasis=nbasis, npc=kz) 
-    psi[[i]] = FPCA[[i]]$efunctions
-    C[[i]]=FPCA[[i]]$scores
-## what psi and C are if using fpca()
-##    psi[[i]] = FPCA[[i]]$phi.hat
-##    C[[i]]=FPCA[[i]]$xi.hat
+  if (smooth.option=="fpca.sc"){
+      # using fpca.sc()
+      for(i in 1:N.Pred){
+        t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
+        ## for fpca() (not fpca.sc()):  when I have K=kz, I have to lower kz a bit
+        FPCA[[i]] = fpca.sc(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], pve=.99, nbasis=nbasis, npc=kz) 
+        psi[[i]] = FPCA[[i]]$efunctions
+        C[[i]]=FPCA[[i]]$scores
+        ## what psi and C are if using fpca()
+        ##    psi[[i]] = FPCA[[i]]$phi.hat
+        ##    C[[i]]=FPCA[[i]]$xi.hat
+      }
   }
+  
+  if (smooth.option=="face"){
+    # using face
+    for(i in 1:N.Pred){
+        t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
+        FPCA[[i]] = face(Y = Funcs[[i]], knots=nbasis-3-1, percentage = .99)
+        if (is.null(kz) | kz>dim(FPCA[[i]]$eigenvectors)[2]){
+            psi[[i]] = FPCA[[i]]$eigenvectors
+            C[[i]]=FPCA[[i]]$scores
+        }
+        else {
+            cat(kz,"\n",dim(FPCA[[i]]$eigenvectors),"\n")
+            psi[[i]] = FPCA[[i]]$eigenvectors[,1:kz]
+            C[[i]]=FPCA[[i]]$scores[1:kz]
+        }
+        
+    }
+        
+  }
+  
+  
   ## construct phi for b-splines; J and CJ.
   for(i in 1:N.Pred){
     phi[[i]] = cbind(1, bs(t[[i]], df=kb-1, intercept=FALSE, degree=3))
