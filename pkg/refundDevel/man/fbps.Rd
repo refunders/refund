@@ -1,0 +1,120 @@
+\name{fbps}
+\alias{fbps}
+\title{
+Sandwich Smoother for Matrix Data
+}
+\description{
+A fast bivariate \emph{P}-spline method for smoothing matrix data.
+}
+\usage{
+fbps(data, covariates = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
+     search.grid = T, search.length = 100, method = "L-BFGS-B",
+     lower = -20, upper = 20, control = NULL)
+}
+
+\arguments{
+  \item{data}{
+ n1 by n2 data matrix without missing data
+}
+  \item{covariates}{
+list of two vectors of covariates of lengthes n1 and n2; if NULL, then generates equidistant covariates
+}
+  \item{knots}{
+list of two vectors of knots or  number of equidistant knots for all dimensions; defaults to 35
+}
+  \item{p}{
+degrees of B-splines; defaults to 3
+}
+  \item{m}{
+order of differencing penalty; defaults to 2
+}
+  \item{lambda}{
+user-specified smoothing parameters; defaults to NULL
+}
+  \item{search.grid}{
+logical; defaults to TRUE, if FALSE, uses \command{optim}
+}
+  \item{search.length}{
+number of equidistant (log scale) smoothing parameter; defaults to 100
+}
+  \item{method}{
+see \command{optim}; defaults to \command{L-BFGS-B}
+}
+  \item{lower}{
+see \command{optim}; defaults to -20 for the log of the smoothing paramter
+}
+  \item{upper}{
+see \command{optim}; defaults to 20 for the log of the smoothing paramter
+}
+  \item{control}{
+see \command{optim}
+}
+}
+\details{
+The smoothing parameter can be user-specified; otherwise, the function uses grid searching method or \command{optim} for selecting the smoothing parameter.
+}
+\value{
+\item{lambda}{vector of 2 of selected smoothing parameters}
+\item{Yhat}{fitted data}
+\item{trace}{trace of the overall smoothing matrix}
+\item{gcv}{value of generalized cross validation}
+\item{Theta}{matrix of estimated coefficients}
+}
+\references{
+Xiao, L., Li, Y., and Ruppert, D. (2013),
+Fast bivariate \emph{P}-splines: the sandwich smoother,
+\emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577-599.
+}
+\author{
+Luo Xiao \email{lxiao@jhsph.edu}
+}
+
+\examples{
+##########################
+#### True function   #####
+##########################
+n1 <- 60
+n2 <- 80
+x <- (1: n1)/n1-1/2/n1
+z <- (1: n2)/n2-1/2/n2
+MY <- array(0,c(length(x),length(z)))
+
+sigx <- .3
+sigz <- .4
+for(i in 1: length(x))
+for(j in 1: length(z))
+{
+#MY[i,j] <- .75/(pi*sigx*sigz) *exp(-(x[i]-.2)^2/sigx^2-(z[j]-.3)^2/sigz^2)
+#MY[i,j] <- MY[i,j] + .45/(pi*sigx*sigz) *exp(-(x[i]-.7)^2/sigx^2-(z[j]-.8)^2/sigz^2)
+MY[i,j] = sin(2*pi*(x[i]-.5)^3)*cos(4*pi*z[j])
+}
+##########################
+#### Observed data   #####
+##########################
+sigma <- 1
+Y <- MY + sigma*rnorm(n1*n2,0,1)
+##########################
+####   Estimation    #####
+##########################
+
+est <- fbps(Y,list(x=x,z=z))
+mse <- mean((est$Yhat-MY)^2)
+cat("mse of fbps is",mse,"\n")
+cat("The smoothing parameters are:",est$lambda,"\n")
+########################################################################
+########## Compare the estimated surface with the true surface #########
+########################################################################
+
+par(mfrow=c(1,2))
+persp(x,z,MY,zlab="f(x,z)",zlim=c(-1,2.5), phi=30,theta=45,expand=0.8,r=4,
+      col="blue",main="True surface")
+persp(x,z,est$Yhat,zlab="f(x,z)",zlim=c(-1,2.5),phi=30,theta=45,
+      expand=0.8,r=4,col="red",main="Estimated surface")
+
+
+}
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory.
+%\keyword{ ~sandwich smoother }
+%\keyword{ ~\emph{P}-splines }
+%\keyword{ ~smoothing}

@@ -17,7 +17,7 @@ Ciprian Crainiceanu \email{ccrainic@jhsph.edu}, Philip Reiss \email{phil.reiss@n
 
 
 \emph{Contributors:}
-Sonja Greven, Jarek Harezlak, Madan Gopal Kundu, Yihong Zhao, Matt McLean
+Sonja Greven, Jarek Harezlak, Madan Gopal Kundu, Yihong Zhao, Matt McLean, Luo Xiao
 
 \emph{Maintainer:} Lei Huang \email{huangracer@gmail.com}
 }
