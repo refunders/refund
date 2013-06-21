@@ -41,16 +41,18 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
   if (smooth.option=="face"){
     # using face
     for(i in 1:N.Pred){
+        Funcs[[i]] = apply(Funcs[[i]],2,function(x){x-mean(x,na.rm=TRUE)})
         t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
-        FPCA[[i]] = face(Y = Funcs[[i]], knots=nbasis-3-1, percentage = .99)
+        if (length(t[[i]])>45) nbasis = max(nbasis,38)  
+        FPCA[[i]] = face(Y = Funcs[[i]], knots=nbasis-3, percentage = .99)
         if (is.null(kz) | kz>dim(FPCA[[i]]$eigenvectors)[2]){
             psi[[i]] = FPCA[[i]]$eigenvectors
-            C[[i]]=FPCA[[i]]$scores
+            C[[i]]=FPCA[[i]]$scores*sqrt(dim(Funcs[[i]])[2])
         }
         else {
             cat(kz,"\n",dim(FPCA[[i]]$eigenvectors),"\n")
             psi[[i]] = FPCA[[i]]$eigenvectors[,1:kz]
-            C[[i]]=FPCA[[i]]$scores[1:kz]
+            C[[i]]=FPCA[[i]]$scores[,1:kz]*sqrt(dim(Funcs[[i]])[2])
         }
         
     }

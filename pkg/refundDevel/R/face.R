@@ -159,7 +159,7 @@ function(Y,t=NULL,knots=35,p=3,m=2,lambda=NULL, percentage = 0.95,
   #if(iter.miss%%10==0) print(iter.miss)
    
   }## end of while loop
-  if(sum(Index.miss)>0) cat("The number of iterations is:",iter.miss,"\n")
+  #if(sum(Index.miss)>0) cat("The number of iterations is:",iter.miss,"\n")
   
   ### now calculate scores
   Ytilde <- as.matrix(t(AS)%*%Y)
