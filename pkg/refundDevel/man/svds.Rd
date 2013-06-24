@@ -8,7 +8,7 @@ Singular Value Decomposition plus Smoothing
 Smoothing by \emph{P}-splines the eigenvectors obtained from the singular value decomposition of the functional data matrix.
 }
 \usage{
-svds(Y, t = NULL, smooth = TRUE, N = NULL)
+svds(Y, t = seq(0, 1, length=ncol(Y)), smooth = TRUE, N = NULL)
 }
 
 \arguments{
@@ -16,7 +16,7 @@ svds(Y, t = NULL, smooth = TRUE, N = NULL)
 J by I data matrix
 }
   \item{t}{
-vector of J
+index vector of J entries for data in Y; defaults to a sequence from 0 to 1.
 }
   \item{smooth}{
 logical; defaults to TRUE, if NULL, no smoothing of eigenvectors
@@ -69,8 +69,8 @@ Luo Xiao \email{lxiao@jhsph.edu}
   ########     Generate Data            #############
   ###################################################
   xi <- matrix(rnorm(I*N),I,N);
-  xi <- xi\%*\%diag(sqrt(lambdaTrue))
-  X <- xi\%*\%t(phi); # of size I by J
+  xi <- xi/%*/%diag(sqrt(lambdaTrue))
+  X <- xi/%*/%t(phi); # of size I by J
   Y <- X + sigma*matrix(rnorm(I*J),I,J)
   
   results <- svds(Y,t=t,N=4)
@@ -81,7 +81,7 @@ Luo Xiao \email{lxiao@jhsph.edu}
   eigenvalues <- results$eigenvalues
   
   for(k in 1:N){
-    if(Phi[,k]\%*\%phi[,k]< 0) 
+    if(Phi[,k]/%*/%phi[,k]< 0) 
       Phi[,k] <- - Phi[,k]
   }
  
@@ -98,3 +98,4 @@ Luo Xiao \email{lxiao@jhsph.edu}
       }
      
 }
+

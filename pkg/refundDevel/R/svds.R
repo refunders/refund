@@ -1,15 +1,18 @@
 svds <-
 function(Y,t=NULL,smooth=TRUE, N=NULL){
   
-
+ 
   ## data: Y, I by J data matrix
   ## t: vector of J
+  
   
   Y <- t(Y) ## becomes J by I
   data_dim <- dim(Y)
   J <- data_dim[1] 
   I <- data_dim[2]  
-   
+  
+  if(is.null(t)) t <- seq(0, 1, length=J)
+  
   ### SVD decomposition
   if(J>I){
     VV <- t(Y)%*%Y
