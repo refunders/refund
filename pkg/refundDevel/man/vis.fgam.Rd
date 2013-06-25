@@ -49,11 +49,11 @@ The confidence bands used when plotting slices of the estimated surface or secon
 Simply produces a plot.
 }
 \references{
-McLean M.W. et al. (2012) \emph{Journal of Computational and Graphical Statistics}, to appear.
+McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2013). Functional generalized additive models. \emph{Journal of Computational and Graphical Statistics}, to appear. Available at \url{http://courses2.cit.cornell.edu/mwmclean}
 
-Marra, G and S.N. Wood (2012) Coverage Properties of Confidence Intervals for Generalized Additive Model Components. \emph{Scandinavian Journal of Statistics}, \bold{39}(1), 53--74.
+Marra, G., and Wood, S. N. (2012) Coverage properties of confidence intervals for generalized additive model components. \emph{Scandinavian Journal of Statistics}, 39(1), 53--74.
 
-Wabha, G (1983) \emph{Journal of the Royal Statistical Society, Series B}, \bold{45}, 133--150. }
+Wabha, G. (1983) "Confidence intervals" for the cross-validated smoothing spline. \emph{Journal of the Royal Statistical Society, Series B}, 45(1), 133--150. }
 \author{
 Mathew W. McLean \email{mwm79@cornell.edu}
 }

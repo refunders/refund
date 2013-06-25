@@ -28,9 +28,7 @@ Binomial responses should be specified as a numeric vector rather than as a matr
 \value{
 a fitted fgam-object, which is a \code{\link{gam}}-object with some additional information in a fgam-entry. If fitter is "gamm" or "gamm4", only the $gam part of the returned list is modified in this way..}
 \references{
-McLean M.W. et al. (2012) \emph{Journal of Computational and Graphical Statistics}, to appear.
-
-\url{http://courses2.cit.cornell.edu/mwmclean}}
+McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2013). Functional generalized additive models. \emph{Journal of Computational and Graphical Statistics}, to appear. Available at \url{http://courses2.cit.cornell.edu/mwmclean}}
 
 \author{
 Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl}

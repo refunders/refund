@@ -49,7 +49,7 @@ a list with the following entries
 }
 \author{Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl}
 \references{
-McLean M.W. et al. (2012) \emph{Journal of Computational and Graphical Statistics}, to appear.}
+McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2013). Functional generalized additive models. \emph{Journal of Computational and Graphical Statistics}, to appear. Available at \url{http://courses2.cit.cornell.edu/mwmclean}}
 \seealso{
 \code{\link{fgam}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.}
 \keyword{methods}

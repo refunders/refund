@@ -91,13 +91,11 @@ Longitudinal penalized functional regression for cognitive outcomes on
 neuronal tract measurements. \emph{Journal of the Royal Statistical Society: Series C}, 61(3), 453--469.
 
 Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (July 2012).
-Testing For Functional Effects 
-\emph{Johns Hopkins University, Dept. of Biostatistics Working Papers. Working Paper 247.}
-http://biostats.bepress.com/jhubiostat/paper247
+Testing for functional effects. Johns Hopkins University Dept. of Biostatistics Working Paper 247, available at \url{http://biostats.bepress.com/jhubiostat/paper247}
 }
 \seealso{\code{\link{test.pfr}}, \code{\link{predict.pfr}}}
 \author{
-  Jeff Goldsmith <jeff.goldsmith@columbia.edu>
+  Jeff Goldsmith <jeff.goldsmith@columbia.edu> and 
   Bruce Swihart <bswihart@jhsph.edu>
 }
 \examples{

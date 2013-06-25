@@ -2,28 +2,27 @@
 \alias{plot.lpeer}
 \title{Plotting of estimated regression functions obtained through \code{lpeer()}}
 \description{
-Plots the estimate of components of estimated regression function obtained from an \code{lpeer} object along with the point-wise confidence band.
+Plots the estimate of components of estimated regression function obtained from an \code{\link{lpeer}} object along with pointwise confidence bands.
 }
 \usage{
 \method{plot}{lpeer}(x, conf=0.95, ...)
 }
 \arguments{
-\item{x}{An lpeer object}
-\item{conf}{Confidene level of point-wise confidence band.}
-\item{...}{Additional arguments passed to the \code{plot} function.}
+\item{x}{object of class \code{"\link{lpeer}"}.}
+\item{conf}{pointwise confidence level.}
+\item{...}{additional arguments passed to \code{\link{plot}}.}
 }
 
 \details{
-It plots the components of estimated regression functions over sampling points (X-axis). Confidence bands are displayed only if the lpeer object is produced with \code{se=T} in \code{lpeer()} and are based on pointwise confidence interval without any multiplicity correction.
+Pointwise confidence interval is displayed only if the user set \code{se=T} in the call to \code{\link{lpeer}}, and does not reflect any multiplicity correction.
 }
 
 \author{ Madan Gopal Kundu \email{mgkundu@iupui.edu}}
 
 \references{
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (Please contact J. Harezlak at \email{harezlak@iupui.edu}.)
 
-Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (please contact J. Harezlak at harezlak@iupui.edu)
-
-Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. Electronic Journal of Statistic, 6:323--353.
+Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. \emph{Electronic Journal of Statistics}, 6, 323--353.
 }
 
 \seealso{

@@ -2,29 +2,29 @@
 \alias{plot.peer}
 \title{Plotting of estimated regression functions obtained through \code{peer()}}
 \description{
-Plots the estimate of components of estimated regression function obtained from an \code{peer} object along with the point-wise confidence band.
+Plots the estimate of components of estimated regression function obtained from a \code{\link{peer}} object along with pointwise confidence bands.
 }
 \usage{
 \method{plot}{peer}(x, conf=0.95, ylab='Estimated regression function', main=expression(gamma), ...)
 }
 \arguments{
-\item{x}{An peer object}
-\item{conf}{Confidene level of point-wise confidence band.}
-\item{ylab}{Label on Y-axis.}
-\item{main}{Title for the plot.}
-\item{...}{Additional arguments passed to the \code{plot} function.}
+\item{x}{object of class \code{"\link{peer}"}.}
+\item{conf}{pointwise confidence level.}
+\item{ylab}{y-axis label.}
+\item{main}{title for the plot.}
+\item{...}{additional arguments passed to \code{\link{plot}}.}
 }
 
 \details{
-It plots the components of estimated regression function over sampling points (X-axis). Confidence band is displayed only if the peer object is produced with \code{se=T} in \code{peer()} and is based on pointwise confidence interval without any multiplicity correction. 
+Pointwise confidence interval is displayed only if the user set \code{se=T} in the call to \code{\link{peer}}, and does not reflect any multiplicity correction. 
 }
 
 \author{Madan Gopal Kundu \email{mgkundu@iupui.edu}}
 
 \references{
-Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (please contact J. Harezlak at harezlak@iupui.edu)
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (Please contact J. Harezlak at \email{harezlak@iupui.edu}.)
 
-Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. Electronic Journal of Statistic, 6:323--353.
+Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. \emph{Electronic Journal of Statistics}, 6, 323--353.
 }
 
 \seealso{

@@ -3,7 +3,7 @@
 \alias{predict.fgam}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Prediction a from fitted FGAM model
+Prediction from a fitted FGAM model
 }
 \description{
 Takes a fitted \code{\link{fgam}}-object produced by \code{fgam} and produces predictions given a new set of values for the model covariates or the original values used for the model fit. Predictions can be accompanied by standard errors, based on the posterior distribution of the model coefficients. This is a wrapper function for \code{\link{predict.gam}}().

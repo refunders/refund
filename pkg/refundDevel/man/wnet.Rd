@@ -43,7 +43,7 @@ logical, passed to \code{\link[glmnet]{glmnet}}: should the predictor variables 
 logical: should the scalar covariates be penalized? If \code{FALSE} (the default), penalization is suppressed by setting the appropriate components of \code{penalty.factor} to 0 in the call to \code{\link[glmnet]{glmnet}}.
 }
   \item{filter.number}{
-passed to \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}}, in the \pkg{wavethresh} package, to select the smoothness of the wavelets; defaults to \code{10}. 
+passed to \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}}, in the \pkg{wavethresh} package, to select the smoothness of the wavelets; defaults to 10. 
 }
   \item{wavelet.family}{
 family of wavelets: passed to \code{\link[wavethresh]{wd}}, \code{\link[wavethresh]{imwd}}, or \code{\link[wavethresh]{wd3D}}. Defaults to \code{"DaubLeAsymm"}.
@@ -56,10 +56,10 @@ generalized linear model family. Current version supports \code{"gaussian"} (the
 the number of validation sets ("folds") into which the data are divided.
 }
   \item{nsplit}{
-the number of independent splits.
+number of splits into \code{nfold} validation sets; CV is computed by averaging over these splits.
 }
   \item{decorrelate}{
-logical: should regress \code{xfuncs} on \code{covt}, and use the residules as new \code{xfuncs}.
+logical: if \code{TRUE},  \code{xfuncs} is regressed on \code{covt}, and the residuals  are used instead of the original \code{xfuncs} as the functional predictors.
 }
   \item{store.cv}{
 logical: should the output include a CV result table?
@@ -74,7 +74,7 @@ other arguments passed to \code{\link[glmnet]{glmnet}}.
 \details{
 This function supports only the standard discrete wavelet transform (see argument \code{type} in \code{\link[wavethresh]{wd}}) with periodic boundary handling (see argument \code{bc} in \code{\link[wavethresh]{wd}}).
 
-For 2D predictors, setting \code{min.scale=1} will lead to an error, due to a technical detail regarding \code{\link[wavethresh]{imwd}}. Please contact the author if a workaround is needed.
+For 2D predictors, setting \code{min.scale=1} will lead to an error, due to a technical detail regarding \code{\link[wavethresh]{imwd}}. Please contact the authors if a workaround is needed.
 
 }
 \value{
@@ -82,15 +82,15 @@ An object of class \code{wnet} with the following components:
 \item{fitted.value}{the fitted values.}
 \item{const}{parametric coefficient estimates, for the scalar covariates.}
 \item{fhat}{coefficient function estimate.}
-\item{lambda.table}{the lambda candidates CV is choosen from.}
+\item{lambda.table}{the lambda candidates CV is chosen from.}
 \item{param}{the indexs and values of \code{min.scale}, \code{nfeatures}, \code{alpha} and \code{lambda} specified in the call, if a single value was supplied; otherwise, the values chosen by CV.}
 \item{cv.table}{if \code{store.cv = TRUE}, a table giving the CV criterion for each combination of \code{min.scale}, \code{alpha} and \code{lambda}. Otherwise, just the value for the optimized combination of \code{min.scale}, \code{alpha} and \code{lambda}.}
 \item{se.cv}{if \code{store.cv = TRUE}, the standard error of the CV estimate for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}.}
 \item{Rsq}{coefficient of determination.}
-\item{family}{The generalized linear model family.}
+\item{family}{generalized linear model family.}
 }
 \references{
-Zhao, Y., Ogden, R. T., and Reiss, P. T. (2012). Wavelet-based LASSO in functional linear regression.  \emph{Journal of Computational and Graphical Statistics}, to appear.
+Zhao, Y., Ogden, R. T., and Reiss, P. T. (2013). Wavelet-based LASSO in functional linear regression.  \emph{Journal of Computational and Graphical Statistics}, to appear.
 }
 \author{
 Lan Huo \email{lan.huo@nyumc.org} and Yihong Zhao

@@ -57,32 +57,32 @@ Default penalty is Ridge penalty for all the component functions and user needs 
 
 \value{
 a list containing:
-\item{fit}{The result of the call to \code{lme}}
-\item{fitted.vals}{Predicted outcomes}
-\item{BetaHat}{Parameter estimates for scalar covariates including intercept}
-\item{se.Beta}{Standard error of parameter estimates for scalar covariates including intercept}
-\item{Beta}{Parameter estimates with standard error for scalar covariates including intercept}
-\item{GammaHat}{Estimates of components of regression functions. Each columns will represent estimate one component function. }
-\item{Se.Gamma}{Standard error associated with \code{GammaHat}}
+\item{fit}{result of the call to \code{lme}}
+\item{fitted.vals}{predicted outcomes}
+\item{BetaHat}{parameter estimates for scalar covariates including intercept}
+\item{se.Beta}{standard error of parameter estimates for scalar covariates including intercept}
+\item{Beta}{parameter estimates with standard error for scalar covariates including intercept}
+\item{GammaHat}{estimates of components of regression functions. Each column represents  one component function. }
+\item{Se.Gamma}{standard error associated with \code{GammaHat}}
 \item{AIC}{AIC value of fit (smaller is better) }
 \item{BIC}{BIC value of fit (smaller is better) }
-\item{logLik}{the (restricted) log-likelihood at convergence}
-\item{lambda}{List of estimates smoothing parameters associated with each component functions}
-\item{V}{Conditional variance of Y treating only random intercept as random one. }
-\item{V1}{Unconditional variance of Y }
-\item{N}{Number of subjects}
-\item{K}{Number of Sampling points in functional predictor}
-\item{TotalObs}{Total number of observations over all subjects}
-\item{Sigma.u}{the estimated sd of random intercept. }
-\item{sigma}{the estimated within-group error standard deviation.}
+\item{logLik}{(restricted) log-likelihood at convergence}
+\item{lambda}{list of estimated smoothing parameters associated with each component function}
+\item{V}{conditional variance of Y treating only random intercept as random one. }
+\item{V1}{unconditional variance of Y }
+\item{N}{number of subjects}
+\item{K}{number of Sampling points in functional predictor}
+\item{TotalObs}{total number of observations over all subjects}
+\item{Sigma.u}{estimated sd of random intercept. }
+\item{sigma}{estimated within-group error standard deviation.}
 }
 
 \author{Madan Gopal Kundu \email{mgkundu@iupui.edu}}
 
 \references{
-Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (please contact J. Harezlak at harezlak@iupui.edu)
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (Please contact J. Harezlak at \email{harezlak@iupui.edu}.)
 
-Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. Electronic Journal of Statistic, 6:323--353.
+Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. \emph{Electronic Journal of Statistics}, 6, 323--353.
 }
 
 \seealso{

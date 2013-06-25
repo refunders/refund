@@ -50,26 +50,26 @@ Default penalty is Ridge penalty and user needs to specify \code{RIDGE}. For sec
 
 \value{
 a list containing:
-\item{fit}{The result of the call to \code{lme}}
-\item{fitted.vals }{Predicted outcomes}
-\item{Gamma}{Estimates with standard error for regression function}
-\item{GammaHat}{Estimates of regression function.}
-\item{se.Gamma}{Standard error associated with \code{GammaHat}}
+\item{fit}{result of the call to \code{lme}}
+\item{fitted.vals }{predicted outcomes}
+\item{Gamma}{estimates with standard error for regression function}
+\item{GammaHat}{estimates of regression function}
+\item{se.Gamma}{standard error associated with \code{GammaHat}}
 \item{AIC }{AIC value of fit (smaller is better)}
 \item{BIC }{BIC value of fit (smaller is better)}
-\item{logLik}{the (restricted) log-likelihood at convergence}
-\item{lambda}{Estimates of smoothing parameter}
-\item{N}{Number of subjects}
-\item{K}{Number of Sampling points in functional predictor}
-\item{sigma}{the estimated within-group error standard deviation.}
+\item{logLik}{(restricted) log-likelihood at convergence}
+\item{lambda}{estimates of smoothing parameter}
+\item{N}{number of subjects}
+\item{K}{number of Sampling points in functional predictor}
+\item{sigma}{estimated within-group error standard deviation.}
 }
 
 \author{ Madan Gopal Kundu \email{mgkundu@iupui.edu}}
 
 \references{
-Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (please contact J. Harezlak at harezlak@iupui.edu)
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (Please contact J. Harezlak at \email{harezlak@iupui.edu}.)
 
-Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. Electronic Journal of Statistic, 6:323--353.
+Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. \emph{Electronic Journal of Statistics}, 6, 323--353.
 }
 
 \seealso{
@@ -81,7 +81,7 @@ Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for func
 # Example 1: Estimation with D2 penalty
 #------------------------------------------------------------------------
 
-##Load Data
+## Load Data
 data(DTI)
 
 ## Extract values for arguments for peer() from given data
@@ -97,7 +97,7 @@ plot(fit.cca.peer1)
 #            information about regression function or predictor function)
 #------------------------------------------------------------------------
 
-##Load Data
+## Load Data
 data(PEER.Sim)
 
 ## Extract values for arguments for peer() from given data

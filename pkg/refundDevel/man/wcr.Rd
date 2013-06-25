@@ -49,13 +49,13 @@ family of wavelets: passed to functions \code{\link[wavethresh]{wd}}, \code{\lin
 generalized linear model family. Current version supports \code{"gaussian"} (the default) and \code{"binomial"}.
 }
   \item{cv1}{
-logical: should cross-validation be performed (to estimate prediction error) even if a single value is provided for each of \code{min.scale}, \code{nfeatures} and \code{ncomp}? By default, \code{FALSE}. Note that if multiple candidate values are provided for at least one of these tuning parameters, CV is always performed to select the best model. 
+logical: should cross-validation be performed (to estimate prediction error) even if a single value is provided for each of \code{min.scale}, \code{nfeatures} and \code{ncomp}? By default, \code{FALSE}. Note that whenever multiple candidate values are provided for one or more of these tuning parameters, CV is performed to select the best model. 
 }
   \item{nfold}{
-the number of validation sets ("folds") into which the data are divided for a split.
+the number of validation sets ("folds") into which the data are divided.
 }
   \item{nsplit}{
-the number of independent splits.
+number of splits into \code{nfold} validation sets; CV is computed by averaging over these splits.
 }
   \item{store.cv}{
 logical: should the output include a CV result table?
@@ -68,7 +68,7 @@ the seed for random data division. If \code{seed = NULL}, a random seed is used.
 }
 }
 \details{
-Essentially, the algorithm works by (1) applying the discrete wavelet transform (DWT) to the predictors; (2) retaining only the \code{nfeatures} wavelet coefficients having the highest variance (for PCR; cf. Johnstone and Lu, 2009) or highest covariance with \code{y} (for PLS); (3) regressing \code{y} on the leading \code{ncomp} PCs or PLS components; and (4) applying the inverse DWT to the result to obtain the coefficient function estimate \code{fhat}.
+Briefly, the algorithm works by (1) applying the discrete wavelet transform (DWT) to the functional/image predictors; (2) retaining only the \code{nfeatures} wavelet coefficients having the highest variance (for PCR; cf. Johnstone and Lu, 2009) or highest covariance with \code{y} (for PLS); (3) regressing \code{y} on the leading \code{ncomp} PCs or PLS components, along with any scalar covariates; and (4) applying the inverse DWT to the result to obtain the coefficient function estimate \code{fhat}.
 
 This function supports only the standard DWT (see argument \code{type} in \code{\link[wavethresh]{wd}}) with periodic boundary handling (see argument \code{bc} in \code{\link[wavethresh]{wd}}).
 
