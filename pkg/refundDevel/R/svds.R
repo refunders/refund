@@ -1,5 +1,5 @@
 svds <-
-function(Y,t=NULL,smooth=TRUE, N=NULL){
+function(Y,t = seq(0, 1, length=ncol(Y)),smooth=TRUE, N=NULL){
   
  
   ## data: Y, I by J data matrix

@@ -69,8 +69,8 @@ Luo Xiao \email{lxiao@jhsph.edu}
   ########     Generate Data            #############
   ###################################################
   xi <- matrix(rnorm(I*N),I,N);
-  xi <- xi/%*/%diag(sqrt(lambdaTrue))
-  X <- xi/%*/%t(phi); # of size I by J
+  xi <- xi\%*\%diag(sqrt(lambdaTrue))
+  X <- xi\%*\%t(phi); # of size I by J
   Y <- X + sigma*matrix(rnorm(I*J),I,J)
   
   results <- svds(Y,t=t,N=4)
@@ -81,7 +81,7 @@ Luo Xiao \email{lxiao@jhsph.edu}
   eigenvalues <- results$eigenvalues
   
   for(k in 1:N){
-    if(Phi[,k]/%*/%phi[,k]< 0) 
+    if(Phi[,k]\%*\%phi[,k]< 0) 
       Phi[,k] <- - Phi[,k]
   }
  
