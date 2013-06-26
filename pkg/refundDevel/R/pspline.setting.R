@@ -36,34 +36,44 @@ difference.penalty <-function(m,K){
   return(M)
 }
 
+
 P = difference.penalty(m,K+p)
-P = t(P)%*%P
+P1 = Matrix(P)
+P2 = Matrix(t(P))
+P = P2%*%P1
+
+MM <- function(A,s,option=1){
+  if(option==2)
+    return(A*(s%*%t(rep(1,dim(A)[2]))))
+  if(option==1)
+    return(A*(rep(1,dim(A)[1])%*%t(s)))
+}
 
 ### design matrix and some pre-calculation 
 ### for the penalty without interaction
 ### The idea about pre-calculation, when lambda
 ## is changed, only eigenvalues change.
 
-B = spline.des(knots=knots, x=x, ord = p+1,outer.ok = TRUE,sparse=FALSE)$design
-
-Sig = t(B)%*%B
+B = spline.des(knots=knots, x=x, ord = p+1,outer.ok = TRUE)$design
+B1 = Matrix(t(B))
+B = Matrix(B) 
+Sig = B1%*%B
 eSig = eigen(Sig)
 V = eSig$vectors
 E = eSig$values
+Sigi_sqrt = MM(V,1/sqrt(E))%*%t(V)
 
-Sigi_sqrt =V%*%diag(1/sqrt(E))%*%t(V)
-Sigi = V%*%diag(1/E)%*%t(V)
-
-tUPU = t(Sigi_sqrt)%*%P%*%Sigi_sqrt
-
+#Sigi = V%*%diag(1/E)%*%t(V)
+tUPU = Sigi_sqrt%*%(P%*%Sigi_sqrt)
 Esig = eigen(tUPU)
 U = Esig$vectors
 s = Esig$values
 s[(K+p-m+1):(K+p)]=0
-A = B%*%Sigi_sqrt%*%U
+A = B%*%(Sigi_sqrt%*%U)
 
 List = list(
         "A" = A,
+        "B" = B,
         "s" = s,
         "Sigi.sqrt"=Sigi_sqrt,
         "U" = U)

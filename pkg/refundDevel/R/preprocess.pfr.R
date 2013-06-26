@@ -1,4 +1,4 @@
-preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb = NULL, nbasis=10, funcs.new=NULL, smooth.option="fpca.sc"){
+preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb = NULL, nbasis=10, funcs.new=NULL, smooth.option="fpca.sc",pve=0.99){
 ## TBD:  make kz,kb take the value from pfr.obj in predict.pfr() calls.
   N_subj = length(unique(subj))
   p = ifelse(is.null(covariates), 0, dim(covariates)[2])
@@ -29,7 +29,7 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
       for(i in 1:N.Pred){
         t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
         ## for fpca() (not fpca.sc()):  when I have K=kz, I have to lower kz a bit
-        FPCA[[i]] = fpca.sc(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], pve=.99, nbasis=nbasis, npc=kz) 
+        FPCA[[i]] = fpca.sc(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], pve=pve, nbasis=nbasis, npc=kz) 
         psi[[i]] = FPCA[[i]]$efunctions
         C[[i]]=FPCA[[i]]$scores
         ## what psi and C are if using fpca()
@@ -38,13 +38,13 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
       }
   }
   
-  if (smooth.option=="face"){
+  if (smooth.option=="fpca.face"){
     # using face
     for(i in 1:N.Pred){
         Funcs[[i]] = apply(Funcs[[i]],2,function(x){x-mean(x,na.rm=TRUE)})
         t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
-        if (length(t[[i]])>45) nbasis = max(nbasis,38)  
-        FPCA[[i]] = face(Y = Funcs[[i]], knots=nbasis-3, percentage = .99)
+        #if (length(t[[i]])>70) nbasis = max(nbasis,35)  
+        FPCA[[i]] = fpca.face(X = Funcs[[i]], knots=nbasis,pve = pve)
         if (is.null(kz) | kz>dim(FPCA[[i]]$eigenvectors)[2]){
             psi[[i]] = FPCA[[i]]$eigenvectors
             C[[i]]=FPCA[[i]]$scores*sqrt(dim(Funcs[[i]])[2])

@@ -8,29 +8,34 @@ Singular Value Decomposition plus Smoothing
 Smoothing by \emph{P}-splines the eigenvectors obtained from the singular value decomposition of the functional data matrix.
 }
 \usage{
-svds(Y, t = seq(0, 1, length=ncol(Y)), smooth = TRUE, N = NULL)
+svds(X,npc=NA,center = TRUE, t = NULL,smooth=TRUE)
 }
 
 \arguments{
-  \item{Y}{
-J by I data matrix
+  \item{X}{
+I by J data matrix
 }
+ \item{npc}{
+first npc eigenvectors to smooth
+}
+\item{center}{
+logical;defaults to TRUE where the data matrix is centered across subjects
+}
+
   \item{t}{
-index vector of J entries for data in Y; defaults to a sequence from 0 to 1.
+index vector of J entries for data in X; defaults to a sequence from 0 to 1.
 }
   \item{smooth}{
 logical; defaults to TRUE, if NULL, no smoothing of eigenvectors
 }
-  \item{N}{
-first N eigenvectors to smooth
-}
+ 
 }
 
 \details{
 The eigenvalues are the same as those obtained from eigendecomposition of sample covariance matrix.
 }
 \value{
-\item{N}{number of principal components}
+\item{npc}{number of principal components}
 \item{eigenvectors}{matrix of eigenvectors}
 \item{eigenvalues}{vector of eigenvalues}
 \item{scores}{matrix of scores}
@@ -44,9 +49,9 @@ Fast covariance estimation for high-dimensional functional data, \emph{manuscrip
 Luo Xiao \email{lxiao@jhsph.edu}
 }
 
-\seealso{
-\code{\link{face}}
-}
+%\seealso{
+%\code{\link{smoothSVD}}
+%}
 \examples{
   #### settings
   I <- 50 # number of subjects
@@ -73,7 +78,7 @@ Luo Xiao \email{lxiao@jhsph.edu}
   X <- xi\%*\%t(phi); # of size I by J
   Y <- X + sigma*matrix(rnorm(I*J),I,J)
   
-  results <- svds(Y,t=t,N=4)
+  results <- svds(Y,npc=4,t=t)
   ###################################################
   ####               SVDS               ########
   ###################################################  

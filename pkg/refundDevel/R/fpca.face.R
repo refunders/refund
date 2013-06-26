@@ -1,9 +1,9 @@
-face <-
-function(Y,t=NULL,knots=35,p=3,m=2,lambda=NULL, percentage = 0.95, 
+fpca.face <-
+function(X,center=TRUE,t=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99, 
          score.method = "int", search.grid=TRUE,search.length=100,
          method="L-BFGS-B", lower=-20,upper=20, control=NULL){
   
-  ## data: Y, I by J data matrix
+  ## data: X, I by J data matrix
   ## t:  vector of J
   ## knots: to specify either the number of knots or the vectors of knots;
   ##        defaults to 35;
@@ -12,9 +12,10 @@ function(Y,t=NULL,knots=35,p=3,m=2,lambda=NULL, percentage = 0.95,
   ## lambda: user-selected smoothing parameter
   ## method: see R function "optim" 
   ## lower, upper, control: see R function "optim"
-  #require(splines)  
+  #require(splines) 
+  #require(Matrix)
   #source("pspline.setting.R") 
-  Y <- t(Y) ## becomes J by I
+  Y <- t(X) ## becomes J by I
   data_dim <- dim(Y)
   J <- data_dim[1] 
   I <- data_dim[2]  
@@ -32,11 +33,12 @@ function(Y,t=NULL,knots=35,p=3,m=2,lambda=NULL, percentage = 0.95,
   c.p <- K.p + p.p
   ######### precalculation for smoothing #############
   List <- pspline.setting(t,knots,p.p,m.p)
-  AS <- List$A
+  B <- List$B
+  Bt <- Matrix(t(as.matrix(B)))
   s <- List$s
   Sigi.sqrt <- List$Sigi.sqrt
   U <- List$U
-  
+  A0 <- Sigi.sqrt%*%U
   MM <- function(A,s,option=1){
     if(option==2)
       return(A*(s%*%t(rep(1,dim(A)[2]))))
@@ -64,7 +66,7 @@ function(Y,t=NULL,knots=35,p=3,m=2,lambda=NULL, percentage = 0.95,
   ###################################################
   ######## Transform the Data           #############
   ###################################################
-  Ytilde <- as.matrix(t(AS)%*%Y)
+  Ytilde <- as.matrix(t(A0)%*%(Bt%*%Y))
   C_diag <- rowSums(Ytilde^2)
   if(iter.miss==1) Y0 = Ytilde
   ###################################################
@@ -136,7 +138,7 @@ function(Y,t=NULL,knots=35,p=3,m=2,lambda=NULL, percentage = 0.95,
   d <- d[d>0]
   per <- cumsum(d)/sum(d)
   N <- 1
-  while(per[N]<percentage) N <- N + 1
+  while(per[N]<pve) N <- N + 1
   #########################################
   #######     Principal  Scores   #########
   ########   data imputation      #########
@@ -151,7 +153,7 @@ function(Y,t=NULL,knots=35,p=3,m=2,lambda=NULL, percentage = 0.95,
    
     
     Xi <- t(A.N)%*%Ytilde
-    Xi <- as.matrix(AS%*%((A.N%*%diag(d/(d+sigmahat2/J)))%*%Xi))
+    Xi <- as.matrix(B%*%(A0%*%((A.N%*%diag(d/(d+sigmahat2/J)))%*%Xi)))
     Y <- Y*(1-Index.miss) + Xi*Index.miss
  
     if(sum(is.na(Y))>0) print("error")
@@ -162,12 +164,13 @@ function(Y,t=NULL,knots=35,p=3,m=2,lambda=NULL, percentage = 0.95,
   #if(sum(Index.miss)>0) cat("The number of iterations is:",iter.miss,"\n")
   
   ### now calculate scores
-  Ytilde <- as.matrix(t(AS)%*%Y)
-  if(score.method=="int") Xi <- t(Ytilde)%*%A[,1:N]/sqrt(J)
-  if(score.method=="blup"){Xi <- t(Ytilde)%*%A[,1:N]/sqrt(J)
-                          Xi <- Xi%*%diag(Sigma[1:N]/(Sigma[1:N] + sigmahat2/J))
+  Ytilde <- as.matrix(t(A0)%*%(Bt%*%Y))
+  if(score.method=="int") Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
+  if(score.method=="blup"){Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
+                          Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J))
   }
     
-  results <- list(N = N, eigenvectors=as.matrix(AS%*%A[,1:N]), eigenvalues = Sigma[1:N],scores = Xi, lambda=lambda)
+  eigenvectors = as.matrix(B%*%(A0%*%A[,1:N]))
+  results <- list(npc = N, eigenvectors=eigenvectors, eigenvalues = Sigma[1:N],scores = Xi, lambda=lambda)
   return(results)      	                	
 }
