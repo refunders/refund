@@ -53,7 +53,7 @@ pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,family =
   \item{betaHat }{list of estimated coefficient functions}
   \item{beta.covariates }{parameter estimates for scalar covariates}
   \item{varBetaHat }{list containing covariance matrices for the estimated coefficient functions}
-  \item{Bounds }{list of bounds of a 95\% confidence interval for the estimated coefficient functions}
+  \item{Bounds }{list of bounds of a pointwise 95\% confidence interval for the estimated coefficient functions}
   \item{X }{design matrix used in the model fit}
   \item{D }{penalty matrix used in the model fit}
   \item{phi }{list of B-spline bases for the coefficient functions}

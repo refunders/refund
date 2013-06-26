@@ -15,6 +15,8 @@ function(X,center=TRUE,t=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   #require(splines) 
   #require(Matrix)
   #source("pspline.setting.R") 
+  if(center) X <- apply(X,2,function(x){x-mean(x,na.rm=TRUE)})
+  
   Y <- t(X) ## becomes J by I
   data_dim <- dim(Y)
   J <- data_dim[1] 
@@ -66,7 +68,7 @@ function(X,center=TRUE,t=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   ###################################################
   ######## Transform the Data           #############
   ###################################################
-  Ytilde <- as.matrix(t(A0)%*%(Bt%*%Y))
+  Ytilde <- as.matrix(t(A0)%*%as.matrix(Bt%*%Y))
   C_diag <- rowSums(Ytilde^2)
   if(iter.miss==1) Y0 = Ytilde
   ###################################################
