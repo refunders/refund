@@ -1,4 +1,4 @@
-test.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
+rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
 {
   if(is.null(test) || !(test %in% c("constancy","inclusion")) ){
     print("test must be 'constancy' or 'inclusion'")

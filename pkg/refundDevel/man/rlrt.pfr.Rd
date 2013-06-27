@@ -1,5 +1,5 @@
-\name{test.pfr}
-\alias{test.pfr}
+\name{rlrt.pfr}
+\alias{rlrt.pfr}
 \title{
 Likelihood Ratio Test and Restricted Likelihood Ratio Test for inference of functional predictors
 }
@@ -10,7 +10,7 @@ significantly improves the model (inclusion).  Based on work 0-variance
 component work of Crainiceanu et al. (2004) and Scheipl et al. (2008)
 and Swihart et al. (2012).}
 \usage{
-test.pfr(pfr.obj=pfr.obj, test=NULL, ...)
+rlrt.pfr(pfr.obj=pfr.obj, test=NULL, ...)
 }
 \arguments{
   \item{pfr.obj}{an object returned by pfr}
@@ -30,14 +30,14 @@ Testing whether certain variance components and (potentially) fixed
 effect coefficients are 0 correspond to tests of constancy and inclusion
 of functional predictors.
 
-For test.pfr, Restricted Likelihood Ratio Test is preferred for the
+For rlrt.pfr, Restricted Likelihood Ratio Test is preferred for the
 constancy test as under the special B-splines implementation of pfr for
 the coefficient function basis the test involves only the variance
 component.  Therefore, the constancy test is best for pfr objects with
 method="REML"; if the method was something else, a warning is printed
 and the model refit with "REML" and a test is then conducted.
 
-For test.pfr, the Likelihood Ratio Test is preferred for the
+For rlrt.pfr, the Likelihood Ratio Test is preferred for the
 inclusion test as under the special B-splines implementation of pfr for
 the coefficient function basis the test involves both the variance
 component and a fixed effect coefficient in the linear mixed model
@@ -142,9 +142,9 @@ matplot(cbind(pfr.obj.t3$BetaHat[[2]], pfr.obj.t3$Bounds[[2]]),
 abline(h=0, col="blue")
 
 ## do some testing
-t1 <- test.pfr(pfr.obj.t1, "constancy")
-t2 <- test.pfr(pfr.obj.t2, "constancy")
-t3 <- test.pfr(pfr.obj.t3, "inclusion")
+t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
+t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
+t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
 
 \dontrun{
 
@@ -158,14 +158,14 @@ t3$test.stat
 t3$p.val
 
 
-## do some testing with test.pfr(); same as above but subj = NULL
+## do some testing with rlrt.pfr(); same as above but subj = NULL
 pfr.obj.t1 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1),     subj = NULL, kz = 10, kb = 50)
 pfr.obj.t2 <- pfr(Y = Y, covariates=covar.in, funcs = list(W2),     subj = NULL, kz = 10, kb = 50)
 pfr.obj.t3 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1, W2), subj = NULL, kz = 10, kb = 50)
 
-t1 <- test.pfr(pfr.obj.t1, "constancy")
-t2 <- test.pfr(pfr.obj.t2, "constancy")
-t3 <- test.pfr(pfr.obj.t3, "inclusion")
+t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
+t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
+t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
 
 t1$test.stat
 t1$p.val

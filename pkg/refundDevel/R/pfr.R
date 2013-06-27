@@ -14,7 +14,7 @@ pfr  <- function (Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbas
   fit = with(pre, gam(Y ~ X - 1, paraPen = list(X = D), method = method, family = family, ...))
 
   ## Step 4:
-  ## Postprocess objects within "fit" to be of use to user and test.pfr(), predict.pfr(), plot.pfr()
+  ## Postprocess objects within "fit" to be of use to user and rlrt.pfr(), predict.pfr(), plot.pfr()
   pos <- postprocess.pfr(fit=fit, X=pre$X, p=pre$p, N_subj=pre$N_subj, phi=pre$phi, subj=subj,
                          N.Pred=pre$N.Pred, kb=kb)  
 

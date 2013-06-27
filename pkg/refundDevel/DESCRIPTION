@@ -84,6 +84,7 @@ Collate:
     'reconstr.R'
     'reconstr2d.R'
     'reconstr3d.R'
+    'rlrt.pfr.R'
     'svds.R'
     'smoothSVD.R'
     'vis.fgam.R'
@@ -95,5 +96,4 @@ Collate:
     'postprocess.pfr.R'
     'predict.pfr.R'
     'preprocess.pfr.R'
-    'test.pfr.R'
     'wUtil.R' 

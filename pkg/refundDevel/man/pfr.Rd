@@ -94,7 +94,7 @@ neuronal tract measurements. \emph{Journal of the Royal Statistical Society: Ser
 Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (July 2012).
 Testing for functional effects. Johns Hopkins University Dept. of Biostatistics Working Paper 247, available at \url{http://biostats.bepress.com/jhubiostat/paper247}
 }
-\seealso{\code{\link{test.pfr}}, \code{\link{predict.pfr}}}
+\seealso{\code{\link{rlrt.pfr}}, \code{\link{predict.pfr}}}
 \author{
   Jeff Goldsmith <jeff.goldsmith@columbia.edu> and 
   Bruce Swihart <bswihart@jhsph.edu>

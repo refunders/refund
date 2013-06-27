@@ -114,7 +114,7 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
     rand.mat  = cbind(rand.mat , CJ[[i]][,2:kb])
   }
   ## only need (Z1, C, psi) for predict.pfr
-  ## having fixed.mat, rand.mat useful for test.pfr
+  ## having fixed.mat, rand.mat useful for rlrt.pfr
   ## pfr() requires 
   ret <- list( X, D,  phi, psi, C, J, CJ,
               Z1, subj,

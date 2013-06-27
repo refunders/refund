@@ -51,7 +51,7 @@ Testing For Functional Effects
 http://biostats.bepress.com/jhubiostat/paper247
 }
 
-\seealso{\code{\link{pfr}}, \code{\link{test.pfr}}, \code{nlme::predict.lme}}
+\seealso{\code{\link{pfr}}, \code{\link{rlrt.pfr}}, \code{nlme::predict.lme}}
 \author{
   Jeff Goldsmith <jeff.goldsmith@columbia.edu>
   Bruce Swihart <bswihart@jhsph.edu>
