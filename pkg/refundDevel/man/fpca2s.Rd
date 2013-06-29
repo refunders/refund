@@ -1,5 +1,5 @@
-\name{svds}
-\alias{svds}
+\name{fpca2s}
+\alias{fpca2s}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Singular Value Decomposition plus Smoothing
@@ -8,7 +8,7 @@ Singular Value Decomposition plus Smoothing
 Smoothing by \emph{P}-splines the eigenvectors obtained from the singular value decomposition of the functional data matrix.
 }
 \usage{
-svds(X,npc=NA,center = TRUE, t = NULL,smooth=TRUE)
+fpca2s(X,npc=NA,center = TRUE, t = NULL,smooth=TRUE)
 }
 
 \arguments{
@@ -78,7 +78,7 @@ Luo Xiao \email{lxiao@jhsph.edu}
   X <- xi\%*\%t(phi); # of size I by J
   Y <- X + sigma*matrix(rnorm(I*J),I,J)
   
-  results <- svds(Y,npc=4,t=t)
+  results <- fpca2s(Y,npc=4,t=t)
   ###################################################
   ####               SVDS               ########
   ###################################################  

@@ -110,11 +110,11 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
 	                        obje <- glm(y[idxTrain] ~ X, family = get(family))                      
 	                        fhat <- t(matrix(fhat.eigen[1:ncomp[icomp], ], ncol = d^dim.sig)) %*% 
 	                                obje$coef[-(1:n.unpen.cols)]
-	                        undecor.coef <- obje$coef[1:n.unpen.cols] - 
+	                        coef.undecor <- obje$coef[1:n.unpen.cols] - 
 	                                        ginv(cbind(rep(1, length(idxTrain)), X0[idxTrain,])) %*% 
 	                                        xfuncs[idxTrain, ] %*% fhat
 	                        X0.tst <- cbind(matrix(1,n,1), X0)[idxTest, ]
-	                        yhat <- X0.tst %*% undecor.coef + xfuncs[idxTest, ] %*% fhat
+	                        yhat <- X0.tst %*% coef.undecor + xfuncs[idxTest, ] %*% fhat
 	                        if (family == "gaussian"){
 	                            cv.table[isplit, ifold, ims, infeatures, icomp] <- mean((yhat - y[idxTest]) ^ 2)                                                                                                             
 	                        } else if (family == "binomial") {
@@ -158,7 +158,8 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
     		obje <- list()
     		obje$fitted.values <- yhat
     	}
-    	obje$const <- matrix(obje$coef[1:n.unpen.cols] - ginv(cbind(rep(1, n), X0)) %*% xfuncs %*% fhat, nrow=1)
+    	obje$coef.param <- obje$coef[1:n.unpen.cols]
+    	obje$coef.undecor <- matrix(obje$coef[1:n.unpen.cols] - ginv(cbind(rep(1, n), X0)) %*% xfuncs %*% fhat, nrow=1)
     	colnames(obje$const) <- if (is.null(dimnames(covt)) || is.null(dimnames(covt)[[2]])) 
                                            paste("X", 0:(n.unpen.cols-1), sep="")
     	                        else c("Intercept", dimnames(covt)[[2]])
@@ -166,5 +167,6 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
         obje$Rsq <- getRsq(y = y, yhat = obje$fitted.values, family = family)
     }
     obje$family <- family
+    class(obje) <- 'wcr'
     return(obje)
 }

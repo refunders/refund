@@ -24,14 +24,14 @@ level fitted values are returned}
 
 \details{
 Predicting for new data in a penalized functional regression setting
-takes care.  Utilizing refund::fpca.sc in both refund::pfr and
-refund::predict.pfr allows for the correct estimation of new scores
+takes care.  Utilizing \code{\link{fpca.sc}} in both \code{\link{pfr}} and
+\code{predict.pfr} allows for the correct estimation of new scores
 using the original fit's basis functions.  In the spirit of
-nlme::predict.lme, we can estimate for population and (if the subjects
+\code{\link[nlme]{predict.lme}}, we can estimate for population and (if the subjects
 are in both the original and new data) subject-specific levels.
 }
 
-\value{
+\value{A list with components
    \item{fitted.vals.level.0 }{predicted outcomes at population level}
   \item{fitted.vals.level.1 }{predicted outcomes at subject-specific
     level (if applicable)}

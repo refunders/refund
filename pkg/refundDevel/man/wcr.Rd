@@ -76,12 +76,11 @@ For 2D predictors, setting \code{min.scale=1} will lead to an error, due to a te
 
 See the Details for \code{\link{fpcr}} for a note regarding decorrelation.
 }
-\value{
-\item{glm}{if \code{store.glm = TRUE}, the fitted \code{\link{glm}} object.}
+\value{A list that, if \code{store.glm = TRUE}, includes all components of the fitted \code{\link{glm}} object. The following components are included even if \code{store.glm = FALSE}:
 \item{fitted}{the fitted values.}
-\item{const}{coefficients for covariates \emph{without} decorrelation. The model is fitted after decorrelating the functional predictors from any scalar covariates; but for CV, one needs the "undecorrelated" coefficients from the training-set models.}
+\item{coef.undecor}{coefficients for covariates \emph{without} decorrelation. The model is fitted after decorrelating the functional predictors from any scalar covariates; but for CV, one needs the "undecorrelated" coefficients from the training-set models.}
 \item{fhat}{coefficient function estimate.}
-\item{param}{the indexs and values of \code{min.scale}, \code{nfeatures} and \code{ncomp} specified in the call, if a single value was supplied; otherwise, the values chosen by CV.}
+\item{tuning.params}{\eqn{2 \times 4} table the indices and values of \code{min.scale}, \code{nfeatures} and \code{ncomp} chosen by CV.}
 \item{cv.table}{a table giving the CV criterion for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}, if \code{store.cv = TRUE}; otherwise, the CV criterion only for the optimized combination of these parameters.  Set to \code{NULL} if CV is not performed.}
 \item{se.cv}{if \code{store.cv = TRUE}, the standard error of the CV estimate for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}.}
 \item{Rsq}{coefficient of determination.}
@@ -102,54 +101,7 @@ Lan Huo \email{lan.huo@nyumc.org}
 }
 \examples{
 % \dontrun{
-### 1D functional predictor example ###
-data(gasoline)
-
-# input a single value of each tuning parameter
-gas.wpcr1 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0,
-                 nfeatures = 20, ncomp = 15)
-gas.wpls1 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0, 
-                 nfeatures = 20, ncomp = 15, method = "pls")
-
-# input vectors of tuning parameter values
-gas.wpcr2 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0:3,
-                 nfeatures = c(16, 18, 20), ncomp = 10:15)
-gas.wpls2 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0:3,
-                 nfeatures = c(16, 18, 20), ncomp = 10:15, method = "pls")
-
-### 2D functional predictor example ###
-
-n = 200; d = 64
-
-# Create true coefficient function
-ftrue = matrix(0,d,d)
-ftrue[40:46,34:38] = 1
-
-# Generate random functional predictors, and scalar responses
-ii = array(rnorm(n*d^2), dim=c(n,d,d))
-iimat = ii; dim(iimat) = c(n,d^2)
-yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
-
-mm.wpls <- wcr(yy, xfuncs = ii, min.scale = 4, nfeatures = 20, ncomp = 6,
-                method = "pls")
-image(ftrue)
-contour(mm.wpls$fhat, add=TRUE)
-
-### 3D functional predictor example ###
-
-n = 200; d = 16
-
-# Create true coefficient function
-ftrue = array(0,dim = rep(d, 3))
-ftrue[10:16,12:15, 4:8] = 1
-
-# Generate random functional predictors, and scalar responses
-ii = array(rnorm(n*d^3), dim=c(n,rep(d,3)))
-iimat = ii; dim(iimat) = c(n,d^3)
-yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
-
-mmm.wpls <- wcr(yy, xfuncs = ii, min.scale = 2, nfeatures = 20, ncomp = 6,
-                method = "pls")
+# See example for wnet
 
 % }
 }

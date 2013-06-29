@@ -1,7 +1,7 @@
 wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha = 1,
                  lambda = NULL, standardize = FALSE, pen.covt = FALSE, filter.number = 10, 
                  wavelet.family = 'DaubLeAsymm', family = 'gaussian', nfold = 5, 
-                 nsplit = 1, decorrelate = FALSE, store.cv = FALSE, seed = NULL, ...){
+                 nsplit = 1, store.cv = FALSE, seed = NULL, ...){
     checkError(y = y, xfuncs = xfuncs, covt = covt, 
                vars = list(min.scale = min.scale, nfeatures = nfeatures, alpha = alpha))    
     n <- length(y)
@@ -22,8 +22,7 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha 
     }
     inm <- ifelse(length(which(multiValFlag[-4] == TRUE)) == 0, ifelse(nfold > 1, 'nfold', ''), 
                   switch(max(which(multiValFlag[-4] == TRUE)), 
-                         ifelse(nfold > 1, 'nfold', 'ms'), 'nf', 'alpha', ''))
-    if (decorrelate) xfuncs <- decorrelate(xfuncs, covt)   
+                         ifelse(nfold > 1, 'nfold', 'ms'), 'nf', 'alpha', '')) 
     p <- prod(dim(xfuncs)[-1]) + ifelse(dim.sig == 2, 1, 0)
     if (is.null(nfeatures)) nfeatures <- p
     nlambda <- ifelse(do.cv, 100, 1)
@@ -31,10 +30,11 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha 
     n.covt <- if(is.null(covt)) 0 else ncol(as.matrix(covt))
     penalty.factor <- if(pen.covt) rep(1,n.covt+p) else c(rep(0,n.covt), rep(1,p))
     lambda.table <- array(0, dim = c(length(min.scale), length(nfeatures), length(alpha), nlambda))
+    dimnames(lambda.table) <- list(paste("min.scale=", min.scale, sep=""), paste("nfeatures=", nfeatures, sep=""),
+                                   paste("alpha=", alpha, sep=""), paste("lambda", 1:nlambda, sep=""))
     cv.table <- array(0, dim = c(nsplit, nfold, length(min.scale), length(nfeatures), length(alpha), nlambda))
-    dimnames(cv.table) <- list(NULL, NULL, paste("ms=", min.scale, sep=""), 
-                               paste('nfeatures=', nfeatures, sep=""), 
-                               paste("alpha=", alpha, sep=""), NULL) 
+    dimnames(cv.table) <- list(NULL, NULL, paste("min.scale=", min.scale, sep=""), 
+                               paste("nfeatures=", nfeatures, sep=""), paste("alpha=", alpha, sep=""), NULL) 
     setup <- waveletSetup(xfuncs = xfuncs, filter.number = filter.number, family = wavelet.family, 
                           min.scale = min.scale)
     if(do.cv && any(multiValFlag)){
@@ -147,7 +147,7 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha 
         obje$param <- param
     } else{
         obje$fitted <- yhat    
-        obje$const <- theta.w[1:(n.covt+1),]  
+        obje$coef.param <- theta.w[1:(n.covt+1),]  
     	obje$fhat <- array(fhat, dim = rep(d, dim.sig))  
     	obje$Rsq <- getRsq(y = y, yhat = yhat, family = family) 	
     }

@@ -1,17 +1,17 @@
 \name{predict.wnet}
 \alias{predict.wnet}
-\title{Prediction for generalized elastic net in the wavelet domain}
+\title{Prediction method for generalized elastic net in the wavelet domain}
 \usage{
-  \method{predict}{wnet}(object, newx, covt = NULL, ...)
+  \method{predict}{wnet}(object, newx, newcovt = NULL, ...)
 }
 \arguments{
   \item{object}{a fitted \code{wnet}-object}
 
-  \item{newx}{Matrix of new values for x at which predictions are to be made.}
+  \item{newx}{matrix of new values for functional predictors.}
 
-  \item{covt}{Matrix of new covariates.}
+  \item{newcovt}{matrix of new covariate values.}
   
-  \item{...}{used}
+  \item{...}{Other argument.}
 }
 \value{
   The predicted value.

@@ -85,7 +85,7 @@ Collate:
     'reconstr2d.R'
     'reconstr3d.R'
     'rlrt.pfr.R'
-    'svds.R'
+    'fpca2s.R'
     'smoothSVD.R'
     'vis.fgam.R'
     'wcr.R'
@@ -97,3 +97,4 @@ Collate:
     'predict.pfr.R'
     'preprocess.pfr.R'
     'wUtil.R' 
+    'plot.wnet-and-plot.wcr.R'

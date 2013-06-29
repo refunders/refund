@@ -77,6 +77,7 @@ Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for func
 }
 
 \examples{
+\dontrun{
 #------------------------------------------------------------------------
 # Example 1: Estimation with D2 penalty
 #------------------------------------------------------------------------
@@ -112,4 +113,5 @@ data(Q)
 ##2.1 Fit the model 
 Fit1<- peer(Y=Y, funcs=W, pentype='Decomp', Q=Q, se=TRUE)
 plot(Fit1)
+}
 }

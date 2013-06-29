@@ -90,6 +90,7 @@ Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for func
 }
 
 \examples{
+\dontrun{
 #------------------------------------------------------------------------
 # Example 1: Estimation with Ridge penalty
 #------------------------------------------------------------------------
@@ -164,5 +165,5 @@ Fit4<- lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), funcs=W,
 L1<- adiag(L, L)
 Fit5<- lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), comm.pen=FALSE, funcs=W, 
 		     pentype='USER', f_t=cbind(1,t), L=L1, se=TRUE)
-
+}
 }

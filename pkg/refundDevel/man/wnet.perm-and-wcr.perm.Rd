@@ -1,20 +1,28 @@
-\name{wnet.perm}
+\name{wcr.perm}
 \alias{wnet.perm}
+\alias{wcr.perm}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Permutation test for (naive) elastic net in the wavelet domain
+Permutation test for wavelet-domain scalar-on-function regression
 }
 \description{
-This function assesses statistical significance of a \code{\link{wnet}} fit by referring the cross-validation criterion to a permutation distribution.
+This function assesses statistical significance of a \code{\link{wcr}}/ \code{\link{wnet}} fit by referring the cross-validation criterion to a permutation distribution.
 }
 \usage{
-wnet.perm(y, xfuncs, min.scale, nfeatures, alpha, lambda, covt = NULL, nsplit = 10, nperm = 20, 
+wcr.perm(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
+         covt = NULL, nsplit = 10, nperm = 20, 
          perm.method = c('responses', 'y.residuals', 'x.residuals'), 
          family = "gaussian", ...)
+wnet.perm(y, xfuncs, min.scale, nfeatures, alpha, lambda, 
+         covt = NULL, nsplit = 10, nperm = 20, 
+         perm.method = c('responses', 'y.residuals', 'x.residuals'), 
+         family = "gaussian", ...)         
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y, xfuncs, min.scale, nfeatures, alpha, lambda, covt, family}{arguments passed to \code{\link{wnet}}.}
+  \item{y, xfuncs, min.scale, nfeatures, method, covt, family}{arguments passed to \code{\link{wcr}} and \code{\link{wnet}}.}
+  \item{ncomp}{argument passed to \code{\link{wcr}}.}
+  \item{alpha, lambda}{arguments passed to \code{\link{wnet}}}
   \item{nsplit}{
 number of splits to estimate the true cv.
 }
@@ -29,10 +37,10 @@ one of
 \item {\code{"x.residuals"}: permute the residuals upon regressing \code{xfuncs ~ covt}.}
 }
 See Details.}
-  \item{\dots}{other parameters passed to \code{\link{wnet}}.}
+  \item{\dots}{other parameters passed to \code{\link{wcr}} or \code{\link{wnet}}.}
 }
 \details{
-see \code{\link{wcr.perm}}
+	Permutation tests of this type are discussed, in a classification setting, by Ojala and Garriga (2010). Permuting the responses is appropriate when regressing on functions/images only, with no scalar covariates. For linear regression with covariates, it is preferable to first regress on the covariates, and then permute the residuals. For logistic regression this is not feasible; but, following Potter (2005), one can instead permute the residuals from a regression of the functions/images on the covariates.
 }
 \value{
   \item{cv}{ the CV criterion for the real data.
@@ -55,7 +63,7 @@ Lan Huo \email{lan.huo@nyumc.org}
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{wnet}}, \code{\link{wcr.perm}}
+\code{\link{wcr}}, \code{\link{wnet}}
 }
 \examples{
 \dontrun{
@@ -71,6 +79,9 @@ iimat = ii; dim(iimat) = c(n,d^2)
 yy = iimat \%*\% as.vector(ftrue) + rnorm(n, sd=.3)
 
 cv.obj <- wnet.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 200, alpha = 1, nperm = 10)
+
+cv.obj <- wcr.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 20, ncomp = 6, cv1 = TRUE,
+                   method = "pls", nperm = 10)
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
