@@ -1,4 +1,4 @@
-\name{wcr.perm}
+\name{wcr/wnet.perm}
 \alias{wnet.perm}
 \alias{wcr.perm}
 %- Also NEED an '\alias' for EACH other topic documented here.
@@ -20,14 +20,11 @@ wnet.perm(y, xfuncs, min.scale, nfeatures, alpha, lambda,
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y, xfuncs, min.scale, nfeatures, method, covt, family}{arguments passed to \code{\link{wcr}} and \code{\link{wnet}}.}
-  \item{ncomp}{argument passed to \code{\link{wcr}}.}
-  \item{alpha, lambda}{arguments passed to \code{\link{wnet}}}
-  \item{nsplit}{
-number of splits to estimate the true cv.
-}
+  \item{y, xfuncs, min.scale, nfeatures, method, covt, family, nsplit}{arguments passed to \code{\link{wcr}} or \code{\link{wnet}}.}
+  \item{ncomp}{number of components; passed to \code{\link{wcr}}.}
+  \item{alpha, lambda}{tuning parameters, passed to \code{\link{wnet}}.}
   \item{nperm}{
-number of permutations. The default is meant for toy applications.
+number of permutations. The default is suitable for toy applications only.
 }
   \item{perm.method}{
 one of

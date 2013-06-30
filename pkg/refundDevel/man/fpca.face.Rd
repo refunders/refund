@@ -1,7 +1,7 @@
 \name{fpca.face}
 \alias{fpca.face}
 \title{
-Fast Covariance Estimation
+Functional principal component analysis with fast covariance estimation
 }
 \description{
 A fast implementation of the sandwich smoother (Xiao et al., 2013) for covariance matrix smoothing. Pooled generalized cross validation
@@ -16,26 +16,26 @@ fpca.face(X, center = TRUE, t = NULL, knots = 35, p = 3, m = 2, lambda = NULL,
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{X}{
-I by J data matrix; missing data allowed
+\eqn{I \times J} data matrix; missing data allowed
 }
   \item{center}{
-logical; defaults to TRUE and data will be centered across subjects  	
+logical; defaults to \code{TRUE}, i.e., data will be centered across subjects.  	
   }
   
   \item{t}{
-vector of J
+vector of \eqn{J}
 }
   \item{knots}{
-vector of knots or number of (interior) knots; defaults to 35
+vector of knots or number of (interior) knots; defaults to 35.
 }
   \item{p}{
-degrees of B-splines; defaults to 3
+degrees of B-splines; defaults to 3.
 }
   \item{m}{
-order of differencing penalty; defaults to 2
+order of differencing penalty; defaults to 2.
 }
   \item{lambda}{
-user-specified smoothing parameter; defaults to NULL and uses grid-searching method or \command{optim}
+user-specified smoothing parameter; defaults to NULL and uses grid-searching method or \command{optim}.
 }
   \item{pve}{
 percentage of variance explained for selecting the number of principal components; defaults to 0.99  	
@@ -48,24 +48,21 @@ method for predicting scores; defaults to "int" for numerical integration,
 logicial; defaults to TRUE, if FALSE, uses \command{optim}
 }
   \item{search.length}{
-number of equidistant (log scale) smoothing parameters to search; defaults to 100
+number of equidistant (log scale) smoothing parameters to search; defaults to 100.
 }
   \item{method}{
-see \command{optim}; defaults to \command{L-BFGS-B}
+see \command{optim}; defaults to \command{L-BFGS-B}.
 }
-  \item{lower}{
-see \command{optim}; defaults to -20 for the log of the smoothing paramter
-}
-  \item{upper}{
-see \command{optim}; defaults to 20 for the log of the smoothing paramter
+  \item{lower, upper}{
+bounds for log smoothing parameter, passed to \command{optim}; defaults are -20 and 20.
 }
   \item{control}{
-see \command{optim}
+passed to \command{optim}.
 }
 }
 
 
-\value{
+\value{A list with components
 \item{npc}{number of principal components}
 \item{eigenvectors}{matrix of eigenvectors}
 \item{eigenvalues}{vector of eigenvalues}
@@ -78,7 +75,7 @@ Fast bivariate \emph{P}-splines: the sandwich smoother,
 \emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577-599.
 
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013),
-Fast covariance estimation for high-dimensional functional data, \emph{manuscript}.
+Fast covariance estimation for high-dimensional functional data. Manuscript.
 }
 \author{
 Luo Xiao \email{lxiao@jhsph.edu}

@@ -22,7 +22,7 @@ scalar outcome vector.
   \item{xfuncs}{
 functional predictors. For 1D predictors, an \eqn{n \times d} matrix of signals, where \eqn{n} is the length of \code{y} and \eqn{d} is the number of sites at which each signal is defined. For 2D predictors, an \eqn{n \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d}. For 3D predictors, an \eqn{n \times d \times d \times d} array comprising \eqn{n} images of dimension \eqn{d \times d \times d}. Note that \eqn{d} must be a power of \eqn{2}.}
   \item{min.scale}{
-either a scalar, or a vector of values to be compared. Used to control the coarseness level of wavelet decomposition.  The maximum value of \code{min.scale} is \eqn{log_2(d) - 1}.
+either a scalar, or a vector of values to be compared. Used to control the coarseness level of wavelet decomposition.  Possible values are \eqn{0,1,\dots,log_2(d) - 1}.
 }
   \item{nfeatures}{
 number(s) of features, i.e. wavelet coefficients, to retain for prediction of \code{y}: either a scalar, or a vector of values to be compared.

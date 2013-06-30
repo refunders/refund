@@ -86,7 +86,7 @@ Collate:
     'reconstr3d.R'
     'rlrt.pfr.R'
     'fpca2s.R'
-    'smoothSVD.R'
+    'fpca.ssvd.R'
     'vis.fgam.R'
     'wcr.R'
     'wcr.perm.R'

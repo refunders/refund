@@ -1,4 +1,4 @@
-\name{plot.wcr}
+\name{plot.wcr/wnet}
 \alias{plot.wnet}
 \alias{plot.wcr}
 %- Also NEED an '\alias' for EACH other topic documented here.
@@ -9,8 +9,10 @@ Default plotting for wavelet-domain scalar-on-function regression
 Plots the coefficient function/image estimates produced by \code{\link{wcr}} and \code{\link{wnet}}.
 }
 \usage{
-\method{plot}{wcr}(x, xlabel = "", ylabel = "Coefficient function", which.dim = 1, slices = NULL, set.mfrow = TRUE, image.axes = FALSE, ...)
-\method{plot}{wnet}(x, xlabel = "", ylabel = "Coefficient function", which.dim = 1, slices = NULL, set.mfrow = TRUE, image.axes = FALSE, ...)
+\method{plot}{wcr}(x, xlabel = "", ylabel = "Coefficient function", which.dim = 1, slices = NULL, 
+set.mfrow = TRUE, image.axes = FALSE, ...)
+\method{plot}{wnet}(x, xlabel = "", ylabel = "Coefficient function", which.dim = 1, slices = NULL, 
+set.mfrow = TRUE, image.axes = FALSE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

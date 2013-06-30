@@ -2,31 +2,31 @@
 \alias{fpca2s}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Singular Value Decomposition plus Smoothing
+Functional principal component analysis by a two-stage method
 }
 \description{
-Smoothing by \emph{P}-splines the eigenvectors obtained from the singular value decomposition of the functional data matrix.
+This function performs functional PCA by performing an ordinary singular value decomposition on the functional data matrix, then smoothing the right singular vectors by \emph{P}-splines.
 }
 \usage{
-fpca2s(X,npc=NA,center = TRUE, t = NULL,smooth=TRUE)
+fpca2s(X, npc=NA, center = TRUE, t = NULL, smooth=TRUE)
 }
 
 \arguments{
   \item{X}{
-I by J data matrix
+\eqn{I \times J} data matrix.
 }
  \item{npc}{
-first npc eigenvectors to smooth
+number of eigenvectors to smooth. 
 }
 \item{center}{
-logical;defaults to TRUE where the data matrix is centered across subjects
+logical; if \code{TRUE} (the default), the data matrix is centered across subjects
 }
 
   \item{t}{
-index vector of J entries for data in X; defaults to a sequence from 0 to 1.
+index vector of \eqn{J} entries for data in X; defaults to a sequence from 0 to 1.
 }
   \item{smooth}{
-logical; defaults to TRUE, if NULL, no smoothing of eigenvectors
+logical; defaults to TRUE, if NULL, no smoothing of eigenvectors.
 }
  
 }
@@ -34,7 +34,7 @@ logical; defaults to TRUE, if NULL, no smoothing of eigenvectors
 \details{
 The eigenvalues are the same as those obtained from eigendecomposition of sample covariance matrix.
 }
-\value{
+\value{A list with components
 \item{npc}{number of principal components}
 \item{eigenvectors}{matrix of eigenvectors}
 \item{eigenvalues}{vector of eigenvalues}
@@ -43,14 +43,14 @@ The eigenvalues are the same as those obtained from eigendecomposition of sample
 \references{
 
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013),
-Fast covariance estimation for high-dimensional functional data, \emph{manuscript}.
+Fast covariance estimation for high-dimensional functional data. Manuscript.
 }
 \author{
 Luo Xiao \email{lxiao@jhsph.edu}
 }
 
 %\seealso{
-%\code{\link{smoothSVD}}
+%\code{\link{fpca.ssvd}}
 %}
 \examples{
   #### settings

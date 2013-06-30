@@ -25,7 +25,7 @@ functional predictors. For 1D predictors, an \eqn{n \times d} matrix of signals,
 covariates, if any: an \eqn{n}-row matrix, or a vector of length \eqn{n}.
 }
   \item{min.scale}{
-either a scalar, or a vector of candidate values to be compared. Used to control the coarseness level of the wavelet decomposition.  The maximum value of \code{min.scale} is \eqn{log_2(d) - 1}.
+either a scalar, or a vector of candidate values to be compared. Used to control the coarseness level of the wavelet decomposition.  Possible values are \eqn{0,1,\dots,log_2(d) - 1}.
 }
   \item{nfeatures}{
 number(s) of features, i.e. wavelet coefficients, to retain for prediction of \code{y}: either a scalar, or a vector of values to be compared.  	

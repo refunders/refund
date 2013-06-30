@@ -57,6 +57,6 @@
   Fabian Scheipl
 }
 \seealso{
-  \code{\link[mgcv]{predict.gam}()}
+  \code{\link[mgcv]{predict.gam}}
 }
 

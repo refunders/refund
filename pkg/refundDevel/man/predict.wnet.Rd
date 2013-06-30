@@ -5,7 +5,7 @@
   \method{predict}{wnet}(object, newx, newcovt = NULL, ...)
 }
 \arguments{
-  \item{object}{a fitted \code{wnet}-object}
+  \item{object}{a fitted object produced by \code{\link{wnet}}.}
 
   \item{newx}{matrix of new values for functional predictors.}
 
@@ -17,12 +17,12 @@
   The predicted value.
 }
 \description{
-  Prediction function fro wnet object.
+  Produces predicted values for a wnet object, given new functional predictors and scalar covariates.
 }
 \author{
   Lan Huo
 }
 \seealso{
-  \code{wnet}
+  \code{\link{wnet}}
 }
 

@@ -44,7 +44,7 @@ If \code{type == "lpmatrix"}, the design matrix for the supplied covariate value
 Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl
 }
 \seealso{
-\code{\link{fgam}}, \code{\link{predict.gam}}
+\code{\link{fgam}}, \code{\link[mgcv]{predict.gam}}
 }
 \examples{
 ######### Octane data example #########

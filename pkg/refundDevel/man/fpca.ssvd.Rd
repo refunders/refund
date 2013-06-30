@@ -1,8 +1,8 @@
-\name{smoothSVD}
-\alias{smoothSVD}
-\title{Smoothed FPCA via iterative penalized rank one SVDs.}
+\name{fpca.ssvd}
+\alias{fpca.ssvd}
+\title{Smoothed functional principal component analysis via iterative penalized rank one SVDs}
 \usage{
-  smoothSVD(X, npc = NA, center = TRUE, maxiter = 15,
+  fpca.ssvd(X, npc = NA, center = TRUE, maxiter = 15,
     tol = 1e-04, diffpen = 3, gridsearch = TRUE,
     alphagrid = 1.5^(-20:40), lower.alpha = 1e-05,
     upper.alpha = 1e+07, verbose = FALSE)
@@ -11,18 +11,18 @@
   \item{X}{data matrix (rows: observations; columns: grid
   of eval. points)}
 
-  \item{npc}{how many smooth SVs to try to extract, if NA
-  (the default) the hard thresholding rule of Donoho,
+  \item{npc}{how many smooth SVs to try to extract, if \code{NA}
+  (the default) the hard thresholding rule of Donoho and
   Gavish (2013) is used (see Details, References).}
 
   \item{center}{center \code{X} so that its column-means
   are 0? Defaults to \code{TRUE}}
 
   \item{maxiter}{how many iterations of the power algorithm
-  to perform at most (defaults to 15)}
+  to perform at most (defaults to 15).}
 
   \item{tol}{convergence tolerance for power algorithm
-  (defaults to 1e-4)}
+  (defaults to 1e-4).}
 
   \item{diffpen}{difference penalty order controlling the
   desired smoothness of the right singular vectors,
@@ -31,7 +31,7 @@
 
   \item{gridsearch}{use \code{\link[stats]{optimize}} or a
   grid search to find GCV-optimal smoothing parameters?
-  defaults to \code{TRUE}.}
+  Defaults to \code{TRUE}.}
 
   \item{alphagrid}{grid of smoothing parameter values for
   grid search}
@@ -53,8 +53,7 @@
   \code{X} (or a vector of zeroes if \code{!center}).
 }
 \description{
-  Implements Huang, Shen, Buja (2008) algorithm (see
-  references) for finding smooth right singular vectors of
+  Implements the algorithm of Huang, Shen and Buja (2008) for finding smooth right singular vectors of
   a matrix \code{X} containing (contaminated) evaluations
   of functional random variables on a regular, equidistant
   grid. If the number of smooth SVs to extract is not
@@ -62,10 +61,10 @@
   appropriate number based on the asymptotically optimal
   truncation threshold under the assumption of a low rank
   matrix contaminated with i.i.d. Gaussian noise with
-  unknown variance derived in Donoho, Gavish (2013).
+  unknown variance derived in Donoho and Gavish (2013).
 }
 \examples{
-## as in Sec. 6.2 of Huang, Shen, Buja (2008):
+## as in Sec. 6.2 of Huang, Shen and Buja (2008):
  set.seed(2678695)
  n <- 101
  m <- 101
@@ -81,7 +80,7 @@
  eps <- matrix(rnorm(m*n, sd=s), n, m)
  X <- U\%*\%D\%*\%t(V) + eps
 
- smoothSV <- smoothSVD(X, verbose=TRUE)
+ smoothSV <- fpca.ssvd(X, verbose=TRUE)
 
  layout(t(matrix(1:6, nr=2)))
  clrs <- sapply(rainbow(n), function(c)
@@ -109,11 +108,11 @@
 \references{
   Huang, J. Z., Shen, H., & Buja, A. (2008).  Functional
   principal components analysis via penalized rank one
-  approximation.  Electronic Journal of Statistics, 2,
-  678-695
+  approximation.  \emph{Electronic Journal of Statistics}, 2,
+  678--695.
 
-  Donoho, D.L., Gavish, M. (2013). The Optimal Hard
-  Threshold for Singular Values is 4/sqrt(3).  eprint
+  Donoho, D.L., and Gavish, M. (2013). The optimal hard
+  threshold for singular values is 4/sqrt(3).  eprint
   arXiv:1305.5870. Available from
   \url{http://arxiv.org/abs/1305.5870}.
 }
