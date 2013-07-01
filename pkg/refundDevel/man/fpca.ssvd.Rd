@@ -1,6 +1,6 @@
 \name{fpca.ssvd}
 \alias{fpca.ssvd}
-\title{Smoothed functional principal component analysis via iterative penalized rank one SVDs}
+\title{Smoothed FPCA via iterative penalized rank one SVDs.}
 \usage{
   fpca.ssvd(X, npc = NA, center = TRUE, maxiter = 15,
     tol = 1e-04, diffpen = 3, gridsearch = TRUE,
@@ -11,18 +11,18 @@
   \item{X}{data matrix (rows: observations; columns: grid
   of eval. points)}
 
-  \item{npc}{how many smooth SVs to try to extract, if \code{NA}
-  (the default) the hard thresholding rule of Donoho and
+  \item{npc}{how many smooth SVs to try to extract, if NA
+  (the default) the hard thresholding rule of Donoho,
   Gavish (2013) is used (see Details, References).}
 
   \item{center}{center \code{X} so that its column-means
   are 0? Defaults to \code{TRUE}}
 
   \item{maxiter}{how many iterations of the power algorithm
-  to perform at most (defaults to 15).}
+  to perform at most (defaults to 15)}
 
   \item{tol}{convergence tolerance for power algorithm
-  (defaults to 1e-4).}
+  (defaults to 1e-4)}
 
   \item{diffpen}{difference penalty order controlling the
   desired smoothness of the right singular vectors,
@@ -31,7 +31,7 @@
 
   \item{gridsearch}{use \code{\link[stats]{optimize}} or a
   grid search to find GCV-optimal smoothing parameters?
-  Defaults to \code{TRUE}.}
+  defaults to \code{TRUE}.}
 
   \item{alphagrid}{grid of smoothing parameter values for
   grid search}
@@ -46,14 +46,18 @@
   diagnostic messages?  defaults to \code{FALSE}}
 }
 \value{
-  a list with entries \code{smooth}, the rank \code{npc}
-  SVD of the smooth part of \code{X}, and \code{noise}, the
-  rank \code{min(dim(X)) - npc} SVD of the non-smooth part
-  of \code{X}, and \code{mean}, the column means of
-  \code{X} (or a vector of zeroes if \code{!center}).
+  a list like the returned object from
+  \code{\link{fpca.sc}}, with entries \code{Yhat}, the
+  smoothed trajectories, \code{scores}, the estimated FPC
+  loadings, \code{mu}, the column means of \code{X} (or a
+  vector of zeroes if \code{!center}), \code{efunctions},
+  the estimated smooth FPCs, \code{evalues}, their
+  associated eigenvalues, and \code{npc}, the number of
+  smooth components that were extracted.
 }
 \description{
-  Implements the algorithm of Huang, Shen and Buja (2008) for finding smooth right singular vectors of
+  Implements Huang, Shen, Buja (2008) algorithm (see
+  references) for finding smooth right singular vectors of
   a matrix \code{X} containing (contaminated) evaluations
   of functional random variables on a regular, equidistant
   grid. If the number of smooth SVs to extract is not
@@ -61,10 +65,12 @@
   appropriate number based on the asymptotically optimal
   truncation threshold under the assumption of a low rank
   matrix contaminated with i.i.d. Gaussian noise with
-  unknown variance derived in Donoho and Gavish (2013).
+  unknown variance derived in Donoho, Gavish (2013).  Note
+  that this will typically not work well if you have more
+  observations than grid points.
 }
 \examples{
-## as in Sec. 6.2 of Huang, Shen and Buja (2008):
+## as in Sec. 6.2 of Huang, Shen, Buja (2008):
  set.seed(2678695)
  n <- 101
  m <- 101
@@ -82,24 +88,16 @@
 
  smoothSV <- fpca.ssvd(X, verbose=TRUE)
 
- layout(t(matrix(1:6, nr=2)))
+ layout(t(matrix(1:4, nr=2)))
  clrs <- sapply(rainbow(n), function(c)
            do.call(rgb, as.list(c(col2rgb(c)/255, .1))))
  matplot(V, type="l", lty=1, col=1:2, xlab="",
-         main="V: true", bty="n")
- matplot(smoothSV$smooth$v, type="l", lty=1, col=1:5, xlab="",
-         main="V: estimate", bty="n")
- plot(U[,1]*s1^2, smoothSV$smooth$u[,1]*smoothSV$smooth$d[1], col=1,
-         xlab="true U", ylab="estimated U",
-         main="U[,1]: true vs. estimated", bty="n"); abline(c(0,-1), col="grey")
- plot(U[,2]*s2^2, smoothSV$smooth$u[,2]*smoothSV$smooth$d[2], col=1,
-         xlab="true U", ylab="estimated U",
-         main="U[,2]: true vs. estimated", bty="n"); abline(c(0,-1), col="grey")
+         main="FPCs: true", bty="n")
+ matplot(smoothSV$efunctions, type="l", lty=1, col=1:5, xlab="",
+         main="FPCs: estimate", bty="n")
  matplot(1:m, t(U\%*\%D\%*\%t(V)), type="l", lty=1, col=clrs, xlab="", ylab="",
          main="true smooth X", bty="n")
- matplot(1:m, with(smoothSV,
-                 mean + t(smooth$u\%*\%diag(smooth$d)\%*\%t(smooth$v))),
-         xlab="", ylab="",
+ matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="",
          type="l", lty=1,col=clrs, main="estimated smooth X", bty="n")
 }
 \author{
@@ -108,12 +106,18 @@
 \references{
   Huang, J. Z., Shen, H., & Buja, A. (2008).  Functional
   principal components analysis via penalized rank one
-  approximation.  \emph{Electronic Journal of Statistics}, 2,
-  678--695.
+  approximation.  Electronic Journal of Statistics, 2,
+  678-695
 
-  Donoho, D.L., and Gavish, M. (2013). The optimal hard
-  threshold for singular values is 4/sqrt(3).  eprint
+  Donoho, D.L., Gavish, M. (2013). The Optimal Hard
+  Threshold for Singular Values is 4/sqrt(3).  eprint
   arXiv:1305.5870. Available from
   \url{http://arxiv.org/abs/1305.5870}.
+}
+\seealso{
+  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for
+  covariance-estimate based smoothing of \code{X};
+  \code{\link{fpca2s}} for a faster approach for SVD-based
+  smoothing.
 }
 

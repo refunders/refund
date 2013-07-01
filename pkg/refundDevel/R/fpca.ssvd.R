@@ -5,11 +5,12 @@
 #'    of functional random variables on a regular, equidistant grid. If the number of smooth SVs to 
 #'    extract is not specified, the function hazards a guess for the appropriate number based 
 #'    on the asymptotically optimal truncation threshold under the assumption of a low rank matrix 
-#'    contaminated with i.i.d. Gaussian noise with unknown variance derived in Donoho, Gavish (2013). 
+#'    contaminated with i.i.d. Gaussian noise with unknown variance derived in Donoho, Gavish (2013).
+#'    Note that this will typically not work well if you have more observations than grid points.  
 #'   
 #'    @param X data matrix (rows: observations; columns: grid of eval. points)
-#'    @param npc how many smooth SVs to try to extract, if NA (the default) the hard thresholding rule of
-#'          Donoho, Gavish (2013) is used (see Details, References).
+#'    @param npc how many smooth SVs to try to extract, if NA (the default) the hard thresholding
+#'     rule of Donoho, Gavish (2013) is used (see Details, References).
 #'    @param center center \code{X} so that its column-means are 0? Defaults to \code{TRUE} 
 #'    @param maxiter how many iterations of the power algorithm to perform at most (defaults to 15)
 #'    @param tol convergence tolerance for power algorithm (defaults to 1e-4)
@@ -22,9 +23,12 @@
 #'    @param upper.alpha upper limit for smoothing parameter if \code{!gridsearch}
 #'    @param verbose generate graphical summary of progress and diagnostic messages? 
 #'        defaults to \code{FALSE}
-#'    @return a list with entries \code{smooth}, the rank \code{npc} SVD of the smooth part of \code{X}, 
-#'        and \code{noise}, the rank \code{min(dim(X)) - npc} SVD of the non-smooth part of \code{X}, and 
-#'       \code{mean}, the column means of \code{X} (or a vector of zeroes if \code{!center}). 
+#'    @return a list like the returned object from \code{\link{fpca.sc}},  with entries 
+#'    \code{Yhat}, the smoothed trajectories, \code{scores}, the estimated FPC loadings, \code{mu},
+#'    the column means of \code{X} (or a vector of zeroes if \code{!center}),  \code{efunctions}, 
+#'    the estimated smooth FPCs, \code{evalues}, their associated eigenvalues, and \code{npc}, the
+#'     number of smooth components that were extracted.
+#'    @seealso  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for covariance-estimate based smoothing of \code{X}; \code{\link{fpca2s}} for a faster approach for SVD-based smoothing.
 #'    @author Fabian Scheipl
 #'    @references Huang, J. Z., Shen, H., & Buja, A. (2008). 
 #'     Functional principal components analysis via penalized rank one approximation.
@@ -51,26 +55,17 @@
 #'   
 #'  smoothSV <- fpca.ssvd(X, verbose=TRUE)
 #'  
-#'  layout(t(matrix(1:6, nr=2)))
+#'  layout(t(matrix(1:4, nr=2)))
 #'  clrs <- sapply(rainbow(n), function(c) 
 #'            do.call(rgb, as.list(c(col2rgb(c)/255, .1))))
 #'  matplot(V, type="l", lty=1, col=1:2, xlab="", 
-#'          main="V: true", bty="n")
-#'  matplot(smoothSV$smooth$v, type="l", lty=1, col=1:5, xlab="",
-#'          main="V: estimate", bty="n")
-#'  plot(U[,1]*s1^2, smoothSV$smooth$u[,1]*smoothSV$smooth$d[1], col=1, 
-#'          xlab="true U", ylab="estimated U",
-#'          main="U[,1]: true vs. estimated", bty="n"); abline(c(0,-1), col="grey")
-#'  plot(U[,2]*s2^2, smoothSV$smooth$u[,2]*smoothSV$smooth$d[2], col=1,
-#'          xlab="true U", ylab="estimated U",
-#'          main="U[,2]: true vs. estimated", bty="n"); abline(c(0,-1), col="grey")
+#'          main="FPCs: true", bty="n")
+#'  matplot(smoothSV$efunctions, type="l", lty=1, col=1:5, xlab="",
+#'          main="FPCs: estimate", bty="n")
 #'  matplot(1:m, t(U%*%D%*%t(V)), type="l", lty=1, col=clrs, xlab="", ylab="",
 #'          main="true smooth X", bty="n")
-#'  matplot(1:m, with(smoothSV, 
-#'                  mean + t(smooth$u%*%diag(smooth$d)%*%t(smooth$v))), 
-#'          xlab="", ylab="", 
+#'  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="", 
 #'          type="l", lty=1,col=clrs, main="estimated smooth X", bty="n")
-# TODO: use <irlba> for efficient SVD of noise component?
 fpca.ssvd <- function(X, npc=NA, center=TRUE,
         maxiter=15, tol=1e-4, 
         diffpen=3,
@@ -99,41 +94,16 @@ fpca.ssvd <- function(X, npc=NA, center=TRUE,
     n <- nrow(X)
     
     if(is.na(npc)){
-        # use Donoho, Gavish (2013) for estimating suitable number of sv's to extract: 
-        beta <- n/m
-        
-        if(beta > 1 | beta < 1e-3){
-            warning("Approximation for \\beta(\\omega) may be invalid.")
-        }
-#            ## approx for omega.beta below eq. (25):
-#            betaplus  <- 1 + sqrt(beta)^2 
-#            betaminus <- 1 - sqrt(beta)^2
-#            marcenkopastur <- function(x){
-#                abs(integrate(function(t){
-#                          sqrt((betaplus - t) * (t - betaminus))/(2*pi*t)  
-#                        }, lower=betaminus, upper=x, subdivisions=1e5, 
-#                        stop.on.error = FALSE)$value - 0.5)
-#            }
-#            mu.beta <- optimize(marcenkopastur, 
-#                    interval=c(betaminus, betaplus))$minimum
-#            # eq. (10)
-#            lambda.beta <- sqrt(2*(beta+1) + (8*beta)/(beta + 1 + sqrt(beta^2 + 14*beta +1)))
-#            omega.beta <- lambda.beta/sqrt(mu.beta)
-
-        omega.beta <- .56*beta^3 - 0.95*beta^2 + 1.82*beta + 1.43
-        y <- svd(X, nu=0, nv=0)$d 
-        rankY <- min(which(cumsum(y[y>0])/sum(y[y>0]) > .995))
-        y.med <- median(y)
-        
-        npc <- min(max(1, sum(y > omega.beta*y.med)),  rankY)
-        if(verbose){
-            cat("Using ", npc , "smooth components based on Donoho/Gavish (2013).\n")
-        }
+      npc <- getNPC.DonohoGavish(X)
     }
     
     
     if(!is.numeric(npc)) stop("Invalid <npc>.")
     if(npc<1 | npc>min(m,n)) stop("Invalid <npc>.")
+    if(verbose){
+      cat("Using ", npc , "smooth components based on Donoho/Gavish (2013).\n")
+    }
+    
     if(!is.numeric(alphagrid)) stop("Invalid <alphagrid>.")
     if(any(is.na(alphagrid)) | any(alphagrid<.Machine$double.eps)) stop("Invalid <alphagrid>.")
     uhoh <- numeric(0)
@@ -152,12 +122,12 @@ fpca.ssvd <- function(X, npc=NA, center=TRUE,
     lambda <- eOmega$values
     Gamma  <- eOmega$vectors
     
-    U <- matrix(NA, nrow=nrow(X), ncol=npc)
-    V <- matrix(NA, nrow=ncol(X), ncol=npc)
+    U <- matrix(NA, nrow=n, ncol=npc)
+    V <- matrix(NA, nrow=m, ncol=npc)
     d <- rep(NA, npc)
     
     if(center){
-        meanX <- colMeans(X) #predict(loess(1:m ~ colMeans(X)))
+        meanX <- predict(smooth.spline(x=1:m, y=colMeans(X)), x=1:m)$y 
         X <- t(t(X) - meanX) 
     } else {
         meanX <- rep(0, ncol(X))
@@ -228,10 +198,53 @@ fpca.ssvd <- function(X, npc=NA, center=TRUE,
     if(length(uhoh)) warning("First SV for remaining un-smooth signal larger than ", 
                 "SV found for smooth signal for component(s) ", paste(uhoh, collapse=",")) 
     
-    return(list(smooth=list(d=d, u=U, v=V), 
-                    noise=svd(Xnow, nu=min(dim(X))-npc, nv=min(dim(X))-npc),
-                    mean=meanX))
+#     return(list(smooth=list(d=d, u=U, v=V), 
+#                     noise=svd(Xnow, nu=min(dim(X))-npc, nv=min(dim(X))-npc),
+#                     mean=meanX))
+    scores <- U%*%(d*diag(length(d)))
+    
+    return(list(
+      Yhat= t(meanX + t(scores%*%t(V))),
+      scores=scores,
+      mu=meanX, 
+      efunctions=V, 
+      evalues=d^2,
+      npc=npc))
+    
 }
 
 
-
+getNPC.DonohoGavish <- function(X){
+  # use Donoho, Gavish (2013) for estimating suitable number of sv's to extract: 
+  
+  n <- nrow(X)
+  m <- ncol(X)
+  
+  beta <- n/m
+  
+  if(beta > 1 | beta < 1e-3){
+    warning("Approximation for \\beta(\\omega) may be invalid.")
+  }
+  #            ## approx for omega.beta below eq. (25):
+  #            betaplus  <- 1 + sqrt(beta)^2 
+  #            betaminus <- 1 - sqrt(beta)^2
+  #            marcenkopastur <- function(x){
+  #                abs(integrate(function(t){
+  #                          sqrt((betaplus - t) * (t - betaminus))/(2*pi*t)  
+  #                        }, lower=betaminus, upper=x, subdivisions=1e5, 
+  #                        stop.on.error = FALSE)$value - 0.5)
+  #            }
+  #            mu.beta <- optimize(marcenkopastur, 
+  #                    interval=c(betaminus, betaplus))$minimum
+  #            # eq. (10)
+  #            lambda.beta <- sqrt(2*(beta+1) + (8*beta)/(beta + 1 + sqrt(beta^2 + 14*beta +1)))
+  #            omega.beta <- lambda.beta/sqrt(mu.beta)
+  
+  omega.beta <- .56*beta^3 - 0.95*beta^2 + 1.82*beta + 1.43
+  y <- svd(X, nu=0, nv=0)$d 
+  rankY <- min(which(cumsum(y[y>0])/sum(y[y>0]) > .995))
+  y.med <- median(y)
+  
+  npc <- min(max(1, sum(y > omega.beta*y.med)),  rankY)
+  return(npc)
+}

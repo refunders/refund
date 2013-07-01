@@ -1,8 +1,11 @@
 fpca2s <-
 function(X,npc=NA,center = TRUE, t = NULL,smooth=TRUE){
   
- 
-  ## data: X, I by J data matrix
+  if(is.na(npc)){
+    npc <- getNPC.DonohoGavish(X)
+  }
+  
+  ## data: X, I by J data matrix 
   ## t: vector of J
   data_dim <- dim(X)
   J <- data_dim[1] 
@@ -36,42 +39,14 @@ function(X,npc=NA,center = TRUE, t = NULL,smooth=TRUE){
   
   lambda <- D^2/(I-1)/J
   
-  if(is.na(npc)){
-    # use Donoho, Gavish (2013) for estimating suitable number of sv's to extract: 
-    beta <- n/m
-    
-    if(beta > 1 | beta < 1e-3){
-      warning("Approximation for \\beta(\\omega) may be invalid.")
-    }
-    #            ## approx for omega.beta below eq. (25):
-    #            betaplus  <- 1 + sqrt(beta)^2 
-    #            betaminus <- 1 - sqrt(beta)^2
-    #            marcenkopastur <- function(x){
-    #                abs(integrate(function(t){
-    #                          sqrt((betaplus - t) * (t - betaminus))/(2*pi*t)  
-    #                        }, lower=betaminus, upper=x, subdivisions=1e5, 
-    #                        stop.on.error = FALSE)$value - 0.5)
-    #            }
-    #            mu.beta <- optimize(marcenkopastur, 
-    #                    interval=c(betaminus, betaplus))$minimum
-    #            # eq. (10)
-    #            lambda.beta <- sqrt(2*(beta+1) + (8*beta)/(beta + 1 + sqrt(beta^2 + 14*beta +1)))
-    #            omega.beta <- lambda.beta/sqrt(mu.beta)
-    
-    omega.beta <- .56*beta^3 - 0.95*beta^2 + 1.82*beta + 1.43
-    y <- sqrt((I-1)*J)*sqrt(lambda)
-    rankY <- min(which(cumsum(y[y>0])/sum(y[y>0]) > .995))
-    y.med <- median(y)
-    
-    npc <- min(max(1, sum(y > omega.beta*y.med)),  rankY)
-
-  }
+  
+  
   
   
   if(!is.numeric(npc)) stop("Invalid <npc>.")
   if(npc<1 | npc>min(m,n)) stop("Invalid <npc>.")
   #### end: borrowed from Fabian's code
- print(npc)
+  message("Extracted ", npc, " smooth components.")
   
   if(smooth==TRUE){
   #### smoothing

@@ -8,6 +8,7 @@
 \alias{fpcr.setup}
 \alias{first.last_test}
 \alias{getSpandDist}
+\alias{getNPC.DonohoGavish}
 \alias{imwd_test}
 \alias{osplinepen2d}
 \alias{Omegas}
