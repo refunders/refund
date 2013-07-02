@@ -61,4 +61,4 @@ preds <- predict(fit,newdata=list(nir=nir[test,]),type='response')
 plot(preds,y[test])
 abline(a=0,b=1)
 }
-\keyword{methods}
+

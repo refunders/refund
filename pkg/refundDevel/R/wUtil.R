@@ -53,7 +53,7 @@ waveletSetup <- function(xfuncs, filter.number, family, min.scale){
 	return(list(coef = coef, temp = temp, rec = rec))
 }
 
-waveletGetResult <- function(cv.table, family){
+waveletGetCV <- function(cv.table, family){
 	nVars <- length(dim(cv.table)) - 2
 	if (family == 'gaussian'){
 		cv.splits <- apply(cv.table, c(1, 3:(nVars+2)), mean, na.rm = TRUE)

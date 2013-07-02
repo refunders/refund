@@ -78,7 +78,8 @@ See the Details for \code{\link{fpcr}} for a note regarding decorrelation.
 }
 \value{A list that, if \code{store.glm = TRUE}, includes all components of the fitted \code{\link{glm}} object. The following components are included even if \code{store.glm = FALSE}:
 \item{fitted}{the fitted values.}
-\item{coef.undecor}{coefficients for covariates \emph{without} decorrelation. The model is fitted after decorrelating the functional predictors from any scalar covariates; but for CV, one needs the "undecorrelated" coefficients from the training-set models.}
+\item{param.coef}{coefficients for covariates with decorrelation. The model is fitted after decorrelating the functional predictors from any scalar covariates; but for CV, one needs the "undecorrelated" coefficients from the training-set models.}
+\item{undecor.coef}{coefficients for covariates \emph{without} decorrelation. See \code{param.coef}.}
 \item{fhat}{coefficient function estimate.}
 \item{tuning.params}{\eqn{2 \times 4} table the indices and values of \code{min.scale}, \code{nfeatures} and \code{ncomp} chosen by CV.}
 \item{cv.table}{a table giving the CV criterion for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}, if \code{store.cv = TRUE}; otherwise, the CV criterion only for the optimized combination of these parameters.  Set to \code{NULL} if CV is not performed.}

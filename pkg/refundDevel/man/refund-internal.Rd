@@ -26,6 +26,7 @@
 \alias{waveletGetResult}
 \alias{waveletSetup}
 \alias{pspline.setting}
+\alias{waveletGetCV}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Internal functions for the refund package

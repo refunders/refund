@@ -1,10 +1,10 @@
 fpca.face <-
-function(X,center=TRUE,t=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99, 
+function(X,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99, 
          score.method = "int", search.grid=TRUE,search.length=100,
          method="L-BFGS-B", lower=-20,upper=20, control=NULL){
   
   ## data: X, I by J data matrix
-  ## t:  vector of J
+  ## argvals:  vector of J
   ## knots: to specify either the number of knots or the vectors of knots;
   ##        defaults to 35;
   ## p: the degree of B-splines;
@@ -15,26 +15,32 @@ function(X,center=TRUE,t=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   #require(splines) 
   #require(Matrix)
   #source("pspline.setting.R") 
-  if(center) X <- apply(X,2,function(x){x-mean(x,na.rm=TRUE)})
+  meanX <- rep(0,dim(X)[2])
+  if(center) {
+    meanX <- apply(X,2,function(x) mean(x,na.rm=TRUE))
+    meanX <- smooth.spline(argvals,meanX,all.knots =TRUE)$y
+    X <- t(t(X)-meanX)
+  }
+    
   
   Y <- t(X) ## becomes J by I
   data_dim <- dim(Y)
   J <- data_dim[1] 
   I <- data_dim[2]  
   
-  if(is.null(t))  t <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
+  if(is.null(argvals))  argvals <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
   
   p.p <- p
   m.p <- m
   if(length(knots)==1){
     K.p <- knots
     knots <- seq(-p.p,K.p+p.p,length=K.p+1+2*p.p)/K.p
-    knots <- knots*(max(t)-min(t)) + min(t)
+    knots <- knots*(max(argvals)-min(argvals)) + min(argvals)
   }
   if(length(knots)>1) K.p <- length(knots)-2*p.p-1
   c.p <- K.p + p.p
   ######### precalculation for smoothing #############
-  List <- pspline.setting(t,knots,p.p,m.p)
+  List <- pspline.setting(argvals,knots,p.p,m.p)
   B <- List$B
   Bt <- Matrix(t(as.matrix(B)))
   s <- List$s
@@ -173,6 +179,8 @@ function(X,center=TRUE,t=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   }
     
   eigenvectors = as.matrix(B%*%(A0%*%A[,1:N]))
-  results <- list(npc = N, eigenvectors=eigenvectors, eigenvalues = Sigma[1:N],scores = Xi, lambda=lambda)
+  eigenvalues = Sigma[1:N]
+  Yhat = t(t(as.matrix(B%*%(A0[,1:length(Sigma)]%*%diag(Sigma)%*%Ytilde[1:length(Sigma),]))) + meanX)
+  results <- list(Yhat = Yhat, npc = N, eigenvectors=eigenvectors, eigenvalues = eigenvalues,scores = Xi)
   return(results)      	                	
 }

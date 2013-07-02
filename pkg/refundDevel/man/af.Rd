@@ -52,6 +52,3 @@ a list with the following entries
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2013). Functional generalized additive models. \emph{Journal of Computational and Graphical Statistics}, to appear. Available at \url{http://courses2.cit.cornell.edu/mwmclean}}
 \seealso{
 \code{\link{fgam}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.}
-\keyword{methods}
-\keyword{models}
-\keyword{smooth}

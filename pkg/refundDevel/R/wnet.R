@@ -126,7 +126,7 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha 
     	if (inm == 'ms') cat('\n')
     } # split
     if (do.cv){
-    	res <- waveletGetResult(cv.table = cv.table, family = family)
+    	res <- waveletGetCV(cv.table = cv.table, family = family)
     	param <- array(0, dim = c(2, 4))
     	param[1, ] <- res$idxmin
     	param[2, ] <- c(min.scale[param[1,1]], nfeatures[param[1,2]], alpha[param[1,3]], 

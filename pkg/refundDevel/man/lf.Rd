@@ -38,6 +38,3 @@ a list with the following entries
 \author{Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl}
 \seealso{
 \code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.}
-\keyword{methods}
-\keyword{models}
-\keyword{smooth}

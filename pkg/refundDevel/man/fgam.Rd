@@ -97,5 +97,4 @@ fit <- fgam(y~s(z1,k=10)+af(X_2,splinepars =list(k=c(7,7),m=list(c(2,1),c(2,1)))
 plot(fit)
 vis.fgam(fit,af.term='X_2',plot.type='contour')
 }
-\keyword{model}
-\keyword{smooth}
+

@@ -112,9 +112,9 @@ gas.wpcr1 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0,
                  nfeatures = 20, ncomp = 15)
 gas.wpls1 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0, 
                  nfeatures = 20, ncomp = 15, method = "pls")
-plot(wnet1)
-plot(wpcr1)
-plot(wpls1)
+plot(gas.wnet1)
+plot(gas.wpcr1)
+plot(gas.wpls1)
 
 # input vectors of candidate tuning parameter values
 gas.wnet2 <- wnet(gasoline$octane, xfuncs = gasoline$NIR[,1:256], 
@@ -123,9 +123,9 @@ gas.wpcr2 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0:3
                  nfeatures = c(16, 18, 20), ncomp = 10:15)
 gas.wpls2 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0:3,
                  nfeatures = c(16, 18, 20), ncomp = 10:15, method = "pls")
-plot(wnet2)
-plot(wpcr2)
-plot(wpls2)
+plot(gas.wnet2)
+plot(gas.wpcr2)
+plot(gas.wpls2)
 
 ### 2D functional predictor example ###
 

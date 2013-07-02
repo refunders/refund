@@ -8,7 +8,7 @@ A fast implementation of the sandwich smoother (Xiao et al., 2013) for covarianc
 at the data level is used for selecting the smoothing parameter. 
 }
 \usage{
-fpca.face(X, center = TRUE, t = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
+fpca.face(X, center = TRUE, argvals = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
      pve = 0.99, score.method = "int",
      search.grid = TRUE, search.length = 100, method = "L-BFGS-B",
      lower = -20, upper = 20, control = NULL)
@@ -22,8 +22,8 @@ fpca.face(X, center = TRUE, t = NULL, knots = 35, p = 3, m = 2, lambda = NULL,
 logical; defaults to \code{TRUE}, i.e., data will be centered across subjects.  	
   }
   
-  \item{t}{
-vector of \eqn{J}
+  \item{argvals}{
+Vector of length \eqn{J} of points at which the functions are observed
 }
   \item{knots}{
 vector of knots or number of (interior) knots; defaults to 35.
@@ -63,11 +63,11 @@ passed to \command{optim}.
 
 
 \value{A list with components
+\item{Yhat}{predicted data matrix}
 \item{npc}{number of principal components}
 \item{eigenvectors}{matrix of eigenvectors}
 \item{eigenvalues}{vector of eigenvalues}
 \item{scores}{matrix of scores}
-\item{lambda}{value of smoothing parameter}
 }
 \references{
 Xiao, L., Li, Y., and Ruppert, D. (2013),
@@ -111,7 +111,7 @@ Luo Xiao \email{lxiao@jhsph.edu}
   X <- xi\%*\%t(phi); # of size I by J
   Y <- X + sigma*matrix(rnorm(I*J),I,J)
 
-results <- fpca.face(Y,center = TRUE, t=t,knots=100,pve=0.99)
+results <- fpca.face(Y,center = TRUE, argvals=t,knots=100,pve=0.99)
 ###################################################
 ####               FACE                ########
 ###################################################  
@@ -138,6 +138,4 @@ for(k in 1:N){
      
 }
 
-%\keyword{ ~FACE}
-%\keyword{ ~covariance}
-%\keyword{ ~smoothing}
+

@@ -94,4 +94,4 @@ vis.fgam(fit,af.term='X',deriv2=TRUE,xval=xval)
 vis.fgam(fit,af.term='X',deriv2=TRUE,tval=tval)
 
 }
-\keyword{hplot}
+

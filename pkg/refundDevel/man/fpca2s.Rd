@@ -8,7 +8,7 @@ Functional principal component analysis by a two-stage method
 This function performs functional PCA by performing an ordinary singular value decomposition on the functional data matrix, then smoothing the right singular vectors by \emph{P}-splines.
 }
 \usage{
-fpca2s(X, npc=NA, center = TRUE, t = NULL, smooth=TRUE)
+fpca2s(X, npc=NA, center = TRUE, argvals = NULL, smooth=TRUE)
 }
 
 \arguments{
@@ -22,7 +22,7 @@ number of eigenvectors to smooth.
 logical; if \code{TRUE} (the default), the data matrix is centered across subjects
 }
 
-  \item{t}{
+  \item{argvals}{
 index vector of \eqn{J} entries for data in X; defaults to a sequence from 0 to 1.
 }
   \item{smooth}{
@@ -35,6 +35,7 @@ logical; defaults to TRUE, if NULL, no smoothing of eigenvectors.
 The eigenvalues are the same as those obtained from eigendecomposition of sample covariance matrix.
 }
 \value{A list with components
+\item{Yhat}{predicted data matrix}
 \item{npc}{number of principal components}
 \item{eigenvectors}{matrix of eigenvectors}
 \item{eigenvalues}{vector of eigenvalues}
@@ -78,7 +79,7 @@ Luo Xiao \email{lxiao@jhsph.edu}
   X <- xi\%*\%t(phi); # of size I by J
   Y <- X + sigma*matrix(rnorm(I*J),I,J)
   
-  results <- fpca2s(Y,npc=4,t=t)
+  results <- fpca2s(Y,npc=4,argvals=t)
   ###################################################
   ####               SVDS               ########
   ###################################################  

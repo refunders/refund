@@ -110,11 +110,11 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
 	                        obje <- glm(y[idxTrain] ~ X, family = get(family))                      
 	                        fhat <- t(matrix(fhat.eigen[1:ncomp[icomp], ], ncol = d^dim.sig)) %*% 
 	                                obje$coef[-(1:n.unpen.cols)]
-	                        coef.undecor <- obje$coef[1:n.unpen.cols] - 
+	                        undecor.coef <- obje$coef[1:n.unpen.cols] - 
 	                                        ginv(cbind(rep(1, length(idxTrain)), X0[idxTrain,])) %*% 
 	                                        xfuncs[idxTrain, ] %*% fhat
 	                        X0.tst <- cbind(matrix(1,n,1), X0)[idxTest, ]
-	                        yhat <- X0.tst %*% coef.undecor + xfuncs[idxTest, ] %*% fhat
+	                        yhat <- X0.tst %*% undecor.coef + xfuncs[idxTest, ] %*% fhat
 	                        if (family == "gaussian"){
 	                            cv.table[isplit, ifold, ims, infeatures, icomp] <- mean((yhat - y[idxTest]) ^ 2)                                                                                                             
 	                        } else if (family == "binomial") {
@@ -135,7 +135,7 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
 	    if (inm == 'ms') cat('\n')
     }               # nsplit loop
     if (do.cv) {
-    	res <- waveletGetResult(cv.table = cv.table, family = family)
+    	res <- waveletGetCV(cv.table = cv.table, family = family)
     	param <- array(0, dim = c(2, 3))
     	param[1, ] <- res$idxmin
     	param[2, ] <- c(min.scale[param[1,1]], nfeatures[param[1,2]], ncomp[param[1,3]])
@@ -158,11 +158,8 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
     		obje <- list()
     		obje$fitted.values <- yhat
     	}
-    	obje$coef.param <- obje$coef[1:n.unpen.cols]
-    	obje$coef.undecor <- matrix(obje$coef[1:n.unpen.cols] - ginv(cbind(rep(1, n), X0)) %*% xfuncs %*% fhat, nrow=1)
-    	colnames(obje$const) <- if (is.null(dimnames(covt)) || is.null(dimnames(covt)[[2]])) 
-                                           paste("X", 0:(n.unpen.cols-1), sep="")
-    	                        else c("Intercept", dimnames(covt)[[2]])
+    	obje$param.coef <- obje$coef[1:n.unpen.cols]
+    	obje$undecor.coef <- matrix(obje$coef[1:n.unpen.cols] - ginv(cbind(rep(1, n), X0)) %*% xfuncs %*% fhat, nrow=1)
         obje$fhat <- array(fhat, dim = rep(d, dim.sig))	
         obje$Rsq <- getRsq(y = y, yhat = obje$fitted.values, family = family)
     }

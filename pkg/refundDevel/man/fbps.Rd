@@ -113,8 +113,4 @@ persp(x,z,est$Yhat,zlab="f(x,z)",zlim=c(-1,2.5),phi=30,theta=45,
 
 
 }
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.
-%\keyword{ ~sandwich smoother }
-%\keyword{ ~\emph{P}-splines }
-%\keyword{ ~smoothing}
+

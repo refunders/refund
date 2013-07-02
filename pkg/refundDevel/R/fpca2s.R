@@ -1,21 +1,24 @@
 fpca2s <-
-function(X,npc=NA,center = TRUE, t = NULL,smooth=TRUE){
+function(X,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
   
   if(is.na(npc)){
     npc <- getNPC.DonohoGavish(X)
   }
   
   ## data: X, I by J data matrix 
-  ## t: vector of J
+  ## argvals: vector of J
   data_dim <- dim(X)
   J <- data_dim[1] 
   I <- data_dim[2]  
   
-  if(is.null(t)) t <- seq(0, 1, length=J)
-  if(center) X <- apply(X,2,function(x){x-mean(x,na.rm=TRUE)})
-  #### start: borrowed from Fabian's code
-  n <- I
-  m <- J
+  if(is.null(argvals)) argvals <- seq(0, 1, length=J)
+  
+  meanX <- rep(0,dim(X)[2])
+  if(center) {
+    meanX <- apply(X,2,function(x) mean(x,na.rm=TRUE))
+    meanX <- smooth.spline(argvals,meanX,all.knots =TRUE)$y
+    X <- t(t(X)-meanX)
+  }
   ### SVD decomposition
   if(J>I){
     VV <- X%*%t(X)
@@ -38,23 +41,23 @@ function(X,npc=NA,center = TRUE, t = NULL,smooth=TRUE){
   }
   
   lambda <- D^2/(I-1)/J
-  
-  
-  
-  
-  
+    
   if(!is.numeric(npc)) stop("Invalid <npc>.")
-  if(npc<1 | npc>min(m,n)) stop("Invalid <npc>.")
+  if(npc<1 | npc>min(I,J)) stop("Invalid <npc>.")
   #### end: borrowed from Fabian's code
   message("Extracted ", npc, " smooth components.")
   
   if(smooth==TRUE){
-  #### smoothing
-  for(j in 1:npc){ 
-    #temp = pspline(U[,j],t,knots=knots,p=p,m=m)$fitted.values
-    temp = smooth.spline(t,U[,j],all.knots =TRUE)$y
-    U[,j] = temp/sqrt(sum(temp^2))
+    #### smoothing
+    for(j in 1:npc){ 
+      #temp = pspline(U[,j],argvals,knots=knots,p=p,m=m)$fitted.values
+      temp = smooth.spline(argvals,U[,j],all.knots =TRUE)$y
+      U[,j] = temp/sqrt(sum(temp^2))
+    }
   }
-}
-return(list(npc=npc,eigenvectors=U,eigenvalues=lambda,scores = X%*%U[,1:npc]/sqrt(J)))
+  eigenvectors=U[,1:npc]
+  scores = X%*%U[,1:npc]/sqrt(J)
+  
+  Yhat = t(t(eigenvectors%*%t(scores) + meanX))
+  return(list(Yhat = Yhat, npc=npc,eigenvectors=eigenvectors,eigenvalues=lambda,scores = scores))
 }
