@@ -2,20 +2,20 @@
 \alias{fpca.ssvd}
 \title{Smoothed FPCA via iterative penalized rank one SVDs.}
 \usage{
-  fpca.ssvd(X, npc = NA, center = TRUE, maxiter = 15,
+  fpca.ssvd(Y, npc = NA, center = TRUE, maxiter = 15,
     tol = 1e-04, diffpen = 3, gridsearch = TRUE,
     alphagrid = 1.5^(-20:40), lower.alpha = 1e-05,
     upper.alpha = 1e+07, verbose = FALSE)
 }
 \arguments{
-  \item{X}{data matrix (rows: observations; columns: grid
+  \item{Y}{data matrix (rows: observations; columns: grid
   of eval. points)}
 
   \item{npc}{how many smooth SVs to try to extract, if NA
   (the default) the hard thresholding rule of Donoho,
   Gavish (2013) is used (see Details, References).}
 
-  \item{center}{center \code{X} so that its column-means
+  \item{center}{center \code{Y} so that its column-means
   are 0? Defaults to \code{TRUE}}
 
   \item{maxiter}{how many iterations of the power algorithm
@@ -49,11 +49,13 @@
   a list like the returned object from
   \code{\link{fpca.sc}}, with entries \code{Yhat}, the
   smoothed trajectories, \code{scores}, the estimated FPC
-  loadings, \code{mu}, the column means of \code{X} (or a
+  loadings, \code{mu}, the column means of \code{Y} (or a
   vector of zeroes if \code{!center}), \code{efunctions},
-  the estimated smooth FPCs, \code{evalues}, their
-  associated eigenvalues, and \code{npc}, the number of
-  smooth components that were extracted.
+  the estimated smooth FPCs (note that these are
+  orthonormal vectors, not evaluations of orthonormal
+  functions...), \code{evalues}, their associated
+  eigenvalues, and \code{npc}, the number of smooth
+  components that were extracted.
 }
 \description{
   Implements Huang, Shen, Buja (2008) algorithm (see
@@ -84,9 +86,9 @@
  U <- matrix(rnorm(n*2), n, 2)
  D <- diag(c(s1^2, s2^2))
  eps <- matrix(rnorm(m*n, sd=s), n, m)
- X <- U\%*\%D\%*\%t(V) + eps
+ Y <- U\%*\%D\%*\%t(V) + eps
 
- smoothSV <- fpca.ssvd(X, verbose=TRUE)
+ smoothSV <- fpca.ssvd(Y, verbose=TRUE)
 
  layout(t(matrix(1:4, nr=2)))
  clrs <- sapply(rainbow(n), function(c)
@@ -96,9 +98,9 @@
  matplot(smoothSV$efunctions, type="l", lty=1, col=1:5, xlab="",
          main="FPCs: estimate", bty="n")
  matplot(1:m, t(U\%*\%D\%*\%t(V)), type="l", lty=1, col=clrs, xlab="", ylab="",
-         main="true smooth X", bty="n")
+         main="true smooth Y", bty="n")
  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="",
-         type="l", lty=1,col=clrs, main="estimated smooth X", bty="n")
+         type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
 }
 \author{
   Fabian Scheipl
@@ -116,7 +118,7 @@
 }
 \seealso{
   \code{\link{fpca.sc}} and \code{\link{fpca.face}} for
-  covariance-estimate based smoothing of \code{X};
+  covariance-estimate based smoothing of \code{Y};
   \code{\link{fpca2s}} for a faster approach for SVD-based
   smoothing.
 }

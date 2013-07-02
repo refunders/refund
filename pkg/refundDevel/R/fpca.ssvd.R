@@ -8,10 +8,10 @@
 #'    contaminated with i.i.d. Gaussian noise with unknown variance derived in Donoho, Gavish (2013).
 #'    Note that this will typically not work well if you have more observations than grid points.  
 #'   
-#'    @param X data matrix (rows: observations; columns: grid of eval. points)
+#'    @param Y data matrix (rows: observations; columns: grid of eval. points)
 #'    @param npc how many smooth SVs to try to extract, if NA (the default) the hard thresholding
 #'     rule of Donoho, Gavish (2013) is used (see Details, References).
-#'    @param center center \code{X} so that its column-means are 0? Defaults to \code{TRUE} 
+#'    @param center center \code{Y} so that its column-means are 0? Defaults to \code{TRUE} 
 #'    @param maxiter how many iterations of the power algorithm to perform at most (defaults to 15)
 #'    @param tol convergence tolerance for power algorithm (defaults to 1e-4)
 #'    @param diffpen difference penalty order controlling the desired smoothness of the right singular vectors, 
@@ -25,10 +25,10 @@
 #'        defaults to \code{FALSE}
 #'    @return a list like the returned object from \code{\link{fpca.sc}},  with entries 
 #'    \code{Yhat}, the smoothed trajectories, \code{scores}, the estimated FPC loadings, \code{mu},
-#'    the column means of \code{X} (or a vector of zeroes if \code{!center}),  \code{efunctions}, 
-#'    the estimated smooth FPCs, \code{evalues}, their associated eigenvalues, and \code{npc}, the
+#'    the column means of \code{Y} (or a vector of zeroes if \code{!center}),  \code{efunctions}, 
+#'    the estimated smooth FPCs (note that these are orthonormal vectors, not evaluations of orthonormal functions...), \code{evalues}, their associated eigenvalues, and \code{npc}, the
 #'     number of smooth components that were extracted.
-#'    @seealso  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for covariance-estimate based smoothing of \code{X}; \code{\link{fpca2s}} for a faster approach for SVD-based smoothing.
+#'    @seealso  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for covariance-estimate based smoothing of \code{Y}; \code{\link{fpca2s}} for a faster approach for SVD-based smoothing.
 #'    @author Fabian Scheipl
 #'    @references Huang, J. Z., Shen, H., & Buja, A. (2008). 
 #'     Functional principal components analysis via penalized rank one approximation.
@@ -51,9 +51,9 @@
 #'  U <- matrix(rnorm(n*2), n, 2)
 #'  D <- diag(c(s1^2, s2^2))
 #'  eps <- matrix(rnorm(m*n, sd=s), n, m)
-#'  X <- U%*%D%*%t(V) + eps
+#'  Y <- U%*%D%*%t(V) + eps
 #'   
-#'  smoothSV <- fpca.ssvd(X, verbose=TRUE)
+#'  smoothSV <- fpca.ssvd(Y, verbose=TRUE)
 #'  
 #'  layout(t(matrix(1:4, nr=2)))
 #'  clrs <- sapply(rainbow(n), function(c) 
@@ -63,10 +63,10 @@
 #'  matplot(smoothSV$efunctions, type="l", lty=1, col=1:5, xlab="",
 #'          main="FPCs: estimate", bty="n")
 #'  matplot(1:m, t(U%*%D%*%t(V)), type="l", lty=1, col=clrs, xlab="", ylab="",
-#'          main="true smooth X", bty="n")
+#'          main="true smooth Y", bty="n")
 #'  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="", 
-#'          type="l", lty=1,col=clrs, main="estimated smooth X", bty="n")
-fpca.ssvd <- function(X, npc=NA, center=TRUE,
+#'          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
+fpca.ssvd <- function(Y, npc=NA, center=TRUE,
         maxiter=15, tol=1e-4, 
         diffpen=3,
         gridsearch=TRUE,
@@ -89,12 +89,12 @@ fpca.ssvd <- function(X, npc=NA, center=TRUE,
     }
     
    
-    if(any(is.na(X))) stop("No missing values in <X> allowed.")
-    m <- ncol(X)
-    n <- nrow(X)
+    if(any(is.na(Y))) stop("No missing values in <Y> allowed.")
+    m <- ncol(Y)
+    n <- nrow(Y)
     
     if(is.na(npc)){
-      npc <- getNPC.DonohoGavish(X)
+      npc <- getNPC.DonohoGavish(Y)
     }
     
     
@@ -127,22 +127,22 @@ fpca.ssvd <- function(X, npc=NA, center=TRUE,
     d <- rep(NA, npc)
     
     if(center){
-        meanX <- predict(smooth.spline(x=1:m, y=colMeans(X)), x=1:m)$y 
-        X <- t(t(X) - meanX) 
+        meanY <- predict(smooth.spline(x=1:m, y=colMeans(Y)), x=1:m)$y 
+        Y <- t(t(Y) - meanY) 
     } else {
-        meanX <- rep(0, ncol(X))
+        meanY <- rep(0, ncol(Y))
     }
     
-    Xnow <- X
+    Ynow <- Y
     
     for(k in 1:npc){
         ## 'Power algorithm', Section 3 / Appendix C :
-        XnowGamma <- Xnow%*%Gamma
-        vold <- svd(Xnow, nu=0, nv=1)$v[,1]
-        u <- Xnow %*% vold
+        YnowGamma <- Ynow%*%Gamma
+        vold <- svd(Ynow, nu=0, nv=1)$v[,1]
+        u <- Ynow %*% vold
         iter <- 1; reldiff <- tol+1
         while(all(c(reldiff > tol, iter<=maxiter))){
-            w <- t(XnowGamma)%*%u  
+            w <- t(YnowGamma)%*%u  
             if(gridsearch){
                 gridmin <- which.min(sapply(alphagrid, gcv, w=w, m=m, lambda=lambda))
                 minalpha <- alphagrid[gridmin]
@@ -150,14 +150,14 @@ fpca.ssvd <- function(X, npc=NA, center=TRUE,
                 minalpha <- optimize(f=gcv, interval=c(lower.alpha, upper.alpha),
                         w=w, m=m, lambda=lambda)$minimum
             }
-            # v = S(alpha)^-1 X u = Gamma%*%(I + minalpha*Lambda)^-1 Gamma' X u)
+            # v = S(alpha)^-1 Y u = Gamma%*%(I + minalpha*Lambda)^-1 Gamma' Y u)
             vnew <- Gamma%*%(w/(1+minalpha*lambda))
             
             vnew <- vnew/sqrt(sum(vnew^2))
             reldiff <- sum((vold-vnew)^2)/sum(vold^2)
             iter <- iter +1
             vold <- vnew
-            u <- Xnow %*% vold
+            u <- Ynow %*% vold
         } # end while(reldiff)
         if(reldiff > tol){
             warning("Not converged for SV ", k, 
@@ -173,21 +173,21 @@ fpca.ssvd <- function(X, npc=NA, center=TRUE,
             layout(t(matrix(1:6, ncol=2)))
             matlplot <- function(...) matplot(..., type="l", lty=1, col=1, lwd=.1)
             
-            matlplot(t(Xnow), ylim=range(Xnow), main=bquote(Xnow[.(k)]), xlab="", ylab="", bty="n")
+            matlplot(t(Ynow), ylim=range(Ynow), main=bquote(Ynow[.(k)]), xlab="", ylab="", bty="n")
             matlplot(t(U[,k, drop=FALSE]%*%t(V[,k, drop=FALSE]*d[k])), 
-                    ylim=range(Xnow), main=bquote((UDV^T)[.(k)]), xlab="", ylab="", bty="n")
-            matlplot(t(Xnow - U[,k, drop=FALSE]%*%t(V[,k, drop=FALSE]*d[k])), 
-                    ylim=range(Xnow), main=bquote(Xnow[.(k)] - (UDV^T)[.(k)]), xlab="", ylab="", bty="n")
+                    ylim=range(Ynow), main=bquote((UDV^T)[.(k)]), xlab="", ylab="", bty="n")
+            matlplot(t(Ynow - U[,k, drop=FALSE]%*%t(V[,k, drop=FALSE]*d[k])), 
+                    ylim=range(Ynow), main=bquote(Ynow[.(k)] - (UDV^T)[.(k)]), xlab="", ylab="", bty="n")
             
-            matlplot(t(X), ylim=range(X), main=bquote(X), xlab="", ylab="", bty="n")
+            matlplot(t(Y), ylim=range(Y), main=bquote(Y), xlab="", ylab="", bty="n")
             matlplot(t(U[,1:k, drop=FALSE]%*%(t(V[,1:k, drop=FALSE])*d[1:k])), 
-                    ylim=range(X), main=bquote(X[.(k)]), xlab="", ylab="", bty="n")
-            matlplot(t(Xnow - U[,k, drop=FALSE]%*%(t(V[,k, drop=FALSE])*d[k])), 
-                    ylim=range(X), main=bquote(X - X[.(k)]), xlab="", ylab="", bty="n")
+                    ylim=range(Y), main=bquote(Y[.(k)]), xlab="", ylab="", bty="n")
+            matlplot(t(Ynow - U[,k, drop=FALSE]%*%(t(V[,k, drop=FALSE])*d[k])), 
+                    ylim=range(Y), main=bquote(Y - Y[.(k)]), xlab="", ylab="", bty="n")
         }
         
-        Xnow <- Xnow - U[,k, drop=FALSE]%*%(t(V[,k, drop=FALSE])*d[k])
-        noisesv <- svd(Xnow, nu=0, nv=0)$d[1]
+        Ynow <- Ynow - U[,k, drop=FALSE]%*%(t(V[,k, drop=FALSE])*d[k])
+        noisesv <- svd(Ynow, nu=0, nv=0)$d[1]
         if(verbose){
             cat("k:",k, "-- smooth:", d[k], "-- 'noise':", noisesv, "-- alpha:", minalpha, "\n")  
         }   
@@ -199,14 +199,14 @@ fpca.ssvd <- function(X, npc=NA, center=TRUE,
                 "SV found for smooth signal for component(s) ", paste(uhoh, collapse=",")) 
     
 #     return(list(smooth=list(d=d, u=U, v=V), 
-#                     noise=svd(Xnow, nu=min(dim(X))-npc, nv=min(dim(X))-npc),
-#                     mean=meanX))
+#                     noise=svd(Ynow, nu=min(dim(Y))-npc, nv=min(dim(Y))-npc),
+#                     mean=meanY))
     scores <- U%*%(d*diag(length(d)))
     
     return(list(
-      Yhat= t(meanX + t(scores%*%t(V))),
+      Yhat= t(meanY + t(scores%*%t(V))),
       scores=scores,
-      mu=meanX, 
+      mu=meanY, 
       efunctions=V, 
       evalues=d^2,
       npc=npc))
