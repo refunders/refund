@@ -8,12 +8,12 @@ function(X,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
   ## data: X, I by J data matrix 
   ## argvals: vector of J
   data_dim <- dim(X)
-  J <- data_dim[1] 
-  I <- data_dim[2]  
+  I <- data_dim[1] 
+  J <- data_dim[2]  
   
   if(is.null(argvals)) argvals <- seq(0, 1, length=J)
   
-  meanX <- rep(0,dim(X)[2])
+  meanX <- rep(0,J)
   if(center) {
     meanX <- apply(X,2,function(x) mean(x,na.rm=TRUE))
     meanX <- smooth.spline(argvals,meanX,all.knots =TRUE)$y
@@ -58,6 +58,6 @@ function(X,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
   eigenvectors=U[,1:npc]
   scores = X%*%U[,1:npc]/sqrt(J)
   
-  Yhat = t(t(eigenvectors%*%t(scores) + meanX))
+  Yhat = t(eigenvectors%*%t(scores) + meanX)
   return(list(Yhat = Yhat, npc=npc,eigenvectors=eigenvectors,eigenvalues=lambda,scores = scores))
 }

@@ -15,6 +15,14 @@ function(X,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   #require(splines) 
   #require(Matrix)
   #source("pspline.setting.R") 
+  
+  Y <- t(X) ## becomes J by I
+  data_dim <- dim(Y)
+  J <- data_dim[1] 
+  I <- data_dim[2]  
+  
+  if(is.null(argvals))  argvals <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
+  
   meanX <- rep(0,dim(X)[2])
   if(center) {
     meanX <- apply(X,2,function(x) mean(x,na.rm=TRUE))
@@ -23,12 +31,7 @@ function(X,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   }
     
   
-  Y <- t(X) ## becomes J by I
-  data_dim <- dim(Y)
-  J <- data_dim[1] 
-  I <- data_dim[2]  
-  
-  if(is.null(argvals))  argvals <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
+ 
   
   p.p <- p
   m.p <- m
