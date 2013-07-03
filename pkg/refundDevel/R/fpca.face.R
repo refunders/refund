@@ -1,9 +1,10 @@
 fpca.face <-
-function(X,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99, 
+function(Y,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99, 
+         npc  = NULL,
          score.method = "int", search.grid=TRUE,search.length=100,
          method="L-BFGS-B", lower=-20,upper=20, control=NULL){
   
-  ## data: X, I by J data matrix
+  ## data: Y, I by J data matrix
   ## argvals:  vector of J
   ## knots: to specify either the number of knots or the vectors of knots;
   ##        defaults to 35;
@@ -16,18 +17,18 @@ function(X,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   #require(Matrix)
   #source("pspline.setting.R") 
   
-  Y <- t(X) ## becomes J by I
+  Y <- t(Y) ## becomes J by I
   data_dim <- dim(Y)
   J <- data_dim[1] 
   I <- data_dim[2]  
   
   if(is.null(argvals))  argvals <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
   
-  meanX <- rep(0,dim(X)[2])
+  meanX <- rep(0,J)
   if(center) {
-    meanX <- apply(X,2,function(x) mean(x,na.rm=TRUE))
+    meanX <- apply(Y,1,function(x) mean(x,na.rm=TRUE))
     meanX <- smooth.spline(argvals,meanX,all.knots =TRUE)$y
-    X <- t(t(X)-meanX)
+    Y <- Y-meanX
   }
     
   
@@ -174,6 +175,14 @@ function(X,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   }## end of while loop
   #if(sum(Index.miss)>0) cat("The number of iterations is:",iter.miss,"\n")
   
+  cat("Smoothing is done! The smoothing parameter is ",lambda,"\n")
+  if(!is.null(npc)) {
+  if(npc>N){
+  cat("Warnig! The number of PCs is ", N,"s maller than ", npc,"\n");
+  N <- npc
+  }
+  }
+                     
   ### now calculate scores
   Ytilde <- as.matrix(t(A0)%*%(Bt%*%Y))
   if(score.method=="int") Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
@@ -183,7 +192,13 @@ function(X,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
     
   eigenvectors = as.matrix(B%*%(A0%*%A[,1:N]))
   eigenvalues = Sigma[1:N]
-  Yhat = t(t(as.matrix(B%*%(A0[,1:length(Sigma)]%*%diag(Sigma)%*%Ytilde[1:length(Sigma),]))) + meanX)
-  results <- list(Yhat = Yhat, npc = N, eigenvectors=eigenvectors, eigenvalues = eigenvalues,scores = Xi)
+  
+  if(score.method=="int") sigmahat2 <- 0
+  if(score.method=="blup") sigmahat2 <- sum(Y[!Index.miss]^2)/(J*I - sum(Index.miss)) -sum(Sigma[Sigma>0])
+  
+  Yhat <- t(A[,1:N])%*%Ytilde
+  Yhat <- as.matrix(B%*%(A0%*%A[,1:N]%*%diag(eigenvalues/(eigenvalues+sigmahat2/J))%*%Yhat))
+  Yhat <- t(Yhat + meanX)
+  results <- list(Yhat = Yhat,scores = Xi,mu=meanX,eigenvectors=eigenvectors, eigenvalues = eigenvalues,npc = N)
   return(results)      	                	
 }

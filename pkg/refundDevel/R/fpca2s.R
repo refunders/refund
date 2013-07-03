@@ -1,5 +1,5 @@
 fpca2s <-
-function(X,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
+function(Y,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
   
   if(is.na(npc)){
     npc <- getNPC.DonohoGavish(X)
@@ -7,6 +7,7 @@ function(X,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
   
   ## data: X, I by J data matrix 
   ## argvals: vector of J
+  X <- Y
   data_dim <- dim(X)
   I <- data_dim[1] 
   J <- data_dim[2]  
@@ -56,8 +57,9 @@ function(X,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
     }
   }
   eigenvectors=U[,1:npc]
+  eigenvalues = lambda[1:npc]
   scores = X%*%U[,1:npc]/sqrt(J)
   
-  Yhat = t(eigenvectors%*%t(scores) + meanX)
-  return(list(Yhat = Yhat, npc=npc,eigenvectors=eigenvectors,eigenvalues=lambda,scores = scores))
+  Yhat = t(eigenvectors%*%t(scores)*sqrt(J) + meanX)
+  return(list(Yhat = Yhat,scores = scores, mu = meanX,eigenvectors=eigenvectors,eigenvalues=eigenvalues, npc=npc))
 }

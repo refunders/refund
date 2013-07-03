@@ -5,22 +5,22 @@
 Functional principal component analysis by a two-stage method
 }
 \description{
-This function performs functional PCA by performing an ordinary singular value decomposition on the functional data matrix, then smoothing the right singular vectors by \emph{P}-splines.
+This function performs functional PCA by performing an ordinary singular value decomposition on the functional data matrix, then smoothing the right singular vectors by smoothing splines.
 }
 \usage{
-fpca2s(X, npc=NA, center = TRUE, argvals = NULL, smooth=TRUE)
+fpca2s(Y, npc=NA, center = TRUE, argvals = NULL, smooth=TRUE)
 }
 
 \arguments{
-  \item{X}{
-\eqn{I \times J} data matrix.
-}
- \item{npc}{
-number of eigenvectors to smooth. 
-}
-\item{center}{
-logical; if \code{TRUE} (the default), the data matrix is centered across subjects
-}
+  \item{Y}{data matrix (rows: observations; columns: grid
+  of eval. points)}
+
+  \item{npc}{how many smooth SVs to try to extract, if NA
+  (the default) the hard thresholding rule of Donoho,
+  Gavish (2013) is used.}
+
+  \item{center}{center \code{Y} so that its column-means
+  are 0? Defaults to \code{TRUE}}
 
   \item{argvals}{
 index vector of \eqn{J} entries for data in X; defaults to a sequence from 0 to 1.
@@ -36,23 +36,32 @@ The eigenvalues are the same as those obtained from eigendecomposition of sample
 }
 \value{A list with components
 \item{Yhat}{predicted data matrix}
+\item{scores}{matrix of scores}
+\item{mu}{mean function}
 \item{npc}{number of principal components}
 \item{eigenvectors}{matrix of eigenvectors}
 \item{eigenvalues}{vector of eigenvalues}
-\item{scores}{matrix of scores}
 }
 \references{
 
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013),
-Fast covariance estimation for high-dimensional functional data. Manuscript.
+Fast covariance estimation for high-dimensional functional data. (submitted) \url{http://arxiv.org/abs/1306.5718}.
+
+  Donoho, D.L., Gavish, M. (2013). The Optimal Hard
+  Threshold for Singular Values is 4/sqrt(3).  eprint
+  arXiv:1305.5870. Available from
+  \url{http://arxiv.org/abs/1305.5870}.
+  
 }
 \author{
 Luo Xiao \email{lxiao@jhsph.edu}
 }
 
-%\seealso{
-%\code{\link{fpca.ssvd}}
-%}
+\seealso{
+  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for
+  covariance-estimate based smoothing of \code{Y};
+\code{\link{fpca.ssvd}} for another SVD-based smoothing.
+}
 \examples{
   #### settings
   I <- 50 # number of subjects

@@ -8,19 +8,18 @@ A fast implementation of the sandwich smoother (Xiao et al., 2013) for covarianc
 at the data level is used for selecting the smoothing parameter. 
 }
 \usage{
-fpca.face(X, center = TRUE, argvals = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
-     pve = 0.99, score.method = "int",
+fpca.face(Y, center = TRUE, argvals = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
+     pve = 0.99, npc=NULL,score.method = "int",
      search.grid = TRUE, search.length = 100, method = "L-BFGS-B",
      lower = -20, upper = 20, control = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{X}{
-\eqn{I \times J} data matrix; missing data allowed
-}
-  \item{center}{
-logical; defaults to \code{TRUE}, i.e., data will be centered across subjects.  	
-  }
+   \item{Y}{data matrix (rows: observations; columns: grid
+  of eval. points); missing data allowed but caution is needed for very sparse data}
+
+  \item{center}{center \code{Y} so that its column-means
+  are 0? Defaults to \code{TRUE}}
   
   \item{argvals}{
 Vector of length \eqn{J} of points at which the functions are observed
@@ -40,6 +39,9 @@ user-specified smoothing parameter; defaults to NULL and uses grid-searching met
   \item{pve}{
 percentage of variance explained for selecting the number of principal components; defaults to 0.99  	
 }
+  \item{npc}{
+number of extracted principal components; defaults to NULL and use \code{pve}
+  }
   \item{score.method}{
 method for predicting scores; defaults to "int" for numerical integration,
 "blup" for best linear unbiased prediction
@@ -64,10 +66,12 @@ passed to \command{optim}.
 
 \value{A list with components
 \item{Yhat}{predicted data matrix}
+\item{scores}{matrix of scores}
+\item{mu}{mean function}
 \item{npc}{number of principal components}
 \item{eigenvectors}{matrix of eigenvectors}
 \item{eigenvalues}{vector of eigenvalues}
-\item{scores}{matrix of scores}
+
 }
 \references{
 Xiao, L., Li, Y., and Ruppert, D. (2013),
@@ -75,15 +79,17 @@ Fast bivariate \emph{P}-splines: the sandwich smoother,
 \emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577-599.
 
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013),
-Fast covariance estimation for high-dimensional functional data. Manuscript.
+Fast covariance estimation for high-dimensional functional data. (submitted) \url{http://arxiv.org/abs/1306.5718}.
 }
 \author{
 Luo Xiao \email{lxiao@jhsph.edu}
 }
 
-%\seealso{
-%\code{\link{fpca.sc}}
-%}
+\seealso{
+  \code{\link{fpca.sc}}  for
+  another covariance-estimate based smoothing of \code{Y};
+\code{\link{fpca2s}} and \code{\link{fpca.ssvd}} for two SVD-based smoothings.
+}
 \examples{
 	
   #### settings
