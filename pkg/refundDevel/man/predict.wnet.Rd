@@ -11,10 +11,11 @@
 
   \item{newcovt}{matrix of new covariate values.}
   
-  \item{...}{Other argument.}
+  \item{...}{Other options.}
+  
 }
 \value{
-  The predicted value.
+  The predicted values.
 }
 \description{
   Produces predicted values for a wnet object, given new functional predictors and scalar covariates.

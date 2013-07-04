@@ -48,15 +48,15 @@
   the first and \code{t} as the second argument and returns
   TRUE for combinations of values \code{(s,t)} if \code{s}
   falls into the integration range for the given \code{t}.
-  This is an experimental feature and not well tested yet,
+  This is an experimental feature and not well tested yet;
   use at your own risk.}
 
   \item{splinepars}{optional arguments supplied to the
   \code{basistype}-term. Defaults to a cubic tensor product
-  B-spline with marginal first difference penalties, i.e.
+  B-spline with marginal first difference penalties, i.e.,
   \code{list(bs="ps", m=list(c(2, 1), c(2,1)))}. See
   \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} in
-  \code{mgcv} for details}
+  \pkg{mgcv} for details}
 
   \item{check.ident}{check identifiability of the model
   spec. See Details and References. Defaults to TRUE.}
@@ -91,7 +91,7 @@
   \code{s}, as well as for sufficient rank of
   Cov\eqn{(X(s))}. If there is overlap of the kernels, the
   penalty and basis for the covariate direction are changed
-  to B-splines with a modified 'shrinkage' penalty, see
+  to B-splines with a modified `shrinkage' penalty, see
   \code{\link{smooth.construct.pss.smooth.spec}}. A warning
   is given if the effective rank of Cov\eqn{(X(s))}
   (defined the number of eigenvalues accounting for at

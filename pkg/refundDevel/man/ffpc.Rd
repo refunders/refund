@@ -31,7 +31,7 @@
   regardless of \code{decomppars}; defaults to 15}
 }
 \value{
-  a list containing the necessary information to construct
+  A list containing the necessary information to construct
   a term to be included in a \code{mgcv::gam}-formula.
 }
 \description{

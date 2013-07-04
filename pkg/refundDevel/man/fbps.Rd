@@ -1,7 +1,7 @@
 \name{fbps}
 \alias{fbps}
 \title{
-Sandwich Smoother for Matrix Data
+Sandwich smoother for matrix data
 }
 \description{
 A fast bivariate \emph{P}-spline method for smoothing matrix data.
@@ -40,11 +40,8 @@ number of equidistant (log scale) smoothing parameter; defaults to 100
   \item{method}{
 see \command{optim}; defaults to \command{L-BFGS-B}
 }
-  \item{lower}{
-see \command{optim}; defaults to -20 for the log of the smoothing paramter
-}
-  \item{upper}{
-see \command{optim}; defaults to 20 for the log of the smoothing paramter
+  \item{lower, upper}{
+bounds for log smoothing parameter, passed to \command{optim}; defaults are -20 and 20.
 }
   \item{control}{
 see \command{optim}
@@ -53,17 +50,17 @@ see \command{optim}
 \details{
 The smoothing parameter can be user-specified; otherwise, the function uses grid searching method or \command{optim} for selecting the smoothing parameter.
 }
-\value{
-\item{lambda}{vector of 2 of selected smoothing parameters}
+\value{A list with components
+\item{lambda}{vector of length 2 of selected smoothing parameters}
 \item{Yhat}{fitted data}
 \item{trace}{trace of the overall smoothing matrix}
 \item{gcv}{value of generalized cross validation}
 \item{Theta}{matrix of estimated coefficients}
 }
 \references{
-Xiao, L., Li, Y., and Ruppert, D. (2013),
-Fast bivariate \emph{P}-splines: the sandwich smoother,
-\emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577-599.
+Xiao, L., Li, Y., and Ruppert, D. (2013).
+Fast bivariate \emph{P}-splines: the sandwich smoother.
+\emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577--599.
 }
 \author{
 Luo Xiao \email{lxiao@jhsph.edu}

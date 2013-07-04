@@ -45,7 +45,7 @@ FPCA via kernel smoothing of the covariance function, with the diagonal treated 
 \references{
 Di, C., Crainiceanu, C., Caffo, B., and Punjabi, N. (2009). Multilevel functional principal component analysis. \emph{Annals of Applied Statistics}, 3, 458--488.
 
-Goldsmith, J., Greven, S., and Crainiceanu, C. (2012). Corrected confidence bands for functional data using principal components. Submitted.
+Goldsmith, J., Greven, S., and Crainiceanu, C. (2013). Corrected confidence bands for functional data using principal components. \emph{Biometrics}, 69(1), 41--51.
 
 Staniswalis, J. G., and Lee, J. J. (1998). Nonparametric regression analysis of longitudinal data. \emph{Journal of the American Statistical Association}, 93, 1403--1418.
 

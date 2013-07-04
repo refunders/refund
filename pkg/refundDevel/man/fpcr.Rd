@@ -55,7 +55,7 @@ logical: should the mean of each subject's signal be
 included as a covariate?
 }
   \item{spline.order}{
-order of B-splines used, if {fdobj} is not supplied; defaults to \code{4}, i.e., cubic B-splines.
+order of B-splines used, if \code{fdobj} is not supplied; defaults to \code{4}, i.e., cubic B-splines.
 }
   \item{family}{
 generalized linear model family. Current version supports \code{"gaussian"} (the default) and \code{"binomial"}. 
@@ -76,10 +76,10 @@ logical: should cross-validation be performed to select the best model if only o
 the number of validation sets ("folds") into which the data are divided; by default, 5.
 }
   \item{store.cv}{
-logical: should cv result table be in the output? By default, \code{FALSE}.
+logical: should a CV result table be in the output? By default, \code{FALSE}.
 }
   \item{store.gam}{
-logical: should gam object be in the output? Defaults to \code{TRUE}.
+logical: should the \code{\link[mgcv]{gam}} object be included in the output? Defaults to \code{TRUE}.
 }
   \item{\dots}{
 other arguments passed to function \code{\link[mgcv]{gam}}.

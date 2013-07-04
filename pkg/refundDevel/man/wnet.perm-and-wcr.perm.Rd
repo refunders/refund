@@ -6,7 +6,7 @@
 Permutation test for wavelet-domain scalar-on-function regression
 }
 \description{
-This function assesses statistical significance of a \code{\link{wcr}}/ \code{\link{wnet}} fit by referring the cross-validation criterion to a permutation distribution.
+This function assesses statistical significance of a \code{\link{wcr}} or \code{\link{wnet}} fit by referring the cross-validation criterion to a permutation distribution.
 }
 \usage{
 wcr.perm(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 

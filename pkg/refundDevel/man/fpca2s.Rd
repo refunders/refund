@@ -15,9 +15,9 @@ fpca2s(Y, npc=NA, center = TRUE, argvals = NULL, smooth=TRUE)
   \item{Y}{data matrix (rows: observations; columns: grid
   of eval. points)}
 
-  \item{npc}{how many smooth SVs to try to extract, if NA
-  (the default) the hard thresholding rule of Donoho,
-  Gavish (2013) is used.}
+  \item{npc}{how many smooth SVs to try to extract. If \code{NA}
+  (the default), the hard thresholding rule of Donoho and
+  Gavish (2013) is used. Application of this rule to functional PCA should be regarded as experimental.}
 
   \item{center}{center \code{Y} so that its column-means
   are 0? Defaults to \code{TRUE}}
@@ -32,7 +32,7 @@ logical; defaults to TRUE, if NULL, no smoothing of eigenvectors.
 }
 
 \details{
-The eigenvalues are the same as those obtained from eigendecomposition of sample covariance matrix.
+The eigenvalues are the same as those obtained from eigendecomposition of the sample covariance matrix. Please note that we expect to merge this function into \code{\link{fpca.ssvd}} in future versions of the package.
 }
 \value{A list with components
 \item{Yhat}{predicted data matrix}
@@ -47,8 +47,8 @@ The eigenvalues are the same as those obtained from eigendecomposition of sample
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013),
 Fast covariance estimation for high-dimensional functional data. (submitted) \url{http://arxiv.org/abs/1306.5718}.
 
-  Donoho, D.L., Gavish, M. (2013). The Optimal Hard
-  Threshold for Singular Values is 4/sqrt(3).  eprint
+  Donoho, D.L. and Gavish, M. (2013). The optimal hard
+  threshold for singular values is 4/sqrt(3).  eprint
   arXiv:1305.5870. Available from
   \url{http://arxiv.org/abs/1305.5870}.
   
@@ -59,8 +59,8 @@ Luo Xiao \email{lxiao@jhsph.edu}
 
 \seealso{
   \code{\link{fpca.sc}} and \code{\link{fpca.face}} for
-  covariance-estimate based smoothing of \code{Y};
-\code{\link{fpca.ssvd}} for another SVD-based smoothing.
+  FPCA based on smoothing a covariance estimate;
+\code{\link{fpca.ssvd}} for another SVD-based approach.
 }
 \examples{
   #### settings

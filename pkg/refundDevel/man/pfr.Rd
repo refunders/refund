@@ -85,7 +85,7 @@ pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,family =
 }
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
-Penalized functional regression. \emph{Journal of Computational and Graphical Statistics}, 20(4), 830-851.
+Penalized functional regression. \emph{Journal of Computational and Graphical Statistics}, 20(4), 830--851.
 
 Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012).
 Longitudinal penalized functional regression for cognitive outcomes on

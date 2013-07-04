@@ -22,7 +22,7 @@ fpca.face(Y, center = TRUE, argvals = NULL, knots = 35, p = 3, m = 2, lambda = N
   are 0? Defaults to \code{TRUE}}
   
   \item{argvals}{
-Vector of length \eqn{J} of points at which the functions are observed
+vector of points at which the functions are observed.
 }
   \item{knots}{
 vector of knots or number of (interior) knots; defaults to 35.
@@ -37,17 +37,16 @@ order of differencing penalty; defaults to 2.
 user-specified smoothing parameter; defaults to NULL and uses grid-searching method or \command{optim}.
 }
   \item{pve}{
-percentage of variance explained for selecting the number of principal components; defaults to 0.99  	
+percentage of variance explained for selecting the number of principal components; defaults to 0.99.  	
 }
   \item{npc}{
-number of extracted principal components; defaults to NULL and use \code{pve}
+number of extracted principal components; defaults to NULL and use \code{pve}.
   }
   \item{score.method}{
-method for predicting scores; defaults to "int" for numerical integration,
-"blup" for best linear unbiased prediction
+method for predicting scores; \code{"int"} (the default) for numerical integration, or \code{"blup"} for best linear unbiased prediction.
 }
   \item{search.grid}{
-logicial; defaults to TRUE, if FALSE, uses \command{optim}
+logical; defaults to TRUE, if FALSE, uses \command{optima}.
 }
   \item{search.length}{
 number of equidistant (log scale) smoothing parameters to search; defaults to 100.
@@ -73,13 +72,16 @@ passed to \command{optim}.
 \item{eigenvalues}{vector of eigenvalues}
 
 }
+
+\note{We expect to merge this function into \code{\link{fpca.sc}} in future releases of the package.}
+
 \references{
-Xiao, L., Li, Y., and Ruppert, D. (2013),
+Xiao, L., Li, Y., and Ruppert, D. (2013).
 Fast bivariate \emph{P}-splines: the sandwich smoother,
 \emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577-599.
 
-Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013),
-Fast covariance estimation for high-dimensional functional data. (submitted) \url{http://arxiv.org/abs/1306.5718}.
+Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013).
+Fast covariance estimation for high-dimensional functional data. Submitted). Available at \url{http://arxiv.org/abs/1306.5718}.
 }
 \author{
 Luo Xiao \email{lxiao@jhsph.edu}

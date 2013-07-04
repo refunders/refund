@@ -100,7 +100,7 @@ Lan Huo \email{lan.huo@nyumc.org} and Yihong Zhao
 \code{\link{wcr}}, \code{\link{wnet.perm}}
 }
 \examples{
-% \dontrun{
+\dontrun{
 ### 1D functional predictor example ###
 
 data(gasoline)
@@ -167,7 +167,7 @@ mmm.wpls <- wcr(yy, xfuncs = ii, min.scale = 2, nfeatures = 20, ncomp = 6,
                 method = "pls")
 plot(mmm.wnet)
 plot(mmm.wpls)
-% }
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

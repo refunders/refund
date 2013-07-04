@@ -4,11 +4,7 @@
 Likelihood Ratio Test and Restricted Likelihood Ratio Test for inference of functional predictors
 }
 \description{
-Given a pfr object of family="gaussian", conducts either a test to see if the function is
-just a mean (constancy) or a test to see if the functional predictor
-significantly improves the model (inclusion).  Based on work 0-variance
-component work of Crainiceanu et al. (2004) and Scheipl et al. (2008)
-and Swihart et al. (2012).}
+Given a pfr object of family="gaussian", tests whether the function is identically equal to its mean (constancy), or whether the functional predictor significantly improves the model (inclusion).  Based on zero-variance-component work of Crainiceanu et al. (2004), Scheipl et al. (2008), and Swihart et al. (2012).}
 \usage{
 rlrt.pfr(pfr.obj=pfr.obj, test=NULL, ...)
 }
@@ -62,7 +58,7 @@ and the model refit with "ML" and a test is then conducted.
 
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
-Penalized functional regression. \emph{Journal of Computational and Graphical Statistics}, 20(4), 830-851.
+Penalized functional regression. \emph{Journal of Computational and Graphical Statistics}, 20(4), 830--851.
 
 Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012).
 Longitudinal penalized functional regression for cognitive outcomes on
@@ -70,17 +66,16 @@ neuronal tract measurements. \emph{Journal of the Royal Statistical Society: Ser
 
 Crainiceanu, C. and Ruppert, D. (2004) Likelihood ratio tests in linear
 mixed models with one variance component. \emph{Journal of the Royal
-Statistical Society: Series B},66,165--185.
+Statistical Society: Series B}, 66, 165--185.
 
 Scheipl, F. (2007) Testing for nonparametric terms and random effects in structured additive regression. Diploma thesis.\ http://www.statistik.lmu.de/~scheipl/downloads/DIPLOM.zip.
 
 Scheipl, F., Greven, S. and Kuechenhoff, H (2008)
-Size and power of tests for a zero random effect variance or polynomial regression in additive and linear mixed models.             \emph{Computational Statistics & Data Analysis}, 52(7):3283-3299    
+Size and power of tests for a zero random effect variance or polynomial regression in additive and linear mixed models.  \emph{Computational Statistics & Data Analysis}, 52(7), 3283--3299.    
 
 Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (2012).
-Testing For Functional Effects 
-\emph{Johns Hopkins University, Dept. of Biostatistics Working Papers. Working Paper 247.}
-http://biostats.bepress.com/jhubiostat/paper247
+Testing for functional effects. Johns Hopkins University Dept. of Biostatistics Working Paper 247.
+Available at \url{http://biostats.bepress.com/jhubiostat/paper247}
 }
 
 \seealso{\code{\link{pfr}}, \code{\link{predict.pfr}}, package \code{RLRsim}}
@@ -89,6 +84,7 @@ http://biostats.bepress.com/jhubiostat/paper247
   Bruce Swihart <bswihart@jhsph.edu>
 }
 \examples{
+\dontrun{
 ##################################################################
 #########               DTI Data Example                 #########
 ##################################################################
@@ -145,8 +141,6 @@ abline(h=0, col="blue")
 t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
 t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
 t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
-
-\dontrun{
 
 t1$test.stat
 t1$p.val

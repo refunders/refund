@@ -2,12 +2,12 @@
 \alias{DTI2}
 \docType{data}
 \title{
-Diffusion Tensor Imaging: tract profiles and outcomes
+Diffusion Tensor Imaging: more fractional anisotropy profiles and outcomes
 }
 \description{
-A DTI dataset used in Swihart et al 2012.
-Fractional anisotropy tract profiles for the corpus callosum (cca) and
-the right corticospinal tract (rcst). Accompanying the tract profiles
+A DTI dataset used in Swihart et al. (2012).
+Fractional anisotropy profiles for the corpus callosum (cca) and
+the right corticospinal tract (rcst). Accompanying the profiles
 are the subject ID numbers, visit number, and Paced Auditory Serial Addition Test
 (pasat) score. We thank Dr. Daniel Reich for making this dataset
 available.
@@ -16,8 +16,8 @@ available.
 \format{
   A data frame made up of
   \describe{
-    \item{\code{cca} }{a 340 x 93 matrix of fractional anisotropy tract profiles from the corpus callosum;}
-    \item{\code{rcst} }{a 340 x 55 matrix of fractional anisotropy tract profiles from the right corticospinal tract;}
+    \item{\code{cca} }{a 340 x 93 matrix of fractional anisotropy profiles from the corpus callosum;}
+    \item{\code{rcst} }{a 340 x 55 matrix of fractional anisotropy profiles from the right corticospinal tract;}
     \item{\code{id} }{numeric vector of subject ID numbers;}
     \item{\code{visit} }{numeric vector of the subject-specific visit numbers;}
     \item{\code{pasat }}{numeric vector containing the PASAT score at each visit.}

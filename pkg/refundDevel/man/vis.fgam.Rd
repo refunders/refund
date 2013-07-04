@@ -65,7 +65,7 @@ Mathew W. McLean \email{mwm79@cornell.edu}
 ################# DTI Example #####################
 data(DTI)
 
-## only consider first visit and cases ( since no PASAT scores for controls)
+## only consider first visit and cases (since no PASAT scores for controls)
 y <- DTI$pasat[DTI$visit==1 & DTI$case==1]
 X <- DTI$cca[DTI$visit==1 & DTI$case==1,]
 
@@ -75,7 +75,7 @@ ind <- rowSums(is.na(X))>0
 y <- y[!ind]
 X <- X[!ind,]
 
-## fit the fgam using measurements along cca tract as functional predictor with PASAT as response
+## fit the fgam using FA measurements along corpus callosum as functional predictor with PASAT as response
 ## using 8 cubic B-splines for each marginal bases with third order marginal difference penalties
 ## specifying gamma>1 enforces more smoothing when using GCV to choose smoothing parameters
 fit <- fgam(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
