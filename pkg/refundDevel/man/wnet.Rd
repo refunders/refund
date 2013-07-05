@@ -107,7 +107,7 @@ data(gasoline)
 
 # input a single value of each tuning parameters
 gas.wnet1 <- wnet(gasoline$octane, xfuncs = gasoline$NIR[,1:256], 
-             min.scale = 0, alpha = 1)
+             nfeatures= 20, min.scale = 0, alpha = 1)
 gas.wpcr1 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0,
                  nfeatures = 20, ncomp = 15)
 gas.wpls1 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0, 
@@ -118,7 +118,7 @@ plot(gas.wpls1)
 
 # input vectors of candidate tuning parameter values
 gas.wnet2 <- wnet(gasoline$octane, xfuncs = gasoline$NIR[,1:256], 
-                  min.scale = 0:3, alpha = c(0.9, 1))
+                  nfeatures= 20, min.scale = 0:3, alpha = c(0.9, 1))
 gas.wpcr2 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0:3,
                  nfeatures = c(16, 18, 20), ncomp = 10:15)
 gas.wpls2 <- wcr(gasoline$octane, xfuncs = gasoline$NIR[,1:256], min.scale = 0:3,
