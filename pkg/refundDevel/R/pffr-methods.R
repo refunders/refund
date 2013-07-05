@@ -61,7 +61,8 @@ predict.pffr <- function(object,
         
         # check if the supplied data already has the shape expected by predict.gam
         # and dispatch immediately if so (need this so summary works as expected!)
-        if(!(all(names(newdata) %in% names(object$model)))){
+        if(!(all(names(newdata) %in% names(object$model))) | 
+          !(paste0(object$pffr$yindname,".vec") %in% names(newdata))){
             # check lengths
             stopifnot(length(unique(sapply(newdata, function(x) ifelse(is.matrix(x), nrow(x), length(x))))) ==1)
             #        #FIXME: better leave this check to predict.gam....  

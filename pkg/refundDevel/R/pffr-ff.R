@@ -11,7 +11,7 @@
 #' If \code{check.ident==TRUE} and \code{basistype!="s"}  (the default), the routine 
 #' checks for overlap between the kernels of Cov\eqn{(X(s))} and the marginal penalty over \code{s}, as well as for 
 #' sufficient rank of Cov\eqn{(X(s))}. If there is overlap of the kernels, the penalty and basis for the covariate direction
-#' are changed to B-splines with a modified 'shrinkage' penalty, see 
+#' are changed to B-splines with a modified `shrinkage' penalty, see 
 #' \code{\link{smooth.construct.pss.smooth.spec}}. A warning is given if the effective rank of Cov\eqn{(X(s))} 
 #' (defined the number of eigenvalues accounting for at least 0.995 of the total variance in \eqn{X_i(s)}) is lower than
 #' the dimension of the basis for the covariate direction. See reference for details.
@@ -32,9 +32,9 @@
 #' either one of \code{"s<t"} or \code{"s<=t"} for \eqn{(s_{hi, i}, s_{lo, i}) = (0, t)} or 
 #' a function that takes \code{s} as the first and \code{t} as the second argument and returns TRUE for combinations
 #' of values \code{(s,t)} if \code{s} falls into the integration range for the given \code{t}. This is an experimental feature and not
-#' well tested yet, use at your own risk.   
+#' well tested yet; use at your own risk.   
 #' @param splinepars optional arguments supplied to the \code{basistype}-term. Defaults to a cubic tensor product 
-#' 	B-spline with marginal first difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 1), c(2,1)))}. See \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} in \code{mgcv} for details
+#' 	B-spline with marginal first difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 1), c(2,1)))}. See \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} in \pkg{mgcv} for details
 #' @param check.ident check identifiability of the model spec. See Details and References. Defaults to TRUE.
 #' 
 #' @seealso \code{mgcv}'s \code{\link[mgcv]{linear.functional.terms}}

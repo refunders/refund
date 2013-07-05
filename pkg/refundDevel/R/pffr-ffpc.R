@@ -28,7 +28,7 @@
 #' 	B-spline with first difference penalties and 8 basis functions for each \eqn{\tilde \beta_k(t)}.
 #' @param decomppars  parameters for the FPCA performed with \code{\link{fpca.sc}}.
 #' @param npc.max maximal number \eqn{K} of FPCs to use, regardless of \code{decomppars}; defaults to 15
-#' @return a list containing the necessary information to construct a term to be included in a \code{mgcv::gam}-formula.
+#' @return A list containing the necessary information to construct a term to be included in a \code{mgcv::gam}-formula.
 #'  
 #' @author Fabian Scheipl
 #' @examples \dontrun{
