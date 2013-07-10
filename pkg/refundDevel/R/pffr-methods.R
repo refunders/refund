@@ -151,8 +151,9 @@ predict.pffr <- function(object,
                         if(is.ffpc){
                             ffpc <- object$pffr$ffpc[[grep(paste(cov,"[,\\)]",sep=""), names(object$pffr$ffpc))]]
                             
-                            # X' = Phi xi' + error --> get loadings for new data: 
-                            xiMat <- t(qr.coef(qr(ffpc$PCMat), t(newdata[[cov]])))
+                            # Xc' = Phi xi' + error --> get loadings for new data:
+                            Xct <- t(newdata[[cov]]) - as.vector(ffpc$meanX)
+                            xiMat <- t(qr.coef(qr(ffpc$PCMat), Xct))
                             colnames(xiMat) <- paste(make.names(cov),".PC", 1:ncol(xiMat), sep="")
                             xiMat <- xiMat[rep(1:nobs, each=nyindex), ]
                             for(nm in colnames(xiMat)){
