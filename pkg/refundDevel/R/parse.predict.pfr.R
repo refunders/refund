@@ -16,7 +16,7 @@ parse.predict.pfr <- function(pfr.obj, new.data){
   }else                 rand.int.old <-  matrix(pfr.obj$fit$coef[c((p.old+2):(N_subj.old+p.old+1))], ncol=1)
   subj.old       <- pfr.obj$subj
   W              <- pfr.obj$BetaHat
-  
+  smooth.option.old <- pfr.obj$smooth.option
 
   ## need to manage old and new subjects for level 1 predictions
   ## this code chunk determines which subjects were in original
@@ -41,12 +41,14 @@ parse.predict.pfr <- function(pfr.obj, new.data){
               N_subj.old, rand.int.old, subj.old,
               W,
               rand.int.new,
-              funcs.old)
+              funcs.old, 
+              smooth.option.old)
   names(ret) <- c("subj.new", "covariates.new", "funcs.new",
               "kb.old", "kz.old", "nbasis.old", "alpha.old", "beta.old", "p.old",
               "N_subj.old", "rand.int.old", "subj.old",
               "W",
               "rand.int.new",
-              "funcs.old")
+              "funcs.old",
+              "smooth.option.old")
   ret
 }

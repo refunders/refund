@@ -16,7 +16,7 @@ predict.pfr <- function(object, new.data=NULL, levels=NULL, ...){
     pre      <- preprocess.pfr(subj=par$subj.new,
                                covariates=par$covariates.new, funcs=par$funcs.old, kz=par$kz.old, kb=par$kb.old,
                                nbasis=par$nbasis.old,
-                               funcs.new=par$funcs.new)    
+                               funcs.new=par$funcs.new,smooth.option=par$smooth.option.old)    
 #    psi            <- data.calc$psi
 #    C              <- data.calc$C
 #    Z1             <- data.calc$Z1

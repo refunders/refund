@@ -110,7 +110,7 @@ function(Y, Y.pred=NULL, nbasis = 10, pve = .99, npc = NULL, var = FALSE, simul 
   for (i in 1:I.pred) VarMats[[i]] = matrix(NA, nrow = D, ncol = D)
   diag.var = matrix(NA, nrow = I.pred, ncol = D)
   crit.val = rep(0, I.pred)
-
+  
   ## estimate scores, functions and variances for all curves
   for (i.subj in 1:I.pred) {
     obs.points = which(!is.na(Y.pred[i.subj,]))

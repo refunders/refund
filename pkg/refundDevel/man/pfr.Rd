@@ -19,14 +19,14 @@ pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,family =
   \item{subj }{vector containing the subject number for each observation}
   \item{covariates }{matrix of scalar covariates}
   \item{funcs }{matrix, or list of matrices, containing observed functional predictors as rows. NA values are allowed.}
-  \item{kz }{dimension of principal components basis for the observed functional predictors}
+  \item{kz }{can be NULL; can be a scalar, in which case this will be the dimension of principal components basis for each and every observed functional predictors; can be a vector of length equal to the number of functional predictors, in which case each element will correspond to the dimension of principal components basis for the corresponding observed functional predictors}
   \item{kb }{dimension of the B-spline basis for the coefficient
     function (note: this is a change from versions 0.1-7 and previous) }
   \item{nbasis }{passed to refund::fpca.sc (note: using fpca.sc is a
     change from versions 0.1-7 and previous)}
   \item{family }{generalized linear model family}
   \item{method }{method for estimating the smoothing parameters; defaults to REML}
-  \item{smooth.option}{method to do FPC decomposition on the predictors. Two options available -- "fpca.sc" or "face".}
+  \item{smooth.option}{method to do FPC decomposition on the predictors. Two options available -- "fpca.sc" or "fpca.face". If using "fpca.sc", a number less than 35 for \code{nbasis} should be used while if using "fpca.face",35 or more is recommended. }
   \item{pve}{proportion of variance explained used to choose the number of principal components to be included in the expansion.}
   \item{... }{additional arguments passed to \code{\link[mgcv]{gam}} to fit the regression model.}
 }
@@ -73,13 +73,13 @@ pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,family =
   \item{p }{number of scalar covariates}
   \item{N.pred }{number of functional covariates}
   \item{kz }{as specified}
+  \item{kz.adj}{For smooth.option="fpca.sc", will be same as kz (or a vector of repeated values of the specified scalar kz).  For smooth.option="fpca.face", will be the corresponding number of principal components for each functional predictor as determined by fpca.face; will be less than or equal to kz on an elemental-wise level.}
   \item{kb }{as specified}
-
   \item{nbasis }{as specified}
   \item{totD }{number of penalty matrices created for mgcv::gam}
   \item{funcs }{as specified}
   \item{covariates }{as specified}
-
+  \item{smooth.option}{as specified}
 
 
 }
@@ -100,6 +100,7 @@ Testing for functional effects. Johns Hopkins University Dept. of Biostatistics 
   Bruce Swihart <bswihart@jhsph.edu>
 }
 \examples{
+\dontrun{
 ##################################################################
 #########               DTI Data Example                 #########
 ##################################################################
@@ -125,10 +126,13 @@ covar.in <- visit.1.rest
 apply(is.na(W1), 2, mean)
 apply(is.na(W2), 2, mean)
 
-## fit two univariate models, then one model with both functional predictors
+## fit two univariate models
 pfr.obj.t1 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
 pfr.obj.t2 <- pfr(Y = Y, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
-pfr.obj.t3 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
+
+### one model with two functional predictors using "smooth.face"
+###  for smoothing predictors
+pfr.obj.t3 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50, nbasis=35,smooth.option="fpca.face")
 
 ## plot the coefficient function and bounds
 dev.new()
@@ -151,7 +155,7 @@ matplot(cbind(pfr.obj.t3$BetaHat[[2]], pfr.obj.t3$Bounds[[2]]),
   main = "RCST - mult.", xlab="Location", ylim=ran)
 abline(h=0, col="blue")
 
-\dontrun{
+
      ##################################################################
      # use baseline data to regress continuous outcomes on functional 
      # predictors (continuous outcomes only recorded for case == 1)
@@ -231,8 +235,8 @@ Y = gasoline$octane
 funcs = gasoline$NIR
 wavelengths = as.matrix(2*450:850)
 
-# fit the model using pfr
-fit = pfr(Y=Y, funcs=funcs, kz=15, kb=50, nbasis=15)
+# fit the model using pfr and the smoothing option "fpca.face"
+fit = pfr(Y=Y, funcs=funcs, kz=15, kb=50,nbasis=35,smooth.option="fpca.face")
 
 # plot the estimated coefficient function
 matplot(wavelengths, cbind(fit$BetaHat[[1]], fit$Bounds[[1]]), 

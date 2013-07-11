@@ -8,7 +8,7 @@ A fast implementation of the sandwich smoother (Xiao et al., 2013) for covarianc
 at the data level is used for selecting the smoothing parameter. 
 }
 \usage{
-fpca.face(Y, center = TRUE, argvals = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
+fpca.face(Y, Y.pred=NULL, center = TRUE, argvals = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
      pve = 0.99, npc=NULL,score.method = "int",
      search.grid = TRUE, search.length = 100, method = "L-BFGS-B",
      lower = -20, upper = 20, control = NULL)
@@ -17,7 +17,8 @@ fpca.face(Y, center = TRUE, argvals = NULL, knots = 35, p = 3, m = 2, lambda = N
 \arguments{
    \item{Y}{data matrix (rows: observations; columns: grid
   of eval. points); missing data allowed but caution is needed for very sparse data}
-
+  \item{Y.pred }{if desired, a matrix of observed functions that will be estimated using the FPC decomposition of Y.}
+  
   \item{center}{center \code{Y} so that its column-means
   are 0? Defaults to \code{TRUE}}
   
@@ -64,7 +65,7 @@ passed to \command{optim}.
 
 
 \value{A list with components
-\item{Yhat}{predicted data matrix}
+\item{Yhat}{If Y.pred is specified, the smooth version of Y.pred.   Otherwise, if Y.pred=NULL, the smooth version of Y.}
 \item{scores}{matrix of scores}
 \item{mu}{mean function}
 \item{npc}{number of principal components}

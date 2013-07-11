@@ -1,5 +1,5 @@
 fpca.face <-
-function(Y,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99, 
+function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99, 
          npc  = NULL,
          score.method = "int", search.grid=TRUE,search.length=100,
          method="L-BFGS-B", lower=-20,upper=20, control=NULL){
@@ -184,7 +184,10 @@ function(Y,center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
   }
                      
   ### now calculate scores
-  Ytilde <- as.matrix(t(A0)%*%(Bt%*%Y))
+  if(is.null(Y.pred)) Y.pred = Y
+  else { Y.pred = t(as.matrix(Y.pred))-meanX}
+
+  Ytilde <- as.matrix(t(A0)%*%(Bt%*%Y.pred))
   if(score.method=="int") Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
   if(score.method=="blup"){Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
                           Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J))

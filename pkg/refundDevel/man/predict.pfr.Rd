@@ -89,7 +89,7 @@ head(cbind(same.inputs[[1]], same.inputs[[2]]))
 subset.inputs <- predict.pfr(pfr.obj,
                              new.data = list(subj=head(id,300),
                                              covariates=head(covar.in,300),
-                                             funcs=list(head(W1,300))))
+                                             funcs=list(W1[1:300,])))
 head(cbind(subset.inputs[[1]], subset.inputs[[2]]))
 ## compare the first 300 vs. the original full data
 plot(subset.inputs[[1]], same.inputs[[1]][1:300]); abline(a=0,b=1,col="blue")
@@ -102,7 +102,7 @@ summary(subset.inputs[[1]] - same.inputs[[1]][1:300])
 subset.inputs <- predict.pfr(pfr.obj,
                              new.data = list(subj=c(head(id,6), 7:12),
                                              covariates=rbind(head(covar.in,6),head(covar.in,6)),
-                                             funcs=list(rbind(head(W1,6),head(W1,6)))))
+                                             funcs=list(rbind(W1[1:6,],W1[1:6,]))))
 ## first 6 have both levels; the last 6 do not have subject-specific
 head(cbind(subset.inputs[[1]], subset.inputs[[2]]),12)
 

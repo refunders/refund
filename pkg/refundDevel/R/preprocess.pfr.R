@@ -1,5 +1,7 @@
 preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb = NULL, nbasis=10, funcs.new=NULL, smooth.option="fpca.sc",pve=0.99){
 ## TBD:  make kz,kb take the value from pfr.obj in predict.pfr() calls.
+ 
+  
   N_subj = length(unique(subj))
   p = ifelse(is.null(covariates), 0, dim(covariates)[2])
   ## handle if funcs is a list (multiple predictors) or matrix (single predictor)
@@ -17,6 +19,14 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
     Funcs.new = funcs.new
   }
   N.Pred = length(Funcs)
+  ### change: July 11, 2013
+  if(!is.null(kz)){
+  if(length(kz)==1) kz = rep(kz,N.Pred)
+  if(length(kz)!=N.Pred) stop("Length of kz is not the number of predictors\n")
+  }
+  kz.adj = rep(NA, N.Pred)
+  ### end of change
+  
   ## outcome length "o.len" is number of rows of original data if no predictive data provided
   ## if predictive data provided, then must be the number of rows for predictive data
   if(is.null(funcs.new)){o.len <- nrow(as.matrix(Funcs[[1]]))
@@ -29,9 +39,10 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
       for(i in 1:N.Pred){
         t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
         ## for fpca() (not fpca.sc()):  when I have K=kz, I have to lower kz a bit
-        FPCA[[i]] = fpca.sc(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], pve=pve, nbasis=nbasis, npc=kz) 
+        FPCA[[i]] = fpca.sc(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], pve=pve, nbasis=nbasis, npc=kz[i]) 
         psi[[i]] = FPCA[[i]]$efunctions
         C[[i]]=FPCA[[i]]$scores
+        kz.adj[i]=FPCA[[i]]$npc
         ## what psi and C are if using fpca()
         ##    psi[[i]] = FPCA[[i]]$phi.hat
         ##    C[[i]]=FPCA[[i]]$xi.hat
@@ -41,18 +52,25 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
   if (smooth.option=="fpca.face"){
     # using face
     for(i in 1:N.Pred){
-        Funcs[[i]] = apply(Funcs[[i]],2,function(x){x-mean(x,na.rm=TRUE)})
+  
+        Funcs[[i]] = apply(Funcs[[i]],2,function(x){x-0*mean(x,na.rm=TRUE)})
+        if(!is.null(Funcs.new[[i]])) Funcs.new[[i]] = apply(Funcs.new[[i]],2,function(x){x-0*mean(x,na.rm=TRUE)})
+        
         t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
         #if (length(t[[i]])>70) nbasis = max(nbasis,35)  
-        FPCA[[i]] = fpca.face(Y = Funcs[[i]], knots=nbasis,pve = pve)
-        if (is.null(kz) | kz>dim(FPCA[[i]]$eigenvectors)[2]){
+        FPCA[[i]] = fpca.face(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], knots=nbasis,pve = pve)
+        if (is.null(kz[i]) || kz[i]>dim(FPCA[[i]]$eigenvectors)[2]){
             psi[[i]] = FPCA[[i]]$eigenvectors
             C[[i]]=FPCA[[i]]$scores*sqrt(dim(Funcs[[i]])[2])
+            kz.adj[i] =  dim(FPCA[[i]]$eigenvectors)[2]
+            cat("For the ", i, "-th functional predictor, the number of PCs changes to", kz.adj[i],"\n");
+            cat("For details, see the manual\n");
         }
         else {
-            cat(kz,"\n",dim(FPCA[[i]]$eigenvectors),"\n")
-            psi[[i]] = FPCA[[i]]$eigenvectors[,1:kz]
-            C[[i]]=FPCA[[i]]$scores[,1:kz]*sqrt(dim(Funcs[[i]])[2])
+            #cat(kz[i],"\n",dim(FPCA[[i]]$eigenvectors),"\n")
+            psi[[i]] = FPCA[[i]]$eigenvectors[,1:kz[i]]
+            C[[i]]=FPCA[[i]]$scores[,1:kz[i]]*sqrt(dim(Funcs[[i]])[2])
+            kz.adj[i] =  kz[i]
         }
         
     }
@@ -119,14 +137,14 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
   ret <- list( X, D,  phi, psi, C, J, CJ,
               Z1, subj,
               fixed.mat, rand.mat, N_subj, p, N.Pred,
-              kz, kb, nbasis,
+              kz, kz.adj, kb, nbasis,
               totD,
-              funcs, covariates)
+              funcs, covariates, smooth.option)
   names(ret) <- c("X", "D", "phi", "psi", "C", "J", "CJ",
                   "Z1", "subj",
                   "fixed.mat", "rand.mat", "N_subj", "p", "N.Pred",
-                  "kz", "kb", "nbasis",
+                  "kz", "kz.adj", "kb", "nbasis",
                   "totD",
-                  "funcs", "covariates")
+                  "funcs", "covariates", "smooth.option")
   ret
 }

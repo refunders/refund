@@ -31,7 +31,7 @@ fpca.sc(Y, Y.pred=NULL, nbasis = 10, pve = .99, npc = NULL, var = FALSE,
 FPCA via kernel smoothing of the covariance function, with the diagonal treated separately, was proposed in Staniswalis and Lee (1998) and much extended by Yao et al. (2005), who introduced the "PACE" method. \code{fpca.sc} uses penalized splines to smooth the covariance function, as developed by Di et al. (2009) and Goldsmith et al. (2012).
 }
 \value{
-  \item{Yhat }{\eqn{n \times d} matrix whose rows are the estimates (truncated FPC expansions) of the curves in Y.}
+ \item{Yhat}{If Y.pred is specified, the smooth version of Y.pred.   Otherwise, if Y.pred=NULL, the smooth version of Y.}
   \item{scores }{\eqn{n \times npc} matrix of estimated principal component scores.}
   \item{mu }{estimated mean function (or a vector of zeroes if \code{center=FALSE}).}
   \item{efunctions }{\eqn{d \times npc} matrix of estimated eigenfunctions of the functional covariance operator, i.e., the FPC basis functions.}
