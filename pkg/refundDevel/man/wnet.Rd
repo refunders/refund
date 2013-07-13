@@ -10,8 +10,8 @@ Performs generalized linear scalar-on-function or scalar-on-image regression in 
 \usage{
 wnet(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha = 1, 
      lambda = NULL, standardize = FALSE, pen.covt = FALSE, 
-     filter.number = 10, wavelet.family = "DaubLeAsymm",
-     family = "gaussian", nfold = 5, nsplit = 1, store.cv = FALSE, 
+     filter.number = 10, wavelet.family = "DaubLeAsymm", family = "gaussian", 
+     nfold = 5, nsplit = 1, store.cv = FALSE, store.glmnet = FALSE, 
      seed = NULL, \dots)
 }
 %- maybe also 'usage' for other objects documented here.
@@ -28,7 +28,7 @@ covariates, if any: an \eqn{n}-row matrix, or a vector of length \eqn{n}.
 either a scalar, or a vector of candidate values to be compared. Used to control the coarseness level of the wavelet decomposition.  Possible values are \eqn{0,1,\dots,log_2(d) - 1}.
 }
   \item{nfeatures}{
-number(s) of features, i.e. wavelet coefficients, to retain for prediction of \code{y}: either a scalar, or a vector of values to be compared.  	
+number(s) of features, i.e. wavelet coefficients, to retain for prediction of \code{y}: either a scalar, or a vector of values to be compared.    
 }
   \item{alpha}{
 elastic net mixing parameter, used by \code{\link[glmnet]{glmnet}}: either a scalar, or a vector of values to be compared. \code{alpha=1} gives the lasso penalty, while \code{alpha=0} yields the ridge penalty.
@@ -64,6 +64,9 @@ number of splits into \code{nfold} validation sets; CV is computed by averaging 
   \item{store.cv}{
 logical: should the output include a CV result table?
 }
+  \item{store.glmnet}{
+logical: should the output include the fitted \code{\link[glmnet]{glmnet}}? Defaults to \code{FALSE}.
+}
   \item{seed}{
 the seed for random data division. If \code{seed = NULL}, a random seed is used.
 }
@@ -78,15 +81,16 @@ For 2D predictors, setting \code{min.scale=1} will lead to an error, due to a te
 
 }
 \value{
-An object of class \code{wnet} with the following components:
+An object of class \code{"wnet"}, which is a list with the following components:
+\item{glmnet}{if \code{store.glmnet = TRUE}, the object returned by \code{\link[glmnet]{glmnet}}.}
 \item{fitted.value}{the fitted values.}
 \item{coef.param}{parametric coefficient estimates, for the scalar covariates.}
 \item{fhat}{coefficient function estimate.}
+\item{Rsq}{coefficient of determination.}
 \item{lambda.table}{array giving the candidate lambda values, chosen automatically by \code{\link[glmnet]{glmnet}}, for each combination of the other tuning parameters.}
 \item{tuning.params}{a \eqn{2\times 4} table giving the indices and values of \code{min.scale}, \code{nfeatures}, \code{alpha} and \code{lambda} that minimize the CV. For example, if \code{alpha=c(0,0.5,1)} is specified and the CV-minimizing tuning parameter combination takes \code{alpha} to be the 2nd of these values, then the third column of the table is \code{c(2, 0.5)}.}
 \item{cv.table}{if \code{store.cv = TRUE}, a table giving the CV criterion for each combination of \code{min.scale}, \code{nfeatures}, \code{alpha} and \code{lambda}. Otherwise, just the minimized CV criterion.}
 \item{se.cv}{if \code{store.cv = TRUE}, the standard error of the CV estimate for each combination of \code{min.scale}, \code{nfeatures}, \code{alpha} and \code{lambda}.}
-\item{Rsq}{coefficient of determination.}
 \item{family}{generalized linear model family.}
 }
 \references{

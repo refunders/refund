@@ -1,7 +1,7 @@
 wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
                 mean.signal.term = FALSE, covt = NULL, filter.number = 10, 
                 wavelet.family = "DaubLeAsymm", family = "gaussian", cv1 = FALSE, 
-                nfold = 5, nsplit = 1, store.cv = FALSE, store.glm = TRUE, seed = NULL) {
+                nfold = 5, nsplit = 1, store.cv = FALSE, store.glm = FALSE, seed = NULL) {
     checkError(y = y, xfuncs = xfuncs, covt = covt, 
                vars = list(min.scale = min.scale, nfeatures = nfeatures, ncomp = ncomp))    
     method <- match.arg(method)
@@ -141,29 +141,29 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
     	param[2, ] <- c(min.scale[param[1,1]], nfeatures[param[1,2]], ncomp[param[1,3]])
     	dimnames(param) = list(c("index", "value"), c("min.scale", "nfeatures", "ncomp"))
         dim(xfuncs) <- c(n, rep(d, dim.sig))
-        obje <- wcr(y = y, xfuncs = xfuncs, min.scale = param[2,1], nfeatures = param[2,2], 
+        l <- wcr(y = y, xfuncs = xfuncs, min.scale = param[2,1], nfeatures = param[2,2], 
                     ncomp = param[2,3], method=method, mean.signal.term=mean.signal.term, 
                     covt = covt, filter.number=filter.number, wavelet.family=wavelet.family,
                     family=family, cv1 = FALSE, store.glm = store.glm)
         if (store.cv) {
-        	obje$cv.table <- 2 * res$cv.table
-        	obje$se.cv <- res$se.cv
+        	l$cv.table <- res$cv.table
+        	l$se.cv <- res$se.cv
         } else {
-        	obje$cv.table <- 2 * min(res$cv.table[res$cv.table !=0], na.rm=TRUE)
+        	l$cv.table <- min(res$cv.table[res$cv.table !=0], na.rm=TRUE)
         }
-        obje$param <- param
-    } else {        
-        if (!store.glm) {
-    		yhat <- obje$fitted.values
-    		obje <- list()
-    		obje$fitted.values <- yhat
-    	}
-    	obje$param.coef <- obje$coef[1:n.unpen.cols]
-    	obje$undecor.coef <- matrix(obje$coef[1:n.unpen.cols] - ginv(cbind(rep(1, n), X0)) %*% xfuncs %*% fhat, nrow=1)
-        obje$fhat <- array(fhat, dim = rep(d, dim.sig))	
-        obje$Rsq <- getRsq(y = y, yhat = obje$fitted.values, family = family)
+        l$tuning.params <- param
+    } else {
+    	l <- list()       
+    	if (store.glm){
+    		l$glm <- obje
+    	} 
+    	l$fitted.values <- obje$fitted.values
+    	l$param.coef <- obje$coef[1:n.unpen.cols]
+    	l$undecor.coef <- matrix(obje$coef[1:n.unpen.cols] - ginv(cbind(rep(1, n), X0)) %*% xfuncs %*% fhat, nrow=1)
+        l$fhat <- array(fhat, dim = rep(d, dim.sig))	
+        l$Rsq <- getRsq(y = y, yhat = obje$fitted.values, family = family)
     }
-    obje$family <- family
-    class(obje) <- 'wcr'
-    return(obje)
+    l$family <- family
+    class(l) <- 'wcr'
+    return(l)
 }

@@ -44,5 +44,5 @@ Lan Huo \email{lan.huo@nyumc.org}
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-\code{\link{wcr}} and \code{\link{wnet}}, which include examples.
+\code{\link{wcr}} and \code{\link{wnet}}; the latter includes examples.
 }

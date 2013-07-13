@@ -81,7 +81,7 @@ Available at \url{http://biostats.bepress.com/jhubiostat/paper247}
 \seealso{\code{\link{pfr}}, \code{\link{predict.pfr}}, package \code{RLRsim}}
 \author{
   Jeff Goldsmith <jeff.goldsmith@columbia.edu>
-  Bruce Swihart <bswihart@jhsph.edu>
+  and Bruce Swihart <bswihart@jhsph.edu>
 }
 \examples{
 \dontrun{

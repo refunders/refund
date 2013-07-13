@@ -10,9 +10,8 @@ Performs generalized linear scalar-on-function or scalar-on-image regression in 
 \usage{
 wcr(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls"), 
     mean.signal.term = FALSE, covt = NULL, filter.number = 10, 
-    wavelet.family = "DaubLeAsymm", family = "gaussian", 
-    cv1 = FALSE, nfold = 5, nsplit = 1, store.cv = FALSE, 
-    store.glm = TRUE, seed = NULL)
+    wavelet.family = "DaubLeAsymm", family = "gaussian", cv1 = FALSE, nfold = 5, 
+    nsplit = 1, store.cv = FALSE, store.glm = FALSE, seed = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -61,7 +60,7 @@ number of splits into \code{nfold} validation sets; CV is computed by averaging 
 logical: should the output include a CV result table?
 }
   \item{store.glm}{
-logical: should the output include the fitted \code{\link{glm}}? Defaults to \code{TRUE}, but may need to be set to \code{FALSE} for simulations.
+logical: should the output include the fitted \code{\link{glm}}? Defaults to \code{FALSE}.
 }
   \item{seed}{
 the seed for random data division. If \code{seed = NULL}, a random seed is used.
@@ -76,15 +75,15 @@ For 2D predictors, setting \code{min.scale=1} will lead to an error, due to a te
 
 See the Details for \code{\link{fpcr}} for a note regarding decorrelation.
 }
-\value{A list that, if \code{store.glm = TRUE}, includes all components of the fitted \code{\link{glm}} object. The following components are included even if \code{store.glm = FALSE}:
-\item{fitted}{the fitted values.}
-\item{param.coef}{coefficients for covariates. Please note that the model is fitted after decorrelating the functional predictors from any scalar covariates.}
-\item{undecor.coef}{coefficients for covariates \emph{without} decorrelation. Undecorrelated coefficients for the training-set models are needed when performing cross-validation.}
+\value{An object of class \code{"wcr"}. This is a list that, if \code{store.glm = TRUE}, includes all components of the fitted \code{\link{glm}} object. The following components are included even if \code{store.glm = FALSE}:
+\item{fitted.values}{the fitted values.}
+\item{param.coef}{coefficients for covariates with decorrelation. The model is fitted after decorrelating the functional predictors from any scalar covariates; but for CV, one needs the "undecorrelated" coefficients from the training-set models.}
+\item{undecor.coef}{coefficients for covariates \emph{without} decorrelation. See \code{param.coef}.}
 \item{fhat}{coefficient function estimate.}
-\item{tuning.params}{\eqn{2 \times 4} table giving the indices and values of \code{min.scale}, \code{nfeatures} and \code{ncomp} chosen by CV.}
-\item{cv.table}{a table giving the CV criterion for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}, if \code{store.cv == TRUE}; otherwise, the CV criterion only for the optimized combination of these parameters.  Set to \code{NULL} if CV is not performed.}
-\item{se.cv}{if \code{store.cv = TRUE}, the standard error of the CV estimate for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}.}
 \item{Rsq}{coefficient of determination.}
+\item{tuning.params}{if CV is performed, \eqn{2 \times 4} table the indices and values of \code{min.scale}, \code{nfeatures} and \code{ncomp} chosen by CV.}
+\item{cv.table}{a table giving the CV criterion for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}, if \code{store.cv = TRUE}; otherwise, the CV criterion only for the optimized combination of these parameters.  Set to \code{NULL} if CV is not performed.}
+\item{se.cv}{if \code{store.cv = TRUE}, the standard error of the CV estimate for each combination of \code{min.scale}, \code{nfeatures} and \code{ncomp}.}
 \item{family}{generalized linear model family.}
 %% ...
 }
@@ -101,10 +100,7 @@ Lan Huo \email{lan.huo@nyumc.org}
 \code{\link{wnet}}, \code{\link{fpcr}}
 }
 \examples{
-% \dontrun{
 # See example for wnet
-
-% }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

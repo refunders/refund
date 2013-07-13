@@ -1,7 +1,7 @@
 wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha = 1,
                  lambda = NULL, standardize = FALSE, pen.covt = FALSE, filter.number = 10, 
                  wavelet.family = 'DaubLeAsymm', family = 'gaussian', nfold = 5, 
-                 nsplit = 1, store.cv = FALSE, seed = NULL, ...){
+                 nsplit = 1, store.cv = FALSE, store.glmnet = FALSE, seed = NULL, ...){
     checkError(y = y, xfuncs = xfuncs, covt = covt, 
                vars = list(min.scale = min.scale, nfeatures = nfeatures, alpha = alpha))    
     n <- length(y)
@@ -132,26 +132,30 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha 
     	param[2, ] <- c(min.scale[param[1,1]], nfeatures[param[1,2]], alpha[param[1,3]], 
     	                lambda.table[param[1,1], param[1,2], param[1,3], param[1,4]])
     	dimnames(param) = list(c("index", "value"), c("min.scale", "nfeatures", "alpha", "lambda"))
-    	obje <- wnet(y = y, xfuncs = xfuncs, covt = covt, min.scale = param[2,1], nfeatures = param[2,2], 
+    	l <- wnet(y = y, xfuncs = xfuncs, covt = covt, min.scale = param[2,1], nfeatures = param[2,2], 
     	             alpha = param[2,3], lambda = param[2,4], standardize = standardize, pen.covt = pen.covt, 
     	             filter.number = filter.number, wavelet.family = wavelet.family, family = family, 
-    	             nfold = 1, nsplit = 1)
+    	             nfold = 1, nsplit = 1, store.glmnet = store.glmnet, ...)
         if (store.cv) {
-            obje$cv.table <- 2 * res$cv.table
-            obje$se.cv <- res$se.cv
+            l$cv.table <- res$cv.table
+            l$se.cv <- res$se.cv
         }
         else {
-            obje$cv.table <- 2 * min(res$cv.table[res$cv.table !=0], na.rm=TRUE)
+            l$cv.table <- min(res$cv.table[res$cv.table !=0], na.rm=TRUE)
         }
-        obje$lambda.table <- lambda.table
-        obje$param <- param
+        l$lambda.table <- lambda.table
+        l$tuning.param <- param
     } else{
-        obje$fitted <- yhat    
-        obje$coef.param <- theta.w[1:(n.covt+1),]  
-    	obje$fhat <- array(fhat, dim = rep(d, dim.sig))  
-    	obje$Rsq <- getRsq(y = y, yhat = yhat, family = family) 	
+    	l <- list()
+    	if (store.glmnet){
+    		l$glmnet <- obje
+    	}
+        l$fitted.value <- yhat    
+        l$coef.params <- theta.w[1:(n.covt+1),]  
+    	l$fhat <- array(fhat, dim = rep(d, dim.sig))  
+    	l$Rsq <- getRsq(y = y, yhat = yhat, family = family) 	
     }
-    obje$family <- family
-    class(obje) <- 'wnet'
-    return(obje)
+    l$family <- family
+    class(l) <- 'wnet'
+    return(l)
 }

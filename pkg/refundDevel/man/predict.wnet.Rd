@@ -5,17 +5,16 @@
   \method{predict}{wnet}(object, newx, newcovt = NULL, ...)
 }
 \arguments{
-  \item{object}{a fitted object produced by \code{\link{wnet}}.}
+  \item{object}{a fitted \code{\link{wnet}} object.}
 
   \item{newx}{matrix of new values for functional predictors.}
 
   \item{newcovt}{matrix of new covariate values.}
   
-  \item{...}{Other options.}
-  
+  \item{\dots}{not currently used.}
 }
 \value{
-  The predicted values.
+  A vector of predicted values.
 }
 \description{
   Produces predicted values for a wnet object, given new functional predictors and scalar covariates.

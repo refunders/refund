@@ -3,9 +3,9 @@
 \title{Construct a PC-based function-on-function regression term}
 \usage{
   ffpc(X, yind, xind = seq(0, 1, length = ncol(X)),
-    splinepars = list(bs = "ps", m = c(2, 1), k = 8),
-    decomppars = list(pve = 0.99, useSymm = TRUE),
-    npc.max = 15)
+       splinepars = list(bs = "ps", m = c(2, 1), k = 8),
+       decomppars = list(pve = 0.99, useSymm = TRUE),
+       npc.max = 15)
 }
 \arguments{
   \item{X}{an n by \code{ncol(xind)} matrix of function

@@ -3,11 +3,11 @@
 \title{Construct a function-on-function regression term}
 \usage{
   ff(X, yind, xind = seq(0, 1, l = ncol(X)),
-    basistype = c("te", "t2", "s"),
-    integration = c("simpson", "trapezoidal", "riemann"),
-    L = NULL, limits = NULL,
-    splinepars = list(bs = "ps", m = list(c(2, 1), c(2, 1))),
-    check.ident = TRUE)
+     basistype = c("te", "t2", "s"),
+     integration = c("simpson", "trapezoidal", "riemann"),
+     L = NULL, limits = NULL,
+     splinepars = list(bs = "ps", m = list(c(2, 1), c(2, 1))),
+     check.ident = TRUE)
 }
 \arguments{
   \item{X}{an n by \code{ncol(xind)} matrix of function

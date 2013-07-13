@@ -3,10 +3,10 @@
 \title{Simple bootstrap CIs for pffr}
 \usage{
   coefboot.pffr(object, n1 = 100, n2 = 40, n3 = 20,
-    B = 100, ncpus = getOption("boot.ncpus", 1),
-    parallel = c("no", "multicore", "snow"), cl = NULL,
-    conf = c(0.9, 0.95), type = "percent",
-    method = "resample", showProgress = TRUE, ...)
+                B = 100, ncpus = getOption("boot.ncpus", 1),
+                parallel = c("no", "multicore", "snow"), cl = NULL,
+                conf = c(0.9, 0.95), type = "percent",
+                method = "resample", showProgress = TRUE, ...)
 }
 \arguments{
   \item{object}{a fitted \code{\link{pffr}}-model}

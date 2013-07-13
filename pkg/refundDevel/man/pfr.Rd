@@ -12,7 +12,8 @@ subject-specific random intercepts.  The function refund::lpfr is no
 longer supported.
 }
 \usage{
-pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,family = "gaussian", method="REML", smooth.option="fpca.sc", pve=0.99, ...)
+pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,
+family = "gaussian", method="REML", smooth.option="fpca.sc", pve=0.99, ...)
 }
 \arguments{
   \item{Y }{vector of all outcomes over all visits}

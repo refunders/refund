@@ -19,9 +19,9 @@ lpeer(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user
 \item{f_t}{vector or matrix with number of rows equal to number of total observations and number of columns equal to d (see details). If matrix then each column pertains to single function of time and the value in the column represents the realization corresponding to time vector t. The column with intercept or multiple of intercept will be dropped. A \code{NULL} value refers to time-invariant regression function. Default value is \code{NULL}.}
 \item{Q}{Q matrix to derive decomposition based penalty. Need to be specified with \code{pentype='DECOMP'}. When \code{comm.pen=TRUE}, number of columns must equal number of columns of matrix specified to \code{funcs}. When \code{comm.pen=FALSE}, Number of columns need to be equal with the number of columns of matrix specified to \code{funcs} times the number of components of regression function. Each row represents a basis function where functional predictor is expected lie according to prior belief. This argument will be ignored when value of \code{pentype} is other than \code{'DECOMP'}.}
 \item{L.user}{penalty matrix. Need to be specified with \code{pentype='USER'}. When \code{comm.pen=TRUE}, Number of columns need to be equal with number of columns of matrix specified to \code{funcs}. When \code{comm.pen=FALSE}, Number of columns need to be equal with the number of columns of matrix specified to \code{funcs} times the number of components of regression function. Each row represents a constraint on functional predictor. This argument will be ignored when value of \code{pentype} is other than \code{'USER'}.}
-\item{phia}{Scalar value of a in decomposition based penalty. Need to be specified with \code{pentype='DECOMP'}.}
-\item{se}{logical; calculate standard error when \code{TRUE}}
-\item{...}{additional arguments passed to \code{\link{lme}}.}
+\item{phia}{scalar value of a in decomposition based penalty. Needs to be specified with \code{pentype='DECOMP'}.}
+\item{se}{logical; calculate standard error when \code{TRUE}.}
+\item{...}{additional arguments passed to \code{\link[nlme]{lme}}.}
 }
 
 \details{
@@ -56,7 +56,7 @@ Default penalty is Ridge penalty for all the component functions and user needs 
 }
 
 \value{
-a list containing:
+A list containing:
 \item{fit}{result of the call to \code{lme}}
 \item{fitted.vals}{predicted outcomes}
 \item{BetaHat}{parameter estimates for scalar covariates including intercept}

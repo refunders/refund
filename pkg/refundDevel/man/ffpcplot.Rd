@@ -3,8 +3,8 @@
 \title{Plot PC-based function-on-function regression terms}
 \usage{
   ffpcplot(object, type = c("fpc+surf", "surf", "fpc"),
-    pages = 1, se.mult = 2, ticktype = "detailed",
-    theta = 30, phi = 30, plot = TRUE, auto.layout = TRUE)
+           pages = 1, se.mult = 2, ticktype = "detailed",
+           theta = 30, phi = 30, plot = TRUE, auto.layout = TRUE)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-model}
@@ -32,7 +32,7 @@
 
   \item{phi}{see \code{\link[graphics]{persp}}.}
 
-  \item{plot}{Produce plots or only return plotting data?
+  \item{plot}{produce plots or only return plotting data?
   Defaults to \code{TRUE}.}
 
   \item{auto.layout}{should the the function set a suitable
