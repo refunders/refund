@@ -45,13 +45,14 @@
   details}
 }
 \value{
-  a list containing \itemize{ \item \code{call} a "call" to
+  A list consisting of 
+  \item{call}{a "call" to
   \code{\link[mgcv]{te}} (or \code{\link[mgcv]{s}},
   \code{\link[mgcv]{t2}}) using the appropriately
   constructed covariate and weight matrices (see
-  \code{\link[mgcv]{linear.functional.terms}}) \item
-  \code{data} a list containing the necessary covariate and
-  weight matrices }
+  \code{\link[mgcv]{linear.functional.terms}})}
+   \item{data}{a list containing the necessary covariate and
+  weight matrices}
 }
 \description{
   Defines a term \eqn{\int^{s_{hi, i}}_{s_{lo, i}}

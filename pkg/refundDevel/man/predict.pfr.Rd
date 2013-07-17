@@ -5,7 +5,7 @@ Prediction for penalized functional regression
 }
 
 \description{
-Given a pfr object and new data, produces fitted values on both a
+Given a \code{\link{pfr}} object and new data, produces fitted values on both a
 population and subject-specific scale.
 }
 
@@ -14,12 +14,10 @@ population and subject-specific scale.
 }
 
 \arguments{
-  \item{object}{an object returned by pfr}
-  \item{new.data}{the covariates and funcs to which the fit of pfr.obj
-is applied, yielding fitted values}
-  \item{levels}{currently not supported; both population and subject
-level fitted values are returned}
-  \item{...}{additional arguments}
+  \item{object}{an object returned by \code{\link{pfr}}.}
+  \item{new.data}{the covariate and functional predictor values for which predicted values are desired.}
+  \item{levels}{currently not supported; both population- and subject-level fitted values are returned.}
+  \item{...}{additional arguments.}
 }
 
 \details{
@@ -45,13 +43,11 @@ Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012).
 Longitudinal penalized functional regression for cognitive outcomes on
 neuronal tract measurements. \emph{Journal of the Royal Statistical Society: Series C}, 61(3), 453--469.
 
-Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (2012).
-Testing For Functional Effects 
-\emph{Johns Hopkins University, Dept. of Biostatistics Working Papers. Working Paper 247.}
-http://biostats.bepress.com/jhubiostat/paper247
+Swihart, B. J., Goldsmith, J., and Crainiceanu, C. M. (2012).
+Testing for functional effects. Johns Hopkins University Dept. of Biostatistics Working Paper 247, available at \url{http://biostats.bepress.com/jhubiostat/paper247}
 }
 
-\seealso{\code{\link{pfr}}, \code{\link{rlrt.pfr}}, \code{nlme::predict.lme}}
+\seealso{\code{\link{pfr}}, \code{\link{rlrt.pfr}}, \code{\link[nlme]{predict.lme}}}
 \author{
   Jeff Goldsmith <jeff.goldsmith@columbia.edu>
   and Bruce Swihart <bswihart@jhsph.edu>

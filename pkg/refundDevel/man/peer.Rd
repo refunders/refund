@@ -10,7 +10,7 @@ peer(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
 
 \arguments{
 \item{Y}{vector of all outcomes}
-\item{funcs}{matrix containing observed functional predictors as rows. Rows with \code{NA} and \code{Inf} values will be deleted. All the rows will be scaled to have norm 1.} 
+\item{funcs}{matrix containing observed functional predictors as rows. Rows with \code{NA} and \code{Inf} values will be deleted.} 
 \item{pentype}{type of penalty. It can be either decomposition based penalty (\code{DECOMP}) or ridge (\code{RIDGE}) or second-order difference penalty (\code{D2}) or any user defined penalty (\code{USER}). For decomposition based penalty user need to specify Q matrix in Q argument (see details). For user defined penalty user need to specify L matrix in L argument (see details). For Ridge and second-order difference penalty, specification for arguments L and Q will be ignored.
 Default is \code{RIDGE}.}
 \item{L.user}{penalty matrix. Need to be specified with \code{pentype='USER'}. Number of columns need to be equal with number of columns of matrix specified to \code{funcs}. Each row represents a constraint on functional predictor. This argument will be ignored when value of \code{pentype} is other than \code{USER}.}
@@ -32,7 +32,7 @@ where \eqn{\epsilon_i ~  N(0,\sigma^2)}.  For all the observations, predictor fu
 
 Values of \eqn{y_i} and \eqn{W_i(s)}are passed through argument Y and  funcs, respectively. Number of elements or rows in \code{Y} and  \code{funcs} need to be equal.
 
-The estimate of regression functions \eqn{\gamma(s)}, \eqn{\gamma_d(s)}  is obtained as penalized estimated. Following 3 types of penalties can be used:
+The estimate of regression functions \eqn{\gamma(s)} is obtained as penalized estimated. Following 3 types of penalties can be used:
 
 i.   Ridge:  \eqn{I_K}
 
@@ -67,7 +67,7 @@ a list containing:
 \author{ Madan Gopal Kundu \email{mgkundu@iupui.edu}}
 
 \references{
-Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (Please contact J. Harezlak at \email{harezlak@iupui.edu}.)
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 
 Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. \emph{Electronic Journal of Statistics}, 6, 323--353.
 }

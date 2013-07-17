@@ -17,7 +17,7 @@
   A vector of predicted values.
 }
 \description{
-  Produces predicted values for a wnet object, given new functional predictors and scalar covariates.
+  Produces predicted values for a \code{\link{wnet}} object, given new functional predictors and scalar covariates.
 }
 \author{
   Lan Huo

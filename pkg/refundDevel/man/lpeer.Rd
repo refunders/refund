@@ -5,7 +5,8 @@
 Implements longitudinal functional model with structured penalties (Kundu et al., 2012) with scalar outcome, single functional predictor, one or more scalar covariates and subject-specific random intercepts through mixed model equivalence. 
 }
 \usage{
-lpeer(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user=NULL, f_t=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
+lpeer(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user=NULL, 
+f_t=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
 
 }
 \arguments{
@@ -13,7 +14,7 @@ lpeer(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user
 \item{subj}{vector containing the subject number for each observation}
 \item{t}{vector containing the time information when the observation are taken}
 \item{covariates}{matrix of scalar covariates.}
-\item{funcs}{matrix containing observed functional predictors as rows. Rows with \code{NA} and \code{Inf} values will be deleted. All the rows will be scaled to have norm 1.}
+\item{funcs}{matrix containing observed functional predictors as rows. Rows with \code{NA} and \code{Inf} values will be deleted.}
 \item{comm.pen}{logical value indicating whether common penalty for all the components of regression function. Default is TRUE.}
 \item{pentype}{type of penalty: either decomposition based penalty (\code{'DECOMP'}) or ridge (\code{'RIDGE'}) or second-order difference penalty (\code{'D2'}) or any user defined penalty (\code{'USER'}). For decomposition based penalty user need to specify Q matrix in \code{Q} argument (see details). For user defined penalty user need to specify L matrix in \code{L} argument (see details). For Ridge and second-order difference penalty, specification for arguments \code{L} and \code{Q} will be ignored. Default is \code{'RIDGE'}.}
 \item{f_t}{vector or matrix with number of rows equal to number of total observations and number of columns equal to d (see details). If matrix then each column pertains to single function of time and the value in the column represents the realization corresponding to time vector t. The column with intercept or multiple of intercept will be dropped. A \code{NULL} value refers to time-invariant regression function. Default value is \code{NULL}.}
@@ -30,15 +31,15 @@ If there are any missing or infinite values in \code{Y}, \code{subj}, \code{t}, 
 
 \eqn{y_{i(t)}=X_{i(t)}^T \beta+\int {W_{i(t)}(s)\gamma(t,s) ds} +Z_{i(t)}u_i + \epsilon_{i(t)}}
 
-where \eqn{\epsilon_{i(t)} ~  N(0,\sigma ^2)} and \eqn{u_i ~ N(0, \sigma_u^2)}.  For all the observations, predictor function \eqn{W_{i(t)}(s)} is evaluated at K sampling points. Here, regression function \eqn{\gamma (t,s)} is represented in terms of (d+1) component functions \eqn{\gamma_0(s)}, \eqn{\gamma_d(s)} as follows
+where \eqn{\epsilon_{i(t)} ~  N(0,\sigma ^2)} and \eqn{u_i ~ N(0, \sigma_u^2)}.  For all the observations, predictor function \eqn{W_{i(t)}(s)} is evaluated at K sampling points. Here, regression function \eqn{\gamma (t,s)} is represented in terms of (d+1) component functions \eqn{\gamma_0(s)},..., \eqn{\gamma_d(s)} as follows
 
 \eqn{\gamma (t,s)= \gamma_0(s)+f_1(t) \gamma_1(s) + f_d(t) \gamma_d(s)}
 
 Values of \eqn{y_{i(t)} , X_{i(t)}} and \eqn{W_{i(t)}(s)} are passed through argument \code{Y},  \code{covariates} and  \code{funcs}, respectively. Number of elements or rows in \code{Y},  \code{t}, \code{subj}, \code{covariates} (if not \code{NULL}) and  \code{funcs} need to be equal.
 
-Values of \eqn{f_1(t),...,f_d(t)} are passed through f_t arguments. The matrix passes through \code{f_t} argument should have d columns where each column represents one and only one of \eqn{f_1(t),..., f_d(t)}.
+Values of \eqn{f_1(t),...,f_d(t)} are passed through f_t argument. The matrix passed through \code{f_t} argument should have d columns where each column represents one and only one of \eqn{f_1(t),..., f_d(t)}.
 
-The estimate of (d+1) component functions \eqn{\gamma_0(s)}, \eqn{\gamma_d(s)}  is obtained as penalized estimated. The following 3 types of penalties can be used for a component function:
+The estimate of (d+1) component functions \eqn{\gamma_0(s)},..., \eqn{\gamma_d(s)}  is obtained as penalized estimated. The following 3 types of penalties can be used for a component function:
 
 i.   Ridge:  \eqn{I_K}
 
@@ -80,7 +81,7 @@ A list containing:
 \author{Madan Gopal Kundu \email{mgkundu@iupui.edu}}
 
 \references{
-Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (Please contact J. Harezlak at \email{harezlak@iupui.edu}.)
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 
 Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. \emph{Electronic Journal of Statistics}, 6, 323--353.
 }

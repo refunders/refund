@@ -10,10 +10,10 @@ Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     email = "huangracer@gmail.com"), person("Lan Huo", role = "aut", email =
     "lan.huo@nyumc.org"), person("Fabian Scheipl", role = "aut", email =
     "fabian.scheipl@stat.uni-muenchen.de"), person("Bruce Swihart", role =
-    "aut", email = "bswihart@jhsph.edu"), person("Sonja Greven", role = "ctb"),
+    "ctb", email = "bswihart@jhsph.edu"), person("Sonja Greven", role = "ctb"),
     person("Jaroslaw Harezlak", role="ctb"), person("Madan Gopal Kundu",
     role="ctb"), person("Yihong Zhao", role="ctb"), person("Matt McLean",
-    role="ctb"), person("Luo Xiao", role="aut", email = "lxiao@jhsph.edu"))
+    role="ctb"), person("Luo Xiao", role="ctb", email = "lxiao@jhsph.edu"))
 Depends:
     R (>= 2.14.0),
     mgcv (>= 1.7-8),
