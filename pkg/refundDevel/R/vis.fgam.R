@@ -74,7 +74,7 @@ vis.fgam=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, the
       }
  
       xlab=ifelse(object$fgam$ft[[af.ind]]$Qtransform,tvar,'p')
-      levelplot(preds~newX*newot,contour=TRUE,labels=TRUE,pretty=TRUE,ylab='t',xlab=xlab,
+      lattice::levelplot(preds~newX*newot,contour=TRUE,labels=TRUE,pretty=TRUE,ylab='t',xlab=xlab,
                 col.regions=rev(heat.colors(100)),main=as.expression(mtitle),...)
       
     }

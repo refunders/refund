@@ -8,10 +8,11 @@ A fast implementation of the sandwich smoother (Xiao et al., 2013) for covarianc
 at the data level is used for selecting the smoothing parameter. 
 }
 \usage{
-fpca.face(Y, Y.pred=NULL, center = TRUE, argvals = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
-     pve = 0.99, npc=NULL,score.method = "int",
-     search.grid = TRUE, search.length = 100, method = "L-BFGS-B",
-     lower = -20, upper = 20, control = NULL)
+fpca.face(Y, Y.pred=NULL, center = TRUE, argvals = NULL, 
+          knots = 35, p = 3, m = 2, lambda = NULL,pve = 0.99, 
+          npc=NULL,score.method = "int", search.grid = TRUE, 
+          search.length = 100, method = "L-BFGS-B", lower = -20, 
+          upper = 20, control = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{

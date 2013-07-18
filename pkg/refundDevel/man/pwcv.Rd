@@ -51,6 +51,7 @@ Philip Reiss \email{phil.reiss@nyumc.org}}
 \code{\link{fosr}}, \code{\link{lofocv}}
 }
 \examples{
+require(fda)
 # Canadian weather example from Reiss et al. (2010).
 # The first two lines are taken from the fRegress.CV help file (package fda)
 smallbasis  <- create.fourier.basis(c(0, 365), 25)

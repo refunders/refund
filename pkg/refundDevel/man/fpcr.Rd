@@ -125,6 +125,7 @@ and Lei Huang \email{huangracer@gmail.com}
 \code{\link{wcr}}, \code{\link{wnet}}
 }
 \examples{
+require(fda)
 ### 1D functional predictor example ###
 
 ######### Octane data example #########

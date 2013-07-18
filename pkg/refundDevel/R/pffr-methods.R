@@ -526,7 +526,7 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
             res <- residuals(object)
             if(is.null(Ktt)){
                 # get estimate of Cov(eps_i(t)) = K(t,t')
-                stopifnot(require(Matrix))
+                # stopifnot(require(Matrix))
                 Ktt <- Reduce("+",  lapply(1:nrow(res), function(i) tcrossprod(res[i,])))/nrow(res)
             }
             #Chen/Wang, Sec. 2.1: M = X' V^-1 (Y-eta)(Y-eta)' V^-1 X  with V ^-1 = diag(sigma^-2) 

@@ -9,7 +9,8 @@ Function-on-scalar regression}
   with efficient selection of optimal smoothing parameters.
 }
 \usage{
-fosr(Y = NULL, fdobj = NULL, X, con = NULL, argvals = NULL, method = c("OLS", "GLS", "mix"), 
+fosr(Y = NULL, fdobj = NULL, X, con = NULL, argvals = NULL, 
+     method = c("OLS", "GLS", "mix"), 
      gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"), 
      cov.method = c("naive", "mod.chol"), lambda = NULL, 
      nbasis = 15, norder = 4, pen.order = 2, 
@@ -90,6 +91,7 @@ Philip Reiss \email{phil.reiss@nyumc.org}, Lan Huo, and Fabian Scheipl}
 \code{\link{plot.fosr}}
 }
 \examples{
+require(fda)
 # The first two lines, adapted from help(fRegress) in package fda,
 # set up a functional data object representing daily average 
 # temperatures at 35 sites in Canada

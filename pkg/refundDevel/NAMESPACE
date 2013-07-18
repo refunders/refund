@@ -16,5 +16,6 @@ import(
   matrixStats,
   lme4,
   splines,
-  RLRsim
+  RLRsim,
+  lattice
 )

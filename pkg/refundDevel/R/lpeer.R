@@ -4,10 +4,6 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
 {
   pd1 = pd2 = pd3 = pd4 = pd5 = pd6 = NULL
   
-  #loading required package
-  require(nlme)
-  require(magic)
-  
   #Determining K, converting W, Y, id and t to matrix
   W<- as.matrix(funcs)
   K<- ncol(W) 

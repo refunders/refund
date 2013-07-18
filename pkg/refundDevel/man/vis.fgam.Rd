@@ -62,6 +62,7 @@ Mathew W. McLean \email{mwm79@cornell.edu}
 \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{fgam}}, \code{\link{persp}}, \code{\link{levelplot}}
 }
 \examples{
+require(splines)
 ################# DTI Example #####################
 data(DTI)
 
@@ -75,9 +76,12 @@ ind <- rowSums(is.na(X))>0
 y <- y[!ind]
 X <- X[!ind,]
 
-## fit the fgam using FA measurements along corpus callosum as functional predictor with PASAT as response
-## using 8 cubic B-splines for each marginal bases with third order marginal difference penalties
-## specifying gamma>1 enforces more smoothing when using GCV to choose smoothing parameters
+## fit the fgam using FA measurements along corpus 
+## callosum as functional predictor with PASAT as response
+## using 8 cubic B-splines for each marginal bases with 
+## third order marginal difference penalties
+## specifying gamma>1 enforces more smoothing when using GCV 
+## to choose smoothing parameters
 fit <- fgam(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
 
 ## contour plot of the fitted surface

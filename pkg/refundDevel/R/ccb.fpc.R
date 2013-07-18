@@ -1,7 +1,5 @@
 ccb.fpc <-
 function(Y, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, sim.alpha = .95){
-  require(mgcv)
-  require(MASS)
   
   set.seed(10)
   

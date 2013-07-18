@@ -57,9 +57,12 @@ X_2 <- X_2[!(ind | ind2),]
 
 N <- length(y)
 
-## fit fgam using FA measurements along corpus callosum as functional predictor with PASAT as response
-## using 8 cubic B-splines for marginal bases with third order marginal difference penalties
-## specifying gamma>1 enforces more smoothing when using GCV to choose smoothing parameters
+## fit fgam using FA measurements along corpus callosum 
+## as functional predictor with PASAT as response
+## using 8 cubic B-splines for marginal bases with third 
+## order marginal difference penalties
+## specifying gamma>1 enforces more smoothing when using 
+## GCV to choose smoothing parameters
 fit <- fgam(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
 vis.fgam(fit)
 

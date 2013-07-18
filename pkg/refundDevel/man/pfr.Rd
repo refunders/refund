@@ -133,7 +133,8 @@ pfr.obj.t2 <- pfr(Y = Y, covariates=covar.in, funcs = list(W2),     subj = id, k
 
 ### one model with two functional predictors using "smooth.face"
 ###  for smoothing predictors
-pfr.obj.t3 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50, nbasis=35,smooth.option="fpca.face")
+pfr.obj.t3 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1, W2), 
+                  subj = id, kz = 10, kb = 50, nbasis=35,smooth.option="fpca.face")
 
 ## plot the coefficient function and bounds
 dev.new()

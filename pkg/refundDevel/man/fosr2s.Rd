@@ -60,6 +60,8 @@ Philip Reiss \email{phil.reiss@nyumc.org} and Lan Huo}
 \code{\link{fosr}}, \code{\link{pffr}}
 }
 \examples{
+require(fda)
+
 # Effect of latitude on daily mean temperatures
 tempmat = t(CanadianWeather$dailyAv[,,1])
 latmat = cbind(1, scale(CanadianWeather$coord[ , 1], TRUE, FALSE))  # centred!
