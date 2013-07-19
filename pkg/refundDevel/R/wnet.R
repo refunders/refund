@@ -2,6 +2,9 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha 
                  lambda = NULL, standardize = FALSE, pen.covt = FALSE, filter.number = 10, 
                  wavelet.family = 'DaubLeAsymm', family = 'gaussian', nfold = 5, 
                  nsplit = 1, store.cv = FALSE, store.glmnet = FALSE, seed = NULL, ...){
+    if (!is.null(covt)){
+    	covt <- as.matrix(covt)
+    }
     checkError(y = y, xfuncs = xfuncs, covt = covt, 
                vars = list(min.scale = min.scale, nfeatures = nfeatures, alpha = alpha))    
     n <- length(y)

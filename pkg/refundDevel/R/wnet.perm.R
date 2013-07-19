@@ -20,7 +20,7 @@ wnet.perm <- function(y, xfuncs, min.scale = 0, nfeatures = NULL, alpha = 1, lam
     if (perm.method == "y.residuals") {
         obje <- wnet(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, alpha = alpha, 
                      lambda = lambda, covt = covt, family = family, nsplit = nsplit, ...)
-        y.resid <- obje$fitted - y
+        y.resid <- y - obje$fitted
     }  else if (perm.method == "x.residuals") {
     	X = as.matrix(covt)
     	Y = matrix(xfuncs, nrow = length(y))

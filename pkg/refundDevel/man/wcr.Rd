@@ -27,7 +27,7 @@ either a scalar, or a vector of values to be compared. Used to control the coars
 number(s) of features, i.e. wavelet coefficients, to retain for prediction of \code{y}: either a scalar, or a vector of values to be compared.
 }
   \item{ncomp}{
-number(s) of principal components (if \code{method="pcr"}) or PLS components (if \code{method="pcr"}): either a scalar, or a vector of values to be compared.
+number(s) of principal components (if \code{method="pcr"}) or PLS components (if \code{method="pls"}): either a scalar, or a vector of values to be compared.
 }
   \item{method}{
 either "\code{pcr}" (principal component regression) (the default) or "\code{pls}" (partial least squares).

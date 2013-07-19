@@ -20,7 +20,7 @@ wcr.perm <- function(y, xfuncs, min.scale = 0, nfeatures, ncomp, method = c("pcr
     if (perm.method == "y.residuals") {
         obje <- wcr(y = y, xfuncs = xfuncs, min.scale = min.scale, nfeatures = nfeatures, ncomp = ncomp, 
                     method = method, covt = covt, family = family, nsplit = nsplit, ...)
-        y.resid <- obje$fitted - y
+        y.resid <- y - obje$fitted
     }  else if (perm.method == "x.residuals") {
     	X = as.matrix(covt)
     	Y = matrix(xfuncs, nrow = length(y))
