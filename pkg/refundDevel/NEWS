@@ -20,4 +20,7 @@ rev 79-84
   o ffpc and pcre-terms now fully supported in pffr-methods, ffpc has its own plot-function
   o adapted missing data handling in pffr-methods to recent changes in mgcv
   o incremented version to 0.2-3
+
+rev 130
+  o added fpca.face, fbps, sandwich smoother functionality
  
