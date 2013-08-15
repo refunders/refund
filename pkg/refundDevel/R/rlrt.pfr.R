@@ -5,6 +5,7 @@ rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
     break;
   }
   ## parse pfr.obj and pfr.obj$fit slots so that code works
+  Y <- pfr.obj$Y
   fit <- pfr.obj$fit
   fitted.vals <- pfr.obj$fitted.vals
   beta.covariates <- pfr.obj$beta.covariates

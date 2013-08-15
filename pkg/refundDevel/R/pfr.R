@@ -19,6 +19,6 @@ pfr  <- function (Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbas
                          N.Pred=pre$N.Pred, kb=kb)  
 
   ## Step 5:  return everything.
-  ret <- c(pos, pre)
+  ret <- c(pos, pre, list(Y=Y))
   ret
 }

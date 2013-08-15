@@ -96,7 +96,7 @@ Available at \url{http://biostats.bepress.com/jhubiostat/paper247}
 
 ## load and reassign the data;
 data(DTI2)
-Y  <- DTI2$pasat ## PASAT outcome
+O  <- DTI2$pasat ## PASAT outcome
 id <- DTI2$id    ## subject id
 W1 <- DTI2$cca   ## Corpus Callosum
 W2 <- DTI2$rcst  ## Right corticospinal
@@ -112,9 +112,9 @@ apply(is.na(W1), 2, mean)
 apply(is.na(W2), 2, mean)
 
 ## fit two univariate models, then one model with both functional predictors
-pfr.obj.t1 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
-pfr.obj.t2 <- pfr(Y = Y, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
-pfr.obj.t3 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
+pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
+pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
+pfr.obj.t3 <- pfr(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
 
 ## plot the coefficient function and bounds
 dev.new()
@@ -153,9 +153,9 @@ t3$p.val
 
 
 ## do some testing with rlrt.pfr(); same as above but subj = NULL
-pfr.obj.t1 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1),     subj = NULL, kz = 10, kb = 50)
-pfr.obj.t2 <- pfr(Y = Y, covariates=covar.in, funcs = list(W2),     subj = NULL, kz = 10, kb = 50)
-pfr.obj.t3 <- pfr(Y = Y, covariates=covar.in, funcs = list(W1, W2), subj = NULL, kz = 10, kb = 50)
+pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = NULL, kz = 10, kb = 50)
+pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = NULL, kz = 10, kb = 50)
+pfr.obj.t3 <- pfr(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = NULL, kz = 10, kb = 50)
 
 t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
 t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
