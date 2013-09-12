@@ -2,20 +2,21 @@
 \alias{ff}
 \title{Construct a function-on-function regression term}
 \usage{
-  ff(X, yind, xind = seq(0, 1, l = ncol(X)),
-     basistype = c("te", "t2", "s"),
-     integration = c("simpson", "trapezoidal", "riemann"),
-     L = NULL, limits = NULL,
-     splinepars = list(bs = "ps", m = list(c(2, 1), c(2, 1))),
-     check.ident = TRUE)
+  ff(X, yind = NULL, xind = seq(0, 1, l = ncol(X)),
+    basistype = c("te", "t2", "s"),
+    integration = c("simpson", "trapezoidal", "riemann"),
+    L = NULL, limits = NULL,
+    splinepars = list(bs = "ps", m = list(c(2, 1), c(2, 1))),
+    check.ident = TRUE)
 }
 \arguments{
   \item{X}{an n by \code{ncol(xind)} matrix of function
   evaluations \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})};
   \eqn{i=1,\dots,n}.}
 
-  \item{yind}{matrix (or vector) of indices of evaluations
-  of \eqn{Y_i(t)}}
+  \item{yind}{\emph{DEPRECATED} used to supply matrix (or
+  vector) of indices of evaluations of \eqn{Y_i(t)}, no
+  longer used.}
 
   \item{xind}{matrix (or vector) of indices of evaluations
   of \eqn{X_i(s)}; i.e. matrix with rows
@@ -53,7 +54,7 @@
 
   \item{splinepars}{optional arguments supplied to the
   \code{basistype}-term. Defaults to a cubic tensor product
-  B-spline with marginal first difference penalties, i.e.,
+  B-spline with marginal first difference penalties, i.e.
   \code{list(bs="ps", m=list(c(2, 1), c(2,1)))}. See
   \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} in
   \pkg{mgcv} for details}

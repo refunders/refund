@@ -3,8 +3,8 @@
 \title{Get estimated coefficients from a pffr fit}
 \usage{
   \method{coef}{pffr} (object, raw = FALSE, se = TRUE,
-                       freq = FALSE, sandwich = FALSE, seWithMean = TRUE,
-                       n1 = 100, n2 = 40, n3 = 20, Ktt = NULL, ...)
+    freq = FALSE, sandwich = FALSE, seWithMean = TRUE,
+    n1 = 100, n2 = 40, n3 = 20, Ktt = NULL, ...)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-object}
@@ -21,8 +21,8 @@
   \code{\link[mgcv]{gamObject}}}
 
   \item{sandwich}{logical, defaults to FALSE. Use a
-  sandwich estimator for approximate variances? See
-  Details.  THIS IS AN EXPERIMENTAL FEATURE; USE AT YOUR OWN
+  Sandwich-estimator for approximate variances? See
+  Details.  THIS IS AN EXPERIMENTAL FEATURE, USE A YOUR OWN
   RISK.}
 
   \item{seWithMean}{logical, defaults to TRUE. Include

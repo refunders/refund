@@ -51,7 +51,7 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots){
 #' @param id grouping variable a factor
 #' @param efunctions matrix of eigenfunction evaluations on gridpoints \code{yind} (<length of \code{yind}> x <no. of used eigenfunctions>)
 #' @param evalues eigenvalues associated with \code{efunctions}
-#' @param yind vector of gridpoints on which responses \eqn{Y(t)} are evaluated.
+#' @param yind vector of gridpoints on which \code{efunctions} are evaluated.
 #' @param ... not used
 #' @return a list used internally for constructing an appropriate call to \code{mgcv::gam}
 #' @author Fabian Scheipl 
@@ -104,9 +104,8 @@ pcre <- function(id,
 ){
     
     # check args
-    stopifnot(is.factor(id), nrow(efunctions)==length(yind), ncol(efunctions)==length(evalues), all(evalues>0))
-    
-    nygrid <- length(yind)
+    stopifnot(is.factor(id), nrow(efunctions)==length(yind), 
+              ncol(efunctions)==length(evalues), all(evalues>0))
     
     phiname <- deparse(substitute(efunctions))
     idname <- paste(deparse(substitute(id)),".vec",sep="")
@@ -114,20 +113,13 @@ pcre <- function(id,
     #scale eigenfunctions by their eigenvalues:
     efunctions <- t(t(efunctions)*sqrt(evalues))
     
-    #expand for stacked Y-observations and assign unique names based on the given args
+    #assign unique names based on the given args
     colnames(efunctions) <- paste(phiname,".PC", 1:ncol(efunctions), sep="")
-    efunctionsmat <- efunctions[rep(1:nrow(efunctions), times=length(id)), ]
-    
-    idvec <- id[rep(1:length(id), each=nygrid)]
-    
-    
-    data <- data.frame(id=idvec, efunctions=efunctionsmat)
-    names(data) <- c(idname, colnames(efunctions)) 
     
     call <- as.call(c(as.symbol("s"),
                     as.symbol(substitute(idname)),
                     sapply(colnames(efunctions), function(x) as.symbol(x)),
                     bs=c("pcre")))
     
-    return(list(data=data, efunctions=efunctions, yind=yind, id=id, call=call, ...))
+    return(list(efunctions=efunctions, yind=yind, idname=idname, id=id, call=call, ...))
 }#end pcre()

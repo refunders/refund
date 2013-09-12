@@ -18,7 +18,7 @@
 #' Using an \code{\link{ffpc}}-term may be preferable if \eqn{X_i(s)} is of very low rank. 
 #' 
 #' @param X an n by \code{ncol(xind)} matrix of function evaluations \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
-#' @param yind matrix (or vector) of indices of evaluations of \eqn{Y_i(t)}
+#' @param yind \emph{DEPRECATED} used to supply matrix (or vector) of indices of evaluations of \eqn{Y_i(t)}, no longer used.
 #' @param xind matrix (or vector) of indices of evaluations of \eqn{X_i(s)}; i.e. matrix with rows \eqn{(s_{i1},\dots,s_{iS})}
 #' @param basistype defaults to "\code{\link[mgcv]{te}}", i.e. a tensor product spline to represent \eqn{\beta(t,s)}. 
 #' 		Alternatively, use \code{"s"} for bivariate basis functions (see \code{mgcv}'s \code{\link[mgcv]{s}}) 
@@ -52,7 +52,7 @@
 # TODO: allow X to be a factor -- would result in one beta(s,t) surface for each level? (?)
 # TODO: by variables
 ff <- function(X,
-               yind,
+               yind = NULL,
                xind=seq(0, 1, l=ncol(X)),
                basistype= c("te", "t2", "s"),
                integration=c("simpson", "trapezoidal", "riemann"), 
@@ -66,12 +66,12 @@ ff <- function(X,
   stopifnot(all(!is.na(X)))
   
   
-  # check & format index for Y 
-  if(!missing(yind))
-    if(is.null(dim(yind))){
-      yind <- t(t(yind))
-    } 
-  nygrid <- nrow(yind)
+#   # check & format index for Y 
+#   if(!missing(yind))
+#     if(is.null(dim(yind))){
+#       yind <- t(t(yind))
+#     } 
+#   nygrid <- nrow(yind)
   
   # check & format index for X
   if(is.null(dim(xind))){
@@ -82,7 +82,7 @@ ff <- function(X,
     } 
     stopifnot(nrow(xind) == n)  
   }	
-  stopifnot(all.equal(order(xind[1,]), 1:nxgrid), all.equal(order(yind), 1:nygrid))
+  stopifnot(all.equal(order(xind[1,]), 1:nxgrid))#, all.equal(order(yind), 1:nygrid))
   
   basistype <- match.arg(basistype)
   integration <- match.arg(integration)
@@ -132,7 +132,7 @@ ff <- function(X,
     
   }
   LX <- L*X
-  LX.stacked <- LX[rep(1:n, each=nygrid),]
+  #LX.stacked <- LX[rep(1:n, each=nygrid),]
   
   if(!is.null(limits)){
     if(!is.function(limits)){
@@ -151,21 +151,21 @@ ff <- function(X,
         }   
       }
     }
-    ind0 <- !t(outer(xind[1,], rep(yind, times=n), limits))
-    LX.stacked[ind0] <- 0
+#    ind0 <- !t(outer(xind[1,], rep(yind, times=n), limits))
+#    LX.stacked[ind0] <- 0
   }    
   
   
-  #expand for stacked Y-observations and assign unique names based on the given args
+  # assign unique names based on the given args
   xindname <- paste(deparse(substitute(X)), ".smat", sep="")
   yindname <- paste(deparse(substitute(X)), ".tmat", sep="")
   LXname <- paste("L.", deparse(substitute(X)), sep="")
   
-  data <- list(
-    xind[rep(1:n, times=nygrid), ], #stack xind nygrid-times
-    matrix(rep(yind, times=n), nrow=n*nygrid, ncol=nxgrid), #repeat each entry of yind n times s.t. rows are constant  
-    LX.stacked)
-  names(data)  <- c(xindname, yindname, LXname)
+#   data <- list(
+#     xind[rep(1:n, times=nygrid), ], #stack xind nygrid-times
+#     matrix(rep(yind, times=n), nrow=n*nygrid, ncol=nxgrid), #repeat each entry of yind n times s.t. rows are constant  
+#     LX.stacked)
+#   names(data)  <- c(xindname, yindname, LXname)
   
   # make call
   splinefun <- as.symbol(basistype) # if(basistype=="te") quote(te) else quote(s)
@@ -203,6 +203,7 @@ ff <- function(X,
                                     fixed=FALSE, dim=1, 
                                     p.order=ifelse(!is.null(call$m), call$m[[1]], NA), by=NA), 
                         data=basisdata, knots=list())
+      #FIXME: use truncated SVD instead of Null to get "nullspace", as Clara suggested!
       N.X <- Null(t(X))
       N.pen <- basis$X %*% Null(basis$S[[1]])
       if(any(c(NCOL(N.X)==0, NCOL(N.pen)==0))){
@@ -220,6 +221,6 @@ ff <- function(X,
     }
   }
 
-  return(list(call=call, data = data, yind=yind, xind=xind[1, ], L=L,
+  return(list(call=call, xind=xind[1, ], LX=LX, L=L,
               xindname=xindname, yindname=yindname, LXname=LXname, limits=limits))
 }#end ff()

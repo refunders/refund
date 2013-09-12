@@ -41,12 +41,6 @@ the seed for random data division for real data. If \code{seed.real = NULL}, a r
   \item{seed.perm}{
 the seed for random data division for permuted data. If \code{seed.perm = NULL}, a random seed is used.
 }
-  \item{seed.real}{
-the seed for random data division for real data. If \code{seed.real = NULL}, a random seed is used.
-}
-  \item{seed.perm}{
-the seed for random data division for permuted data. If \code{seed.perm = NULL}, a random seed is used.
-}
   \item{\dots}{other arguments passed to \code{\link{wcr}} or \code{\link{wnet}}.}
 }
 \details{

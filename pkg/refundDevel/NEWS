@@ -23,4 +23,8 @@ rev 79-84
 
 rev 130
   o added fpca.face, fbps, sandwich smoother functionality
+  
+rev 134
+  o pffr & its methods now handle sparse/irregular data (unresolved: identifiability constraints for irregular data)
+  o incremented version to 0.2-6
  

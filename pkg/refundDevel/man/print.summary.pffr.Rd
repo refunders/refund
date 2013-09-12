@@ -26,7 +26,7 @@
 }
 \author{
   Fabian Scheipl, adapted from
-  \code{\link[mgcv]{print.summary.gam}()} by Simon Wood and
+  \code{\link[mgcv]{print.summary.gam}()} by Simon Wood,
   Henric Nilsson
 }
 

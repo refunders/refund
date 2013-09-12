@@ -3,7 +3,7 @@
 \title{Return call with all possible arguments}
 \usage{
   expand.call(definition = NULL,
-              call = sys.call(sys.parent(1)), expand.dots = TRUE)
+    call = sys.call(sys.parent(1)), expand.dots = TRUE)
 }
 \arguments{
   \item{definition}{a function. See

@@ -11,9 +11,9 @@
   \item{Y}{data matrix (rows: observations; columns: grid
   of eval. points)}
 
-  \item{npc}{how many smooth SVs to try to extract. If \code{NA}
-  (the default), the hard thresholding rule of Donoho and
-  Gavish (2013) is used (see Details).}
+  \item{npc}{how many smooth SVs to try to extract, if
+  \code{NA} (the default) the hard thresholding rule of
+  Donoho, Gavish (2013) is used (see Details, References).}
 
   \item{center}{center \code{Y} so that its column-means
   are 0? Defaults to \code{TRUE}}
@@ -58,16 +58,20 @@
   components that were extracted.
 }
 \description{
-  Implements the algorithm of Huang, Shen and Buja (2008) for finding smooth right singular vectors of
-  a matrix \code{X} containing (contaminated) evaluations
-  of functional random variables on a regular, equidistant
+  Implements the algorithm of Huang, Shen, Buja (2008) for
+  finding smooth right singular vectors of a matrix
+  \code{X} containing (contaminated) evaluations of
+  functional random variables on a regular, equidistant
   grid. If the number of smooth SVs to extract is not
   specified, the function hazards a guess for the
   appropriate number based on the asymptotically optimal
   truncation threshold under the assumption of a low rank
   matrix contaminated with i.i.d. Gaussian noise with
-  unknown variance derived in Donoho and Gavish (2013).  Please note
-  that this method should be regarded as experimental for functional PCA, and will typically not work well if you have more observations than grid points.
+  unknown variance derived in Donoho, Gavish (2013).
+  Please note that Donoho, Gavish (2013) should be regarded
+  as experimental for functional FPCA, and will typically
+  not work well if you have more observations than grid
+  points.
 }
 \examples{
 ## as in Sec. 6.2 of Huang, Shen, Buja (2008):
@@ -104,13 +108,13 @@
   Fabian Scheipl
 }
 \references{
-  Huang, J. Z., Shen, H., and  Buja, A. (2008).  Functional
+  Huang, J. Z., Shen, H., and Buja, A. (2008).  Functional
   principal components analysis via penalized rank one
-  approximation.  \emph{Electronic Journal of Statistics}, 2,
-  678--695.
+  approximation.  \emph{Electronic Journal of Statistics},
+  2, 678-695
 
-  Donoho, D.L., and Gavish, M. (2013). The optimal hard
-  threshold for singular values is 4/sqrt(3).  eprint
+  Donoho, D.L., and Gavish, M. (2013). The Optimal Hard
+  Threshold for Singular Values is 4/sqrt(3).  eprint
   arXiv:1305.5870. Available from
   \url{http://arxiv.org/abs/1305.5870}.
 }

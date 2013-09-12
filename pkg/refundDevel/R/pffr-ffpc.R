@@ -22,7 +22,7 @@
 #' implementation. 
 #' 
 #' @param X an n by \code{ncol(xind)} matrix of function evaluations \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
-#' @param yind matrix (or vector) of indices of evaluations of \eqn{Y_i(t)}
+#' @param yind \emph{DEPRECATED} used to supply matrix (or vector) of indices of evaluations of \eqn{Y_i(t)}, no longer used.
 #' @param xind matrix (or vector) of indices of evaluations of \eqn{X_i(t)}, defaults to \code{seq(0, 1, length=ncol(X))}.
 #' @param splinepars optional arguments supplied to the \code{basistype}-term. Defaults to a cubic 
 #' 	B-spline with first difference penalties and 8 basis functions for each \eqn{\tilde \beta_k(t)}.
@@ -76,18 +76,18 @@
 #' ffpcplot(m.pc)
 #' }
 ffpc <- function(X,
-        yind,
+        yind=NULL,
         xind=seq(0, 1, length=ncol(X)),
         splinepars=list(bs="ps", m=c(2, 1), k=8),
         decomppars=list(pve = .99, useSymm = TRUE),
         npc.max=15
 ){
     # check & format index for Y 
-    if(!missing(yind))
-        if(is.null(dim(yind))){
-            yind <- t(t(yind))
-        } 
-    nygrid <- length(yind)
+#     if(!missing(yind))
+#         if(is.null(dim(yind))){
+#             yind <- t(t(yind))
+#         } 
+#     nygrid <- length(yind)
     nxgrid <- length(xind)
     
     # check & format index for X
@@ -98,9 +98,8 @@ ffpc <- function(X,
     klX <- do.call(fpca.sc, decomppars)
     xiMat <- klX$scores[,1:min(ncol(klX$scores),npc.max), drop=FALSE]
    
-    #expand for stacked Y-observations and assign unique names based on the given args
+    #assign unique names based on the given args
     colnames(xiMat) <- paste(make.names(deparse(substitute(X))),".PC", 1:ncol(xiMat), sep="")
-    xiMat <- xiMat[rep(1:nrow(xiMat), each=nygrid), ,drop=FALSE]
     id <- paste(make.names(deparse(substitute(X))),".ffpc", sep="")
     return(list(data=xiMat, PCMat=klX$efunctions[,1:min(ncol(klX$scores),npc.max), drop=FALSE],
                     meanX=klX$mu,
@@ -124,7 +123,7 @@ ffpc <- function(X,
 #' @param ticktype see \code{\link[graphics]{persp}}.
 #' @param theta see \code{\link[graphics]{persp}}.
 #' @param phi see \code{\link[graphics]{persp}}.
-#' @param plot Produce plots or only return plotting data? Defaults to \code{TRUE}. 
+#' @param plot produce plots or only return plotting data? Defaults to \code{TRUE}. 
 #' @param auto.layout should the the function set a suitable layout automatically? Defaults to TRUE
 #' @return primarily produces plots, invisibly returns a list containing 
 #' the data used for the plots.
@@ -145,7 +144,13 @@ ffpcplot <- function(object, type=c("fpc+surf", "surf", "fpc"), pages=1,
     ffpcnames <- names(object$pffr$ffpc)
     
     
-    betadata <- object$model[1:T,]
+    betadata <- if(object$pffr$sparseOrNongrid){
+        tmp <- object$model[rep(1, T), ]  
+        tmp[,paste0(object$pffr$yindname,".vec")] <- object$pffr$yind
+        tmp
+    } else {
+        object$model[1:T,]  
+    }
     betadata[, grep(".PC[[:digit:]]+$", colnames(betadata))] <- 1
     termsffpc <- predict.gam(object, newdata=betadata, type="iterms", se.fit=TRUE)
     

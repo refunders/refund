@@ -8,18 +8,16 @@
 \arguments{
   \item{object}{a fitted \code{pffr}-object}
 
-  \item{newdata}{A named list containing the values of the
-  model covariates at which predictions are required.  If
-  this is not provided then predictions corresponding to
-  the original data are returned.  If \code{newdata} is
-  provided then it should contain all the variables needed
-  for prediction, in the format supplied to \code{pffr},
-  i.e., functional predictors must be supplied as matrices
-  with each row corresponding to one observed function.
-  Index variables for the functional covariates are reused
-  from the fitted model object and cannot be supplied with
-  newdata.  Prediction is always for the entire range of
-  \eqn{Y(t)} as defined in the original fit.}
+  \item{newdata}{A named list (or a \code{data.frame})
+  containing the values of the model covariates at which
+  predictions are required. If no \code{newdata} is
+  provided then predictions corresponding to the original
+  data are returned. If \code{newdata} is provided then it
+  must contain all the variables needed for prediction, in
+  the format supplied to \code{pffr}, i.e., functional
+  predictors must be supplied as matrices with each row
+  corresponding to one observed function.  See Details for
+  more on index variables and irregular data.}
 
   \item{reformat}{logical, defaults to TRUE. Should
   predictions be returned in matrix form (default) or in
@@ -51,7 +49,22 @@
   values used for the model fit. Predictions can be
   accompanied by standard errors, based on the posterior
   distribution of the model coefficients. This is a wrapper
-  function for \code{\link[mgcv]{predict.gam}()}
+  function for \code{\link[mgcv]{predict.gam}()}.
+}
+\details{
+  Index variables (i.e., evaluation points) for the
+  functional covariates are reused from the fitted model
+  object and cannot be supplied with \code{newdata}.
+  Prediction is always for the entire index range of the
+  responses as defined in the original fit. If the original
+  fit was performed on sparse or irregular, non-gridded
+  response data and no \code{newdata} was supplied, this
+  function will simply return fitted values for the
+  original evaluation points of the response (in list
+  form).  If the original fit was performed on sparse or
+  irregular data and \code{newdata} \emph{was} supplied,
+  the function will return predictions on the grid of
+  evaluation points given in \code{object$pffr$yind}.
 }
 \author{
   Fabian Scheipl

@@ -14,8 +14,8 @@
   \item{evalues}{eigenvalues associated with
   \code{efunctions}}
 
-  \item{yind}{vector of gridpoints on which responses
-  \eqn{Y(t)} are evaluated.}
+  \item{yind}{vector of gridpoints on which
+  \code{efunctions} are evaluated.}
 
   \item{...}{not used}
 }

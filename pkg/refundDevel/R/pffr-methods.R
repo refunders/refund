@@ -11,17 +11,26 @@
 #'  predictions given a new set of values for the model covariates or the original 
 #'  values used for the model fit. Predictions can be accompanied by standard errors,
 #'  based on the posterior distribution of the model coefficients. This is a wrapper
-#'  function for \code{\link[mgcv]{predict.gam}()}
+#'  function for \code{\link[mgcv]{predict.gam}()}.
+#'  
+#'  Index variables (i.e., evaluation points) for the functional covariates are reused 
+#'  from the fitted model object and cannot be supplied with \code{newdata}.  
+#'  Prediction is always for the entire index range of the responses as defined
+#'  in the original fit. If the original fit was performed on sparse or irregular, 
+#'  non-gridded response data and no \code{newdata} was supplied, this function will
+#'  simply return fitted values for the original evaluation points of the response (in list form).
+#'  If the original fit was performed on sparse or irregular data and \code{newdata} \emph{was}
+#'  supplied, the function will return predictions on the grid of evaluation points given in
+#'  \code{object$pffr$yind}.
 #' 
 #' @param object a fitted \code{pffr}-object
-#' @param newdata  A named list containing the values of the model covariates at which predictions are required.
-#'   If this is not provided then predictions corresponding to the original data are returned. 
-#'  If \code{newdata} is provided then it should contain all the variables needed for prediction, 
-#'  in the format supplied to \code{pffr}, i.e., 
-#'  functional predictors must be supplied as matrices with each row corresponding to one observed function.
-#'  Index variables for the functional covariates are reused from the fitted model object 
-#'  and cannot be supplied with newdata.  
-#'  Prediction is always for the entire range of \eqn{Y(t)} as defined in the original fit. 
+#' @param newdata  A named list (or a \code{data.frame}) containing the values of the 
+#' model covariates at which predictions are required. 
+#' If no \code{newdata} is provided then predictions corresponding to the original data
+#' are returned. If \code{newdata} is provided then it must contain all the variables needed
+#' for prediction, in the format supplied to \code{pffr}, i.e., functional predictors must be
+#'  supplied as matrices with each row corresponding to one observed function. 
+#'  See Details for more on index variables and irregular data.
 #' @param reformat logical, defaults to TRUE. Should predictions be returned in matrix form (default) or 
 #' in the long vector shape returned by \code{predict.gam()}? 
 #' @param type see \code{\link[mgcv]{predict.gam}()} for details. 
@@ -36,16 +45,16 @@
 #' @method predict pffr
 #' @author Fabian Scheipl
 predict.pffr <- function(object,
-        newdata,
-        reformat=TRUE,
-        type = "link",
-        se.fit = FALSE,
-        ...){
+                         newdata,
+                         reformat=TRUE,
+                         type = "link",
+                         se.fit = FALSE,
+                         ...){
     #browser()
     
     call <- match.call()
     nyindex <- object$pffr$nyindex
-
+    
     ## warn if any entries in ... are not arguments for predict.gam 
     dots <- list(...)
     if(length(dots)){
@@ -62,9 +71,10 @@ predict.pffr <- function(object,
         # check if the supplied data already has the shape expected by predict.gam
         # and dispatch immediately if so (need this so summary works as expected!)
         if(!(all(names(newdata) %in% names(object$model))) | 
-          !(paste0(object$pffr$yindname,".vec") %in% names(newdata))){
+               !(paste0(object$pffr$yindname,".vec") %in% names(newdata))){
             # check lengths
-            stopifnot(length(unique(sapply(newdata, function(x) ifelse(is.matrix(x), nrow(x), length(x))))) ==1)
+            stopifnot(length(unique(sapply(newdata, function(x) 
+                ifelse(is.matrix(x), nrow(x), length(x))))) ==1)
             #        #FIXME: better leave this check to predict.gam....  
             #        covnames <- mapply(gsub, 
             #                pattern=c(".[st]mat$"), 
@@ -102,23 +112,23 @@ predict.pffr <- function(object,
                                 L <- ff$L 
                                 if(any(apply(L, 2, function(x) length(unique(x)))!=1)){
                                     stop("Error for ", names(varmap)[trm],
-                                            "-- Prediction for ff-terms with varying rows in integration operator L not implememented yet.")
+                                         "-- Prediction for ff-terms with varying rows in integration operator L not implememented yet.")
                                 }
                                 if(!is.null(ff$limits)){
                                     #TODO implement prediction with limits
                                     stop("Error for ", names(varmap)[trm],
-                                            "-- Prediction for ff-terms with <limits> not implememented yet.")
+                                         "-- Prediction for ff-terms with <limits> not implememented yet.")
                                 }
                                 
                                 predL <- matrix(L[1,], byrow=TRUE, nrow=nrow(newdata[[cov]]), ncol=ncol(L))
                                 
                                 
                                 gamdata[[paste(cov, ".smat", sep="")]] <- 
-                                        matrix(ff$xind, byrow=TRUE, ncol=length(ff$xind), nrow=nobs*nyindex)
+                                    matrix(ff$xind, byrow=TRUE, ncol=length(ff$xind), nrow=nobs*nyindex)
                                 gamdata[[paste(cov, ".tmat", sep="")]] <- 
-                                        matrix(rep(ff$yind, times=nobs), ncol=length(ff$xind), nrow=nobs*nyindex)
+                                    matrix(rep(object$pffr$yind, times=nobs), ncol=length(ff$xind), nrow=nobs*nyindex)
                                 gamdata[[paste("L.", cov, sep="")]] <-  
-                                        (predL*newdata[[cov]])[rep(1:nobs, each=nyindex),]
+                                    (predL*newdata[[cov]])[rep(1:nobs, each=nyindex),]
                             }
                         }
                         if(is.sff){
@@ -129,15 +139,15 @@ predict.pffr <- function(object,
                                 L <- sff$L 
                                 if(any(apply(L, 2, function(x) length(unique(x)))!=1)){
                                     stop("Error for ", names(varmap)[trm],
-                                            "-- Prediction for sff-terms with varying rows in integration operator L not implememented yet.")
+                                         "-- Prediction for sff-terms with varying rows in integration operator L not implememented yet.")
                                 } 
                                 predL <- matrix(L[1,], byrow=TRUE, nrow=nrow(newdata[[cov]]), ncol=ncol(L)) 
                                 
                                 gamdata[[paste(cov, ".mat", sep="")]] <- newdata[[cov]][rep(1:nobs, e=nyindex),]
                                 gamdata[[paste(cov, ".smat", sep="")]] <- 
-                                        matrix(sff$xind, byrow=TRUE, ncol=length(sff$xind), nrow=nobs*nyindex)
+                                    matrix(sff$xind, byrow=TRUE, ncol=length(sff$xind), nrow=nobs*nyindex)
                                 gamdata[[paste(cov, ".tmat", sep="")]] <- 
-                                        matrix(rep(sff$yind, times=nobs), ncol=length(sff$xind), nrow=nobs*nyindex)
+                                    matrix(rep(sff$yind, times=nobs), ncol=length(sff$xind), nrow=nobs*nyindex)
                                 gamdata[[paste("L.", cov, sep="")]] <-  predL[rep(1:nobs, e=nyindex),]
                             }
                         }
@@ -145,12 +155,16 @@ predict.pffr <- function(object,
                             pcre <- object$pffr$pcre[[grep(cov, names(object$pffr$pcre))]]
                             gamdata[[paste(cov, ".vec", sep="")]] <- rep(pcre$id, each=nyindex)
                             for(nm in colnames(pcre$efunctions)){
-                                gamdata[[nm]] <- pcre$efunctions[rep(1:nyindex, times=nobs), nm]
+                                tmp <- approx(x=pcre$yind, 
+                                              y=pcre$efunctions[, nm], 
+                                              xout=object$pffr$yind,
+                                              method = "linear")$y
+                                gamdata[[nm]] <- tmp[rep(1:nyindex, times=nobs)]
                             }
                         }
                         if(is.ffpc){
-                            ffpc <- object$pffr$ffpc[[grep(paste(cov,"[,\\)]",sep=""), names(object$pffr$ffpc))]]
-                            
+                            ffpc <- object$pffr$ffpc[[grep(paste(cov,"[,\\)]",sep=""), 
+                                                           names(object$pffr$ffpc))]]
                             # Xc' = Phi xi' + error --> get loadings for new data:
                             Xct <- t(newdata[[cov]]) - as.vector(ffpc$meanX)
                             xiMat <- t(qr.coef(qr(ffpc$PCMat), Xct))
@@ -175,9 +189,7 @@ predict.pffr <- function(object,
         call$newdata <- eval(call$newdata)
         nobs <- object$pffr$nobs
     }
-    
- 
-    
+    isIrregular <- missing(newdata) & object$pffr$sparseOrNongrid
     
     
     #call predict.gam
@@ -190,49 +202,80 @@ predict.pffr <- function(object,
         warning("Setting reformat to FALSE for type=\"lpmatrix\".")
     }
     
+    
     #reformat into matrices with same shape as <Response>
-
+    
     if(reformat){
-        
-        if(missing(newdata) && !is.null(object$pffr$missingind)){
-            #pad with NAs at the appropriate locations so that fits are nobs x nyindex:
-            insertNA <- function(x){
-                if(length(x) != nobs*object$pffr$nyindex){
-                    tmp <- rep(NA, nobs*object$pffr$nyindex)
-                    tmp[-object$pffr$missingind] <- x
-                    return(tmp)
-                } else {
-                    return(x)
+        if(!isIrregular){
+            if(missing(newdata) && !is.null(object$pffr$missingind)){
+                #pad with NAs at the appropriate locations so that fits are nobs x nyindex:
+                insertNA <- function(x){
+                    if(length(x) != nobs*object$pffr$nyindex){
+                        tmp <- rep(NA, nobs*object$pffr$nyindex)
+                        tmp[-object$pffr$missingind] <- x
+                        return(tmp)
+                    } else {
+                        return(x)
+                    }
                 }
-            }
-        } else insertNA <- function(x) return(x)
-        
-        
-        if(se.fit){
-            if(type %in% c("terms", "iterms")){
-                ret <- lapply(ret, function(x)
-                            do.call(list,
-                                    sapply(1:ncol(x), function(i){
-                                                #browser()
-                                                d <- list(I(matrix(insertNA(x[,i]), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)))
-                                                names(d)  <- colnames(x)[i]
-                                                return(d)
-                                            })))
-                                               
-            } else {
-                ret <- lapply(ret, function(x) matrix(insertNA(x), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE))  
-            } 
-        } else {
-            if(type %in% c("terms", "iterms")){
-                ret <- do.call(list, sapply(1:ncol(ret), function(i){
+            } else insertNA <- function(x) return(x)
+            
+            if(se.fit){
+                if(type %in% c("terms", "iterms")){
+                    ret <- lapply(ret, function(x)
+                        do.call(list,
+                                sapply(1:ncol(x), function(i){
                                     #browser()
-                                    d <- list(I(matrix(insertNA(ret[,i]), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)))
-                                    names(d)  <- colnames(ret)[i]
+                                    d <- list(I(matrix(insertNA(x[,i]), nrow=nobs, 
+                                                       ncol=object$pffr$nyindex, 
+                                                       byrow=TRUE)))
+                                    names(d)  <- colnames(x)[i]
                                     return(d)
-                                }))
-            } else ret <- matrix(insertNA(ret), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)
+                                })))
+                    
+                } else {
+                    ret <- lapply(ret, function(x) matrix(insertNA(x), nrow=nobs, 
+                                                          ncol=object$pffr$nyindex, byrow=TRUE))  
+                } 
+            } else {
+                if(type %in% c("terms", "iterms")){
+                    ret <- do.call(list, sapply(1:ncol(ret), function(i){
+                        #browser()
+                        d <- list(I(matrix(insertNA(ret[,i]), nrow=nobs, 
+                                           ncol=object$pffr$nyindex, byrow=TRUE)))
+                        names(d)  <- colnames(ret)[i]
+                        return(d)
+                    }))
+                } else ret <- matrix(insertNA(ret), nrow=nobs, ncol=object$pffr$nyindex, byrow=TRUE)
+            }
+        } else {
+            evalpoints <- object$pffr$ydata[,c(".obs", ".index")]       
+            if(se.fit){
+                if(type %in% c("terms", "iterms")){
+                    ret <- lapply(ret, function(x)
+                        do.call(list,
+                                sapply(1:ncol(x), function(i){
+                                    #browser()
+                                    d <- list(cbind(evalpoints, .value=x[,i]))
+                                    names(d)  <- colnames(x)[i]
+                                    return(d)
+                                })))
+                    
+                } else {
+                    ret <- lapply(ret, function(x) cbind(evalpoints, .value=x))  
+                } 
+            } else {
+                if(type %in% c("terms", "iterms")){
+                    ret <- do.call(list, sapply(1:ncol(ret), function(i){
+                        #browser()
+                        d <- list(cbind(evalpoints, .value=ret[,i]))
+                        names(d)  <- colnames(ret)[i]
+                        return(d)
+                    }))
+                } else ret <- cbind(evalpoints, .value=ret)
+            } 
         }
-    }
+    } 
     return(ret)
 }
 
@@ -254,8 +297,10 @@ model.matrix.pffr <- function (object, ...)
 #' Obtain residuals for a pffr fit
 #' 
 #' @param object a fitted \code{pffr}-object 
-#' @param reformat logical, defaults to TRUE. Should residuals be returned in \code{n x yindex} matrix form (default) or 
-#' in the long vector shape returned by \code{resid.gam()}? 
+#' @param reformat logical, defaults to TRUE. Should residuals be returned in \code{n x yindex} matrix
+#'    form (default for regular grid data) or in the shape of the originally supplied \code{ydata}
+#'    argument or (default for sparse/irregular data), or, if \code{FALSE}, simply in the 
+#'    long vector shape returned by \code{resid.gam()}? 
 #' @param ... other arguments, passed to \code{\link[mgcv]{residuals.gam}}.
 #' 
 #' @return A matrix or vector of residuals
@@ -267,12 +312,18 @@ residuals.pffr <- function (object, reformat=TRUE, ...)
         stop("`object' is not of class \"pffr\"")
     ret <- mgcv:::residuals.gam(object, ...)
     if(reformat){
-        if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){
-            tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)
-            tmp[-object$pffr$missingind] <- ret
+        if(!object$pffr$sparseOrNongrid){
+            if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){
+                tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)
+                tmp[-object$pffr$missingind] <- ret
+                ret <- tmp
+            }
+            ret <- matrix(ret, nrow=object$pffr$nobs, ncol=object$pffr$nyindex, byrow=TRUE)      
+        } else {
+            tmp <- object$pffr$ydata
+            tmp[,".value"] <- ret
             ret <- tmp
         }
-        ret <- matrix(ret, nrow=object$pffr$nobs, ncol=object$pffr$nyindex, byrow=TRUE)  
     } 
     return(ret)
 }
@@ -283,11 +334,14 @@ residuals.pffr <- function (object, reformat=TRUE, ...)
 #' for alternative options.
 #' 
 #' @param object a fitted \code{pffr}-object 
-#' @param reformat logical, defaults to TRUE. Should residuals be returned in \code{n x yindex} matrix form (default) or 
-#' in the long vector shape returned by \code{fitted.default()}? 
+#' @param reformat logical, defaults to TRUE. Should residuals be returned in \code{n x yindex} matrix
+#'    form (default for regular grid data) or in the shape of the originally supplied \code{ydata}
+#'    argument or (default for sparse/irregular data), or, if \code{FALSE}, simply in the 
+#'    long vector shape returned by \code{resid.gam()}? 
 #' @param ... not used
 #' 
-#' @return A matrix or vector of fitted values
+#' @return A matrix (grid data) or \code{data.frame} (sparse/irregular data) 
+#'  or vector (if \code{!reformat}) of fitted values 
 #' @method fitted pffr
 #' @author Fabian Scheipl
 fitted.pffr <- function (object, reformat=TRUE, ...) 
@@ -296,12 +350,18 @@ fitted.pffr <- function (object, reformat=TRUE, ...)
         stop("`object' is not of class \"pffr\"")
     ret <- object$fitted.values
     if(reformat){
-        if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){
-            tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)
-            tmp[-object$pffr$missingind] <- ret
+        if(!object$pffr$sparseOrNongrid){
+            if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){
+                tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)
+                tmp[-object$pffr$missingind] <- ret
+                ret <- tmp
+            }
+            ret <- matrix(ret, nrow=object$pffr$nobs, ncol=object$pffr$nyindex, byrow=TRUE)      
+        } else {
+            tmp <- object$pffr$ydata
+            tmp[,".value"] <- ret
             ret <- tmp
         }
-        ret <- matrix(ret, nrow=object$pffr$nobs, ncol=object$pffr$nyindex, byrow=TRUE)  
     } 
     return(ret)
 }
@@ -379,7 +439,7 @@ plot.pffr <- function (x, ...)
 #'   based on.
 #' @author Fabian Scheipl
 coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE, 
-        seWithMean=TRUE, n1=100, n2=40, n3=20, Ktt=NULL, ...){
+                      seWithMean=TRUE, n1=100, n2=40, n3=20, Ktt=NULL, ...){
     if(raw){
         return(object$coefficients)  
     } else {
@@ -398,8 +458,8 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
                 if(trm$dim==1){
                     x <- get.var(trm$term, object$model)
                     xg <- if(is.factor(x)) {
-                                unique(x)
-                            } else seq(min(x), max(x), length=n1)
+                        unique(x)
+                    } else seq(min(x), max(x), length=n1)
                     d <- data.frame(xg)
                     colnames(d) <- trm$term
                     attr(d, "xm") <- xg
@@ -412,12 +472,12 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
                     
                     x <- get.var(trm$term[1], object$model)
                     xg <- if(is.factor(x)) {
-                                unique(x)
-                            } else seq(min(x), max(x),length=ng)
+                        unique(x)
+                    } else seq(min(x), max(x),length=ng)
                     y <- get.var(trm$term[2], object$model)
                     yg <- if(is.factor(y)) {
-                                unique(y)
-                            } else seq(min(y), max(y),length=ng)
+                        unique(y)
+                    } else seq(min(y), max(y),length=ng)
                     if(length(varnms)==2){
                         d <- expand.grid(xg, yg)
                         attr(d, "xm") <- xg
@@ -425,8 +485,8 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
                     } else {
                         z <- get.var(trm$term[3], object$model)
                         zg <- if(is.factor(z)) {
-                                    unique(z)
-                                } else seq(min(z), max(z), length=ng)
+                            unique(z)
+                        } else seq(min(z), max(z), length=ng)
                         d <- expand.grid(xg, yg, zg)
                         attr(d, "xm") <- xg
                         attr(d, "ym") <- yg
@@ -446,20 +506,20 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
                 #return an object similar to what plot.mgcv.smooth etc. return 
                 X <- PredictMat(trm, d)
                 P <- if(trm$dim==1){
-                            list(x=attr(d, "xm"), xlab=trm$term, xlim=safeRange(attr(d, "xm")))
-                        } else {
-                            varnms <-  trm$term
-                            if(length(varnms) == 2){
-                                list(x=attr(d, "xm"), y=attr(d, "ym"), xlab=varnms[1], ylab=varnms[2],
-                                        ylim=safeRange(attr(d, "ym")), xlim=safeRange(attr(d, "xm")))
-                            } else {
-                                if(trm$dim==3){
-                                    list(x=attr(d, "xm"), y=attr(d, "ym"), z=attr(d, "zm"), 
-                                            xlab=varnms[1], ylab=varnms[2], zlab=varnms[3],
-                                            ylim=safeRange(attr(d, "ym")), xlim=safeRange(attr(d, "xm")), zlim=safeRange(attr(d, "zm")))
-                                }
-                            }
+                    list(x=attr(d, "xm"), xlab=trm$term, xlim=safeRange(attr(d, "xm")))
+                } else {
+                    varnms <-  trm$term
+                    if(length(varnms) == 2){
+                        list(x=attr(d, "xm"), y=attr(d, "ym"), xlab=varnms[1], ylab=varnms[2],
+                             ylim=safeRange(attr(d, "ym")), xlim=safeRange(attr(d, "xm")))
+                    } else {
+                        if(trm$dim==3){
+                            list(x=attr(d, "xm"), y=attr(d, "ym"), z=attr(d, "zm"), 
+                                 xlab=varnms[1], ylab=varnms[2], zlab=varnms[3],
+                                 ylim=safeRange(attr(d, "ym")), xlim=safeRange(attr(d, "xm")), zlim=safeRange(attr(d, "zm")))
                         }
+                    }
+                }
                 trmind <- trm$first.para:trm$last.para
                 P$value <- X%*%object$coefficients[trmind]
                 P$coef <- cbind(d, "value"=P$value)
@@ -516,10 +576,10 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
         }
         
         bread <- if(freq){
-                    object$Ve
-                } else {
-                    object$Vp
-                }
+            object$Ve
+        } else {
+            object$Vp
+        }
         if(sandwich){
             X <- predict(object, type = "lpmatrix", reformat=FALSE)
             bread <- bread/object$sig2
@@ -539,8 +599,8 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
         
         ret <- list()
         smind <- unlist(sapply(object$smooth, function(x){
-                            seq(x$first.para, x$last.para)
-                        }))
+            seq(x$first.para, x$last.para)
+        }))
         ret$pterms <- cbind(value=object$coefficients[-smind])
         if(se) ret$pterms <- cbind(ret$pterms, se=sqrt(diag(covmat)[-smind]))
         
@@ -548,8 +608,8 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
         
         ret$smterms <- lapply(1:length(object$smooth), getCoefs)         
         names(ret$smterms) <- sapply(seq_along(ret$smterms), function(i){
-                    ret$smterms[[i]]$main
-                })
+            ret$smterms[[i]]$main
+        })
         return(ret)    
     }
 }
@@ -583,11 +643,15 @@ summary.pffr <- function (object, ...) {
     shrtlbls <- getShrtlbls(object)
     
     rownames(ret$s.table) <- sapply(rownames(ret$s.table), 
-            function(x){
-                shrtlbls[pmatch(x, unlist(object$pffr$labelmap))]     
-            })
+                                    function(x){
+                                        shrtlbls[pmatch(x, unlist(object$pffr$labelmap))]     
+                                    })
     class(ret) <- c("summary.pffr", class(ret))
-    ret$n  <- paste(ret$n, "(", object$pffr$nobs," x ", object$pffr$nyindex, ")", sep="") 
+    if(!object$pffr$sparseOrNongrid) {
+        ret$n  <- paste(ret$n, " (", object$pffr$nobs," x ", object$pffr$nyindex, ")", sep="") 
+    } else {
+        ret$n  <- paste(ret$n, " (in ", object$pffr$nobs," curves)", sep="") 
+    }
     return(ret)
 }
 
@@ -605,19 +669,19 @@ summary.pffr <- function (object, ...) {
 #' @method print summary.pffr
 #' @author Fabian Scheipl, adapted from \code{\link[mgcv]{print.summary.gam}()} by Simon Wood, Henric Nilsson
 print.summary.pffr <- function(x, digits = max(3, getOption("digits") - 3), 
-        signif.stars = getOption("show.signif.stars"), ...){
-# mostly identical to print.summary.gam
+                               signif.stars = getOption("show.signif.stars"), ...){
+    # mostly identical to print.summary.gam
     print(x$family)
     cat("Formula:\n")
     print(x$formula)
     if (length(x$p.coeff)>0)
     { cat("\nConstant coefficients:\n")
-        printCoefmat(x$p.table, digits = digits, signif.stars = signif.stars, na.print = "NA", ...)
+      printCoefmat(x$p.table, digits = digits, signif.stars = signif.stars, na.print = "NA", ...)
     }
     cat("\n")
     if(x$m>0)
     { cat("Smooth terms & functional coefficients:\n")
-        printCoefmat(x$s.table, digits = digits, signif.stars = signif.stars, has.Pvalue = TRUE, na.print = "NA",cs.ind=1, ...)
+      printCoefmat(x$s.table, digits = digits, signif.stars = signif.stars, has.Pvalue = TRUE, na.print = "NA",cs.ind=1, ...)
     }
     cat("\nR-sq.(adj) = ",formatC(x$r.sq,digits=3,width=5))
     if (length(x$dev.expl)>0) cat("   Deviance explained = ",formatC(x$dev.expl*100,digits=3,width=4),"%\n",sep="")

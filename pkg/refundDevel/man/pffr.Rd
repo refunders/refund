@@ -2,8 +2,9 @@
 \alias{pffr}
 \title{Penalized function-on-function regression}
 \usage{
-  pffr(formula, yind, data = NULL, algorithm = NA,
-    method = "REML", tensortype = c("te", "t2"),
+  pffr(formula, yind, data = NULL, ydata = NULL,
+    algorithm = NA, method = "REML",
+    tensortype = c("te", "t2"),
     bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
     bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
 }
@@ -15,9 +16,8 @@
   \item{yind}{a vector with length equal to the number of
   columns of the matrix of functional responses giving the
   vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
-  If \code{formula} contains an \code{\link{ff}}-term which
-  specifies \code{yind} this is used. If neither is given,
-  \code{yind} is \code{1:ncol(<response>)}.}
+  If not supplied, \code{yind} is
+  \code{1:ncol(<response>)}.}
 
   \item{algorithm}{the name of the function used to
   estimate the model. Defaults to \code{\link[mgcv]{gam}}
@@ -39,6 +39,11 @@
   get quite big fairly fast, since the effective number of
   rows in the design matrix is number of observations times
   number of evaluations of \eqn{Y(t)} per observation.\cr}
+
+  \item{ydata}{an (optional) \code{data.frame} supplying
+  functional responses that are not observed on a regular
+  grid. See Details. THIS IS AN EXPERIMENTAL FEATURE FOR
+  EXPERT USE ONLY.}
 
   \item{method}{Defaults to \code{"REML"}-estimation,
   including of unknown scale. See \code{\link[mgcv]{gam}}
@@ -134,34 +139,54 @@
   Use \code{~-1 + c(1) + ...} to specify a model with only
   a constant and no functional intercept. \cr
 
-  The functional response and functional covariates have to
-  be supplied as n by <no. of evaluations> matrices, i.e.
-  each row is one functional observation. The model is then
-  fitted with the data in long format, i.e., the rows of
-  the matrix of the functional response evaluations
-  \eqn{Y_i(t)} are stacked into one long vector and the
-  covariates are expanded/repeated correspondingly. This
-  means the models get quite big fairly fast, since the
-  effective number of rows in the design matrix is number
-  of observations times number of evaluations of \eqn{Y(t)}
-  per observation.\cr
+  The functional covariates have to be supplied as a
+  \eqn{n} by <no. of evaluations> matrices, i.e. each row
+  is one functional observation. For data on a regular
+  grid, the functional response is supplied in the same
+  format, i.e. as a matrix-valued entry in \code{data},
+  which can contain missing values. If the functional
+  responses are sparse or irregular (i.e., not evaluated on
+  the same evaluation points across all observations), the
+  \code{ydata}-argument can be used to specify the
+  responses: \code{ydata} must be a \code{data.frame} with
+  3 columns called \code{'.obs', '.index', '.value'} which
+  specify which curve the point belongs to
+  (\code{'.obs'}=\eqn{i}), at which \eqn{t} it was observed
+  (\code{'.index'}=\eqn{t}), and the observed value
+  (\code{'.value'}=\eqn{Y_i(t)}). For both regular and
+  irregular functional responses, the model is then fitted
+  with the data in long format, i.e., for data on a grid
+  the rows of the matrix of the functional response
+  evaluations \eqn{Y_i(t)} are stacked into one long vector
+  and the covariates are expanded/repeated correspondingly.
+  This means the models get quite big fairly fast, since
+  the effective number of rows in the design matrix is
+  number of observations times number of evaluations of
+  \eqn{Y(t)} per observation.\cr
 
-  Note that pffr overrides the default identifiability
+  Note that \emph{for \eqn{Y_i(t)} on a regular grid},
+  \code{pffr} overrides the default identifiability
   constraints (\eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0})
   implemented in \code{mgcv} for tensor product terms whose
-  marginal terms include the index of the functional
-  response \eqn{t}.  Instead, \eqn{\sum_i \hat f(z_i, x_i,
-  t) = 0} for all \eqn{t} is enforced, so that effects
-  varying over \eqn{t} can be interpreted as deviations
-  from the global functional intercept. I recommend using
-  centered scalar covariates for terms like \eqn{z
-  \beta(t)} (\code{~z}) and centered functional covariates
-  with \eqn{\sum_i X_i(t) = 0} for all \eqn{t} in
+  marginals include the index \eqn{t} of the functional
+  response.  Instead, \eqn{\sum_i \hat f(z_i, x_i, t) = 0}
+  for all \eqn{t} is enforced, so that effects varying over
+  \eqn{t} can be interpreted as local deviations from the
+  global functional intercept. We recommend using centered
+  scalar covariates for terms like \eqn{z \beta(t)}
+  (\code{~z}) and centered functional covariates with
+  \eqn{\sum_i X_i(t) = 0} for all \eqn{t} in
   \code{ff}-terms so that the global functional intercept
-  can be interpreted as the global mean function.
+  can be interpreted as the global mean function. For
+  irregular or sparse \eqn{Y_i(t)} supplied via
+  \code{ydata} it is not possible to specify these custom
+  constraints. For interpretable estimates in this case it
+  is recommended to use \code{tensortype="t2"} (see
+  \code{\link[mgcv]{t2}}) which can reduce artefacts due to
+  its explicit separation of penalty range- and nullspaces,
+  and/or to manually re-center the estimated effects.
 }
 \examples{
-\dontrun{
 ###############################################################################
 # univariate model:
 # Y(t) = f(t)  + \\int X1(s)\\beta(s,t)ds + eps
@@ -172,6 +197,7 @@ m1 <- pffr(Y ~ ff(X1, yind=t, xind=s), data=data1)
 summary(m1)
 plot(m1, pers=TRUE)
 
+\dontrun{
 ###############################################################################
 # multivariate model:
 # Y(t) = f0(t)  + \\int X1(s)\\beta1(s,t)ds + \\int X2(s)\\beta2(s,t)ds +
@@ -196,15 +222,16 @@ plot(m2, pers=TRUE)
 \references{
   Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S.
   (2012).  Penalized function-on-function regression.
-  (submitted)
+  (under revision)
   \url{http://biostats.bepress.com/jhubiostat/paper240/}
 
   Scheipl, F., Staicu, A.-M. and Greven, S. (2012).
-  Additive Mixed Models for Correlated Functional Data.
-  (submitted) \url{http://arxiv.org/abs/1207.5947}
+  Functional Additive Mixed Models.  (submitted)
+  \url{http://arxiv.org/abs/1207.5947}
 }
 \seealso{
   \code{\link[mgcv]{smooth.terms}} for details of
-  \code{mgcv} syntax and available spline bases
+  \code{mgcv} syntax and available spline bases and
+  penalties.
 }
 
