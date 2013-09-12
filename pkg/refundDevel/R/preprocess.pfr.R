@@ -115,7 +115,7 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
   spl.pen = matrix(1, nrow=kb-1, ncol=kb-1)+temp
   Dinv=solve(spl.pen)
   for (i in startD:totD) {
-    D[[i]] = adiag( diag(c(rep(0, 1 + p + N_subj*!is.null(subj)), rep(0, kb * (i - startD)) , rep(0, 1))),
+    D[[i]] = magic::adiag( diag(c(rep(0, 1 + p + N_subj*!is.null(subj)), rep(0, kb * (i - startD)) , rep(0, 1))),
        Dinv,
        diag(rep(0, kb * (totD - i))))
   }

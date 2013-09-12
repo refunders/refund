@@ -70,6 +70,7 @@ Lan Huo \email{lan.huo@nyumc.org}
 \code{\link{wcr}}, \code{\link{wnet}}
 }
 \examples{
+\dontrun{
 
 n = 200; d = 64
 
@@ -87,6 +88,6 @@ obj.wnet.perm <- wnet.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 200, alph
 
 obj.wcr.perm <- wcr.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 20, ncomp = 6, 
                          cv1 = TRUE, method = "pls", nperm = 10)
-}
+}}
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

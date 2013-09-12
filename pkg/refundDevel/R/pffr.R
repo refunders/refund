@@ -627,8 +627,8 @@ pffr <- function(
     # not carry over to that case...)
     if(!(as.character(algorithm) %in% c("gamm4")) & !sparseOrNongrid){
         suppressMessages(
-            trace(mgcv:::smooth.construct.tensor.smooth.spec, 
-                  at = max(which(sapply(as.list(body(mgcv:::smooth.construct.tensor.smooth.spec)), function(x) any(grepl(x, pattern="object$C", fixed=TRUE))))) + 1, 
+            trace(mgcv::smooth.construct.tensor.smooth.spec, 
+                  at = max(which(sapply(as.list(body(mgcv::smooth.construct.tensor.smooth.spec)), function(x) any(grepl(x, pattern="object$C", fixed=TRUE))))) + 1, 
                   print=FALSE,
                   tracer = quote({
                       #browser()
@@ -688,7 +688,7 @@ pffr <- function(
         
         
         on.exit({
-            suppressMessages(try(untrace(mgcv:::smooth.construct.tensor.smooth.spec), silent = TRUE))
+            suppressMessages(try(untrace(mgcv::smooth.construct.tensor.smooth.spec), silent = TRUE))
             suppressMessages(try(untrace(mgcv:::smooth.construct.t2.smooth.spec), silent = TRUE))
         })
     }

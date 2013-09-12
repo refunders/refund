@@ -310,7 +310,7 @@ residuals.pffr <- function (object, reformat=TRUE, ...)
 {
     if (!inherits(object, "pffr")) 
         stop("`object' is not of class \"pffr\"")
-    ret <- mgcv:::residuals.gam(object, ...)
+    ret <- mgcv::residuals.gam(object, ...)
     if(reformat){
         if(!object$pffr$sparseOrNongrid){
             if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){

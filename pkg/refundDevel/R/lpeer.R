@@ -119,7 +119,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
     {
       if(ncol(L)!=ncol(W)) return(cat('Error: For common penalty, number of columns of func and L.user need to be equal.\nThe lpeer() will not proceed further.\n'))
       L1<- L
-      for(i in 1:d) L1<- adiag(L1, L)
+      for(i in 1:d) L1<- magic::adiag(L1, L)
       L<- L1
     }
     
@@ -175,23 +175,23 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
   ni<- tapply(id, id, length)
   for(i in 1:N){
     if (i==1) Z<- matrix(1, nrow=ni[i])
-    if (i>1) Z<- adiag(Z, matrix(1, nrow=ni[i]))
+    if (i>1) Z<- magic::adiag(Z, matrix(1, nrow=ni[i]))
   }
   
   #Input for random argument of lme function 
   for(i in 0:d) assign(paste('pd', i+1, sep=''), 
-                       pdIdent(form=as.formula(paste('~W', i+1, '_PEER -1', sep=''))))
-  pdid<- pdIdent(~Z-1)
+                       nlme::pdIdent(form=as.formula(paste('~W', i+1, '_PEER -1', sep=''))))
+  pdid<- nlme::pdIdent(~Z-1)
   
-  if(d==0) tXX<- pdBlocked(list(pd1, pdid))
-  if(d==1) tXX<- pdBlocked(list(pd1, pd2, pdid))
-  if(d==2) tXX<- pdBlocked(list(pd1, pd2, pd3, pdid))
-  if(d==3) tXX<- pdBlocked(list(pd1, pd2, pd3, pd4, pdid))
-  if(d==4) tXX<- pdBlocked(list(pd1, pd2, pd3, pd4, pd5, pdid))
-  if(d==5) tXX<- pdBlocked(list(pd1, pd2, pd3, pd4, pd5, pd6, pdid))
+  if(d==0) tXX<- nlme::pdBlocked(list(pd1, pdid))
+  if(d==1) tXX<- nlme::pdBlocked(list(pd1, pd2, pdid))
+  if(d==2) tXX<- nlme::pdBlocked(list(pd1, pd2, pd3, pdid))
+  if(d==3) tXX<- nlme::pdBlocked(list(pd1, pd2, pd3, pd4, pdid))
+  if(d==4) tXX<- nlme::pdBlocked(list(pd1, pd2, pd3, pd4, pd5, pdid))
+  if(d==5) tXX<- nlme::pdBlocked(list(pd1, pd2, pd3, pd4, pd5, pd6, pdid))
   
   #Fitting the model
-  out_PEER<- lme(fixed=Y~X-1, random=list(id.bd1=tXX), ... ) 
+  out_PEER<- nlme::lme(fixed=Y~X-1, random=list(id.bd1=tXX), ... ) 
   cat('The fit is successful.\n')
   
   #Extracting the estimates
@@ -238,7 +238,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
   BIC<- summary(out_PEER)$BIC
   
   #Extracting lambda and variance
-  tVarCorr<- nlme:::VarCorr(out_PEER, rdig=4)[,2]
+  tVarCorr<- nlme::VarCorr(out_PEER, rdig=4)[,2]
   for(i in 0:d) assign(paste('lambda', i, sep=''), 
                        1/ as.numeric(unique(tVarCorr[(i*r+1):((i+1)*r)])))
   for(i in 0:d)
@@ -287,7 +287,7 @@ lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,
           } 
     tsigma<- as.numeric(unique(tVarCorr[(i*r+1):((i+1)*r)]))
     if(i==0) LL.inv<- tsigma^2*solve(t(tL_PEER)%*%tL_PEER) 
-    if(i>0) LL.inv<- adiag(LL.inv, tsigma^2*solve(t(tL_PEER)%*%tL_PEER))
+    if(i>0) LL.inv<- magic::adiag(LL.inv, tsigma^2*solve(t(tL_PEER)%*%tL_PEER))
     
     rm(tsigma); rm(tL_PEER)
   }

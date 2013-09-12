@@ -97,8 +97,8 @@ peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL,
   
   #Fitting the model
   id.bd1<- factor(rep(1, length(Y)))
-  out_PEER<- lme(fixed=Y~1,
-                 random=list(id.bd1=pdIdent(~W1_PEER-1)),
+  out_PEER<- nlme::lme(fixed=Y~1,
+                 random=list(id.bd1=nlme::pdIdent(~W1_PEER-1)),
                  ...
   ) 
   cat('The fit is successful.\n')
@@ -115,7 +115,7 @@ peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL,
   BIC<- summary(out_PEER)$BIC
   
   #Extracting lambda and variances
-  tVarCorr<- nlme:::VarCorr(out_PEER, rdig=4)[,2]
+  tVarCorr<- nlme::VarCorr(out_PEER, rdig=4)[,2]
   r<- ncol(v)
   lambda<- 1/ as.numeric(unique(tVarCorr[1:r]))
   print(lambda)

@@ -72,7 +72,7 @@ function(Y, Y.pred=NULL, nbasis = 10, pve = .99, npc = NULL, var = FALSE, simul 
   if(makePD){
       # project smoothed cov. surface into pos-semidef. cone
       npc.0 <- {
-          tmp <- Matrix:::nearPD(npc.0,
+          tmp <- Matrix::nearPD(npc.0,
                   corr = FALSE, 
                   keepDiag = FALSE, 
                   do2eigen = TRUE, # enforce positive def!
