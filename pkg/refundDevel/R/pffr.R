@@ -353,6 +353,12 @@ pffr <- function(
             assign(x=x$LXname, 
                    value=LXStacked, 
                    envir=newfrmlenv)
+            #assign additional X-term for sff:
+            if(!is.null(x$X)){
+              assign(x=x$xname, 
+                     value=x$X[stackpattern, ], 
+                     envir=newfrmlenv)
+            }
             invisible(NULL)
         })  
     } else ffterms <- NULL
@@ -658,8 +664,8 @@ pffr <- function(
         )
         
         suppressMessages(
-            trace(mgcv:::smooth.construct.t2.smooth.spec, 
-                  at = max(which(sapply(as.list(body(mgcv:::smooth.construct.t2.smooth.spec)), function(x) any(grepl(x, pattern="object$Cp", fixed=TRUE))))) + 1, 
+            trace(mgcv::smooth.construct.t2.smooth.spec, 
+                  at = max(which(sapply(as.list(body(mgcv::smooth.construct.t2.smooth.spec)), function(x) any(grepl(x, pattern="object$Cp", fixed=TRUE))))) + 1, 
                   print=FALSE,
                   tracer = quote({
                       if(!is.null(object$margin[[length(object$margin)]]$xt$impose.ffregC) &&
@@ -689,7 +695,7 @@ pffr <- function(
         
         on.exit({
             suppressMessages(try(untrace(mgcv::smooth.construct.tensor.smooth.spec), silent = TRUE))
-            suppressMessages(try(untrace(mgcv:::smooth.construct.t2.smooth.spec), silent = TRUE))
+            suppressMessages(try(untrace(mgcv::smooth.construct.t2.smooth.spec), silent = TRUE))
         })
     }
     

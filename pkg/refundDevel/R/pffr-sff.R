@@ -7,11 +7,11 @@
 #' Defaults to a cubic tensor product B-spline with marginal second differences penalties for \eqn{f(X_i(s), s, t)} and
 #' integration over the entire range \eqn{[s_{lo, i}, s_{hi, i}] = [\min(s_i), \max(s_i)]}. 
 #' Can't deal with any missing \eqn{X(s)}, unequal lengths of \eqn{X_i(s)} not (yet?) possible.
-#' Unequal ranges for different \eqn{X_i(s)} should work. \eqn{X_i(s)} is assumed to be numeric.\cr \code{sff()} IS AN EXPERIMENTAL FEATURE AND
-#' NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
+#' Unequal ranges for different \eqn{X_i(s)} should work. \eqn{X_i(s)} is assumed to be numeric.\cr 
+#' \code{sff()} IS AN EXPERIMENTAL FEATURE AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
 #' 
 #' @param X an n by \code{ncol(xind)} matrix of function evaluations \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
-#' @param yind matrix (or vector) of indices of evaluations of \eqn{Y_i(t)}; i.e. matrix with rows \eqn{(t_{i1},\dots,t_{iT})}
+#' @param yind \emph{DEPRECATED} matrix (or vector) of indices of evaluations of \eqn{Y_i(t)}; i.e. matrix with rows \eqn{(t_{i1},\dots,t_{iT})}; no longer used.
 #' @param xind matrix (or vector) of indices of evaluations of \eqn{X_i(s)}; i.e. matrix with rows \eqn{(s_{i1},\dots,s_{iS})}
 #' @param basistype defaults to "\code{\link[mgcv]{te}}", i.e. a tensor product spline to represent \eqn{f(X_i(s), t)}. 
 #'      Alternatively, use \code{"s"} for bivariate basis functions (see \code{\link[mgcv]{s}}) 
@@ -19,10 +19,15 @@
 #' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule. 
 #'  Alternatively and for non-equidistant grids, \code{"trapezoidal"}. 
 #' @param L optional: an n by \code{ncol(xind)} giving the weights for the numerical integration over \eqn{s}. 
-#' @param limits (NOT YET IMPLEMENTED) 
-# optional:  n X \code{ncol(xind)} boolean matrix that is TRUE only on the intervals \eqn{[s_{lo, i}, s_{hi, i}]}   
+#' @param limits defaults to NULL for integration across the entire range of \eqn{X(s)}, otherwise 
+#' specifies the integration limits \eqn{s_{hi, i}, s_{lo, i}}:  
+#' either one of \code{"s<t"} or \code{"s<=t"} for \eqn{(s_{hi, i}, s_{lo, i}) = (0, t)} or 
+#' a function that takes \code{s} as the first and \code{t} as the second argument and returns TRUE for combinations
+#' of values \code{(s,t)} if \code{s} falls into the integration range for the given \code{t}. This is an experimental 
+#' feature and not well tested yet; use at your own risk.   
 #' @param splinepars optional arguments supplied to the \code{basistype}-term. Defaults to a cubic tensor product 
-#'  B-spline with marginal second differences, i.e. \code{list(bs="ps", m=c(2,2,2))} See \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} for details
+#'  B-spline with marginal second differences, i.e. \code{list(bs="ps", m=c(2,2,2))}.
+#'   See \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} for details
 #' 
 #' @return a list containing \itemize{
 #'  \item \code{call} a "call" to \code{\link[mgcv]{te}} (or \code{\link[mgcv]{s}}, \code{\link[mgcv]{t2}}) using the appropriately constructed covariate
@@ -32,7 +37,6 @@
 #'  
 #' @author Fabian Scheipl, based on Sonja Greven's trick for fitting functional responses.
 # FIXME: figure out weights for simpson's rule on non-equidistant grids 
-# TODO: allow integration limits given by NAs in X-matrix i.e. use limits given by extent of NA regions in X?
 # TODO: allow X to be of class fd (?)
 # TODO: by variables (?)
 sff <- function(X,
@@ -48,14 +52,6 @@ sff <- function(X,
     nxgrid <- ncol(X)
     stopifnot(all(!is.na(X)))
     
-    
-# check & format index for Y 
-    if(!missing(yind))
-        if(is.null(dim(yind))){
-            yind <- t(t(yind))
-        } 
-    nygrid <- nrow(yind)
-    
 # check & format index for X
     if(is.null(dim(xind))){
         xind <- t(xind)
@@ -65,7 +61,7 @@ sff <- function(X,
         } 
         stopifnot(nrow(xind) == n)  
     }   
-    stopifnot(all.equal(order(xind[1,]), 1:nxgrid), all.equal(order(yind), 1:nygrid))
+    stopifnot(all.equal(order(xind[1,]), 1:nxgrid))
     
     basistype <- match.arg(basistype)
     integration <- match.arg(integration)
@@ -87,7 +83,6 @@ sff <- function(X,
         stopifnot(nrow(L) == n, ncol(L) == nxgrid)
         #TODO: check whether supplied L is compatibel with limits argument
     } else {
-        if(is.null(limits)){
             L <- switch(integration,
                     "simpson" = {
                         # int^b_a f(t) dt = (b-a)/gridlength/3 * [f(a) + 4*f(t_1) + 2*f(t_2) + 4*f(t_3) + 2*f(t_3) +...+ f(b)]
@@ -101,24 +96,30 @@ sff <- function(X,
                         diffs <- t(apply(xind, 1, diff))
                         .5 * cbind(diffs[,1], t(apply(diffs, 1, filter, filter=c(1,1)))[,-(nxgrid-1)], diffs[,(nxgrid-1)])
                     })
-        } else {
-            stop("<limits> not yet implemented")
-            #TODO: generate L for given limits
-        }
     }
+    if(!is.null(limits)){
+      if(!is.function(limits)){
+        if(!(limits %in% c("s<t","s<=t"))){
+          stop("supplied <limits> argument unknown")  
+        }
+        if(limits=="s<t"){
+          limits <- function(s, t){
+            s < t
+          }    
+        } else {
+          if(limits=="s<=t"){
+            limits <- function(s, t){
+              (s < t) | (s == t)
+            }    
+          }   
+        }
+      }
     
-    #expand for stacked Y-observations and assign unique names based on the given args
+    #assign unique names based on the given args
     xname <- paste(deparse(substitute(X)), ".mat", sep="")
     xindname <- paste(deparse(substitute(X)), ".smat", sep="")
     yindname <- paste(deparse(substitute(X)), ".tmat", sep="")
     LXname <- paste("L.", deparse(substitute(X)), sep="")
-    
-    data <- list(
-            X[rep(1:n, each=nygrid), ], #stack X nygrid-times
-            xind[rep(1:n, times=nygrid), ], #stack xind nygrid-times
-            matrix(rep(yind, times=n), nrow=n*nygrid, ncol=nxgrid), #repeat each entry of yind n times s.t. rows are constant  
-            L[rep(1:n, each=nygrid),])#stack L nygrid-times
-    names(data)  <- c(xname, xindname, yindname, LXname)
     
 # make call
     splinefun <- as.symbol(basistype) # if(basistype=="te") quote(te) else quote(s)
@@ -132,7 +133,7 @@ sff <- function(X,
                             by =as.symbol(substitute(LXname))),
                     frmls))
     
-    return(list(call=call, data = data, yind=yind, xind=xind[1, ], L=L,
+    return(list(call=call, xind=xind, L=L, X=X,
                     xname=xname, xindname=xindname, yindname=yindname, LXname=LXname))
 }#end sff()
 
