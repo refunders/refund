@@ -642,10 +642,12 @@ summary.pffr <- function (object, ...) {
     # make short labels for display
     shrtlbls <- getShrtlbls(object)
     
-    rownames(ret$s.table) <- sapply(rownames(ret$s.table), 
+    if(!is.null(ret$s.table)){
+      rownames(ret$s.table) <- sapply(rownames(ret$s.table), 
                                     function(x){
                                         shrtlbls[pmatch(x, unlist(object$pffr$labelmap))]     
                                     })
+    }  
     class(ret) <- c("summary.pffr", class(ret))
     if(!object$pffr$sparseOrNongrid) {
         ret$n  <- paste(ret$n, " (", object$pffr$nobs," x ", object$pffr$nyindex, ")", sep="") 

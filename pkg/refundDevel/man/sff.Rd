@@ -13,9 +13,9 @@
   evaluations \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})};
   \eqn{i=1,\dots,n}.}
 
-  \item{yind}{matrix (or vector) of indices of evaluations
-  of \eqn{Y_i(t)}; i.e. matrix with rows
-  \eqn{(t_{i1},\dots,t_{iT})}}
+  \item{yind}{\emph{DEPRECATED} matrix (or vector) of
+  indices of evaluations of \eqn{Y_i(t)}; i.e. matrix with
+  rows \eqn{(t_{i1},\dots,t_{iT})}; no longer used.}
 
   \item{xind}{matrix (or vector) of indices of evaluations
   of \eqn{X_i(s)}; i.e. matrix with rows
@@ -35,12 +35,21 @@
   \item{L}{optional: an n by \code{ncol(xind)} giving the
   weights for the numerical integration over \eqn{s}.}
 
-  \item{limits}{(NOT YET IMPLEMENTED)}
+  \item{limits}{defaults to NULL for integration across the
+  entire range of \eqn{X(s)}, otherwise specifies the
+  integration limits \eqn{s_{hi, i}, s_{lo, i}}: either one
+  of \code{"s<t"} or \code{"s<=t"} for \eqn{(s_{hi, i},
+  s_{lo, i}) = (0, t)} or a function that takes \code{s} as
+  the first and \code{t} as the second argument and returns
+  TRUE for combinations of values \code{(s,t)} if \code{s}
+  falls into the integration range for the given \code{t}.
+  This is an experimental feature and not well tested yet;
+  use at your own risk.}
 
   \item{splinepars}{optional arguments supplied to the
   \code{basistype}-term. Defaults to a cubic tensor product
   B-spline with marginal second differences, i.e.
-  \code{list(bs="ps", m=c(2,2,2))} See
+  \code{list(bs="ps", m=c(2,2,2))}.  See
   \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} for
   details}
 }

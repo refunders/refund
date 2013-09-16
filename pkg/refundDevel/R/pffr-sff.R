@@ -40,101 +40,102 @@
 # TODO: allow X to be of class fd (?)
 # TODO: by variables (?)
 sff <- function(X,
-        yind,
-        xind=seq(0, 1, l=ncol(X)),
-        basistype= c("te", "t2", "s"),
-        integration=c("simpson", "trapezoidal"), 
-        L=NULL,
-        limits=NULL, 
-        splinepars=list(bs="ps", m=c(2,2,2))
+                yind,
+                xind=seq(0, 1, l=ncol(X)),
+                basistype= c("te", "t2", "s"),
+                integration=c("simpson", "trapezoidal"), 
+                L=NULL,
+                limits=NULL, 
+                splinepars=list(bs="ps", m=c(2,2,2))
 ){
-    n <- nrow(X)
-    nxgrid <- ncol(X)
-    stopifnot(all(!is.na(X)))
+  n <- nrow(X)
+  nxgrid <- ncol(X)
+  stopifnot(all(!is.na(X)))
+  
+  # check & format index for X
+  if(is.null(dim(xind))){
+    xind <- t(xind)
+    stopifnot(ncol(xind) == nxgrid)
+    if(nrow(xind)== 1){
+      xind <- matrix(as.vector(xind), nrow=n, ncol=nxgrid, byrow=T) 
+    } 
+    stopifnot(nrow(xind) == n)  
+  }   
+  stopifnot(all.equal(order(xind[1,]), 1:nxgrid))
+  
+  basistype <- match.arg(basistype)
+  integration <- match.arg(integration)
+  
+  # scale xind to [0, 1] and check for reasonably equidistant gridpoints
+  xind.sc <- xind - min(xind)
+  xind.sc <- xind.sc/max(xind.sc)
+  diffXind <- t(round(apply(xind.sc, 1, diff), 3))
+  if(is.null(L) & any(apply(diffXind, 1, function(x) length(unique(x))) != 1) && # gridpoints for any  X_i(s) not equidistant?
+       integration=="simpson"){
+    warning("Non-equidistant grid detected for ", deparse(substitute(X)), ".\n Changing to trapezoidal rule for integration.")
+    integration <- "trapezoidal"
     
-# check & format index for X
-    if(is.null(dim(xind))){
-        xind <- t(xind)
-        stopifnot(ncol(xind) == nxgrid)
-        if(nrow(xind)== 1){
-            xind <- matrix(as.vector(xind), nrow=n, ncol=nxgrid, byrow=T) 
-        } 
-        stopifnot(nrow(xind) == n)  
-    }   
-    stopifnot(all.equal(order(xind[1,]), 1:nxgrid))
-    
-    basistype <- match.arg(basistype)
-    integration <- match.arg(integration)
-    
-# scale xind to [0, 1] and check for reasonably equidistant gridpoints
-    xind.sc <- xind - min(xind)
-    xind.sc <- xind.sc/max(xind.sc)
-    diffXind <- t(round(apply(xind.sc, 1, diff), 3))
-    if(is.null(L) & any(apply(diffXind, 1, function(x) length(unique(x))) != 1) && # gridpoints for any  X_i(s) not equidistant?
-            integration=="simpson"){
-        warning("Non-equidistant grid detected for ", deparse(substitute(X)), ".\n Changing to trapezoidal rule for integration.")
-        integration <- "trapezoidal"
-        
-    }
-# FIXME: figure out weights for simpson's rule on non-equidistant grids instead of all this...
-    
-#make weight matrix for by-term
-    if(!is.null(L)){
-        stopifnot(nrow(L) == n, ncol(L) == nxgrid)
-        #TODO: check whether supplied L is compatibel with limits argument
-    } else {
-            L <- switch(integration,
-                    "simpson" = {
-                        # int^b_a f(t) dt = (b-a)/gridlength/3 * [f(a) + 4*f(t_1) + 2*f(t_2) + 4*f(t_3) + 2*f(t_3) +...+ f(b)]
-                        ((xind[,nxgrid]-xind[,1])/nxgrid)/3 * 
-                                matrix(c(1, rep(c(4, 2), length=nxgrid-2), 1), nrow=n, ncol=nxgrid, byrow=T)
-                    }, 
-                    "trapezoidal" = {
-                        # int^b_a f(t) dt = .5* sum_i (t_i - t_{i-1}) f(t_i) + f(t_{i-1}) = 
-                        #   (t_2 - t_1)/2 * f(a=t_1) + sum^{nx-1}_{i=2} ((t_i - t_i-1)/2 + (t_i+1 - t_i)/2) * f(t_i) + ... + 
-                        #           + (t_nx - t_{nx-1})/2 * f(b=t_n)
-                        diffs <- t(apply(xind, 1, diff))
-                        .5 * cbind(diffs[,1], t(apply(diffs, 1, filter, filter=c(1,1)))[,-(nxgrid-1)], diffs[,(nxgrid-1)])
-                    })
-    }
-    if(!is.null(limits)){
-      if(!is.function(limits)){
-        if(!(limits %in% c("s<t","s<=t"))){
-          stop("supplied <limits> argument unknown")  
-        }
-        if(limits=="s<t"){
-          limits <- function(s, t){
-            s < t
-          }    
-        } else {
-          if(limits=="s<=t"){
-            limits <- function(s, t){
-              (s < t) | (s == t)
-            }    
-          }   
-        }
+  }
+  # FIXME: figure out weights for simpson's rule on non-equidistant grids instead of all this...
+  
+  #make weight matrix for by-term
+  if(!is.null(L)){
+    stopifnot(nrow(L) == n, ncol(L) == nxgrid)
+    #TODO: check whether supplied L is compatibel with limits argument
+  } else {
+    L <- switch(integration,
+                "simpson" = {
+                  # int^b_a f(t) dt = (b-a)/gridlength/3 * [f(a) + 4*f(t_1) + 2*f(t_2) + 4*f(t_3) + 2*f(t_3) +...+ f(b)]
+                  ((xind[,nxgrid]-xind[,1])/nxgrid)/3 * 
+                    matrix(c(1, rep(c(4, 2), length=nxgrid-2), 1), nrow=n, ncol=nxgrid, byrow=T)
+                }, 
+                "trapezoidal" = {
+                  # int^b_a f(t) dt = .5* sum_i (t_i - t_{i-1}) f(t_i) + f(t_{i-1}) = 
+                  #   (t_2 - t_1)/2 * f(a=t_1) + sum^{nx-1}_{i=2} ((t_i - t_i-1)/2 + (t_i+1 - t_i)/2) * f(t_i) + ... + 
+                  #           + (t_nx - t_{nx-1})/2 * f(b=t_n)
+                  diffs <- t(apply(xind, 1, diff))
+                  .5 * cbind(diffs[,1], t(apply(diffs, 1, filter, 
+                                                filter=c(1,1)))[,-(nxgrid-1)], diffs[,(nxgrid-1)])
+                })
+  }
+  if(!is.null(limits)){
+    if(!is.function(limits)){
+      if(!(limits %in% c("s<t","s<=t"))){
+        stop("supplied <limits> argument unknown")  
       }
-    
-    #assign unique names based on the given args
-    xname <- paste(deparse(substitute(X)), ".mat", sep="")
-    xindname <- paste(deparse(substitute(X)), ".smat", sep="")
-    yindname <- paste(deparse(substitute(X)), ".tmat", sep="")
-    LXname <- paste("L.", deparse(substitute(X)), sep="")
-    
-# make call
-    splinefun <- as.symbol(basistype) # if(basistype=="te") quote(te) else quote(s)
-    frmls <- formals(getFromNamespace(deparse(splinefun), ns="mgcv"))
-    frmls <- modifyList(frmls[names(frmls) %in% names(splinepars)], splinepars)
-    call <- as.call(c(
-                    list(splinefun,
-                            x = as.symbol(substitute(yindname)), 
-                            y = as.symbol(substitute(xindname)),
-                            z = as.symbol(substitute(xname)),
-                            by =as.symbol(substitute(LXname))),
-                    frmls))
-    
-    return(list(call=call, xind=xind, L=L, X=X,
-                    xname=xname, xindname=xindname, yindname=yindname, LXname=LXname))
+      if(limits=="s<t"){
+        limits <- function(s, t){
+          s < t
+        }    
+      } else {
+        if(limits=="s<=t"){
+          limits <- function(s, t){
+            (s < t) | (s == t)
+          }    
+        }   
+      }
+    }
+  }  
+  #assign unique names based on the given args
+  xname <- paste(deparse(substitute(X)), ".mat", sep="")
+  xindname <- paste(deparse(substitute(X)), ".smat", sep="")
+  yindname <- paste(deparse(substitute(X)), ".tmat", sep="")
+  LXname <- paste("L.", deparse(substitute(X)), sep="")
+  
+  # make call
+  splinefun <- as.symbol(basistype) # if(basistype=="te") quote(te) else quote(s)
+  frmls <- formals(getFromNamespace(deparse(splinefun), ns="mgcv"))
+  frmls <- modifyList(frmls[names(frmls) %in% names(splinepars)], splinepars)
+  call <- as.call(c(
+    list(splinefun,
+         x = as.symbol(substitute(yindname)), 
+         y = as.symbol(substitute(xindname)),
+         z = as.symbol(substitute(xname)),
+         by =as.symbol(substitute(LXname))),
+    frmls))
+  
+  return(list(call=call, xind=xind, L=L, X=X,
+              xname=xname, xindname=xindname, yindname=yindname, LXname=LXname))
 }#end sff()
 
 
