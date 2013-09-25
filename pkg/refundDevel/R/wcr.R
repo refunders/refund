@@ -125,7 +125,7 @@ wcr <- function(y, xfuncs, min.scale, nfeatures, ncomp, method = c("pcr", "pls")
 	                            phat <- exp(yhat) / (1 + exp(yhat))
 	                            phat <- replace(phat, exp(yhat) == Inf, 1)
 	                            cv.table[isplit, ifold, ims, infeatures, icomp] <- 
-	                                 - sum(log(phat)[y[idxTest] == 1]) - sum(log((1-phat))[y[idxTest] == 0])
+	                                 (- sum(log(phat)[y[idxTest] == 1]) - sum(log((1-phat))[y[idxTest] == 0])) / length(y[idxTest])
 	                        }
 	                    }
 	                } # ncomp

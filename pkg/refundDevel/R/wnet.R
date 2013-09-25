@@ -110,8 +110,8 @@ wnet <- function(y, xfuncs, covt = NULL, min.scale = 0, nfeatures = NULL, alpha 
 	            			    cv.table[isplit, ifold, ims, infeatures, ialpha,] <- colMeans((y[idxTest] - yhat)^2)
 	            		    } else if (family == 'binomial'){
 	                            cv.table[isplit, ifold, ims,infeatures, ialpha, ] <- 
-	                                            - apply(as.matrix(log(yhat)[y[idxTest] == 1,]), 2, sum) - 
-	                                              apply(as.matrix(log((1-yhat))[y[idxTest] == 0, ]), 2, sum)
+	                                            (- apply(as.matrix(log(yhat)[y[idxTest] == 1,]), 2, sum) - 
+	                                              apply(as.matrix(log((1-yhat))[y[idxTest] == 0, ]), 2, sum)) / length(y[idxTest])
 	            		    }  
 	            		} else {
 	            			theta.w <- predict(obje, s = lambda.table[ims, infeatures, ialpha, ], type = 'coefficients')

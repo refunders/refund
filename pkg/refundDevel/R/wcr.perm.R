@@ -1,11 +1,19 @@
 wcr.perm <- function(y, xfuncs, min.scale = 0, nfeatures, ncomp, method = c("pcr", "pls"), 
-                      covt = NULL, nrep = 1, nsplit=1, nfold = 5, nperm = 20, 
-                      perm.method = c("responses", "y.residuals", "x.residuals"),
-                      family = "gaussian", seed.real=NULL, seed.perm=NULL, ...){
-    perm.method = match.arg(perm.method)
+                     covt = NULL, nrep = 1, nsplit=1, nfold = 5, nperm = 20, 
+                     perm.method = NULL, family = "gaussian", seed.real=NULL, seed.perm=NULL, ...){
+    if (is.null(perm.method)){
+    	if (is.null(covt)){
+    		perm.method = "responses"
+    	} else if (family == 'gaussian'){
+    		perm.method = 'y.residuals'
+    	} else if (family == 'binomial'){
+    		perm.method = 'x.residuals'
+    	}
+    }
     if (is.null(covt) && perm.method == "x.residuals"){
     	stop("'x.residuals' method is unavailable when 'covt' is NULL.")
     }
+    
     cat("******* Real-data model *******\n")
     replicate_count <- 1
     res <- apply(replicate(nrep, expr = {
