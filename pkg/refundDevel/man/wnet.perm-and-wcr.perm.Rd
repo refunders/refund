@@ -11,12 +11,12 @@ This function assesses statistical significance of a \code{\link{wcr}} or  \code
 \usage{
 wcr.perm(y, xfuncs, min.scale = 0, nfeatures, ncomp, method = c("pcr", "pls"), 
          covt = NULL, nrep = 1, nsplit = 1, nfold = 5, nperm = 20, 
-         perm.method = c('responses', 'y.residuals', 'x.residuals'), 
-         family = "gaussian", seed.real = NULL, seed.perm = NULL, ...)
+         perm.method = NULL, family = "gaussian", 
+         seed.real = NULL, seed.perm = NULL, ...)
 wnet.perm(y, xfuncs, min.scale = 0, nfeatures = NULL, alpha = 1, lambda, 
          covt = NULL, nrep = 1, nsplit = 1, nfold = 5, nperm = 20, 
-         perm.method = c('responses', 'y.residuals', 'x.residuals'), 
-         family = "gaussian", seed.real = NULL, seed.perm = NULL, ...)         
+         perm.method = NULL, family = "gaussian", 
+         seed.real = NULL, seed.perm = NULL, ...)         
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -28,7 +28,7 @@ wnet.perm(y, xfuncs, min.scale = 0, nfeatures = NULL, alpha = 1, lambda,
 number of permutations. The default is suitable for toy applications only.
 }
   \item{perm.method}{
-one of
+either NULL or one of
 \itemize{
 \item {\code{"responses"}: permute the response vector \code{y}.}
 \item {\code{"y.residuals"}: permute the residuals upon regressing \code{y ~ covt}.}
@@ -41,10 +41,16 @@ the seed for random data division for real data. If \code{seed.real = NULL}, a r
   \item{seed.perm}{
 the seed for random data division for permuted data. If \code{seed.perm = NULL}, a random seed is used.
 }
+  \item{seed.real}{
+the seed for random data division for real data. If \code{seed.real = NULL}, a random seed is used.
+}
+  \item{seed.perm}{
+the seed for random data division for permuted data. If \code{seed.perm = NULL}, a random seed is used.
+}
   \item{\dots}{other arguments passed to \code{\link{wcr}} or \code{\link{wnet}}.}
 }
 \details{
-	Permutation tests of this type are discussed, in a classification setting, by Ojala and Garriga (2010). Permuting the responses is appropriate when regressing on functions/images only, with no scalar covariates. For linear regression with covariates, it is preferable to first regress on the covariates, and then permute the residuals. For logistic regression this is not feasible; but, following Potter (2005), one can instead permute the residuals from a regression of the functions/images on the covariates.
+	Permutation tests of this type are discussed, in a classification setting, by Ojala and Garriga (2010). Permuting the responses (\code{perm.method="responses"}) is appropriate when regressing on functions/images only, with no scalar covariates. For linear regression with covariates, it is preferable to first regress on the covariates, and then permute the residuals (\code{perm.method="y.residuals"}). For logistic regression this is not feasible; but, following Potter (2005), one can instead permute the residuals from a regression of the functions/images on the covariates (\code{perm.method="x.residuals"}). When \code{perm.method=NULL} (the default), \code{"responses"} is used if \code{covt} is \code{NULL}, and \code{"x.residuals"} otherwise.
 }
 \value{
   \item{cv}{CV value for the real data (averaged over \code{nrep} replications).
@@ -70,7 +76,6 @@ Lan Huo \email{lan.huo@nyumc.org}
 \code{\link{wcr}}, \code{\link{wnet}}
 }
 \examples{
-\dontrun{
 
 n = 200; d = 64
 
@@ -88,6 +93,6 @@ obj.wnet.perm <- wnet.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 200, alph
 
 obj.wcr.perm <- wcr.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 20, ncomp = 6, 
                          cv1 = TRUE, method = "pls", nperm = 10)
-}}
+}
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
