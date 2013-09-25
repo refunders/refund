@@ -41,12 +41,6 @@ the seed for random data division for real data. If \code{seed.real = NULL}, a r
   \item{seed.perm}{
 the seed for random data division for permuted data. If \code{seed.perm = NULL}, a random seed is used.
 }
-  \item{seed.real}{
-the seed for random data division for real data. If \code{seed.real = NULL}, a random seed is used.
-}
-  \item{seed.perm}{
-the seed for random data division for permuted data. If \code{seed.perm = NULL}, a random seed is used.
-}
   \item{\dots}{other arguments passed to \code{\link{wcr}} or \code{\link{wnet}}.}
 }
 \details{
@@ -76,7 +70,7 @@ Lan Huo \email{lan.huo@nyumc.org}
 \code{\link{wcr}}, \code{\link{wnet}}
 }
 \examples{
-
+\dontrun{
 n = 200; d = 64
 
 # Create true coefficient function
@@ -93,6 +87,7 @@ obj.wnet.perm <- wnet.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 200, alph
 
 obj.wcr.perm <- wcr.perm(yy, xfuncs = ii, min.scale = 4, nfeatures = 20, ncomp = 6, 
                          cv1 = TRUE, method = "pls", nperm = 10)
+}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
