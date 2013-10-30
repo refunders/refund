@@ -27,4 +27,7 @@ rev 130
 rev 134
   o pffr & its methods now handle sparse/irregular data (unresolved: identifiability constraints for irregular data)
   o incremented version to 0.2-6
+  
+rev 140
+  o Edit the NEWS file to trigger the rebuilding process on R-Forge
  
