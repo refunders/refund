@@ -2,28 +2,31 @@
 \alias{DTI}
 \docType{data}
 \title{
-Diffusion Tensor Imaging: fractional anisotropy profiles and outcomes
+Diffusion Tensor Imaging: tract profiles and outcomes
 }
 \description{
-Fractional anisotropy profiles for the corpus callosum (cca) and the right corticospinal tract (rcst). Accompanying the profiles are the subject ID numbers, visit number, total number of scans, multiple sclerosis case status and Paced Auditory Serial Addition Test (pasat) score. We thank Dr. Daniel Reich for making this dataset available.
+Fractional anisotropy tract profiles for the corpus callosum (cca) and the right corticospinal tract (rcst). Accompanying the tract profiles are the subject ID numbers, visit number, total number of scans, multiple sclerosis case status and Paced Auditory Serial Addition Test (pasat) score. 
+
+If you use this data as an example in written work, please include the following acknowledgment:
+``The MRI/DTI data were collected at Johns Hopkins University and the Kennedy-Krieger Institute"
 }
 \usage{data(DTI)}
 \format{
   A data frame made up of
   \describe{
-    \item{\code{cca} }{a 382 x 93 matrix of fractional anisotropy profiles from the corpus callosum;}
-    \item{\code{rcst} }{a 382 x 55 matrix of fractional anisotropy profiles from the right corticospinal tract;}
-    \item{\code{ID} }{numeric vector of subject ID numbers;}
-    \item{\code{visit} }{numeric vector of the subject-specific visit numbers;}
-    \item{\code{Nscans} }{numeric vector indicating the total number of visits for each subject;}
-    \item{\code{case} }{numeric vector of multiple sclerosis case status: 0 - healthy control, 1 - MS case;}
-    \item{\code{pasat }}{numeric vector containing the PASAT score at each visit.}
+    \item{\code{cca} }{A 382 x 93 matrix of fractional anisotropy tract profiles from the corpus callosum;}
+    \item{\code{rcst} }{A 382 x 55 matrix of fractional anisotropy tract profiles from the right corticospinal tract;}
+    \item{\code{ID} }{Numeric vector of subject ID numbers;}
+    \item{\code{visit} }{Numeric vector of the subject-specific visit numbers;}
+    \item{\code{Nscans} }{Numeric vector indicating the total number of visits for each subject;}
+    \item{\code{case} }{Numeric vector of multiple sclerosis case status: 0 - healthy control, 1 - MS case;}
+    \item{\code{pasat }}{Numeric vector containing the PASAT score at each visit.}
   }
 }
 \references{
-Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011). Penalized functional regression. \emph{Journal of Computational and Graphical Statistics}, 20(4), 830-851.
+Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011). Penalized Functional Regression. \emph{Journal of Computational and Graphical Statistics}, 20, 830 - 851.
 
-Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012). Longitudinal penalized functional regression for cognitive outcomes on neuronal tract measurements. \emph{Journal of the Royal Statistical Society: Series C}, 61(3), 453--469.
+Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2010). Longitudinal Penalized Functional Regression for Cognitive Outcomes on Neuronal Tract Measurements
+. \emph{Journal of the Royal Statistical Society: Series C}, 61, 453 - 469.
 }
-\keyword{datasets}
 
