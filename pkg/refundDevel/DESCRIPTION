@@ -19,7 +19,7 @@ Depends:
 Imports:
   lattice,
   boot,
-  mgcv,
+  mgcv (>= 1.7-27),
   fda,
   MASS,
   glmnet,

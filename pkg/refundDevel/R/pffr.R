@@ -138,7 +138,7 @@
 #' ydata1 <- data.frame(cbind(.obs=as.vector(row(data1$Y)),
 #'                            .index=rep(attr(data1, "yindex"), e=nrow(data1)),
 #'                            .value=as.vector(data1$Y)))
-#' ydata1 <- ydata1[sample(1:nrow(ydata), 0.2*nrow(ydata)), ]
+#' ydata1 <- ydata1[sample(1:nrow(ydata1), 0.2*nrow(ydata1)), ]
 #' 
 #' s <- attr(data1, "xindex")
 #' t <- attr(data1, "yindex")
@@ -728,8 +728,8 @@ pffr <- function(
     )
     
     suppressMessages(
-      trace(mgcv:::smooth.construct.t2.smooth.spec, 
-            at = max(which(sapply(as.list(body(mgcv:::smooth.construct.t2.smooth.spec)), function(x) any(grepl(x, pattern="object$Cp", fixed=TRUE))))) + 1, 
+      trace(mgcv::smooth.construct.t2.smooth.spec, 
+            at = max(which(sapply(as.list(body(mgcv::smooth.construct.t2.smooth.spec)), function(x) any(grepl(x, pattern="object$Cp", fixed=TRUE))))) + 1, 
             print=FALSE,
             tracer = quote({
               if(!is.null(object$margin[[length(object$margin)]]$xt$impose.ffregC) &&
@@ -759,7 +759,7 @@ pffr <- function(
     
     on.exit({
       suppressMessages(try(untrace(mgcv::smooth.construct.tensor.smooth.spec), silent = TRUE))
-      suppressMessages(try(untrace(mgcv:::smooth.construct.t2.smooth.spec), silent = TRUE))
+      suppressMessages(try(untrace(mgcv::smooth.construct.t2.smooth.spec), silent = TRUE))
     })
   }
   
