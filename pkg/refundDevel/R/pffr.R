@@ -146,6 +146,7 @@
 #' summary(m1.sparse)
 #' plot(m1.sparse, pers=TRUE)
 #' } 
+#FIXME: te-constraints for bam broken cause bam.fit now samples data to set up bases
 pffr <- function(
   formula,
   yind,
@@ -415,7 +416,7 @@ pffr <- function(
   } else ffpcterms <- NULL
   
   #prep PC-based random effects
-  if(length(where.pcre)){ ##TODO for sparse
+  if(length(where.pcre)){ 
     pcreterms <- lapply(terms[where.pcre], function(x){
       eval(x, envir=evalenv, enclos=frmlenv)
     })
@@ -605,8 +606,6 @@ pffr <- function(
     
   }
   
-  browser()
-  
   #... & assign expanded/additional variables to newfrmlenv
   where.notff <- c(where.c, where.par, where.s, where.te, where.t2)
   if(length(where.notff)){
@@ -663,19 +662,25 @@ pffr <- function(
   if(!(as.character(algorithm) %in% c("gamm4"))){
     suppressMessages(
       trace(mgcv::smooth.construct.tensor.smooth.spec, 
-            at = max(which(sapply(as.list(body(mgcv::smooth.construct.tensor.smooth.spec)), function(x) any(grepl(x, pattern="object$C", fixed=TRUE))))) + 1, 
+            at = max(which(sapply(as.list(body(mgcv::smooth.construct.tensor.smooth.spec)), 
+                                  function(x) any(grepl(x, pattern="object$C", fixed=TRUE))))) + 1, 
             print=FALSE,
             tracer = quote({
               M <- length(object$margin) 
               if(!is.null(object$margin[[M]]$xt$impose.ffregC)){
                 ## constraint: sum_i f(z_i, t) = 0 \forall t
                 #cat("imposing constraints..\n")
-                irreg <- get("sparseOrNongrid", envir=sys.frame(3))
+                #some really ugly shit right here: look for "sparseOrNongrid" etc 
+                #  anywhere in the call stack
+                pffrframe <- which(sapply(lapply(sys.frames(), ls), 
+                                    function(x) any(grepl(pattern="sparseOrNongrid", x=x))))[1]
+                irreg <- get("sparseOrNongrid", sys.frame(pffrframe))
+                
                 if(irreg){
-                  unique.obs <- !duplicated(get("stackpattern", envir=sys.frame(3)))
-                  unique.yind <- !duplicated(get("ydata", envir=sys.frame(3))$.index)
-                  yind <- get("ydata", envir=sys.frame(3))$.index[unique.yind]
-                  yind.grid <- get("yind", envir=sys.frame(3))
+                  unique.obs <- !duplicated(get("stackpattern", envir=sys.frame(pffrframe)))
+                  unique.yind <- !duplicated(get("ydata", envir=sys.frame(pffrframe))$.index)
+                  yind <- get("ydata", envir=sys.frame(pffrframe))$.index[unique.yind]
+                  yind.grid <- get("yind", envir=sys.frame(pffrframe))
                   
                   ## eval tensor basis on gridded data, use this to define constraint:
                   
@@ -707,9 +712,9 @@ pffr <- function(
                 ##  for each value of yindex
                 ## C = ((1,...,1) \otimes I_G) * B
                 Ctmp <- kronecker(t(rep(1, object$margin[[M]]$xt$nobs)), diag(nygrid))
-                if(!irreg & (ncol(Ctmp) > nrow(object$X))){
+                if(!irreg & !is.null(object$Cp) & (ncol(Ctmp) > nrow(object$X))){
                   #drop rows for missing obs.
-                  Ctmp <- Ctmp[, -get("missingind", envir=sys.frame(3))]
+                  Ctmp <- Ctmp[, -get("missingind", envir=sys.frame(pffrframe))]
                 }
                 Xmat <- if(irreg){
                   Xgrid
