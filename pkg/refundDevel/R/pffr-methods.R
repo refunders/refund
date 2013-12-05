@@ -21,7 +21,7 @@
 #'  simply return fitted values for the original evaluation points of the response (in list form).
 #'  If the original fit was performed on sparse or irregular data and \code{newdata} \emph{was}
 #'  supplied, the function will return predictions on the grid of evaluation points given in
-#'  \code{object$pffr$yind}.
+#'  \code{object$pffr$yind}. 
 #' 
 #' @param object a fitted \code{pffr}-object
 #' @param newdata  A named list (or a \code{data.frame}) containing the values of the 
@@ -153,7 +153,7 @@ predict.pffr <- function(object,
                         }
                         if(is.pcre){
                             pcre <- object$pffr$pcre[[grep(cov, names(object$pffr$pcre))]]
-                            gamdata[[paste(cov, ".vec", sep="")]] <- rep(pcre$id, each=nyindex)
+                            gamdata[[paste(cov, ".vec", sep="")]] <- rep(newdata[[cov]], each=nyindex)
                             for(nm in colnames(pcre$efunctions)){
                                 tmp <- approx(x=pcre$yind, 
                                               y=pcre$efunctions[, nm], 
