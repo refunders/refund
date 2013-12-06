@@ -55,9 +55,10 @@ coefboot.pffr <- function(object,
     
     ## refit models on bootstrap data sets & save fits
     cat("starting bootstrap ")
-    # check whether this is already a child process, and
-    # switch of parallelization if yes
-    if(parallel:::isChild()) parallel <- "no"
+    ## this no longer passes CRAN CHECK:
+    ## check whether this is already a child process, and
+    ## switch of parallelization if yes
+    # if(parallel:::isChild()) parallel <- "no"
     
     # resample Y
 #    bootfct.resample <- function(modcall, data, indices) {
