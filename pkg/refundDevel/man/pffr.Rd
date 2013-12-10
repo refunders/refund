@@ -81,8 +81,8 @@
   wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its
   siblings to fit models of the general form \cr
   \eqn{E(Y_i(t)) = g(\mu(t) + \int X_i(s)\beta(s,t)ds +
-  f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots }\cr
-  with a functional (but not necessarily continuous)
+  f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots
+  )}\cr with a functional (but not necessarily continuous)
   response \eqn{Y(t)}, response function \eqn{g},
   (optional) smooth intercept \eqn{\mu(t)}, (multiple)
   functional covariates \eqn{X(t)} and scalar covariates
@@ -152,7 +152,11 @@
   specify which curve the point belongs to
   (\code{'.obs'}=\eqn{i}), at which \eqn{t} it was observed
   (\code{'.index'}=\eqn{t}), and the observed value
-  (\code{'.value'}=\eqn{Y_i(t)}). For both regular and
+  (\code{'.value'}=\eqn{Y_i(t)}). Note that the vector of
+  unique sorted entries in \code{ydata$.obs} must be equal
+  to \eqn{(1, \ldots, <no. of observations>)} to ensure the
+  correct association of entries in \code{ydata} to the
+  corresponding rows of \code{data}. For both regular and
   irregular functional responses, the model is then fitted
   with the data in long format, i.e., for data on a grid
   the rows of the matrix of the functional response
@@ -218,7 +222,7 @@ set.seed(121456)
 ydata1 <- data.frame(cbind(.obs=as.vector(row(data1$Y)),
                            .index=rep(attr(data1, "yindex"), e=nrow(data1)),
                            .value=as.vector(data1$Y)))
-ydata1 <- ydata1[sample(1:nrow(ydata), 0.2*nrow(ydata)), ]
+ydata1 <- ydata1[sample(1:nrow(ydata1), 0.2*nrow(ydata1)), ]
 
 s <- attr(data1, "xindex")
 t <- attr(data1, "yindex")

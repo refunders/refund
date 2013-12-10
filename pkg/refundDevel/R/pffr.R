@@ -11,7 +11,7 @@
 #' 
 #' Implements additive regression for functional and scalar covariates and functional responses.
 #' This function is a wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to fit models of the general form \cr
-#' \eqn{E(Y_i(t)) = g(\mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots }\cr
+#' \eqn{E(Y_i(t)) = g(\mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots )}\cr
 #' with a functional (but not necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
 #' (optional) smooth intercept \eqn{\mu(t)}, (multiple) functional covariates \eqn{X(t)} and scalar covariates
 #' \eqn{z_1}, \eqn{z_2}, etc. 
@@ -50,7 +50,10 @@
 #' across all observations), the \code{ydata}-argument can be used to specify the responses: 
 #' \code{ydata} must be a \code{data.frame} with 3 columns called \code{'.obs', '.index', '.value'}
 #'  which specify which curve the point belongs to (\code{'.obs'}=\eqn{i}), at which \eqn{t} it was
-#'  observed (\code{'.index'}=\eqn{t}), and the observed value (\code{'.value'}=\eqn{Y_i(t)}).
+#'  observed (\code{'.index'}=\eqn{t}), and the observed value (\code{'.value'}=\eqn{Y_i(t)}). Note that  
+#'  the vector of unique sorted entries in \code{ydata$.obs} must be equal to 
+#'  \eqn{(1, \ldots, <no. of observations>)} to ensure the correct association of entries in \code{ydata} to the 
+#'  corresponding rows of \code{data}.
 #' For both regular and irregular functional responses, the model is then fitted with the data in long 
 #' format, i.e., for data on a grid the rows of the
 #' matrix of the functional response evaluations \eqn{Y_i(t)} are stacked
@@ -213,6 +216,8 @@ pffr <- function(
   
   if(sparseOrNongrid){
     nobs <- length(unique(ydata$.obs))
+    stopifnot(all(sort(unique(ydata$.obs)) == 1:nobs))
+    
     #works for data-lists or matrix-valued covariates as well:
     nobs.data <- nrow(as.matrix(data[[1]])) 
     stopifnot(nobs == nobs.data)
