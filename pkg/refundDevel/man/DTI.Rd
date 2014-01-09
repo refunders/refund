@@ -5,10 +5,15 @@
 Diffusion Tensor Imaging: tract profiles and outcomes
 }
 \description{
-Fractional anisotropy tract profiles for the corpus callosum (cca) and the right corticospinal tract (rcst). Accompanying the tract profiles are the subject ID numbers, visit number, total number of scans, multiple sclerosis case status and Paced Auditory Serial Addition Test (pasat) score. 
+Fractional anisotropy (FA) tract profiles for the corpus callosum (cca) and the right corticospinal tract (rcst). Accompanying the tract profiles are the subject ID numbers, visit number, total number of scans, multiple sclerosis case status and Paced Auditory Serial Addition Test (pasat) score. 
 
 If you use this data as an example in written work, please include the following acknowledgment:
-``The MRI/DTI data were collected at Johns Hopkins University and the Kennedy-Krieger Institute"
+``The MRI/DTI data were collected at Johns Hopkins University and the
+Kennedy-Krieger Institute"
+
+DTI2 uses  mean diffusivity of the the corpus callosum rather than FA,
+and parallel diffusivity of the rcst rather than FA. Please see the
+documentation for DTI2.
 }
 \usage{data(DTI)}
 \format{

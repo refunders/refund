@@ -5,12 +5,25 @@
 Diffusion Tensor Imaging: more fractional anisotropy profiles and outcomes
 }
 \description{
-A DTI dataset used in Swihart et al. (2012).
-Fractional anisotropy profiles for the corpus callosum (cca) and
+A diffusion tensor imaging dataset used in Swihart et al. (2012).
+Mean diffusivity profiles for the corpus callosum (cca) and parallel
+diffusivity for
 the right corticospinal tract (rcst). Accompanying the profiles
 are the subject ID numbers, visit number, and Paced Auditory Serial Addition Test
 (pasat) score. We thank Dr. Daniel Reich for making this dataset
 available.
+
+
+
+If you use this data as an example in written work, please include the following acknowledgment:
+``The MRI/DTI data were collected at Johns Hopkins University and the
+Kennedy-Krieger Institute"
+
+Note:  DTI2 uses  mean diffusivity of the the corpus callosum rather
+than fractional anisotropy (FA),
+and parallel diffusivity of the rcst rather than FA. Please see the
+documentation for DTI for more about the DTI dataset.
+
 }
 \usage{data(DTI2)}
 \format{
