@@ -17,7 +17,8 @@
   the format supplied to \code{pffr}, i.e., functional
   predictors must be supplied as matrices with each row
   corresponding to one observed function.  See Details for
-  more on index variables and irregular data.}
+  more on index variables and prediction for models fit on
+  irregular or sparse data.}
 
   \item{reformat}{logical, defaults to TRUE. Should
   predictions be returned in matrix form (default) or in
@@ -58,8 +59,9 @@
   Prediction is always for the entire index range of the
   responses as defined in the original fit. If the original
   fit was performed on sparse or irregular, non-gridded
-  response data and no \code{newdata} was supplied, this
-  function will simply return fitted values for the
+  response data supplied via \code{pffr}'s
+  \code{ydata}-argument and no \code{newdata} was supplied,
+  this function will simply return fitted values for the
   original evaluation points of the response (in list
   form).  If the original fit was performed on sparse or
   irregular data and \code{newdata} \emph{was} supplied,

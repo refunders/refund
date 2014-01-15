@@ -109,7 +109,7 @@
 #' ###############################################################################
 #' # univariate model: 
 #' # Y(t) = f(t)  + \int X1(s)\beta(s,t)ds + eps  
-#' data1 <- pffrSim(scenario="1")
+#' data1 <- pffrSim(scenario="ff")
 #' t <- attr(data1, "yindex")
 #' s <- attr(data1, "xindex")
 #' m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
@@ -121,7 +121,7 @@
 #' # multivariate model: 
 #' # Y(t) = f0(t)  + \int X1(s)\beta1(s,t)ds + \int X2(s)\beta2(s,t)ds +
 #' #		xlin \beta3(t) + f1(xte1, xte2) + f2(xsmoo, t) + beta4 xconst + eps  
-#' data2 <- pffrSim(scenario="2", n=200)
+#' data2 <- pffrSim(scenario="all", n=200)
 #' t <- attr(data2, "yindex")
 #' s <- attr(data2, "xindex")
 #' m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function		
@@ -819,8 +819,10 @@ pffr <- function(
     }
     labelmap[-c(where.par, where.ffpc)] <- lbls[pmatch(
       sapply(labelmap[-c(where.par, where.ffpc)], function(x){
-        tmp <- eval(parse(text=x))
-        if(is.list(tmp)){
+        ## FUGLY: check whether x is a function call of some sort
+        ##  or simply a variable name.
+        if(length(parse(text=x)[[1]]) != 1){
+          tmp <- eval(parse(text=x))
           return(tmp$label)  
         } else {
           return(x)   
@@ -828,15 +830,19 @@ pffr <- function(
       }), lbls)]
   } else{
     labelmap[1:length(labelmap)] <-  lbls[pmatch(
-      sapply(labelmap, function(x){
-        tmp <- eval(parse(text=x))
-        if(is.list(tmp)){
+      sapply(labelmap[1:length(labelmap)], function(x){
+        ## FUGLY: check whether x is a function call of some sort
+        ##  or simply a variable name.
+        if(length(parse(text=x)[[1]]) != 1){
+          tmp <- eval(parse(text=x))
           return(tmp$label)  
         } else {
           return(x)   
-        }
+        } 
       }), lbls)]
   } 
+
+  
   # check whether any parametric terms were left out & add them
   if(any(nalbls <- sapply(labelmap, function(x) any(is.null(x) | (!is.null(x)&&is.na(x)))))){
     labelmap[nalbls] <- trmmap[nalbls]

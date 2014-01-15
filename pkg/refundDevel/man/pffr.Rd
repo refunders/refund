@@ -190,7 +190,7 @@
 ###############################################################################
 # univariate model:
 # Y(t) = f(t)  + \\int X1(s)\\beta(s,t)ds + eps
-data1 <- pffrSim(scenario="1")
+data1 <- pffrSim(scenario="ff")
 t <- attr(data1, "yindex")
 s <- attr(data1, "xindex")
 m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
@@ -202,7 +202,7 @@ plot(m1, pers=TRUE)
 # multivariate model:
 # Y(t) = f0(t)  + \\int X1(s)\\beta1(s,t)ds + \\int X2(s)\\beta2(s,t)ds +
 #		xlin \\beta3(t) + f1(xte1, xte2) + f2(xsmoo, t) + beta4 xconst + eps
-data2 <- pffrSim(scenario="2", n=200)
+data2 <- pffrSim(scenario="all", n=200)
 t <- attr(data2, "yindex")
 s <- attr(data2, "xindex")
 m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
