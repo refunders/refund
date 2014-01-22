@@ -166,6 +166,14 @@ pffr <- function(
   
   call <- match.call()
   tensortype <- as.symbol(match.arg(tensortype))
+  # make sure we use values for the args that were defined as close to the
+  #  actual function call as possible:
+  lapply(names(head(call, -1))[-1], function(nm) 
+      try(assign(nm, eval(nm, parent.frame()))))
+  ## TODO: does this make sense? useful if pffr is called from a function that
+  ## supplies args as variables that are also defined differently in GlobalEnv:
+  ## this then ensures that the args as defined in the calling function,
+  ## not the GlobalEnv gets used....
   
   ## warn if any entries in ... are not arguments for gam/gam.fit or gamm4/lmer 
   dots <- list(...)
@@ -657,6 +665,9 @@ pffr <- function(
   newcall$formula <- newfrml
   newcall$data <- quote(pffrdata)
   newcall[[1]] <- algorithm
+  # make sure ...-args are taken from ..., not GlobalEnv:
+  dotargs <- names(newcall)[names(newcall) %in% names(dots)]
+  newcall[dotargs] <- dots[dotargs]
   
   
   # add appropriate centering constraints for smooth effects

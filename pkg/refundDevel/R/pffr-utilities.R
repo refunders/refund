@@ -117,7 +117,8 @@ getShrtlbls <- function(object){
 #' \eqn{Y_i(t) = \mu(t) + \int X_{1i}(s)\beta_1(s,t)ds + 
 #' \int X_{2i}(s)\beta_2(s,t)ds + \text{xlin} \beta_3(t) + 
 #' f(\text{xte1}, \text{xte2}) + f(\text{xsmoo}, t) + \beta_4 \text{xconst} + \epsilon_i(t)}.
-#' Scenarios "ff", "te", "smoo", "lin", "const" generate data from simpler models
+#' Scenarios "int", "ff", "te", "smoo", "lin", "const" generate data from 
+#' simpler models
 #' containing only the respective term(s)  in the model equation given above.
 #' Specifiying a vector-valued scenario will generate data from a 
 #' combination of the respective terms.
@@ -213,6 +214,7 @@ pffrSim <- function(
     
     if(length(scenario)==1){
       eta <- mu.t + switch(scenario,
+                           "int" = 0,
                            "all" = Reduce("+", etaTerms),
                            "ff" =  etaTerms$X1 + etaTerms$X2,
                            "lin" = etaTerms$xlin,
@@ -220,8 +222,9 @@ pffrSim <- function(
                            "te" = etaTerms$xte,
                            "const" = etaTerms$xconst)
     } else {
-      stopifnot(all(scenario %in% c("ff", "lin", "smoo", "te", "const")))
-      eta <- mu.t
+      stopifnot(all(scenario %in% c("int" ,"ff", "lin", "smoo", "te", "const")))
+      eta <- 0*mu.t
+      if("int" %in% scenario) eta <- eta + mu.t
       if("ff" %in% scenario) eta <- eta + etaTerms$X1 + etaTerms$X2
       if("lin" %in% scenario) eta <- eta + etaTerms$xlin
       if("smoo" %in% scenario) eta <- eta + etaTerms$xsmoo
