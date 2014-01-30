@@ -31,3 +31,6 @@ rev 134
 rev 140
   o Edit the NEWS file to trigger the rebuilding process on R-Forge
  
+rev 150
+  o fixed some scoping issues in pffr
+  o incremented version to 0.2-7

@@ -115,8 +115,8 @@ getShrtlbls <- function(object){
 #' Simulates example data for \code{\link{pffr}}.
 #' Scenario "all" generates data from a complex multivariate model 
 #' \eqn{Y_i(t) = \mu(t) + \int X_{1i}(s)\beta_1(s,t)ds + 
-#' \int X_{2i}(s)\beta_2(s,t)ds + \text{xlin} \beta_3(t) + 
-#' f(\text{xte1}, \text{xte2}) + f(\text{xsmoo}, t) + \beta_4 \text{xconst} + \epsilon_i(t)}.
+#' \int X_{2i}(s)\beta_2(s,t)ds + xlin \beta_3(t) + 
+#' f(xte1, xte2) + f(xsmoo, t) + \beta_4 xconst + \epsilon_i(t)}.
 #' Scenarios "int", "ff", "te", "smoo", "lin", "const" generate data from 
 #' simpler models
 #' containing only the respective term(s)  in the model equation given above.
