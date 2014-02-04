@@ -34,3 +34,8 @@ rev 140
 rev 150
   o fixed some scoping issues in pffr
   o incremented version to 0.2-7
+
+rev 152
+  o pffr: moved to using "ti"-bases with "mc"-constraints, requires mgcv > 1.7-28
+  o pffr: now checks that rownames of data and obs-entries in ydata agree
+  o incremented version to 0.3-0

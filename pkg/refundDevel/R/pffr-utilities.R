@@ -145,7 +145,7 @@ pffrSim <- function(
     
    mc <- match.call()
    for(i in 2:length(mc)) if(is.symbol(mc[[i]])) 
-     mc[[i]] <- get(deparse(mc[[i]]), env=parent.frame())
+     mc[[i]] <- get(deparse(mc[[i]]), envir=parent.frame())
   
     ## generates random functions...
     rf <- function(x=seq(0,1,length=100), bs.dim=7, center=FALSE) {
@@ -239,13 +239,13 @@ pffrSim <- function(
     
     
     if(propmissing == 0){
-      return(structure(as.data.frame(data), xindex=s, yindex=t, 
+      return(structure(as.data.frame(data, rownames=1:n), xindex=s, yindex=t, 
                        truth=list(eta=eta, etaTerms=etaTerms), call=mc))  
     } else {
       missing <- sample(c(rep(T, propmissing*n*nygrid), 
                           rep(F, n*nygrid-propmissing*n*nygrid)))
-      data <- as.data.frame(data)
-      rownames(data) <- 1:n                        
+      data <- as.data.frame(data, rownames=1:n)
+                 
       ydata <- data.frame(.obs = rep(1:n, each=nygrid)[!missing],
                           .index = rep(1:nygrid, times=n)[!missing],
                           .value = as.vector(t(data$Y))[!missing])

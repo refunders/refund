@@ -94,17 +94,17 @@ predict.pffr <- function(object,
             varmap <- sapply(names(object$pffr$labelmap), function(x) all.vars(formula(paste("~", x))))
             
             # don't include response
-            covnames <- names(newdata)[names(newdata)!=deparse(object$formula[[2]])]
+            covnames <- unique(names(newdata)[names(newdata)!=deparse(object$formula[[2]])])
             for(cov in covnames){
                 #find the term(s) <cov> is associated with
                 trms <- which(sapply(varmap, function(x) any(grep(paste("^",cov,"$",sep=""), x)))) 
                 if(!is.null(dots$terms)) trms <- trms[names(trms) %in% dots$terms]
                 if(length(trms)!=0){
                     for(trm in trms){
-                        is.ff <- trm %in% object$pffr$where$where.ff
-                        is.sff <- trm %in% object$pffr$where$where.sff
-                        is.ffpc <- trm %in% object$pffr$where$where.ffpc
-                        is.pcre <- trm %in% object$pffr$where$where.pcre
+                        is.ff <- trm %in% object$pffr$where$ff
+                        is.sff <- trm %in% object$pffr$where$sff
+                        is.ffpc <- trm %in% object$pffr$where$ffpc
+                        is.pcre <- trm %in% object$pffr$where$pcre
                         #if ff(X) or sff(X), generate (X.mat), X.tmat, X.smat, L.X ...
                         if(is.ff){
                             ff <- object$pffr$ff[[grep(paste(cov,"[,\\)]",sep=""), names(object$pffr$ff))]]
@@ -558,15 +558,15 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
             # get proper labeling
             P$main <- shrtlbls[names(object$smooth)[i] == unlist(object$pffr$labelmap)]  
             which <- match(names(object$smooth)[i], object$pffr$labelmap)
-            if(which %in% object$pffr$where$where.ff){
-                which.ff <- which(object$pffr$where$where.ff == which)
+            if(which %in% object$pffr$where$ff){
+                which.ff <- which(object$pffr$where$ff == which)
                 P$ylab <- object$pffr$yindname
                 xlab <- deparse(as.call(formula(paste("~",names(object$pffr$ff)[which.ff]))[[2]])$xind)
                 if(xlab=="NULL") xlab <- "xindex"
                 P$xlab <- xlab
             }
-            if(which %in% object$pffr$where$where.sff){
-                which.sff <- which(object$pffr$where$where.sff == which)
+            if(which %in% object$pffr$where$sff){
+                which.sff <- which(object$pffr$where$sff == which)
                 P$ylab <- object$pffr$yindname
                 xlab <- deparse(as.call(formula(paste("~",names(object$pffr$ff)[which.sff]))[[2]])$xind)
                 if(xlab=="NULL") xlab <- "xindex"

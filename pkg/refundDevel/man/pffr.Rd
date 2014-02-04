@@ -4,41 +4,42 @@
 \usage{
   pffr(formula, yind, data = NULL, ydata = NULL,
     algorithm = NA, method = "REML",
-    tensortype = c("te", "t2"),
+    tensortype = c("ti", "t2"),
     bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
     bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
 }
 \arguments{
   \item{formula}{a formula with special terms as for
   \code{\link[mgcv]{gam}}, with additional special terms
-  \code{\link{ff}()} and \code{c()}}
+  \code{\link{ff}(), \link{sff}(), \link{ffpc}(),
+  \link{pcre}()} and \code{c()}.}
 
   \item{yind}{a vector with length equal to the number of
   columns of the matrix of functional responses giving the
   vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
-  If not supplied, \code{yind} is
+  If not supplied, \code{yind} is set to
   \code{1:ncol(<response>)}.}
 
   \item{algorithm}{the name of the function used to
   estimate the model. Defaults to \code{\link[mgcv]{gam}}
   if the matrix of functional responses has less than
   \code{2e5} data points and to \code{\link[mgcv]{bam}} if
-  not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4"
-  (see \code{\link[gamm4]{gamm4}}) are valid options as
-  well.}
+  not. \code{'\link[mgcv]{gamm}'} and
+  \code{'\link[gamm4]{gamm4}'} are valid options as well.
+  For \code{'\link[gamm4]{gamm4}'}, see Details.}
 
   \item{data}{an (optional) \code{data.frame} or a named
-  list containing the data. The functional response and
-  functional covariates have to be supplied as n by <no. of
-  evaluations> matrices, i.e. each row is one functional
-  observation. The model is then fitted with the data in
-  long format, i.e., the rows of the matrix of the
-  functional response evaluations \eqn{Y_i(t)} are stacked
-  into one long vector and the covariates are
-  expanded/repeated correspondingly. This means the models
-  get quite big fairly fast, since the effective number of
-  rows in the design matrix is number of observations times
-  number of evaluations of \eqn{Y(t)} per observation.\cr}
+  list containing the data. Functional covariates have to
+  be supplied as n by <no. of evaluations> matrices, i.e.
+  each row is one functional observation. The model is then
+  fitted with the data in long format, i.e., the rows of
+  the matrix of the functional response evaluations
+  \eqn{Y_i(t)} are stacked into one long vector and the
+  covariates are expanded/repeated correspondingly. This
+  means the models get quite big fairly fast, since the
+  effective number of rows in the design matrix is number
+  of observations times number of evaluations of \eqn{Y(t)}
+  per observation.\cr}
 
   \item{ydata}{an (optional) \code{data.frame} supplying
   functional responses that are not observed on a regular
@@ -60,9 +61,12 @@
   20 cubic B-splines bases with first order difference
   penalty.}
 
-  \item{tensortype}{which typ of tenor product splines to
-  use. One of "\code{\link[mgcv]{te}}" or
-  "\code{\link[mgcv]{t2}}", defaults to \code{te}}
+  \item{tensortype}{which typ of tensor product splines to
+  use. One of "\code{\link[mgcv]{ti}}" or
+  "\code{\link[mgcv]{t2}}", defaults to \code{ti}.
+  \code{t2}-type terms do not enforce the more suitable
+  special constraints for functional regression, see
+  Details.}
 
   \item{...}{additional arguments that are valid for
   \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}.
@@ -89,23 +93,34 @@
   \eqn{z_1}, \eqn{z_2}, etc.
 }
 \section{Details}{
-  The routine can estimate \enumerate{ \item (nonlinear,
-  and possibly multivariate) effects of (one or multiple)
-  scalar covariates \eqn{z} that vary smoothly over the
-  index \eqn{t} of \eqn{Y(t)} (e.g. \eqn{f(z_{1i}, t)},
-  specified in the \code{formula} simply as \code{~s(z1)}),
-  \item (nonlinear) effects of scalar covariates that are
-  constant over \eqn{t} (e.g. \eqn{f(z_{2i})}, specified as
-  \code{~c(s(z2))}, or \eqn{\beta_2 z_{2i}}, specified as
-  \code{~c(z2)}), \item linear functional effects of scalar
-  (numeric or factor) covariates that vary smoothly over
-  \eqn{t} (e.g. \eqn{z_{3i} \beta_3(t)}, specified as
-  \code{~z3}), \item function-on-function regression terms
-  (e.g. \eqn{\int X_i(s)\beta(s,t)ds}, specified as
-  \code{~ff(X, yindex=t, xindex=s)}, see \code{\link{ff}}).
-  } Use the \code{c()}-notation to denote model terms that
-  are constant over the index of the functional
-  response.\cr
+  The routine can estimate \enumerate{ \item linear
+  functional effects of scalar (numeric or factor)
+  covariates that vary smoothly over \eqn{t} (e.g.
+  \eqn{z_{1i} \beta_1(t)}, specified as \code{~z1}), \item
+  nonlinear, and possibly multivariate functional effects
+  of (one or multiple) scalar covariates \eqn{z} that vary
+  smoothly over the index \eqn{t} of \eqn{Y(t)} (e.g.
+  \eqn{f(z_{2i}, t)}, specified in the \code{formula}
+  simply as \code{~s(z2)}) \item (nonlinear) effects of
+  scalar covariates that are constant over \eqn{t} (e.g.
+  \eqn{f(z_{3i})}, specified as \code{~c(s(z3))}, or
+  \eqn{\beta_3 z_{3i}}, specified as \code{~c(z3)}), \item
+  function-on-function regression terms (e.g. \eqn{\int
+  X_i(s)\beta(s,t)ds}, specified as \code{~ff(X, yindex=t,
+  xindex=s)}, see \code{\link{ff}}).  Terms given by
+  \code{\link{sff}} and \code{\link{ffpc}} provide
+  nonlinear and FPC-based effects of functional covariates,
+  respectively.  \item Smooth functional random intercepts
+  \eqn{b_{0g(i)}(t)} for a grouping variable \code{g} with
+  levels \eqn{g(i)} can be specified via \code{~s(g,
+  bs="re")}), functional random slopes \eqn{u_i
+  b_{1g(i)}(t)} in a numeric variable \code{u} via
+  \code{~s(g, u, bs="re")}).  Scheipl, Staicu, Greven
+  (2013) contains code examples for modeling correlated
+  functional random intercepts using
+  \code{\link[mgcv]{mrf}}-terms.  } Use the
+  \code{c()}-notation to denote model terms that are
+  constant over the index of the functional response.\cr
 
   Internally, univariate smooth terms without a
   \code{c()}-wrapper are expanded into bivariate smooth
@@ -119,16 +134,12 @@
   varying smoothly over the index of the functional
   response. For factor variables, a separate smooth
   function with its own smoothing parameter is estimated
-  for each level of the factor.\cr Functional random
-  intercepts \eqn{B_{0g(i)}(t)} for a grouping variable
-  \code{g} can be specified via \code{~s(g, bs="re")}),
-  functional random slopes \eqn{u_i B_{1g(i)}(t)} in a
-  numeric variable \code{u} via \code{~s(g, u,
-  bs="re")}).\cr The marginal spline basis used for the
-  index of the the functional response is specified via the
-  \emph{global} argument \code{bs.yindex}. If necessary,
-  this can be overriden for any specific term by supplying
-  a \code{bs.yindex}-argument to that term in the formula,
+  for each level of the factor.\cr \cr The marginal spline
+  basis used for the index of the the functional response
+  is specified via the \emph{global} argument
+  \code{bs.yindex}. If necessary, this can be overriden for
+  any specific term by supplying a
+  \code{bs.yindex}-argument to that term in the formula,
   e.g. \code{~s(x, bs.yindex=list(bs="tp", k=7))} would
   yield a tensor product spline for which the marginal
   basis for the index of the response are 7 cubic
@@ -154,8 +165,8 @@
   (\code{'.index'}=\eqn{t}), and the observed value
   (\code{'.value'}=\eqn{Y_i(t)}). Note that the vector of
   unique sorted entries in \code{ydata$.obs} must be equal
-  to \eqn{(1, \ldots, <no. of observations>)} to ensure the
-  correct association of entries in \code{ydata} to the
+  to \code{rownames(data)} to ensure the correct
+  association of entries in \code{ydata} to the
   corresponding rows of \code{data}. For both regular and
   irregular functional responses, the model is then fitted
   with the data in long format, i.e., for data on a grid
@@ -167,41 +178,42 @@
   number of observations times number of evaluations of
   \eqn{Y(t)} per observation.\cr
 
-  Note that \code{pffr} overrides the default
+  Note that \code{pffr} does not use \code{mgcv}'s default
   identifiability constraints (\eqn{\sum_{i,t} \hat f(z_i,
-  x_i, t) = 0}) implemented in \code{mgcv} for tensor
-  product terms whose marginals include the index \eqn{t}
-  of the functional response.  Instead, \eqn{\sum_i \hat
-  f(z_i, x_i, t) = 0} for all \eqn{t} is enforced, so that
-  effects varying over \eqn{t} can be interpreted as local
-  deviations from the global functional intercept. We
+  x_i, t) = 0} or \eqn{\sum_{i,t} \hat f(x_i, t) = 0} for
+  tensor product terms whose marginals include the index
+  \eqn{t} of the functional response.  Instead, \eqn{\sum_i
+  \hat f(z_i, x_i, t) = 0} for all \eqn{t} is enforced, so
+  that effects varying over \eqn{t} can be interpreted as
+  local deviations from the global functional intercept.
+  This is achieved by using \code{\link[mgcv]{ti}}-terms
+  with a suitably modified \code{mc}-argument. Note that
+  this is not possible if \code{algorithm='gamm4'} since
+  only \code{t2}-type terms can then be used and these
+  modified constraints are not available for \code{t2}. We
   recommend using centered scalar covariates for terms like
   \eqn{z \beta(t)} (\code{~z}) and centered functional
   covariates with \eqn{\sum_i X_i(t) = 0} for all \eqn{t}
   in \code{ff}-terms so that the global functional
   intercept can be interpreted as the global mean function.
-  For irregular or sparse \eqn{Y_i(t)} supplied via
-  \code{ydata} it is not trivial to specify these custom
-  constraints. They are enforced on the synthetic grid of
-  \eqn{t}-values returned in the \code{pffr$yind} entry of
-  the return object.
 }
 \examples{
 ###############################################################################
 # univariate model:
 # Y(t) = f(t)  + \\int X1(s)\\beta(s,t)ds + eps
-data1 <- pffrSim(scenario="ff")
+set.seed(2121)
+data1 <- pffrSim(scenario="ff", n=40)
 t <- attr(data1, "yindex")
 s <- attr(data1, "xindex")
-m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
+m1 <- pffr(Y ~ ff(X1, xind=s) + ff(X2, xind=s), yind=t, data=data1)
 summary(m1)
-plot(m1, pers=TRUE)
+plot(m1, pers=TRUE, pages=1)
 
 \dontrun{
 ###############################################################################
 # multivariate model:
 # Y(t) = f0(t)  + \\int X1(s)\\beta1(s,t)ds + \\int X2(s)\\beta2(s,t)ds +
-#		xlin \\beta3(t) + f1(xte1, xte2) + f2(xsmoo, t) + beta4 xconst + eps
+#  	xlin \\beta3(t) + f1(xte1, xte2) + f2(xsmoo, t) + beta4 xconst + eps
 data2 <- pffrSim(scenario="all", n=200)
 t <- attr(data2, "yindex")
 s <- attr(data2, "xindex")
@@ -215,20 +227,24 @@ m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
         data=data2)
 summary(m2)
 plot(m2, pers=TRUE)
+str(coef(m2))
+# convenience functions:
+preddata <- pffrSim(scenario="all", n=20)
+str(predict(m2, newdata=preddata))
+str(predict(m2, type="terms"))
+cm2 <- coef(m2)
+cm2$pterms
+str(cm2$smterms, 2)
+str(cm2$smterms[["s(xsmoo)"]]$coef)
 
 #############################################################################
-# sparse data (keep only 20\% of function evaluations):
-set.seed(121456)
-ydata1 <- data.frame(cbind(.obs=as.vector(row(data1$Y)),
-                           .index=rep(attr(data1, "yindex"), e=nrow(data1)),
-                           .value=as.vector(data1$Y)))
-ydata1 <- ydata1[sample(1:nrow(ydata1), 0.2*nrow(ydata1)), ]
-
-s <- attr(data1, "xindex")
-t <- attr(data1, "yindex")
-m1.sparse <- pffr(Y ~ ff(X1, xind=s), data=data1, ydata=ydata1, yind=t)
-summary(m1.sparse)
-plot(m1.sparse, pers=TRUE)
+# sparse data (80\% missing on a regular grid):
+set.seed(88182004)
+data3 <- pffrSim(scenario=c("int", "smoo"), n=100, propmissing=0.8)
+t <- attr(data3, "yindex")
+m3.sparse <- pffr(Y ~ s(xsmoo), data=data3$data, ydata=data3$ydata, yind=t)
+summary(m3.sparse)
+plot(m3.sparse, pers=TRUE, pages=1)
 }
 }
 \author{
@@ -236,12 +252,12 @@ plot(m1.sparse, pers=TRUE)
 }
 \references{
   Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S.
-  (2012).  Penalized function-on-function regression.
+  (2013).  Penalized function-on-function regression.
   (under revision)
-  \url{http://biostats.bepress.com/jhubiostat/paper240/}
+  \url{http://biostats.bepress.com/jhubiostat/paper254/}
 
-  Scheipl, F., Staicu, A.-M. and Greven, S. (2012).
-  Functional Additive Mixed Models.  (submitted)
+  Scheipl, F., Staicu, A.-M. and Greven, S. (2013).
+  Functional Additive Mixed Models.  (under revision)
   \url{http://arxiv.org/abs/1207.5947}
 }
 \seealso{

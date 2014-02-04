@@ -1,7 +1,7 @@
 Package: refundDevel
 Type: Package
 Title: developer version of refund: Regression with Functional Data
-Version: 0.2-7
+Version: 0.3-0
 Date: 2013-07-04
 Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     "ccrainic@jhsph.edu"), person("Philip Reiss", role = "aut", email =
@@ -14,27 +14,30 @@ Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     person("Jaroslaw Harezlak", role="ctb"), person("Madan Gopal Kundu",
     role="ctb"), person("Yihong Zhao", role="ctb"), person("Matt McLean",
     role="ctb"), person("Luo Xiao", role="ctb", email = "lxiao@jhsph.edu"))
-Author: Ciprian Crainiceanu [aut], Philip Reiss [aut], Jeff Goldsmith [aut], Lei Huang [aut, cre], Lan Huo [aut], Fabian Scheipl [aut], Bruce Swihart [ctb], Sonja Greven [ctb], Jaroslaw Harezlak [ctb], Madan Gopal Kundu [ctb], Yihong Zhao [ctb], Matt McLean [ctb], Luo Xiao [ctb]
-Maintainer:  Lei Huang <huangracer@gmail.com>
+Author: Ciprian Crainiceanu [aut], Philip Reiss [aut], Jeff Goldsmith [aut],
+    Lei Huang [aut, cre], Lan Huo [aut], Fabian Scheipl [aut], Bruce Swihart
+    [ctb], Sonja Greven [ctb], Jaroslaw Harezlak [ctb], Madan Gopal Kundu
+    [ctb], Yihong Zhao [ctb], Matt McLean [ctb], Luo Xiao [ctb]
+Maintainer: Lei Huang <huangracer@gmail.com>
 Depends:
     R (>= 2.14.0),
 Imports:
-  lattice,
-  boot,
-  mgcv (>= 1.7-27),
-  fda,
-  MASS,
-  glmnet,
-  magic,
-  nlme,
-  wavethresh,
-  Matrix,
-  gamm4,
-  matrixStats,
-  lme4,
-  splines,
-  RLRsim
-Description: developer version of refund. Methods for regression for functional
+    lattice,
+    boot,
+    mgcv (>= 1.7-28),
+    fda,
+    MASS,
+    glmnet,
+    magic,
+    nlme,
+    wavethresh,
+    Matrix,
+    gamm4,
+    matrixStats,
+    lme4,
+    splines,
+    RLRsim
+Description: Developer version of refund. Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to
     image data.
