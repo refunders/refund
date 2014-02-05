@@ -224,7 +224,7 @@ pffr <- function(
   
   if(sparseOrNongrid){
     nobs <- length(unique(ydata$.obs))
-    stopifnot(all(sort(unique(ydata$.obs)) == 1:nobs))
+    stopifnot(all(ydata$.obs %in% rownames(data)))
     
     #works for data-lists or matrix-valued covariates as well:
     nobs.data <- nrow(as.matrix(data[[1]])) 
@@ -308,7 +308,7 @@ pffr <- function(
     stackpattern <- rep(1:nobs, each=nyindex)
     
   } else {
-    stopifnot(all(ydata$.obs %in% rownames(data)))
+    
     
     yindname <- "yindex"
     yindvec <- ydata$.index
