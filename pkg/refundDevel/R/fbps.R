@@ -1,5 +1,5 @@
 fbps <-
-function(data, covariates = NULL, knots=35, p=3,m=2,lambda=NULL,
+function(data, covariates = NULL, knots=35, p=3,m=2,lambda=NULL,alpha=1,
          search.grid = T, search.length = 100, method="L-BFGS-B",
          lower= -20, upper=20, control=NULL){
 
@@ -109,7 +109,7 @@ sigma.2 = sqrt(sigma)
 
 gcv = Y_sum + sum((ytilde*sigma)^2) - 2*sum((ytilde*sigma.2)^2)
 trace = sum(1/(1+lambda1*s1))*sum(1/(1+lambda2*s2))
-gcv = gcv/(1-trace/(n1*n2))^2
+gcv = gcv/(1-alpha*trace/(n1*n2))^2
 return(gcv)
 }
 
@@ -133,7 +133,7 @@ sigma.2 = sqrt(sigma)
 
 gcv = Y_sum + sum((ytilde*sigma)^2) - 2*sum((ytilde*sigma.2)^2)
 trace = sum(1/(1+lambda1*s1))*sum(1/(1+lambda2*s2))
-gcv = gcv/(1-trace/(n1*n2))^2
+gcv = gcv/(1-alpha*trace/(n1*n2))^2
 
 Theta = Sigi1_sqrt%*%U1%*%diag(1/(1+lambda1*s1))%*%Ytilde
 Theta = as.matrix(Theta%*%diag(1/(1+lambda2*s2))%*%t(U2)%*%Sigi2_sqrt)

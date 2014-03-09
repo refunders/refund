@@ -10,7 +10,7 @@ at the data level is used for selecting the smoothing parameter.
 \usage{
 fpca.face(Y, Y.pred=NULL, center = TRUE, argvals = NULL, 
           knots = 35, p = 3, m = 2, lambda = NULL,pve = 0.99, 
-          npc=NULL,score.method = "int", search.grid = TRUE, 
+          npc=NULL,alpha = 1, score.method = "int", search.grid = TRUE,
           search.length = 100, method = "L-BFGS-B", lower = -20, 
           upper = 20, control = NULL)
 }
@@ -43,6 +43,9 @@ percentage of variance explained for selecting the number of principal component
 }
   \item{npc}{
 number of extracted principal components; defaults to NULL and use \code{pve}.
+  }
+  \item{alpha}{
+  the coefficient of the penalty for degrees of freedom in the GCV criterion; defaults to 1
   }
   \item{score.method}{
 method for predicting scores; \code{"int"} (the default) for numerical integration, or \code{"blup"} for best linear unbiased prediction.

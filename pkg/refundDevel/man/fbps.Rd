@@ -8,7 +8,7 @@ A fast bivariate \emph{P}-spline method for smoothing matrix data.
 }
 \usage{
 fbps(data, covariates = NULL, knots = 35, p = 3, m = 2, lambda = NULL, 
-     search.grid = T, search.length = 100, method = "L-BFGS-B",
+     alpha = 1, search.grid = T, search.length = 100, method = "L-BFGS-B",
      lower = -20, upper = 20, control = NULL)
 }
 
@@ -30,6 +30,9 @@ order of differencing penalty; defaults to 2
 }
   \item{lambda}{
 user-specified smoothing parameters; defaults to NULL
+}
+\item{alpha}{
+the coefficient of the penalty for degrees of freedom in the GCV criterion; defaults to 1
 }
   \item{search.grid}{
 logical; defaults to TRUE, if FALSE, uses \command{optim}
