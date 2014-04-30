@@ -27,6 +27,7 @@
 \alias{waveletSetup}
 \alias{pspline.setting}
 \alias{waveletGetCV}
+\alias{irreg2mat}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Internal functions for the refund package

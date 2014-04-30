@@ -59,7 +59,7 @@ Collate:
     'fosr.perm.fit.R'
     'fosr.perm.test.R'
     'fosr2s.R'
-    'fpca.sc.R'
+    'fpca.sc.r'
     'fpca.face.R'
     'fpcr.R'
     'fpcr.setup.R'
@@ -105,3 +105,4 @@ Collate:
     'preprocess.pfr.R'
     'wUtil.R'
     'plot.wnet-and-plot.wcr.R'
+    'irreg2mat.R'
