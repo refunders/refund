@@ -21,6 +21,12 @@
 #'   specified as \code{~ff(X, yindex=t, xindex=s)}, see \code{\link{ff}}). 
 #'   Terms given by \code{\link{sff}} and \code{\link{ffpc}} provide nonlinear 
 #'   and FPC-based effects of functional covariates, respectively.
+#'  \item concurrent effects of functional covariates \code{X} measured on the same grid as the
+#'   response  are specified as follows: 
+#'   \code{~s(x)} for a smooth, index-varying effect \eqn{f(X(t),t)},
+#'   \code{~x} for a linear index-varying effect \eqn{X(t)\beta(t)},  
+#'   \code{~c(s(x))} for a constant nonlinear effect \eqn{f(X(t))}, \code{~c(x)} for a 
+#'   constant linear effect \eqn{X(t)\beta}.
 #'  \item Smooth functional random intercepts \eqn{b_{0g(i)}(t)} for a grouping variable
 #'   \code{g} with levels \eqn{g(i)} can be specified via \code{~s(g, bs="re")}), functional random slopes 
 #'   \eqn{u_i b_{1g(i)}(t)} in a numeric variable \code{u} via \code{~s(g, u, bs="re")}).
@@ -187,7 +193,7 @@ pffr <- function(
     validDots <- if(!is.na(algorithm) && algorithm=="gamm4"){
       c(names(formals(gamm4)), names(formals(lmer)))         
     } else {
-      c(names(formals(gam)), names(formals(gam.fit)))
+        c(names(formals(gam)), names(formals(bam)), names(formals(gam.fit))) 
     }
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
     if(length(notUsed))
@@ -542,13 +548,13 @@ pffr <- function(
     }
     
     if("xt" %in% names(x)){
-      # xt has to be supplied as a list, with length(x$d) entries,
-      # each of which is a list or NULL:
-      stopifnot(x$xt[[1]]==as.symbol("list") && 
-                  # =length(x$d)+1, since first element in parse tree is 'list'
-                  all(sapply(2:length(x$xt), function(i) 
-                    x$xt[[i]][[1]] == as.symbol("list") ||
-                      is.null(eval(x$xt[[i]][[1]])))))
+#       # xt has to be supplied as a list, with length(x$d) entries,
+#       # each of which is a list or NULL:
+#       stopifnot(x$xt[[1]]==as.symbol("list") && 
+#                   # =length(x$d)+1, since first element in parse tree is 'list'
+#                   all(sapply(2:length(x$xt), function(i) 
+#                     x$xt[[i]][[1]] == as.symbol("list") ||
+#                       is.null(eval(x$xt[[i]][[1]])))))
       xnew$xt <- x$xt 
     }  
     
@@ -599,10 +605,18 @@ pffr <- function(
              
              
              sapply(nms, function(nm){
-               stopifnot(length(get(nm, envir=evalenv)) == nobs)
-               assign(x=nm, 
-                      value=get(nm, envir=evalenv)[stackpattern],
-                      envir=newfrmlenv)	
+               var <- get(nm, envir=evalenv)
+               if(is.matrix(var)){
+                   stopifnot(!sparseOrNongrid || ncol(var) == nyindex)
+                   assign(x=nm, 
+                          value=as.vector(t(var)),
+                          envir=newfrmlenv)
+               } else {
+                   stopifnot(length(var) == nobs)
+                   assign(x=nm, 
+                          value=var[stackpattern],
+                          envir=newfrmlenv)
+               }      
                invisible(NULL)
              })
              invisible(NULL)
@@ -615,14 +629,44 @@ pffr <- function(
   
   newcall <- expand.call(pffr, call)
   newcall$yind <- newcall$tensortype <- newcall$bs.int <-
-    newcall$bs.yindex <- newcall$algorithm <- NULL
+    newcall$bs.yindex <- newcall$algorithm <- newcall$ydata <- NULL
   newcall$formula <- newfrml
   newcall$data <- quote(pffrdata)
   newcall[[1]] <- algorithm
   # make sure ...-args are taken from ..., not GlobalEnv:
   dotargs <- names(newcall)[names(newcall) %in% names(dots)]	 	
   newcall[dotargs] <- dots[dotargs]
-  
+  if("weights" %in% dotargs){
+    wtsdone <- FALSE
+    if(length(dots$weights) == nobs){
+        newcall$weights <- dots$weights[stackpattern] 
+        wtsdone <- TRUE
+    } 
+    if(!is.null(dim(dots$weights)) && dim(dots$weights) == c(nobs, nyindex)){
+        newcall$weights <- as.vector(t(dots$weights))
+        wtsdone <- TRUE
+    }
+    if(!wtsdone){
+        stop("weights have to be supplied as a vector with length=rows(data) or 
+               a matrix with the same dimensions as the response.")
+    }
+  }
+  if("offset" %in% dotargs){
+    ofstdone <- FALSE
+    if(length(dots$offset) == nobs){
+        newcall$offset <- dots$offset[stackpattern] 
+        ofstdone <- TRUE
+    } 
+    if(!is.null(dim(dots$offset)) && dim(dots$offset) == c(nobs, nyindex)){
+        newcall$offset <- as.vector(t(dots$offset))
+        ofstdone <- TRUE
+    }
+    if(!ofstdone){
+        stop("offsets have to be supplied as a vector with length=rows(data) or 
+             a matrix with the same dimensions as the response.")
+    }
+  }
+
   # call algorithm to estimate model
   m <- eval(newcall)
   m.smooth <- if(as.character(algorithm) %in% c("gamm4","gamm")){
