@@ -6,7 +6,7 @@
 #'    extract is not specified, the function hazards a guess for the appropriate number based 
 #'    on the asymptotically optimal truncation threshold under the assumption of a low rank matrix 
 #'    contaminated with i.i.d. Gaussian noise with unknown variance derived in Donoho, Gavish (2013).
-#'  Please note that Donoho, Gavish (2013) should be regarded as experimental for functional FPCA, and will typically not work well if you have more observations than grid points.  
+#'  Please note that Donoho, Gavish (2013) should be regarded as experimental for functional PCA, and will typically not work well if you have more observations than grid points.  
 #'   
 #'    @param Y data matrix (rows: observations; columns: grid of eval. points)
 #'    @param npc how many smooth SVs to try to extract, if \code{NA} (the default) the hard thresholding
@@ -187,12 +187,12 @@ fpca.ssvd <- function(Y, npc=NA, center=TRUE,
                     ylim=range(Y), main=bquote(Y - Y[.(k)]), xlab="", ylab="", bty="n")
         }
         
-        Ynow <- Ynow - U[,k, drop=FALSE]%*%(t(V[,k, drop=FALSE])*d[k])
+        Ynow <- Ynow - U[, k, drop=FALSE] %*% (t(V[, k, drop=FALSE]) * d[k])
         noisesv <- svd(Ynow, nu=0, nv=0)$d[1]
         if(verbose){
             cat("k:",k, "-- smooth:", d[k], "-- 'noise':", noisesv, "-- alpha:", minalpha, "\n")  
         }   
-        if(noisesv > 1.1*d[k]){
+        if(noisesv > 1.1 * d[k]){
             uhoh <- c(uhoh, k)
         } 
     }# end for(k)
@@ -246,6 +246,6 @@ getNPC.DonohoGavish <- function(X){
   rankY <- min(which(cumsum(y[y>0])/sum(y[y>0]) > .995))
   y.med <- median(y)
   
-  npc <- min(max(1, sum(y > omega.beta*y.med)),  rankY)
+  npc <- min(max(1, sum(y > omega.beta * y.med)),  rankY)
   return(npc)
 }
