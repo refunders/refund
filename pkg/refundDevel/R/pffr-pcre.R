@@ -29,14 +29,14 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots){
     object$side.constrain <- FALSE
     object$plot.me <- TRUE
     object$te.ok <- 2
-    class(object) <- "random.effect"
+    class(object) <- c("pcre.random.effect", "random.effect")
     object
 }
 
 
-#' pffr-constructor for functional principal component-based functional random effects.
+#' pffr-constructor for functional principal component-based functional random intercepts.
 #' 
-#' @section Details: Fits functional random effects \eqn{B_i(t)} for a grouping variable \code{id} 
+#' @section Details: Fits functional random intercepts \eqn{B_i(t)} for a grouping variable \code{id} 
 #' using as a basis the functions \eqn{\phi_m(t)} in \code{efunctions} with variances \eqn{\lambda_m} in \code{evalues}:
 #' \eqn{B_i(t) \approx \sum_m^M \phi_m(t)\delta_{im}} with  
 #' independent \eqn{\delta_{im} \sim N(0, \sigma^2\lambda_m)}, where \eqn{\sigma^2}

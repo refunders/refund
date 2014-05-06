@@ -1,4 +1,4 @@
-# methods for pffr-objects
+0# methods for pffr-objects
 # 
 # 
 # Author: fabians
@@ -457,8 +457,8 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
             
             makeDataGrid <- function(trm){
                 #generate grid of values in range of original data
-                if(trm$dim==1){
-                    x <- get.var(trm$term, object$model)
+                x <- get.var(trm$term[1], object$model)
+                if(trm$dim==1) {
                     xg <- if(is.factor(x)) {
                         unique(x)
                     } else seq(min(x), max(x), length=n1)
@@ -466,37 +466,63 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
                     colnames(d) <- trm$term
                     attr(d, "xm") <- xg
                 }
-                if(trm$dim > 1){
-                    
-                    ng <- ifelse(trm$dim==2, n2, n3) 
-                    
-                    varnms <- trm$term
-                    
-                    x <- get.var(trm$term[1], object$model)
+                if(is.pcre) {
+                    ng <- n2
                     xg <- if(is.factor(x)) {
                         unique(x)
                     } else seq(min(x), max(x),length=ng)
-                    y <- get.var(trm$term[2], object$model)
-                    yg <- if(is.factor(y)) {
-                        unique(y)
-                    } else seq(min(y), max(y),length=ng)
-                    if(length(varnms)==2){
-                        d <- expand.grid(xg, yg)
-                        attr(d, "xm") <- xg
-                        attr(d, "ym") <- yg    
-                    } else {
-                        z <- get.var(trm$term[3], object$model)
-                        zg <- if(is.factor(z)) {
-                            unique(z)
-                        } else seq(min(z), max(z), length=ng)
-                        d <- expand.grid(xg, yg, zg)
-                        attr(d, "xm") <- xg
-                        attr(d, "ym") <- yg
-                        attr(d, "zm") <- zg
-                    }
-                    colnames(d) <- varnms 
                     
-                }
+                    which.pcre <- which(sapply(object$pffr$pcreterms, `[[`, "idname") 
+                                        == trm$term[1])
+                    pcreterm <- object$pffr$pcreterms[[which.pcre]] 
+                    
+                    yg <- seq(min(pcreterm$yind), max(pcreterm$yind), l=ng)
+                    
+                    # interpolate given eigenfunctions to grid values:
+                    efcts.grid <- sapply(colnames(pcreterm$efunctions), 
+                                         function(nm){
+                                             approx(x=pcreterm$yind, 
+                                                    y=pcreterm$efunctions[, nm], 
+                                                    xout=yg,
+                                                    method = "linear")$y
+                                         })
+                    d <- cbind(expand.grid(xg, yg), 
+                               efcts.grid[rep(1:ng, e=length(xg)),])
+                    colnames(d)[1:2] <- c(trm$term[1], 
+                                          paste0(object$pffr$yindname, ".vec"))
+                    attr(d, "xm") <- xg
+                    attr(d, "ym") <- yg   
+                } else {
+                    if(trm$dim > 1) {
+                        ng <- ifelse(trm$dim==2, n2, n3) 
+                        
+                        varnms <- trm$term
+                        
+                        x <- get.var(trm$term[1], object$model)
+                        xg <- if(is.factor(x)) {
+                            unique(x)
+                        } else seq(min(x), max(x),length=ng)
+                        y <- get.var(trm$term[2], object$model)
+                        yg <- if(is.factor(y)) {
+                            unique(y)
+                        } else seq(min(y), max(y),length=ng)
+                        if(length(varnms)==2){
+                            d <- expand.grid(xg, yg)
+                            attr(d, "xm") <- xg
+                            attr(d, "ym") <- yg    
+                        } else {
+                            z <- get.var(trm$term[3], object$model)
+                            zg <- if(is.factor(z)) {
+                                unique(z)
+                            } else seq(min(z), max(z), length=ng)
+                            d <- expand.grid(xg, yg, zg)
+                            attr(d, "xm") <- xg
+                            attr(d, "ym") <- yg
+                            attr(d, "zm") <- zg
+                        }
+                        colnames(d) <- varnms 
+                    }
+                } 
                 if(trm$by!="NA"){
                     d$by <- 1
                     colnames(d) <- c(head(colnames(d),-1), trm$by)
@@ -507,18 +533,26 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
             getP <- function(trm, d){
                 #return an object similar to what plot.mgcv.smooth etc. return 
                 X <- PredictMat(trm, d)
+                
+                if(is.pcre){
+                    #sloppy, buit effective: temporarily overwrite offending entries
+                    trm$dim <- 2
+                    trm$term[2] <- paste0(object$pffr$yindname, ".vec")
+                }
+                
                 P <- if(trm$dim==1){
                     list(x=attr(d, "xm"), xlab=trm$term, xlim=safeRange(attr(d, "xm")))
                 } else {
                     varnms <-  trm$term
-                    if(length(varnms) == 2){
+                    if(trm$dim==2){
                         list(x=attr(d, "xm"), y=attr(d, "ym"), xlab=varnms[1], ylab=varnms[2],
                              ylim=safeRange(attr(d, "ym")), xlim=safeRange(attr(d, "xm")))
                     } else {
                         if(trm$dim==3){
                             list(x=attr(d, "xm"), y=attr(d, "ym"), z=attr(d, "zm"), 
                                  xlab=varnms[1], ylab=varnms[2], zlab=varnms[3],
-                                 ylim=safeRange(attr(d, "ym")), xlim=safeRange(attr(d, "xm")), zlim=safeRange(attr(d, "zm")))
+                                 ylim=safeRange(attr(d, "ym")), xlim=safeRange(attr(d, "xm")), 
+                                 zlim=safeRange(attr(d, "zm")))
                         }
                     }
                 }
@@ -545,7 +579,10 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
             }
             
             trm <- object$smooth[[i]]
-            if(trm$dim > 3){
+            is.pcre <- "pcre.random.effect" %in% class(trm)
+            
+            #FIXME: this fails for pcre-terms with >2 FPCs...!
+            if(trm$dim > 3 && !is.pcre){
                 warning("can't deal with smooths with more than 3 dimensions, returning NULL for ", 
                         shrtlbls[names(object$smooth)[i] == unlist(object$pffr$labelmap)])
                 return(NULL)
