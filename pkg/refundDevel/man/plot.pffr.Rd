@@ -2,7 +2,7 @@
 \alias{plot.pffr}
 \title{Plot a pffr fit}
 \usage{
-  \method{plot}{pffr} (x, ...)
+\method{plot}{pffr}(x, ...)
 }
 \arguments{
   \item{x}{a fitted \code{pffr}-object}
@@ -11,13 +11,13 @@
   \code{\link[mgcv]{plot.gam}}}
 }
 \value{
-  This function only generates plots.
+This function only generates plots.
 }
 \description{
-  Plot a fitted pffr-object. Simply dispatches to
-  \code{\link[mgcv]{plot.gam}}.
+Plot a fitted pffr-object. Simply dispatches to
+\code{\link[mgcv]{plot.gam}}.
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 

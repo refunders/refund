@@ -1,8 +1,8 @@
 \name{pcre}
 \alias{pcre}
-\title{pffr-constructor for functional principal component-based functional random effects.}
+\title{pffr-constructor for functional principal component-based functional random intercepts.}
 \usage{
-  pcre(id, efunctions, evalues, yind, ...)
+pcre(id, efunctions, evalues, yind, ...)
 }
 \arguments{
   \item{id}{grouping variable a factor}
@@ -20,15 +20,15 @@
   \item{...}{not used}
 }
 \value{
-  a list used internally for constructing an appropriate
-  call to \code{mgcv::gam}
+a list used internally for constructing an appropriate call
+to \code{mgcv::gam}
 }
 \description{
-  pffr-constructor for functional principal component-based
-  functional random effects.
+pffr-constructor for functional principal component-based
+functional random intercepts.
 }
 \section{Details}{
-  Fits functional random effects \eqn{B_i(t)} for a
+  Fits functional random intercepts \eqn{B_i(t)} for a
   grouping variable \code{id} using as a basis the
   functions \eqn{\phi_m(t)} in \code{efunctions} with
   variances \eqn{\lambda_m} in \code{evalues}: \eqn{B_i(t)
@@ -90,6 +90,6 @@ lines(t, int[1,], col=rgb(1,0,0,.5))
 }
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 

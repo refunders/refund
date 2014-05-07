@@ -2,7 +2,7 @@
 \alias{fitted.pffr}
 \title{Obtain fitted values for a pffr fit}
 \usage{
-  \method{fitted}{pffr} (object, reformat = TRUE, ...)
+\method{fitted}{pffr}(object, reformat = TRUE, ...)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-object}
@@ -17,15 +17,14 @@
   \item{...}{not used}
 }
 \value{
-  A matrix (grid data) or \code{data.frame}
-  (sparse/irregular data) or vector (if \code{!reformat})
-  of fitted values
+A matrix (grid data) or \code{data.frame} (sparse/irregular
+data) or vector (if \code{!reformat}) of fitted values
 }
 \description{
-  Returns the linear predictor for the model data. See
-  \code{\link{predict.pffr}} for alternative options.
+Returns the linear predictor for the model data. See
+\code{\link{predict.pffr}} for alternative options.
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 

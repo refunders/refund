@@ -2,9 +2,9 @@
 \alias{ffpcplot}
 \title{Plot PC-based function-on-function regression terms}
 \usage{
-  ffpcplot(object, type = c("fpc+surf", "surf", "fpc"),
-    pages = 1, se.mult = 2, ticktype = "detailed",
-    theta = 30, phi = 30, plot = TRUE, auto.layout = TRUE)
+ffpcplot(object, type = c("fpc+surf", "surf", "fpc"), pages = 1,
+  se.mult = 2, ticktype = "detailed", theta = 30, phi = 30,
+  plot = TRUE, auto.layout = TRUE)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-model}
@@ -39,12 +39,12 @@
   layout automatically? Defaults to TRUE}
 }
 \value{
-  primarily produces plots, invisibly returns a list
-  containing the data used for the plots.
+primarily produces plots, invisibly returns a list
+containing the data used for the plots.
 }
 \description{
-  Convenience function for graphical summaries of
-  \code{ffpc}-terms from a \code{pffr} fit.
+Convenience function for graphical summaries of
+\code{ffpc}-terms from a \code{pffr} fit.
 }
 \examples{
 \dontrun{
@@ -52,6 +52,6 @@
 }
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 

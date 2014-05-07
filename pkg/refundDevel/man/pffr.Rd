@@ -2,11 +2,9 @@
 \alias{pffr}
 \title{Penalized function-on-function regression}
 \usage{
-  pffr(formula, yind, data = NULL, ydata = NULL,
-    algorithm = NA, method = "REML",
-    tensortype = c("ti", "t2"),
-    bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
-    bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
+pffr(formula, yind, data = NULL, ydata = NULL, algorithm = NA,
+  method = "REML", tensortype = c("ti", "t2"), bs.yindex = list(bs = "ps",
+  k = 5, m = c(2, 1)), bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
 }
 \arguments{
   \item{formula}{a formula with special terms as for
@@ -73,24 +71,23 @@
   \code{weights, subset, offset} are not yet implemented!}
 }
 \value{
-  a fitted \code{pffr}-object, which is a
-  \code{\link[mgcv]{gam}}-object with some additional
-  information in an \code{pffr}-entry. If \code{algorithm}
-  is \code{"gamm"} or \code{"gamm4"}, only the \code{$gam}
-  part of the returned list is modified in this way.
+a fitted \code{pffr}-object, which is a
+\code{\link[mgcv]{gam}}-object with some additional
+information in an \code{pffr}-entry. If \code{algorithm} is
+\code{"gamm"} or \code{"gamm4"}, only the \code{$gam} part
+of the returned list is modified in this way.
 }
 \description{
-  Implements additive regression for functional and scalar
-  covariates and functional responses. This function is a
-  wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its
-  siblings to fit models of the general form \cr
-  \eqn{E(Y_i(t)) = g(\mu(t) + \int X_i(s)\beta(s,t)ds +
-  f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots
-  )}\cr with a functional (but not necessarily continuous)
-  response \eqn{Y(t)}, response function \eqn{g},
-  (optional) smooth intercept \eqn{\mu(t)}, (multiple)
-  functional covariates \eqn{X(t)} and scalar covariates
-  \eqn{z_1}, \eqn{z_2}, etc.
+Implements additive regression for functional and scalar
+covariates and functional responses. This function is a
+wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its
+siblings to fit models of the general form \cr
+\eqn{E(Y_i(t)) = g(\mu(t) + \int X_i(s)\beta(s,t)ds +
+f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots )}\cr
+with a functional (but not necessarily continuous) response
+\eqn{Y(t)}, response function \eqn{g}, (optional) smooth
+intercept \eqn{\mu(t)}, (multiple) functional covariates
+\eqn{X(t)} and scalar covariates \eqn{z_1}, \eqn{z_2}, etc.
 }
 \section{Details}{
   The routine can estimate \enumerate{ \item linear
@@ -110,10 +107,17 @@
   xindex=s)}, see \code{\link{ff}}).  Terms given by
   \code{\link{sff}} and \code{\link{ffpc}} provide
   nonlinear and FPC-based effects of functional covariates,
-  respectively.  \item Smooth functional random intercepts
-  \eqn{b_{0g(i)}(t)} for a grouping variable \code{g} with
-  levels \eqn{g(i)} can be specified via \code{~s(g,
-  bs="re")}), functional random slopes \eqn{u_i
+  respectively.  \item concurrent effects of functional
+  covariates \code{X} measured on the same grid as the
+  response are specified as follows: \code{~s(x)} for a
+  smooth, index-varying effect \eqn{f(X(t),t)}, \code{~x}
+  for a linear index-varying effect \eqn{X(t)\beta(t)},
+  \code{~c(s(x))} for a constant nonlinear effect
+  \eqn{f(X(t))}, \code{~c(x)} for a constant linear effect
+  \eqn{X(t)\beta}.  \item Smooth functional random
+  intercepts \eqn{b_{0g(i)}(t)} for a grouping variable
+  \code{g} with levels \eqn{g(i)} can be specified via
+  \code{~s(g, bs="re")}), functional random slopes \eqn{u_i
   b_{1g(i)}(t)} in a numeric variable \code{u} via
   \code{~s(g, u, bs="re")}).  Scheipl, Staicu, Greven
   (2013) contains code examples for modeling correlated
@@ -248,21 +252,20 @@ plot(m3.sparse, pers=TRUE, pages=1)
 }
 }
 \author{
-  Fabian Scheipl, Sonja Greven
+Fabian Scheipl, Sonja Greven
 }
 \references{
-  Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S.
-  (2013).  Penalized function-on-function regression.
-  (under revision)
-  \url{http://biostats.bepress.com/jhubiostat/paper254/}
+Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S.
+(2013).  Penalized function-on-function regression. (under
+revision)
+\url{http://biostats.bepress.com/jhubiostat/paper254/}
 
-  Scheipl, F., Staicu, A.-M. and Greven, S. (2013).
-  Functional Additive Mixed Models.  (under revision)
-  \url{http://arxiv.org/abs/1207.5947}
+Scheipl, F., Staicu, A.-M. and Greven, S. (2013).
+Functional Additive Mixed Models.  (under revision)
+\url{http://arxiv.org/abs/1207.5947}
 }
 \seealso{
-  \code{\link[mgcv]{smooth.terms}} for details of
-  \code{mgcv} syntax and available spline bases and
-  penalties.
+\code{\link[mgcv]{smooth.terms}} for details of \code{mgcv}
+syntax and available spline bases and penalties.
 }
 

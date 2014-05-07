@@ -2,11 +2,10 @@
 \alias{coefboot.pffr}
 \title{Simple bootstrap CIs for pffr}
 \usage{
-  coefboot.pffr(object, n1 = 100, n2 = 40, n3 = 20,
-    B = 100, ncpus = getOption("boot.ncpus", 1),
-    parallel = c("no", "multicore", "snow"), cl = NULL,
-    conf = c(0.9, 0.95), type = "percent",
-    method = "resample", showProgress = TRUE, ...)
+coefboot.pffr(object, n1 = 100, n2 = 40, n3 = 20, B = 100,
+  ncpus = getOption("boot.ncpus", 1), parallel = c("no", "multicore",
+  "snow"), cl = NULL, conf = c(0.9, 0.95), type = "percent",
+  method = "resample", showProgress = TRUE, ...)
 }
 \arguments{
   \item{object}{a fitted \code{\link{pffr}}-model}
@@ -43,21 +42,21 @@
   \item{...}{not used}
 }
 \value{
-  a list with similar structure as the return value of
-  \code{\link{coef.pffr}}, containing the original point
-  estimates of the various terms along with their bootstrap
-  CIs.
+a list with similar structure as the return value of
+\code{\link{coef.pffr}}, containing the original point
+estimates of the various terms along with their bootstrap
+CIs.
 }
 \description{
-  This function resamples observations in the data set to
-  obtain approximate CIs for different terms and
-  coefficient functions that correct for the effects of
-  dependency and heteroskedasticity of the residuals along
-  the index of the functional response, i.e., it aims for
-  correct inference if the residuals along the index of the
-  functional response are not i.i.d.
+This function resamples observations in the data set to
+obtain approximate CIs for different terms and coefficient
+functions that correct for the effects of dependency and
+heteroskedasticity of the residuals along the index of the
+functional response, i.e., it aims for correct inference if
+the residuals along the index of the functional response
+are not i.i.d.
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 

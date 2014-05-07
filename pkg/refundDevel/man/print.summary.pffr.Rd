@@ -2,9 +2,8 @@
 \alias{print.summary.pffr}
 \title{Print method for summary of a pffr fit}
 \usage{
-  \method{print}{summary.pffr} (x,
-    digits = max(3, getOption("digits") - 3),
-    signif.stars = getOption("show.signif.stars"), ...)
+\method{print}{summary.pffr}(x, digits = max(3, getOption("digits") - 3),
+  signif.stars = getOption("show.signif.stars"), ...)
 }
 \arguments{
   \item{x}{a fitted \code{pffr}-object}
@@ -18,15 +17,15 @@
   \item{...}{not used}
 }
 \value{
-  A \code{\link{summary.pffr}} object
+A \code{\link{summary.pffr}} object
 }
 \description{
-  Pretty printing for a \code{summary.pffr}-object. See
-  \code{\link[mgcv]{print.summary.gam}()} for details.
+Pretty printing for a \code{summary.pffr}-object. See
+\code{\link[mgcv]{print.summary.gam}()} for details.
 }
 \author{
-  Fabian Scheipl, adapted from
-  \code{\link[mgcv]{print.summary.gam}()} by Simon Wood,
-  Henric Nilsson
+Fabian Scheipl, adapted from
+\code{\link[mgcv]{print.summary.gam}()} by Simon Wood,
+Henric Nilsson
 }
 

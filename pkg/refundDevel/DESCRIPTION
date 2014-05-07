@@ -59,7 +59,7 @@ Collate:
     'fosr.perm.fit.R'
     'fosr.perm.test.R'
     'fosr2s.R'
-    'fpca.sc.r'
+    'fpca.sc.R'
     'fpca.face.R'
     'fpcr.R'
     'fpcr.setup.R'

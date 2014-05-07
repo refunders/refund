@@ -2,8 +2,8 @@
 \alias{expand.call}
 \title{Return call with all possible arguments}
 \usage{
-  expand.call(definition = NULL,
-    call = sys.call(sys.parent(1)), expand.dots = TRUE)
+expand.call(definition = NULL, call = sys.call(sys.parent(1)),
+  expand.dots = TRUE)
 }
 \arguments{
   \item{definition}{a function. See
@@ -17,17 +17,17 @@
   \code{\link[base]{match.call}}.}
 }
 \value{
-  An object of mode "\code{\link[base]{call}}".
+An object of mode "\code{\link[base]{call}}".
 }
 \description{
-  Return a call in which all of the arguments which were
-  supplied or have presets are specified by their full
-  names and their supplied or default values.
+Return a call in which all of the arguments which were
+supplied or have presets are specified by their full names
+and their supplied or default values.
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 \seealso{
-  \code{\link[base]{match.call}}
+\code{\link[base]{match.call}}
 }
 

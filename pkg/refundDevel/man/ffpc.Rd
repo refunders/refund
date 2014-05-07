@@ -2,10 +2,9 @@
 \alias{ffpc}
 \title{Construct a PC-based function-on-function regression term}
 \usage{
-  ffpc(X, yind = NULL, xind = seq(0, 1, length = ncol(X)),
-    splinepars = list(bs = "ps", m = c(2, 1), k = 8),
-    decomppars = list(pve = 0.99, useSymm = TRUE),
-    npc.max = 15)
+ffpc(X, yind = NULL, xind = seq(0, 1, length = ncol(X)),
+  splinepars = list(bs = "ps", m = c(2, 1), k = 8), decomppars = list(pve =
+  0.99, useSymm = TRUE), npc.max = 15)
 }
 \arguments{
   \item{X}{an n by \code{ncol(xind)} matrix of function
@@ -32,42 +31,40 @@
   regardless of \code{decomppars}; defaults to 15}
 }
 \value{
-  A list containing the necessary information to construct
-  a term to be included in a \code{mgcv::gam}-formula.
+A list containing the necessary information to construct a
+term to be included in a \code{mgcv::gam}-formula.
 }
 \description{
-  Defines a term \eqn{\int X_i(s)\beta(t,s)ds} for
-  inclusion in an \code{mgcv::gam}-formula (or \code{bam}
-  or \code{gamm} or \code{gamm4:::gamm4}) as constructed by
-  \code{\link{pffr}}.
+Defines a term \eqn{\int X_i(s)\beta(t,s)ds} for inclusion
+in an \code{mgcv::gam}-formula (or \code{bam} or
+\code{gamm} or \code{gamm4:::gamm4}) as constructed by
+\code{\link{pffr}}.
 }
 \details{
-  In contrast to \code{\link{ff}}, \code{ffpc} does an FPCA
-  decomposition \eqn{X(s) \approx \sum^K_{k=1} \xi_{ik}
-  \Phi_k(s)} using \code{\link{fpca.sc}} and represents
-  \eqn{\beta(t,s)} in the function space spanned by these
-  \eqn{\Phi_k(s)}. That is, since \deqn{\int
-  X_i(s)\beta(t,s)ds = \sum^K_{k=1} \xi_{ik} \int \Phi_k(s)
-  \beta(s,t) ds = \sum^K_{k=1} \xi_{ik} \tilde \beta_k(t),}
-  the function-on-function term can be represented as a sum
-  of \eqn{K} univariate functions \eqn{\tilde \beta_k(t)}
-  in \eqn{t} each multiplied by the FPC loadings
-  \eqn{\xi_{ik}}. The truncation parameter \eqn{K} is
-  chosen as described in \code{\link{fpca.sc}}. Using this
-  instead of \code{ff()} can be beneficial if the
-  covariance operator of the \eqn{X_i(s)} has low effective
-  rank (i.e., if \eqn{K} is small). If the covariance
-  operator of the \eqn{X_i(s)} is of (very) high rank,
-  i.e., if \eqn{K} is large, \code{ffpc()} will not be very
-  efficient.
+In contrast to \code{\link{ff}}, \code{ffpc} does an FPCA
+decomposition \eqn{X(s) \approx \sum^K_{k=1} \xi_{ik}
+\Phi_k(s)} using \code{\link{fpca.sc}} and represents
+\eqn{\beta(t,s)} in the function space spanned by these
+\eqn{\Phi_k(s)}. That is, since \deqn{\int
+X_i(s)\beta(t,s)ds = \sum^K_{k=1} \xi_{ik} \int \Phi_k(s)
+\beta(s,t) ds = \sum^K_{k=1} \xi_{ik} \tilde \beta_k(t),}
+the function-on-function term can be represented as a sum
+of \eqn{K} univariate functions \eqn{\tilde \beta_k(t)} in
+\eqn{t} each multiplied by the FPC loadings \eqn{\xi_{ik}}.
+The truncation parameter \eqn{K} is chosen as described in
+\code{\link{fpca.sc}}. Using this instead of \code{ff()}
+can be beneficial if the covariance operator of the
+\eqn{X_i(s)} has low effective rank (i.e., if \eqn{K} is
+small). If the covariance operator of the \eqn{X_i(s)} is
+of (very) high rank, i.e., if \eqn{K} is large,
+\code{ffpc()} will not be very efficient.
 
-  To reduce model complexity, the \eqn{\tilde \beta_k(t)}
-  all have a single joint smoothing parameter (in
-  \code{mgcv}, they get the same \code{id}, see
-  \code{\link[mgcv]{s}}).\cr
+To reduce model complexity, the \eqn{\tilde \beta_k(t)} all
+have a single joint smoothing parameter (in \code{mgcv},
+they get the same \code{id}, see \code{\link[mgcv]{s}}).\cr
 
-  Please see \code{\link[refund]{pffr}} for details on
-  model specification and implementation.
+Please see \code{\link[refund]{pffr}} for details on model
+specification and implementation.
 }
 \examples{
 \dontrun{
@@ -116,6 +113,6 @@ ffpcplot(m.pc)
 }
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 

@@ -2,10 +2,9 @@
 \alias{fpca.ssvd}
 \title{Smoothed FPCA via iterative penalized rank one SVDs.}
 \usage{
-  fpca.ssvd(Y, npc = NA, center = TRUE, maxiter = 15,
-    tol = 1e-04, diffpen = 3, gridsearch = TRUE,
-    alphagrid = 1.5^(-20:40), lower.alpha = 1e-05,
-    upper.alpha = 1e+07, verbose = FALSE)
+fpca.ssvd(Y, npc = NA, center = TRUE, maxiter = 15, tol = 1e-04,
+  diffpen = 3, gridsearch = TRUE, alphagrid = 1.5^(-20:40),
+  lower.alpha = 1e-05, upper.alpha = 1e+07, verbose = FALSE)
 }
 \arguments{
   \item{Y}{data matrix (rows: observations; columns: grid
@@ -46,32 +45,30 @@
   diagnostic messages?  defaults to \code{FALSE}}
 }
 \value{
-  a list like the returned object from
-  \code{\link{fpca.sc}}, with entries \code{Yhat}, the
-  smoothed trajectories, \code{scores}, the estimated FPC
-  loadings, \code{mu}, the column means of \code{Y} (or a
-  vector of zeroes if \code{!center}), \code{efunctions},
-  the estimated smooth FPCs (note that these are
-  orthonormal vectors, not evaluations of orthonormal
-  functions...), \code{evalues}, their associated
-  eigenvalues, and \code{npc}, the number of smooth
-  components that were extracted.
+a list like the returned object from \code{\link{fpca.sc}},
+with entries \code{Yhat}, the smoothed trajectories,
+\code{scores}, the estimated FPC loadings, \code{mu}, the
+column means of \code{Y} (or a vector of zeroes if
+\code{!center}), \code{efunctions}, the estimated smooth
+FPCs (note that these are orthonormal vectors, not
+evaluations of orthonormal functions...), \code{evalues},
+their associated eigenvalues, and \code{npc}, the number of
+smooth components that were extracted.
 }
 \description{
-  Implements the algorithm of Huang, Shen, Buja (2008) for
-  finding smooth right singular vectors of a matrix
-  \code{X} containing (contaminated) evaluations of
-  functional random variables on a regular, equidistant
-  grid. If the number of smooth SVs to extract is not
-  specified, the function hazards a guess for the
-  appropriate number based on the asymptotically optimal
-  truncation threshold under the assumption of a low rank
-  matrix contaminated with i.i.d. Gaussian noise with
-  unknown variance derived in Donoho, Gavish (2013).
-  Please note that Donoho, Gavish (2013) should be regarded
-  as experimental for functional FPCA, and will typically
-  not work well if you have more observations than grid
-  points.
+Implements the algorithm of Huang, Shen, Buja (2008) for
+finding smooth right singular vectors of a matrix \code{X}
+containing (contaminated) evaluations of functional random
+variables on a regular, equidistant grid. If the number of
+smooth SVs to extract is not specified, the function
+hazards a guess for the appropriate number based on the
+asymptotically optimal truncation threshold under the
+assumption of a low rank matrix contaminated with i.i.d.
+Gaussian noise with unknown variance derived in Donoho,
+Gavish (2013).  Please note that Donoho, Gavish (2013)
+should be regarded as experimental for functional PCA, and
+will typically not work well if you have more observations
+than grid points.
 }
 \examples{
 ## as in Sec. 6.2 of Huang, Shen, Buja (2008):
@@ -105,22 +102,22 @@
          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 \references{
-  Huang, J. Z., Shen, H., and Buja, A. (2008).  Functional
-  principal components analysis via penalized rank one
-  approximation.  \emph{Electronic Journal of Statistics},
-  2, 678-695
+Huang, J. Z., Shen, H., and Buja, A. (2008).  Functional
+principal components analysis via penalized rank one
+approximation.  \emph{Electronic Journal of Statistics}, 2,
+678-695
 
-  Donoho, D.L., and Gavish, M. (2013). The Optimal Hard
-  Threshold for Singular Values is 4/sqrt(3).  eprint
-  arXiv:1305.5870. Available from
-  \url{http://arxiv.org/abs/1305.5870}.
+Donoho, D.L., and Gavish, M. (2013). The Optimal Hard
+Threshold for Singular Values is 4/sqrt(3).  eprint
+arXiv:1305.5870. Available from
+\url{http://arxiv.org/abs/1305.5870}.
 }
 \seealso{
-  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for
-  FPCA based on smoothing a covariance estimate;
-  \code{\link{fpca2s}} for a faster SVD-based approach.
+\code{\link{fpca.sc}} and \code{\link{fpca.face}} for FPCA
+based on smoothing a covariance estimate;
+\code{\link{fpca2s}} for a faster SVD-based approach.
 }
 

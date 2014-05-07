@@ -2,8 +2,8 @@
 \alias{predict.pffr}
 \title{Prediction for penalized function-on-function regression}
 \usage{
-  \method{predict}{pffr} (object, newdata, reformat = TRUE,
-    type = "link", se.fit = FALSE, ...)
+\method{predict}{pffr}(object, newdata, reformat = TRUE, type = "link",
+  se.fit = FALSE, ...)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-object}
@@ -34,44 +34,44 @@
   \code{\link[mgcv]{predict.gam}()}}
 }
 \value{
-  If \code{type == "lpmatrix"}, the design matrix for the
-  supplied covariate values in long format.  If \code{se ==
-  TRUE}, a list with entries \code{fit} and \code{se.fit}
-  containing fits and standard errors, respectively.  If
-  \code{type == "terms"} or \code{"iterms"} each of these
-  lists is a list of matrices of the same dimension as the
-  response for \code{newdata} containing the linear
-  predictor and its se for each term.
+If \code{type == "lpmatrix"}, the design matrix for the
+supplied covariate values in long format.  If \code{se ==
+TRUE}, a list with entries \code{fit} and \code{se.fit}
+containing fits and standard errors, respectively.  If
+\code{type == "terms"} or \code{"iterms"} each of these
+lists is a list of matrices of the same dimension as the
+response for \code{newdata} containing the linear predictor
+and its se for each term.
 }
 \description{
-  Takes a fitted \code{pffr}-object produced by
-  \code{\link{pffr}()} and produces predictions given a new
-  set of values for the model covariates or the original
-  values used for the model fit. Predictions can be
-  accompanied by standard errors, based on the posterior
-  distribution of the model coefficients. This is a wrapper
-  function for \code{\link[mgcv]{predict.gam}()}.
+Takes a fitted \code{pffr}-object produced by
+\code{\link{pffr}()} and produces predictions given a new
+set of values for the model covariates or the original
+values used for the model fit. Predictions can be
+accompanied by standard errors, based on the posterior
+distribution of the model coefficients. This is a wrapper
+function for \code{\link[mgcv]{predict.gam}()}.
 }
 \details{
-  Index variables (i.e., evaluation points) for the
-  functional covariates are reused from the fitted model
-  object and cannot be supplied with \code{newdata}.
-  Prediction is always for the entire index range of the
-  responses as defined in the original fit. If the original
-  fit was performed on sparse or irregular, non-gridded
-  response data supplied via \code{pffr}'s
-  \code{ydata}-argument and no \code{newdata} was supplied,
-  this function will simply return fitted values for the
-  original evaluation points of the response (in list
-  form).  If the original fit was performed on sparse or
-  irregular data and \code{newdata} \emph{was} supplied,
-  the function will return predictions on the grid of
-  evaluation points given in \code{object$pffr$yind}.
+Index variables (i.e., evaluation points) for the
+functional covariates are reused from the fitted model
+object and cannot be supplied with \code{newdata}.
+Prediction is always for the entire index range of the
+responses as defined in the original fit. If the original
+fit was performed on sparse or irregular, non-gridded
+response data supplied via \code{pffr}'s
+\code{ydata}-argument and no \code{newdata} was supplied,
+this function will simply return fitted values for the
+original evaluation points of the response (in list form).
+If the original fit was performed on sparse or irregular
+data and \code{newdata} \emph{was} supplied, the function
+will return predictions on the grid of evaluation points
+given in \code{object$pffr$yind}.
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 \seealso{
-  \code{\link[mgcv]{predict.gam}()}
+\code{\link[mgcv]{predict.gam}()}
 }
 

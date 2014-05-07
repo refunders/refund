@@ -2,7 +2,7 @@
 \alias{residuals.pffr}
 \title{Obtain residuals for a pffr fit}
 \usage{
-  \method{residuals}{pffr} (object, reformat = TRUE, ...)
+\method{residuals}{pffr}(object, reformat = TRUE, ...)
 }
 \arguments{
   \item{object}{a fitted \code{pffr}-object}
@@ -18,12 +18,12 @@
   \code{\link[mgcv]{residuals.gam}}.}
 }
 \value{
-  A matrix or vector of residuals
+A matrix or vector of residuals
 }
 \description{
-  Obtain residuals for a pffr fit
+Obtain residuals for a pffr fit
 }
 \author{
-  Fabian Scheipl
+Fabian Scheipl
 }
 
