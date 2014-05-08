@@ -39,7 +39,6 @@ Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl}
 \code{\link{af}}, \code{\link{lf}}, \code{\link{predict.fgam}}, \code{\link{vis.fgam}}}
 
 \examples{
-\dontrun{
 ################# DTI Example #####################
 data(DTI)
 ## only consider first visit and cases (no PASAT scores for controls)
@@ -101,5 +100,3 @@ fit <- fgam(y~s(z1,k=10)+af(X_2,splinepars =list(k=c(7,7),m=list(c(2,1),c(2,1)))
 plot(fit)
 vis.fgam(fit,af.term='X_2',plot.type='contour')
 }
-}
-
