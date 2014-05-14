@@ -486,8 +486,10 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
                                                     xout=yg,
                                                     method = "linear")$y
                                          })
+                    efcts.grid <- data.frame(efcts.grid[rep(1:ng, e=length(xg)),])
+                    colnames(efcts.grid) <- colnames(pcreterm$efunctions)
                     d <- cbind(expand.grid(xg, yg), 
-                               efcts.grid[rep(1:ng, e=length(xg)),])
+                               efcts.grid)
                     colnames(d)[1:2] <- c(trm$term[1], 
                                           paste0(object$pffr$yindname, ".vec"))
                     attr(d, "xm") <- xg

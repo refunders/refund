@@ -397,12 +397,14 @@ pffr <- function(
         # reduce size of matrix-covariates if possible:
         if(maxwidth < ncol(smat)){
           # all windows have to have same length, so modify windows:
-          eff.windows <- t(apply(windows, 1, function(window){
+          eff.windows <- t(apply(windows, 1, function(window, 
+                                                      maxw=maxwidth,
+                                                      maxind=ncol(smat)){
             width <- window[3]
-            if((window[2] + maxwidth - width) <= S){
-              window[1] : (window[2] + maxwidth -width)
+            if((window[2] + maxw - width) <= maxind){
+              window[1] : (window[2] + maxw -width)
             } else {
-              (window[1] + width - maxwidth) : window[2]
+              (window[1] + width - maxw) : window[2]
             }
           }))
           
