@@ -222,5 +222,6 @@ ff <- function(X,
   }
   
   return(list(call=call, xind=xind[1, ], LX=LX, L=L,
-              xindname=xindname, yindname=yindname, LXname=LXname, limits=limits))
+              xindname=xindname, yindname=yindname, 
+              LXname=LXname, limits=limits))
 }#end ff()

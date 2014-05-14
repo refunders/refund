@@ -373,36 +373,70 @@ pffr <- function(
     })
     
     #apply limits function and assign stacked data to newfrmlenv
-    lapply(ffterms, function(x){
-      assign(x=x$yindname, 
-             value=matrix(yindvec, nrow=length(yindvec), ncol=length(x$xind)), 
-             envir=newfrmlenv)
-      assign(x=x$xindname, 
-             value=matrix(x$xind, nrow=length(yindvec), ncol=length(x$xind), byrow=TRUE), 
-             envir=newfrmlenv) 
+    makeff <- function(x){
+      tmat <- matrix(yindvec, nrow=length(yindvec), ncol=length(x$xind))
+      smat <- matrix(x$xind, nrow=length(yindvec), ncol=length(x$xind), 
+                     byrow=TRUE)
       if(!is.null(x$LX)){
         # for ff: stack weights * covariate
         LStacked <- x$LX[stackpattern,]
       } else {
-        # for sff: stack weights only
+        # for sff: stack weights, X separately
         LStacked <- x$L[stackpattern,]
+        XStacked <- x$X[stackpattern, ]
       } 
       if(!is.null(x$limits)){
-        ind0 <- !t(outer(get(x$xindname, newfrmlenv)[1,], 
-                         get(x$yindname, newfrmlenv)[,1], x$limits))
-        LStacked[ind0] <- 0
+        # find int-limits and set weights to 0 outside
+        use <- x$limits(smat, tmat)
+        LStacked <- LStacked * use
+        
+        # find indices for row-wise int-range & maximal occuring width:
+        windows <- t(apply(use, 1, function(x) range(which(x))))
+        windows <- cbind(windows, windows[,2]-windows[,1]+1)
+        maxwidth <- max(windows[,3])
+        # reduce size of matrix-covariates if possible:
+        if(maxwidth < ncol(smat)){
+          # all windows have to have same length, so modify windows:
+          eff.windows <- t(apply(windows, 1, function(window){
+            width <- window[3]
+            if((window[2] + maxwidth - width) <= S){
+              window[1] : (window[2] + maxwidth -width)
+            } else {
+              (window[1] + width - maxwidth) : window[2]
+            }
+          }))
+          
+          # extract relevant parts of each row and stack'em
+          shift_and_shorten <- function(X){
+            t(sapply(1:(nrow(X)), 
+                     function(i) X[i, eff.windows[i,]]))
+          }
+          smat <- shift_and_shorten(smat)
+          tmat <- shift_and_shorten(tmat)
+          LStacked <- shift_and_shorten(LStacked)
+          if(is.null(x$LX)){ # sff
+            XStacked <- shift_and_shorten(XStacked)
+          }
+        }
       }    
+      assign(x=x$yindname, 
+             value=tmat, 
+             envir=newfrmlenv)
+      assign(x=x$xindname, 
+             value=smat, 
+             envir=newfrmlenv) 
+      
       assign(x=x$LXname, 
              value=LStacked, 
-             envir=newfrmlenv)
-      #assign additional X-term for sff:
-      if(!is.null(x$X)){
+             envir=newfrmlenv)  
+      if(is.null(x$LX)){ # sff
         assign(x=x$xname, 
-               value=x$X[stackpattern, ], 
+               value=XStacked, 
                envir=newfrmlenv)
       }
       invisible(NULL)
-    })  
+    }
+    lapply(ffterms, makeff)  
   } else ffterms <- NULL
   
   if(length(where.specials$ffpc)){ ##TODO for sparse
