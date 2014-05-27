@@ -1,0 +1,9 @@
+# Export all functions
+exportPattern(".")
+
+# Import all packages listed as Imports or Depends
+import(
+  MASS,
+  glmnet,
+  wavethresh
+)
