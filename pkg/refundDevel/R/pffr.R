@@ -121,7 +121,7 @@
 #' data1 <- pffrSim(scenario="ff", n=40)
 #' t <- attr(data1, "yindex")
 #' s <- attr(data1, "xindex")
-#' m1 <- pffr(Y ~ ff(X1, xind=s) + ff(X2, xind=s), yind=t, data=data1)
+#' m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
 #' summary(m1)
 #' plot(m1, pers=TRUE, pages=1)
 #' 
