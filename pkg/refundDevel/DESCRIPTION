@@ -1,8 +1,8 @@
 Package: refundDevel
 Type: Package
 Title: developer version of refund: Regression with Functional Data
-Version: 0.3-1
-Date: 2013-07-04
+Version: 0.3-2
+Date: 2014-06-10
 Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     "ccrainic@jhsph.edu"), person("Philip Reiss", role = "aut", email =
     "phil.reiss@nyumc.org"), person("Jeff Goldsmith", role = "aut", email =
