@@ -15,6 +15,6 @@ CD4 cell counts for 366 subjects between months -18 and 42 since seroconversion.
   }
 }
 \references{
-Goldsmith, J., Greven, S., and Crainiceanu, C. (2012). Corrected confidence bands for functional data using principal components. Submitted.
+Goldsmith, J., Greven, S., and Crainiceanu, C. (2013). Corrected confidence bands for functional data using principal components. \emph{Biometrics}, 69(1), 41--51.
 }
 \keyword{datasets}

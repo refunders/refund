@@ -204,7 +204,6 @@ coefboot.pffr <- function(object,
 
 #' Penalized function-on-function regression with non-i.i.d. residuals
 #' 
-#' THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.\cr
 #' Implements additive regression for functional and scalar covariates and functional responses.
 #' This function is a wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to fit models of the general form \cr
 #' \eqn{Y_i(t) = \mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots  + E_i(t))}\cr
@@ -213,12 +212,12 @@ coefboot.pffr <- function(object,
 #' \eqn{z_1}, \eqn{z_2}, etc. The residual functions \eqn{E_i(t) \sim GP(0, K(t,t'))} are assumed to be i.i.d. 
 #' realizations of a Gaussian process. An estimate of the covariance operator \eqn{K(t,t')} evaluated on \code{yind} 
 #' has to be supplied in the \code{hatSigma}-argument.
-#' Note that this has to be positive definite. If \code{hatSigma} is close to positive \emph{semi-}definite or badly conditioned, 
-#' estimated standard errors become unstable (typically much too small). \code{pffrGLS} will try to diagnose this and issue a warning.
-#' The danger is especially big if the number of functional observations is smaller than the number of gridpoints 
-#' (i.e, \code{length(yind)}), since the raw covariance estimate will not have full rank.     
 #' 
 #' @section Details: 
+#' Note that \code{hatSigma} has to be positive definite. If \code{hatSigma} is close to positive \emph{semi-}definite or badly conditioned, 
+#' estimated standard errors become unstable (typically much too small). \code{pffrGLS} will try to diagnose this and issue a warning.
+#' The danger is especially big if the number of functional observations is smaller than the number of gridpoints 
+#' (i.e, \code{length(yind)}), since the raw covariance estimate will not have full rank.\cr     
 #' Please see \code{\link[refund]{pffr}} for details on model specification and 
 #' implementation. \cr THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
 #'  
@@ -364,7 +363,7 @@ pffrGLS <- function(
                     "\n   -- projected further into pos.-definite cone (new condition number: ", cond.cutoff,").")
             eSigma <-  eigen(as(hatSigmaPD$mat, "matrix"), symmetric=TRUE)
         }
-        with(eSigma, vectors%*%diag(1/sqrt(values))%*%t(vectors))
+        eSigma$vectors%*%diag(1/sqrt(eSigma$values))%*%t(eSigma$vectors)
     } 
     
     hatSigmaname <- deparse(substitute(hatSigmaname))
@@ -666,8 +665,8 @@ pffrGLS <- function(
     # diagonal structure of the t2-penalties)
     if(!(as.character(algorithm) %in% c("gamm4"))){
         suppressMessages(
-                trace(mgcv:::smooth.construct.tensor.smooth.spec, 
-                        at = max(which(sapply(as.list(body(mgcv:::smooth.construct.tensor.smooth.spec)), function(x) any(grepl(x, pattern="object$C", fixed=TRUE))))) + 1, 
+                trace(mgcv::smooth.construct.tensor.smooth.spec, 
+                        at = max(which(sapply(as.list(body(mgcv::smooth.construct.tensor.smooth.spec)), function(x) any(grepl(x, pattern="object$C", fixed=TRUE))))) + 1, 
                         print=FALSE,
                         tracer = quote({
                                     #browser()
@@ -695,8 +694,8 @@ pffrGLS <- function(
         )
         
         suppressMessages(
-                trace(mgcv:::smooth.construct.t2.smooth.spec, 
-                        at = max(which(sapply(as.list(body(mgcv:::smooth.construct.t2.smooth.spec)), function(x) any(grepl(x, pattern="object$Cp", fixed=TRUE))))) + 1, 
+                trace(mgcv::smooth.construct.t2.smooth.spec, 
+                        at = max(which(sapply(as.list(body(mgcv::smooth.construct.t2.smooth.spec)), function(x) any(grepl(x, pattern="object$Cp", fixed=TRUE))))) + 1, 
                         print=FALSE,
                         tracer = quote({
                                     if(!is.null(object$margin[[length(object$margin)]]$xt$impose.ffregC) &&
@@ -724,8 +723,8 @@ pffrGLS <- function(
         
         
         on.exit({
-                    suppressMessages(try(untrace(mgcv:::smooth.construct.tensor.smooth.spec), silent = TRUE))
-                    suppressMessages(try(untrace(mgcv:::smooth.construct.t2.smooth.spec), silent = TRUE))
+                    suppressMessages(try(untrace(mgcv::smooth.construct.tensor.smooth.spec), silent = TRUE))
+                    suppressMessages(try(untrace(mgcv::smooth.construct.t2.smooth.spec), silent = TRUE))
                 })
     }
     

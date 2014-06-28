@@ -1,12 +1,12 @@
 \name{lpeer}
 \alias{lpeer}
-\title{Longitudinal functional models with structured penalties}
+\title{Longitudinal Functional Models with Structured Penalties}
 \description{
 Implements longitudinal functional model with structured penalties (Kundu et al., 2012) with scalar outcome, single functional predictor, one or more scalar covariates and subject-specific random intercepts through mixed model equivalence. 
 }
 \usage{
 lpeer(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user=NULL, 
-     f_t=NULL, Q=NULL, a=10^3, se=FALSE, ...)
+f_t=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
 
 }
 \arguments{
@@ -14,17 +14,15 @@ lpeer(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user
 \item{subj}{vector containing the subject number for each observation}
 \item{t}{vector containing the time information when the observation are taken}
 \item{covariates}{matrix of scalar covariates.}
-\item{funcs}{matrix containing observed functional predictors as rows. Rows with \code{NA} and \code{Inf} values will be deleted. All the rows will be scaled to have norm 1.}
+\item{funcs}{matrix containing observed functional predictors as rows. Rows with \code{NA} and \code{Inf} values will be deleted.}
 \item{comm.pen}{logical value indicating whether common penalty for all the components of regression function. Default is TRUE.}
-\item{pentype}{type of penalty: either decomposition based penalty (\code{'DECOMP'}) or ridge (\code{'RIDGE'}) or second-order difference penalty (\code{'D2'}) or any user defined penalty (\code{'USER'}). For decomposition based penalty user need to specify Q matrix in \code{Q} argument (see details). For user defined penalty user need to specify L matrix in \code{L} argument (see details). For Ridge and second-order difference penalty, specification for arguments \code{L} and \code{Q} will be ignored.
-
-Default is \code{'RIDGE'}.}
+\item{pentype}{type of penalty: either decomposition based penalty (\code{'DECOMP'}) or ridge (\code{'RIDGE'}) or second-order difference penalty (\code{'D2'}) or any user defined penalty (\code{'USER'}). For decomposition based penalty user need to specify Q matrix in \code{Q} argument (see details). For user defined penalty user need to specify L matrix in \code{L} argument (see details). For Ridge and second-order difference penalty, specification for arguments \code{L} and \code{Q} will be ignored. Default is \code{'RIDGE'}.}
 \item{f_t}{vector or matrix with number of rows equal to number of total observations and number of columns equal to d (see details). If matrix then each column pertains to single function of time and the value in the column represents the realization corresponding to time vector t. The column with intercept or multiple of intercept will be dropped. A \code{NULL} value refers to time-invariant regression function. Default value is \code{NULL}.}
 \item{Q}{Q matrix to derive decomposition based penalty. Need to be specified with \code{pentype='DECOMP'}. When \code{comm.pen=TRUE}, number of columns must equal number of columns of matrix specified to \code{funcs}. When \code{comm.pen=FALSE}, Number of columns need to be equal with the number of columns of matrix specified to \code{funcs} times the number of components of regression function. Each row represents a basis function where functional predictor is expected lie according to prior belief. This argument will be ignored when value of \code{pentype} is other than \code{'DECOMP'}.}
 \item{L.user}{penalty matrix. Need to be specified with \code{pentype='USER'}. When \code{comm.pen=TRUE}, Number of columns need to be equal with number of columns of matrix specified to \code{funcs}. When \code{comm.pen=FALSE}, Number of columns need to be equal with the number of columns of matrix specified to \code{funcs} times the number of components of regression function. Each row represents a constraint on functional predictor. This argument will be ignored when value of \code{pentype} is other than \code{'USER'}.}
-\item{a}{scalar value of a in decomposition based penalty. Need to be specified with \code{pentype='DECOMP'}.}
-\item{se}{logical; calculate standard error when \code{TRUE}}
-\item{...}{additional arguments passed to \code{\link{lme}}.}
+\item{phia}{scalar value of a in decomposition based penalty. Needs to be specified with \code{pentype='DECOMP'}.}
+\item{se}{logical; calculate standard error when \code{TRUE}.}
+\item{...}{additional arguments passed to \code{\link[nlme]{lme}}.}
 }
 
 \details{
@@ -33,15 +31,15 @@ If there are any missing or infinite values in \code{Y}, \code{subj}, \code{t}, 
 
 \eqn{y_{i(t)}=X_{i(t)}^T \beta+\int {W_{i(t)}(s)\gamma(t,s) ds} +Z_{i(t)}u_i + \epsilon_{i(t)}}
 
-where \eqn{\epsilon_{i(t)} ~  N(0,\sigma ^2)} and \eqn{u_i ~ N(0, \sigma_u^2)}.  For all the observations, predictor function \eqn{W_{i(t)}(s)} is evaluated at K sampling points. Here, regression function \eqn{\gamma (t,s)} is represented in terms of (d+1) component functions \eqn{\gamma_0(s)}, \eqn{\gamma_d(s)} as follows
+where \eqn{\epsilon_{i(t)} ~  N(0,\sigma ^2)} and \eqn{u_i ~ N(0, \sigma_u^2)}.  For all the observations, predictor function \eqn{W_{i(t)}(s)} is evaluated at K sampling points. Here, regression function \eqn{\gamma (t,s)} is represented in terms of (d+1) component functions \eqn{\gamma_0(s)},..., \eqn{\gamma_d(s)} as follows
 
 \eqn{\gamma (t,s)= \gamma_0(s)+f_1(t) \gamma_1(s) + f_d(t) \gamma_d(s)}
 
 Values of \eqn{y_{i(t)} , X_{i(t)}} and \eqn{W_{i(t)}(s)} are passed through argument \code{Y},  \code{covariates} and  \code{funcs}, respectively. Number of elements or rows in \code{Y},  \code{t}, \code{subj}, \code{covariates} (if not \code{NULL}) and  \code{funcs} need to be equal.
 
-Values of \eqn{f_1(t),...,f_d(t)} are passed through f_t arguments. The matrix passes through \code{f_t} argument should have d columns where each column represents one and only one of \eqn{f_1(t),..., f_d(t)}.
+Values of \eqn{f_1(t),...,f_d(t)} are passed through f_t argument. The matrix passed through \code{f_t} argument should have d columns where each column represents one and only one of \eqn{f_1(t),..., f_d(t)}.
 
-The estimate of (d+1) component functions \eqn{\gamma_0(s)}, \eqn{\gamma_d(s)}  is obtained as penalized estimated. The following 3 types of penalties can be used for a component function:
+The estimate of (d+1) component functions \eqn{\gamma_0(s)},..., \eqn{\gamma_d(s)}  is obtained as penalized estimated. The following 3 types of penalties can be used for a component function:
 
 i.   Ridge:  \eqn{I_K}
 
@@ -59,44 +57,43 @@ Default penalty is Ridge penalty for all the component functions and user needs 
 }
 
 \value{
-a list containing:
-\item{fit}{result of the call to \code{\link{lme}}}
+A list containing:
+\item{fit}{result of the call to \code{lme}}
 \item{fitted.vals}{predicted outcomes}
 \item{BetaHat}{parameter estimates for scalar covariates including intercept}
 \item{se.Beta}{standard error of parameter estimates for scalar covariates including intercept}
 \item{Beta}{parameter estimates with standard error for scalar covariates including intercept}
-\item{GammaHat}{estimates of components of regression functions. Each columns will represent estimate one component function. }
-\item{se.Gamma}{standard error associated with \code{GammaHat}}
+\item{GammaHat}{estimates of components of regression functions. Each column represents  one component function. }
+\item{Se.Gamma}{standard error associated with \code{GammaHat}}
 \item{AIC}{AIC value of fit (smaller is better) }
 \item{BIC}{BIC value of fit (smaller is better) }
 \item{logLik}{(restricted) log-likelihood at convergence}
-\item{lambda}{list of estimated smoothing parameters associated with each component functions}
+\item{lambda}{list of estimated smoothing parameters associated with each component function}
 \item{V}{conditional variance of Y treating only random intercept as random one. }
 \item{V1}{unconditional variance of Y }
 \item{N}{number of subjects}
-\item{K}{number of sampling points in functional predictor}
+\item{K}{number of Sampling points in functional predictor}
 \item{TotalObs}{total number of observations over all subjects}
 \item{Sigma.u}{estimated sd of random intercept. }
 \item{sigma}{estimated within-group error standard deviation.}
 }
 
-\author{ Madan Gopal Kundu \email{mgkundu@iupui.edu}}
+\author{Madan Gopal Kundu \email{mgkundu@iupui.edu}}
 
 \references{
-
-Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (please contact J. Harezlak at harezlak@iupui.edu)
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 
 Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for functional linear models - partially empirical eigenvectors for regression. \emph{Electronic Journal of Statistics}, 6, 323--353.
 }
 
 \seealso{
-\code{\link{peer}}, \code{\link{plot.lpeer}}
+\code{peer}, \code{plot.lpeer}
 }
 
 \examples{
 \dontrun{
 #------------------------------------------------------------------------
-# Example 1: Estimation with Ridge penalites
+# Example 1: Estimation with Ridge penalty
 #------------------------------------------------------------------------
 
 ##Load Data
@@ -114,24 +111,24 @@ plot(fit.cca.lpeer1)
 
 ##1.2 Fit the model with two component function
 ##    gamma(t,s)=gamm0(s) + t*gamma1(s)
-fit.cca.lpeer2 = lpeer(Y=DTI$pasat, t=t, subj=DTI$ID, funcs = cca,
+fit.cca.lpeer2 = lpeer(Y=DTI$pasat, t=t, subj=DTI$ID, funcs = cca, 
                       f_t=t, se=TRUE)
 plot(fit.cca.lpeer2)
 
 #------------------------------------------------------------------------
-# Example 2: Estimation with structured penalites (need structural 
+# Example 2: Estimation with structured penalty (need structural 
 #            information about regression function or predictor function)
 #------------------------------------------------------------------------
 
 ##Load Data
-data(PEER.Sim1)
+data(PEER.Sim)
 
 ## Extract values for arguments for lpeer() from given data
 K<- 100
-W<- PEER.Sim1[,c(3:(K+2))]
-Y<- PEER.Sim1[,K+3]
-t<- PEER.Sim1[,2]
-id<- PEER.Sim1[,1]
+W<- PEER.Sim[,c(3:(K+2))]
+Y<- PEER.Sim[,K+3]
+t<- PEER.Sim[,2]
+id<- PEER.Sim[,1]
 
 ##Load Q matrix containing structural information
 data(Q)
@@ -155,20 +152,19 @@ plot(Fit2)
 ##2.3 Fit the model with two component function with different penalties
 ##    gamma(t,s)=gamm0(s) + t*gamma1(s)
 Q1<- cbind(Q, Q) 
-Fit3<- lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), comm.pen=FALSE, funcs=W, pentype='DECOMP', 
-f_t=cbind(1,t), Q=Q1, se=TRUE)
+Fit3<- lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), comm.pen=FALSE, funcs=W, 
+		     pentype='DECOMP', f_t=cbind(1,t), Q=Q1, se=TRUE)
 
-##2.4 Fit the model with two component function with user-defined penalties
+##2.4 Fit the model with two component function with user defined penalties
 ##    gamma(t,s)=gamm0(s) + t*gamma1(s)
-a<- 10^3
-P_Q <- t(Q) \%*\% solve(Q \%*\% t(Q)) \%*\% Q
-L=a*(diag(ncol(W))- P_Q) + 1*P_Q
+phia<- 10^3
+P_Q <- t(Q)\%*\%solve(Q\%*\%t(Q))\%*\% Q
+L<- phia*(diag(K)- P_Q) + 1*P_Q
 Fit4<- lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), funcs=W, 
-  	     pentype='USER', f_t=cbind(1,t), L.user=L, se=TRUE)
+		     pentype='USER', f_t=cbind(1,t), L=L, se=TRUE)
 
-L1<- cbind(L, L) 
-Fit5<- lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), funcs=W, comm.pen=FALSE,
-		     pentype='USER', f_t=cbind(1,t), L.user=L1, se=TRUE)
-
+L1<- adiag(L, L)
+Fit5<- lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), comm.pen=FALSE, funcs=W, 
+		     pentype='USER', f_t=cbind(1,t), L=L1, se=TRUE)
 }
 }

@@ -1,4 +1,4 @@
-# Export all names
+# Export all functions
 exportPattern(".")
 
 # Import all packages listed as Imports or Depends
@@ -8,9 +8,11 @@ import(
   fda,
   MASS,
   glmnet,
-  magic,
-  nlme,
   wavethresh,
   Matrix,
-  gamm4
+  gamm4,
+  matrixStats,
+  lme4,
+  splines,
+  RLRsim
 )

@@ -1,6 +1,5 @@
 lpfr <-
 function(Y, subj, covariates=NULL, funcs, kz=30, kb=30, smooth.cov=FALSE, family="gaussian", method = "REML", ...) {
-	require(mgcv)
 	
 	kb = min(kz, kb)
 	n = length(Y)

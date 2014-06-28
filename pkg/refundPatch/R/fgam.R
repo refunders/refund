@@ -102,14 +102,7 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
   newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
   environment(newfrml) <- newfrmlenv
   fgamdata <- list2df(as.list(newfrmlenv))
-  datameans <- sapply(1:ncol(fgamdata), function(i, dat){
-    if (class(dat[, i]) != 'factor'){
-      mean(dat[, i])
-    } else{
-      1
-    }
-  }, dat=fgamdata)
-  names(datameans) <- names(fgamdata)
+  datameans <- sapply(as.list(newfrmlenv),mean)
   newcall <- expand.call(fgam, call)
   newcall$fitter <- type <- newcall$bs.int <- newcall$bs.yindex <- newcall$fitter <- NULL
   newcall$formula <- newfrml

@@ -28,7 +28,7 @@ ccb.fpc(Y, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, sim.alpha = .95)
   \item{crit.val }{estimated critical values for constructing simultaneous confidence intervals.}
 }
 \references{
-Goldsmith, J., Greven, S., and Crainiceanu, C. (2012). Corrected confidence bands for functional data using principal components. Submitted.
+Goldsmith, J., Greven, S., and Crainiceanu, C. (2013). Corrected confidence bands for functional data using principal components. \emph{Biometrics}, 69(1), 41--51.
 }
 \author{
 Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}

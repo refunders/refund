@@ -28,9 +28,7 @@ Binomial responses should be specified as a numeric vector rather than as a matr
 \value{
 a fitted fgam-object, which is a \code{\link{gam}}-object with some additional information in a fgam-entry. If fitter is "gamm" or "gamm4", only the $gam part of the returned list is modified in this way..}
 \references{
-McLean M.W. et al. (2012) \emph{Journal of Computational and Graphical Statistics}, to appear.
-
-\url{http://courses2.cit.cornell.edu/mwmclean}}
+McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2013). Functional generalized additive models. \emph{Journal of Computational and Graphical Statistics}, to appear. Available at \url{http://courses2.cit.cornell.edu/mwmclean}}
 
 \author{
 Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl}
@@ -58,9 +56,12 @@ X_2 <- X_2[!(ind | ind2),]
 
 N <- length(y)
 
-## fit fgam using measurements along cca tract as functional predictor with PASAT as response
-## using 8 cubic B-splines for marginal bases with third order marginal difference penalties
-## specifying gamma>1 enforces more smoothing when using GCV to choose smoothing parameters
+## fit fgam using FA measurements along corpus callosum 
+## as functional predictor with PASAT as response
+## using 8 cubic B-splines for marginal bases with third 
+## order marginal difference penalties
+## specifying gamma>1 enforces more smoothing when using 
+## GCV to choose smoothing parameters
 fit <- fgam(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
 vis.fgam(fit)
 
@@ -99,5 +100,3 @@ fit <- fgam(y~s(z1,k=10)+af(X_2,splinepars =list(k=c(7,7),m=list(c(2,1),c(2,1)))
 plot(fit)
 vis.fgam(fit,af.term='X_2',plot.type='contour')
 }
-\keyword{model}
-\keyword{smooth}

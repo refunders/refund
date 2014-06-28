@@ -8,10 +8,10 @@ Construct an FGAM regression term}
    Defines a term \eqn{\int_{T}F(X_i(t),t)dt} for inclusion in an \code{mgcv::gam-formula} (or \code{bam} or \code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{fgam}}, where \eqn{F(x,t)}$ is an unknown smooth bivariate function and \eqn{X_i(t)} is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic tensor product B-spline with marginal second-order difference penalties for estimating \eqn{F(x,t)}.  The functional predictor must be fully observed on a regular grid.}
 \usage{
 af(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te","t2", "s"), 
-               integration = c("simpson", "trapezoidal", "riemann"), 
-                L = NULL, splinepars = list(bs = "ps", 
-                k= c(min(ceiling(nrow(X)/5),20),min(ceiling(ncol(X)/5),20)),
-                m = list(c(2, 2), c(2, 2))), presmooth = TRUE, Xrange=range(X), Qtransform=FALSE)
+   integration = c("simpson", "trapezoidal", "riemann"), 
+   L = NULL, splinepars = list(bs = "ps", 
+   k = c(min(ceiling(nrow(X)/5),20),min(ceiling(ncol(X)/5),20)),
+   m = list(c(2, 2), c(2, 2))), presmooth = TRUE, Xrange=range(X), Qtransform=FALSE)
 }
 \arguments{
   \item{X}{
@@ -34,7 +34,7 @@ defaults to "\code{te}", i.e. a tensor product spline to represent \eqn{F(x,t)} 
 }
 
 \value{
-a list with the following entries
+A list with the following entries:
 \item{call}{a "call" to \code{te} (or \code{s}, \code{t2}) using the appropriately constructed covariate and weight matrices.}
 \item{xind}{ the \code{xind} argument supplied to \code{af}.}
 \item{L}{ the  matrix of weights used for the integration.}
@@ -49,9 +49,6 @@ a list with the following entries
 }
 \author{Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl}
 \references{
-McLean M.W. et al. (2012) \emph{Journal of Computational and Graphical Statistics}, to appear.}
+McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2013). Functional generalized additive models. \emph{Journal of Computational and Graphical Statistics}, to appear. Available at \url{http://courses2.cit.cornell.edu/mwmclean}}
 \seealso{
 \code{\link{fgam}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.}
-\keyword{methods}
-\keyword{models}
-\keyword{smooth}

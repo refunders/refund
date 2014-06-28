@@ -55,7 +55,7 @@ logical: should the mean of each subject's signal be
 included as a covariate?
 }
   \item{spline.order}{
-order of B-splines used, if {fdobj} is not supplied; defaults to \code{4}, i.e., cubic B-splines.
+order of B-splines used, if \code{fdobj} is not supplied; defaults to \code{4}, i.e., cubic B-splines.
 }
   \item{family}{
 generalized linear model family. Current version supports \code{"gaussian"} (the default) and \code{"binomial"}. 
@@ -76,10 +76,10 @@ logical: should cross-validation be performed to select the best model if only o
 the number of validation sets ("folds") into which the data are divided; by default, 5.
 }
   \item{store.cv}{
-logical: should cv result table be in the output? By default, \code{FALSE}.
+logical: should a CV result table be in the output? By default, \code{FALSE}.
 }
   \item{store.gam}{
-logical: should gam object be in the output? Defaults to \code{TRUE}.
+logical: should the \code{\link[mgcv]{gam}} object be included in the output? Defaults to \code{TRUE}.
 }
   \item{\dots}{
 other arguments passed to function \code{\link[mgcv]{gam}}.
@@ -92,13 +92,13 @@ For two-dimensional predictors, functional data object form is not supported.  I
 
 For purposes of interpreting the fitted coefficients, please note that the functional predictors are decorrelated from the scalar predictors before fitting the model (when there are no scalar predictors other than the intercept, this just means the columns of the functional predictor matrix are de-meaned); see section 3.2 of Reiss (2006) for details.
 }
-\value{
+\value{A list with components
 \item{gamObject}{if \code{store.gam = TRUE}, an object of class \code{gam} (see \code{\link[mgcv]{gamObject}} in the \pkg{mgcv} package documentation).}
 \item{fhat}{coefficient function estimate.}
 \item{se}{pointwise Bayesian standard error.}
 \item{undecor.coef}{undecorrelated coefficient for covariates.}
-\item{argvals}{same as the arguments of the same names.}
-\item{cv.table}{if \code{store.cv = TRUE}, a table giving the CV criterion for each combination of \code{nbasis} and \code{ncomp}. Otherwise the CV criterion value for the optimized combination of \code{nbasis}, \code{comp}. Set to \code{NULL} when CV is not performed.}
+\item{argvals}{the supplied value of \code{argvals}.}
+\item{cv.table}{a table giving the CV criterion for each combination of \code{nbasis} and \code{ncomp}, if \code{store.cv = TRUE}; otherwise, the CV criterion only for the optimized combination of these parameters.  Set to \code{NULL} if CV is not performed.}
 \item{nbasis, ncomp}{when CV is performed, the values of \code{nbasis} and \code{comp} that minimize the CV criterion.}
 }
 \references{
@@ -125,6 +125,7 @@ and Lei Huang \email{huangracer@gmail.com}
 \code{\link{wcr}}, \code{\link{wnet}}
 }
 \examples{
+require(fda)
 ### 1D functional predictor example ###
 
 ######### Octane data example #########

@@ -8,7 +8,7 @@ Implements longitudinal penalized functional regression (Goldsmith et al., 2010)
 }
 \usage{
 lpfr(Y, subj, covariates = NULL, funcs, kz = 30, kb = 30, 
-  smooth.cov = FALSE, family = "gaussian", method = "REML", ...)
+     smooth.cov = FALSE, family = "gaussian", method = "REML", ...)
 }
 \arguments{
   \item{Y }{vector of all outcomes over all visits}

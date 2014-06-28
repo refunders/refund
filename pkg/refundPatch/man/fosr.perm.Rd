@@ -16,9 +16,9 @@ fosr.perm(Y=NULL, fdobj=NULL, X, con = NULL, X0 = NULL, con0 = NULL,
           nperm, level = 0.05, plot = TRUE, xlabel = "", title = NULL, 
           prelim = 15, ...)
 
-fosr.perm.fit(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL,                     
-              argvals = NULL, lambda = NULL, lambda0 = NULL, multi.sp = FALSE, 
-              nperm, prelim, ...)
+fosr.perm.fit(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, 
+              con0 = NULL, argvals = NULL, lambda = NULL, lambda0 = NULL, 
+              multi.sp = FALSE, nperm, prelim, ...)
 
 fosr.perm.test(x, level=.05)
 

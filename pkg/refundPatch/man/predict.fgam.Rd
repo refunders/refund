@@ -3,7 +3,7 @@
 \alias{predict.fgam}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Prediction a from fitted FGAM model
+Prediction from a fitted FGAM model
 }
 \description{
 Takes a fitted \code{\link{fgam}}-object produced by \code{fgam} and produces predictions given a new set of values for the model covariates or the original values used for the model fit. Predictions can be accompanied by standard errors, based on the posterior distribution of the model coefficients. This is a wrapper function for \code{\link{predict.gam}}().
@@ -44,9 +44,10 @@ If \code{type == "lpmatrix"}, the design matrix for the supplied covariate value
 Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl
 }
 \seealso{
-\code{\link{fgam}}, \code{\link{predict.gam}}
+\code{\link{fgam}}, \code{\link[mgcv]{predict.gam}}
 }
 \examples{
+require(splines)
 ######### Octane data example #########
 data(gasoline)
 N <- length(gasoline$octane)
@@ -61,4 +62,4 @@ preds <- predict(fit,newdata=list(nir=nir[test,]),type='response')
 plot(preds,y[test])
 abline(a=0,b=1)
 }
-\keyword{methods}
+

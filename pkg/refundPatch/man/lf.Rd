@@ -6,9 +6,11 @@ Construct an FLM regression term}
 \description{
  Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{mgcv::gam-formula} (or \code{bam} or \code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{fgam}}, where \eqn{\beta(t)} is an unknown coefficient function and \eqn{X_i(t)} is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic B-spline with second-order difference penalties for estimating \eqn{\beta(t)}.  The functional predictor must be fully observed on a regular grid.}
 \usage{
-lf(X, xind = seq(0, 1, l = ncol(X)), integration = c("simpson", "trapezoidal", "riemann"), 
-               L = NULL, splinepars = list(bs = "ps", k= min(ceiling(n/4), 40), m = c(2, 2)), 
-               presmooth = TRUE)
+lf(X, xind = seq(0, 1, l = ncol(X)), 
+   integration = c("simpson", "trapezoidal", "riemann"), 
+   L = NULL, 
+   splinepars = list(bs = "ps", k= min(ceiling(n/4), 40), m = c(2, 2)), 
+   presmooth = TRUE)
 }
 \arguments{
   \item{X}{
@@ -38,6 +40,3 @@ a list with the following entries
 \author{Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl}
 \seealso{
 \code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.}
-\keyword{methods}
-\keyword{models}
-\keyword{smooth}

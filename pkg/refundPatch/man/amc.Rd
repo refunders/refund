@@ -46,5 +46,3 @@ Philip Reiss \email{phil.reiss@nyumc.org}
 \code{\link{fosr}}
 }
 
-% Add one or more standard keywords, see file 'KEYWORDS' in the
-% R documentation directory.

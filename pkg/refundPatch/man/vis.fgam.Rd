@@ -49,11 +49,11 @@ The confidence bands used when plotting slices of the estimated surface or secon
 Simply produces a plot.
 }
 \references{
-McLean M.W. et al. (2012) \emph{Journal of Computational and Graphical Statistics}, to appear.
+McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2013). Functional generalized additive models. \emph{Journal of Computational and Graphical Statistics}, to appear. Available at \url{http://courses2.cit.cornell.edu/mwmclean}
 
-Marra, G and S.N. Wood (2012) Coverage Properties of Confidence Intervals for Generalized Additive Model Components. \emph{Scandinavian Journal of Statistics}, \bold{39}(1), 53--74.
+Marra, G., and Wood, S. N. (2012) Coverage properties of confidence intervals for generalized additive model components. \emph{Scandinavian Journal of Statistics}, 39(1), 53--74.
 
-Wabha, G (1983) \emph{Journal of the Royal Statistical Society, Series B}, \bold{45}, 133--150. }
+Wabha, G. (1983) "Confidence intervals" for the cross-validated smoothing spline. \emph{Journal of the Royal Statistical Society, Series B}, 45(1), 133--150. }
 \author{
 Mathew W. McLean \email{mwm79@cornell.edu}
 }
@@ -62,10 +62,11 @@ Mathew W. McLean \email{mwm79@cornell.edu}
 \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{fgam}}, \code{\link{persp}}, \code{\link{levelplot}}
 }
 \examples{
+require(splines)
 ################# DTI Example #####################
 data(DTI)
 
-## only consider first visit and cases ( since no PASAT scores for controls)
+## only consider first visit and cases (since no PASAT scores for controls)
 y <- DTI$pasat[DTI$visit==1 & DTI$case==1]
 X <- DTI$cca[DTI$visit==1 & DTI$case==1,]
 
@@ -75,9 +76,12 @@ ind <- rowSums(is.na(X))>0
 y <- y[!ind]
 X <- X[!ind,]
 
-## fit the fgam using measurements along cca tract as functional predictor with PASAT as response
-## using 8 cubic B-splines for each marginal bases with third order marginal difference penalties
-## specifying gamma>1 enforces more smoothing when using GCV to choose smoothing parameters
+## fit the fgam using FA measurements along corpus 
+## callosum as functional predictor with PASAT as response
+## using 8 cubic B-splines for each marginal bases with 
+## third order marginal difference penalties
+## specifying gamma>1 enforces more smoothing when using GCV 
+## to choose smoothing parameters
 fit <- fgam(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
 
 ## contour plot of the fitted surface
@@ -94,4 +98,4 @@ vis.fgam(fit,af.term='X',deriv2=TRUE,xval=xval)
 vis.fgam(fit,af.term='X',deriv2=TRUE,tval=tval)
 
 }
-\keyword{hplot}
+
