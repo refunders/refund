@@ -11,6 +11,7 @@ Imports:
   MASS,
   glmnet,
   wavethresh,
+  ncvreg
 Description: Methods for regressing scalar responses on functional or image predictors, via transformation to the wavelet domain and back.
 License: GPL (>= 2)
 LazyLoad: yes

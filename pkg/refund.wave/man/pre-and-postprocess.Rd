@@ -26,9 +26,6 @@ an estimate produced by regressing on the wavelet-transformed predictors.
 the wavelet infomation, output from \code{Data2wd}.
 }
 }
-\details{
-%%  ~~ If necessary, more details than the description above ~~
-}
 \value{
 \code{Data2wd} returns a list with components:
 \item{X}{the design matrix, with columns of covariates and functional predictors converted to wavelet domain.}
@@ -36,14 +33,9 @@ the wavelet infomation, output from \code{Data2wd}.
  
 \code{wd2fhat} returns the coefficient function. It could be a curve or a 2D/3D image.
 }
-\references{
-%% ~put references to the literature/web site here ~
-}
+
 \author{
 Lan Huo \email{lan.huo@nyumc.org} and Philip Reiss \email{phil.reiss@nyumc.org}
-}
-\note{
-%%  ~~further notes~~
 }
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
@@ -52,15 +44,11 @@ Lan Huo \email{lan.huo@nyumc.org} and Philip Reiss \email{phil.reiss@nyumc.org}
 \code{\link[wavethresh]{wd}}
 }
 \examples{
-%\dontrun{
 # MCP-penalized regression via ncvreg (which can also apply a SCAD penalty)
-require(ncvreg)
-require(refund)
 data(gasoline)
 res <- Data2wd(gasoline$octane, xfuncs = gasoline$NIR[,1:256])
-obje = cv.ncvreg(res$X, gasoline$octane)
+obje = ncvreg::cv.ncvreg(res$X, gasoline$octane)
 est = obje$fit$beta[,which.min(obje$cve)]
 names(est) <- rownames(obje$fit$beta)
 beta <- wd2fhat(est, res$info)
-%}
 }

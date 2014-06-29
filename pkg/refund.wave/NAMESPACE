@@ -7,3 +7,4 @@ import(
   glmnet,
   wavethresh
 )
+importFrom(ncvreg, cv.ncvreg)
