@@ -41,8 +41,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
         for (i in 1:I) {
             obs.points = which(!is.na(Y[i, ]))
             cov.count[obs.points, obs.points] = cov.count[obs.points, obs.points] + 1
-            cov.sum[obs.points, obs.points] = cov.sum[obs.points, obs.points] 
-                                                + tcrossprod(Y.tilde[i, obs.points])
+            cov.sum[obs.points, obs.points] = cov.sum[obs.points, obs.points] + tcrossprod(Y.tilde[i, obs.points])
         }
         G.0 = ifelse(cov.count == 0, NA, cov.sum/cov.count)
         diag.G0 = diag(G.0)
