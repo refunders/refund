@@ -97,7 +97,7 @@ ff <- function(X,
   
   # check & format index for X
   if(is.null(dim(xind))){
-    xind <- t(xind)
+    xind <- t(as.matrix(xind))
     stopifnot(ncol(xind) == nxgrid)
     if(nrow(xind)== 1){
       xind <- matrix(as.vector(xind), nrow=n, ncol=nxgrid, byrow=T) 
