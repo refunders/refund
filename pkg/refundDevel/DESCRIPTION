@@ -13,11 +13,13 @@ Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
     "ctb", email = "bswihart@jhsph.edu"), person("Sonja Greven", role = "ctb"),
     person("Jaroslaw Harezlak", role="ctb"), person("Madan Gopal Kundu",
     role="ctb"), person("Yihong Zhao", role="ctb"), person("Matt McLean",
-    role="ctb"), person("Luo Xiao", role="ctb", email = "lxiao@jhsph.edu"))
+    role="ctb"), person("Luo Xiao", role="ctb", email = "lxiao@jhsph.edu"),
+    person("Jonathan Gellar", role="ctb", email="jgellar1@jhu.edu"))
 Author: Ciprian Crainiceanu [aut], Philip Reiss [aut], Jeff Goldsmith [aut],
     Lei Huang [aut, cre], Lan Huo [aut], Fabian Scheipl [aut], Bruce Swihart
     [ctb], Sonja Greven [ctb], Jaroslaw Harezlak [ctb], Madan Gopal Kundu
-    [ctb], Yihong Zhao [ctb], Matt McLean [ctb], Luo Xiao [ctb]
+    [ctb], Yihong Zhao [ctb], Matt McLean [ctb], Luo Xiao [ctb],
+    Jonathan Gellar [ctb]
 Maintainer: Lei Huang <huangracer@gmail.com>
 Depends:
     R (>= 2.14.0),
@@ -64,6 +66,7 @@ Collate:
     'fpcr.R'
     'fpcr.setup.R'
     'lf.R'
+    'lf.vd.R'
     'lofocv.R'
     'lpeer.R'
     'lpfr.R'
