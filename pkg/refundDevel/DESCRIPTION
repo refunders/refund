@@ -65,6 +65,7 @@ Collate:
     'fpca.face.R'
     'fpcr.R'
     'fpcr.setup.R'
+    'getEst.R'
     'lf.R'
     'lf.vd.R'
     'lofocv.R'
