@@ -14,7 +14,6 @@ function(data, covariates = NULL, knots=35, p=3,m=2,lambda=NULL,alpha=1,
 # method: see "optim"
 # lower, upper, control: see "optim"
   
-#library(splines)
 #library(fBasics)
 #source("pspline.setting.R")
 

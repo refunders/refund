@@ -47,7 +47,6 @@ Mathew W. McLean \email{mwm79@cornell.edu} and Fabian Scheipl
 \code{\link{fgam}}, \code{\link[mgcv]{predict.gam}}
 }
 \examples{
-require(splines)
 ######### Octane data example #########
 data(gasoline)
 N <- length(gasoline$octane)

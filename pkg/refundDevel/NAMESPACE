@@ -12,6 +12,5 @@ import(
   gamm4,
   matrixStats,
   lme4,
-  splines,
   RLRsim
 )

@@ -36,7 +36,6 @@ Imports:
     gamm4,
     matrixStats,
     lme4,
-    splines,
     RLRsim
 Description: Developer version of refund. Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
