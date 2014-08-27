@@ -32,7 +32,6 @@ Imports:
     glmnet,
     magic,
     nlme,
-    wavethresh,
     Matrix,
     gamm4,
     matrixStats,
@@ -51,9 +50,6 @@ Collate:
     'af.R'
     'amc.R'
     'ccb.fpc.R'
-    'decomp.R'
-    'decomp2d.R'
-    'decomp3d.R'
     'fbps.R'
     'fgam.R'
     'fosr.R'
@@ -89,24 +85,14 @@ Collate:
     'plot.lpeer.R'
     'plot.peer.R'
     'predict.fgam.R'
-    'predict.wnet.R'
     'pspline.setting.R'
     'pwcv.R'
-    'reconstr.R'
-    'reconstr2d.R'
-    'reconstr3d.R'
     'rlrt.pfr.R'
     'fpca2s.R'
     'fpca.ssvd.R'
     'vis.fgam.R'
-    'wcr.R'
-    'wcr.perm.R'
-    'wnet.R'
-    'wnet.perm.R'
     'parse.predict.pfr.R'
     'postprocess.pfr.R'
     'predict.pfr.R'
     'preprocess.pfr.R'
-    'wUtil.R'
-    'plot.wnet-and-plot.wcr.R'
     'irreg2mat.R'

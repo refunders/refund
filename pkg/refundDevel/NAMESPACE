@@ -8,7 +8,6 @@ import(
   fda,
   MASS,
   glmnet,
-  wavethresh,
   Matrix,
   gamm4,
   matrixStats,

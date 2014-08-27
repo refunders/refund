@@ -7,7 +7,7 @@
 Regression with Functional Data
 }
 \description{
-Methods for regression with functional data. Various approaches to regression with scalar responses and functional predictors are implemented by \code{\link{pfr}}, \code{\link{peer}}, \code{\link{lpeer}}, \code{\link{fpcr}}, \code{\link{wcr}} and \code{\link{wnet}}. For regression with functional responses, see \code{\link{pffr}}, \code{\link{fosr}}, and \code{\link{fosr2s}}.}
+Methods for regression with functional data. Various approaches to regression with scalar responses and functional predictors are implemented by \code{\link{pfr}}, \code{\link{peer}}, \code{\link{lpeer}} and \code{\link{fpcr}}. For regression with functional responses, see \code{\link{pffr}}, \code{\link{fosr}}, and \code{\link{fosr2s}}.}
 \details{For a complete list of functions type \code{library(help=refund)}.
 }
 
