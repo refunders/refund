@@ -1,16 +1,16 @@
 fpca2s <-
 function(Y,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
   
-  if(is.na(npc)){
-    npc <- getNPC.DonohoGavish(X)
-  }
-  
   ## data: X, I by J data matrix 
   ## argvals: vector of J
   X <- Y
   data_dim <- dim(X)
   I <- data_dim[1] 
   J <- data_dim[2]  
+  
+  if(is.na(npc)){
+    npc <- getNPC.DonohoGavish(X)
+  }
   
   if(is.null(argvals)) argvals <- seq(0, 1, length=J)
   
