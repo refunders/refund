@@ -63,7 +63,7 @@ Yao, F., Mueller, H.-G., and Wang, J.-L. (2005). Functional data analysis for sp
 \author{
 Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, Sonja Greven \email{sonja.greven@stat.uni-muenchen.de}, Lan Huo \email{Lan.Huo@nyumc.org}, Lei Huang \email{huangracer@gmail.com}, and Philip Reiss \email{phil.reiss@nyumc.org}
 }
-\examples{
+\examples{\dontrun{
 data(cd4)
 
 Fit.MM = fpca.sc(cd4, var = TRUE, simul = TRUE)
@@ -112,4 +112,4 @@ ydata$.value <- unlist(tapply(ydata$.index,
 	
 Fit.MM = fpca.sc(ydata=ydata, var = TRUE, simul = FALSE)
 matplot(Fit.MM$efunctions[,1:2])
-}
+}}
