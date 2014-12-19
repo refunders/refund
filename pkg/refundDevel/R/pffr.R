@@ -453,15 +453,15 @@ pffr <- function(
           }))
           
           # extract relevant parts of each row and stack'em
-          shift_and_shorten <- function(X){
+          shift_and_shorten <- function(X, eff.windows){
             t(sapply(1:(nrow(X)), 
                      function(i) X[i, eff.windows[i,]]))
           }
-          smat <- shift_and_shorten(smat)
-          tmat <- shift_and_shorten(tmat)
-          LStacked <- shift_and_shorten(LStacked)
+          smat <- shift_and_shorten(smat, eff.windows)
+          tmat <- shift_and_shorten(tmat, eff.windows)
+          LStacked <- shift_and_shorten(LStacked, eff.windows)
           if(is.null(x$LX)){ # sff
-            XStacked <- shift_and_shorten(XStacked)
+            XStacked <- shift_and_shorten(XStacked, eff.windows)
           }
         }
       }    

@@ -15,16 +15,20 @@
 smooth.construct.pcre.smooth.spec <- function(object, data, knots){
     if (!is.null(object$id)) 
         stop("random effects don't work with ids.")
-    form <- as.formula(paste("~", paste(object$term[1], ":", paste("(",paste(object$term[-1], collapse="+"), ")")), 
+    form <- as.formula(paste("~", paste(object$term[1], ":", 
+                                        paste("(",paste(object$term[-1],
+                                                        collapse="+"), 
+                                              ")")), 
                     "-1"))
-    #browser()
-    
+    # structure of X: [eigenf.1 for all ids | eigenf.2 for all ids | ...]
     object$X <- model.matrix(form, data)#Matrix:::sparse.
     object$bs.dim <- ncol(object$X)
     object$S <- list(diag(object$bs.dim))
     object$rank <- object$bs.dim
     object$null.space.dim <- 0
-    object$C <- matrix(0, 0, ncol(object$X))
+    object$C <- #diag(length(object$term)-1) %x% 
+        #t(rep(1, nlevels(data[[object$term[1]]]))) 
+        matrix(0, 0, ncol(object$X))
     object$form <- form
     object$side.constrain <- FALSE
     object$plot.me <- TRUE
@@ -102,7 +106,6 @@ pcre <- function(id,
         yind,
         ...
 ){
-    
     # check args
     stopifnot(is.factor(id), nrow(efunctions)==length(yind), 
               ncol(efunctions)==length(evalues), all(evalues>0))
@@ -121,5 +124,6 @@ pcre <- function(id,
                     sapply(colnames(efunctions), function(x) as.symbol(x)),
                     bs=c("pcre")))
     
-    return(list(efunctions=efunctions, yind=yind, idname=idname, id=id, call=call, ...))
+    return(list(efunctions=efunctions, yind=yind, idname=idname, 
+                id=id, call=call, ...))
 }#end pcre()
