@@ -327,10 +327,14 @@ pffr <- function(
         yindname <- "yindex"	
       }
     } else {
-      yindname <- deparse(substitute(yind))
-      if(!is.null(data) && !is.null(data[[deparse(substitute(yind))]])){
-        yind <- data[[deparse(substitute(yind))]]
-      } 
+      if (is.symbol(substitute(yind)) | is.character(yind)) {
+        yindname <- deparse(substitute(yind))
+        if(!is.null(data) && !is.null(data[[yindname]])){
+          yind <- data[[yindname]]
+        }
+      } else {
+        yindname <- "yindex"
+      }  
       stopifnot(is.vector(yind), is.numeric(yind), 
                 length(yind) == nyindex)
     }
