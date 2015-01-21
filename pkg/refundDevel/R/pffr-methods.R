@@ -200,7 +200,7 @@ predict.pffr <- function(object,
     
     #call predict.gam
     call[[1]] <- if(inherits(object, "bam")){
-        mgcv:::predict.bam  
+        mgcv::predict.bam  
     }  else mgcv::predict.gam
     call$object <- as.name("object")
     ret <- eval(call)
