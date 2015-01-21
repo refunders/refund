@@ -12,30 +12,48 @@
 #' @return An object of class \code{"random.effect"}. See \code{\link[mgcv]{smooth.construct}} 
 #'  for the elements that this object will contain. 
 #' @author Fabian Scheipl;  adapted from 're' constructor by S.N. Wood.
-smooth.construct.pcre.smooth.spec <- function(object, data, knots){
-    if (!is.null(object$id)) 
-        stop("random effects don't work with ids.")
-    form <- as.formula(paste("~", paste(object$term[1], ":", 
-                                        paste("(",paste(object$term[-1],
-                                                        collapse="+"), 
-                                              ")")), 
-                    "-1"))
-    # structure of X: [eigenf.1 for all ids | eigenf.2 for all ids | ...]
-    object$X <- model.matrix(form, data)#Matrix:::sparse.
-    object$bs.dim <- ncol(object$X)
-    object$S <- list(diag(object$bs.dim))
-    object$rank <- object$bs.dim
-    object$null.space.dim <- 0
-    object$C <- #diag(length(object$term)-1) %x% 
-        #t(rep(1, nlevels(data[[object$term[1]]]))) 
-        matrix(0, 0, ncol(object$X))
-    object$form <- form
-    object$side.constrain <- FALSE
-    object$plot.me <- TRUE
-    object$te.ok <- 2
-    class(object) <- c("pcre.random.effect", "random.effect")
-    object
+smooth.construct.pcre.smooth.spec <- function(object, data, knots) {
+  if (!is.null(object$id)) 
+    stop("random effects don't work with ids.")
+  form <- as.formula(paste("~", paste(object$term[1], ":", 
+    paste("(",paste(object$term[-1], collapse="+"),")")), "-1"))
+  X_id <- model.matrix(as.formula(paste("~ 0 +", object$term[1])), data)
+  #absorb sum-to-zero constraint: 1_n' X_id coef = 0
+  Cr <- rbind(t(colSums(X_id)), 
+    matrix(0, nrow=ncol(X_id)-1, ncol=ncol(X_id)))
+  X_id <- X_id %*% Null(t(as.matrix(Cr)))
+  X_ef <- model.matrix(as.formula(paste("~ 0 +", 
+    paste(object$term[-1], collapse="+"))), data)
+  object$X <- tensor.prod.model.matrix(list(X_id, X_ef))
+  
+  object$bs.dim <- ncol(object$X)
+  object$S <- list(diag(object$bs.dim))
+  object$rank <- object$bs.dim
+  object$null.space.dim <- 0
+  object$C <- matrix(0, 0, ncol(object$X))
+  object$Cr <- Cr
+  object$form <- form
+  object$side.constrain <- FALSE
+  object$plot.me <- TRUE
+  object$te.ok <- 2
+  class(object) <- c("pcre.random.effect", "random.effect")
+  object
 }
+
+#' mgcv-style constructor for prediction of PC-basis functional random effects
+#' 
+#' @param object a smooth specification object, see \code{\link[mgcv]{smooth.construct}}
+#' @param data  see \code{\link[mgcv]{smooth.construct}}
+#' @return design matrix for PC-based functional random effects
+#' @author Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
+Predict.matrix.pcre.random.effect <- function(object, data){
+  X_id <- model.matrix(as.formula(paste("~ 0 +", object$term[1])), data)
+  X_id <- X_id %*% Null(t(as.matrix(object$Cr)))
+  X_ef <- model.matrix(as.formula(paste("~ 0 +", 
+    paste(object$term[-1], collapse="+"))), data)
+  tensor.prod.model.matrix(list(X_id, X_ef))
+}
+
 
 
 #' pffr-constructor for functional principal component-based functional random intercepts.
@@ -47,6 +65,7 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots){
 #' is (usually) estimated and controls the overall contribution of the \eqn{B_i(t)} while the relative importance
 #' of the \eqn{M} basisfunctions is controlled by the supplied variances \code{lambda_m}.
 #' Can be used to model smooth residuals if \code{id} is simply an index of observations.
+#' Differing from random effects in \code{mgcv}, these effects are estimated under a "sum-to-zero-for-each-t"-constraint.
 #' 
 #' \code{efunctions} and \code{evalues} are typically eigenfunctions and eigenvalues of an estimated 
 #' covariance operator for the functional process to be modeled, i.e., they are
@@ -101,29 +120,29 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots){
 #' lines(t, int[1,], col=rgb(1,0,0,.5))
 #' }
 pcre <- function(id, 
-        efunctions,
-        evalues,
-        yind,
-        ...
+  efunctions,
+  evalues,
+  yind,
+  ...
 ){
-    # check args
-    stopifnot(is.factor(id), nrow(efunctions)==length(yind), 
-              ncol(efunctions)==length(evalues), all(evalues>0))
-    
-    phiname <- deparse(substitute(efunctions))
-    idname <- paste(deparse(substitute(id)),".vec",sep="")
-    
-    #scale eigenfunctions by their eigenvalues:
-    efunctions <- t(t(efunctions)*sqrt(evalues))
-    
-    #assign unique names based on the given args
-    colnames(efunctions) <- paste(phiname,".PC", 1:ncol(efunctions), sep="")
-    
-    call <- as.call(c(as.symbol("s"),
-                    as.symbol(substitute(idname)),
-                    sapply(colnames(efunctions), function(x) as.symbol(x)),
-                    bs=c("pcre")))
-    
-    return(list(efunctions=efunctions, yind=yind, idname=idname, 
-                id=id, call=call, ...))
+  # check args
+  stopifnot(is.factor(id), nrow(efunctions)==length(yind), 
+    ncol(efunctions)==length(evalues), all(evalues>0))
+  
+  phiname <- deparse(substitute(efunctions))
+  idname <- paste(deparse(substitute(id)),".vec",sep="")
+  
+  #scale eigenfunctions by their eigenvalues:
+  efunctions <- t(t(efunctions)*sqrt(evalues))
+  
+  #assign unique names based on the given args
+  colnames(efunctions) <- paste(phiname,".PC", 1:ncol(efunctions), sep="")
+  
+  call <- as.call(c(as.symbol("s"),
+    as.symbol(substitute(idname)),
+    sapply(colnames(efunctions), function(x) as.symbol(x)),
+    bs=c("pcre")))
+  
+  return(list(efunctions=efunctions, yind=yind, idname=idname, 
+    id=id, call=call, ...))
 }#end pcre()
