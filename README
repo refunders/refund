@@ -2,7 +2,5 @@
 
 Methods for regression with functional data.
 
-Various approaches to regression with scalar responses and functional predictors are 
-implemented by ‘pfr’, ‘peer’, ‘lpeer’, ‘fpcr’, ‘wcr’ and ‘wnet’. For regression with
-functional responses, see ‘pffr’, ‘fosr’, and ‘fosr2s’.
+Various approaches to regression with scalar responses and functional predictors are implemented by ‘pfr’, ‘peer’, ‘lpeer’, ‘fpcr’, ‘wcr’ and ‘wnet’. For regression with functional responses, see ‘pffr’, ‘fosr’, and ‘fosr2s’.
 
