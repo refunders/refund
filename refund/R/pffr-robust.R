@@ -83,8 +83,7 @@ coefboot.pffr <- function(object,
                 sapply(coefs$smterms, function(x) x$value))
         if(showProgress) cat(".")
         return(unlist(coefvec))
-    }    
-    
+    }
     
     #resample residuals
     bootfct.resid <- function(modcall, data, indices) {
