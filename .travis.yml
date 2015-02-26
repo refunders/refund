@@ -1,0 +1,5 @@
+# see http://docs.travis-ci.com/user/languages/r/
+language: r
+
+# Be strict when checking our package
+warnings_are_errors: true
