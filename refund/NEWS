@@ -1,0 +1,41 @@
+               CHANGES in `refundDevel' 
+rev 20
+  o added FGAM functionality
+
+rev 21/22
+  o added (experimental) pffr-functionality for non-independent non-homogeneous errors: pffrGLS, coefboot.pffr
+  o added (experimental) FPC-based random effect functionality for pffr
+  o changed "fitter" argument for pffr to  "algorithm" due to argument name clash with gam's "fit"-argument
+  o added (experimental) option for "sandwich" variability estimates to coef.pffr
+  o added pffr references to documentation  
+  
+rev 32/33
+  o added explicit data argument to pffr	
+  o incremented version to 0.2-0
+  o fixed documentation
+  
+rev 79-84
+  o added fpca.ssvd: regularized FPCA by successively smoothing right singular vectors 
+  o fpca.sc: added <center> argument
+  o ffpc and pcre-terms now fully supported in pffr-methods, ffpc has its own plot-function
+  o adapted missing data handling in pffr-methods to recent changes in mgcv
+  o incremented version to 0.2-3
+
+rev 130
+  o added fpca.face, fbps, sandwich smoother functionality
+  
+rev 134
+  o pffr & its methods now handle sparse/irregular data (unresolved: identifiability constraints for irregular data)
+  o incremented version to 0.2-6
+  
+rev 140
+  o Edit the NEWS file to trigger the rebuilding process on R-Forge
+ 
+rev 150
+  o fixed some scoping issues in pffr
+  o incremented version to 0.2-7
+
+rev 152
+  o pffr: moved to using "ti"-bases with "mc"-constraints, requires mgcv > 1.7-28
+  o pffr: now checks that rownames of data and obs-entries in ydata agree
+  o incremented version to 0.3-0

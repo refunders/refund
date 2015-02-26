@@ -8,11 +8,10 @@ import(
   fda,
   MASS,
   glmnet,
-  wavethresh,
   Matrix,
   gamm4,
   matrixStats,
   lme4,
-  splines,
-  RLRsim
+  RLRsim,
+  splines
 )

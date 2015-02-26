@@ -121,9 +121,6 @@ Philip Reiss \email{phil.reiss@nyumc.org}, Lan Huo \email{lan.huo@nyumc.org},
 and Lei Huang \email{huangracer@gmail.com}
 }
 
-\seealso{
-\code{\link{wcr}}, \code{\link{wnet}}
-}
 \examples{
 require(fda)
 ### 1D functional predictor example ###

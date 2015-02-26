@@ -63,8 +63,7 @@ Yao, F., Mueller, H.-G., and Wang, J.-L. (2005). Functional data analysis for sp
 \author{
 Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, Sonja Greven \email{sonja.greven@stat.uni-muenchen.de}, Lan Huo \email{Lan.Huo@nyumc.org}, Lei Huang \email{huangracer@gmail.com}, and Philip Reiss \email{phil.reiss@nyumc.org}
 }
-\examples{
-\dontrun{
+\examples{\dontrun{
 data(cd4)
 
 Fit.MM = fpca.sc(cd4, var = TRUE, simul = TRUE)
@@ -98,11 +97,10 @@ plot(d, Fit.MM$efunctions[,1], type = 'l', xlab = "Months since seroconversion",
   
   
 # input a dataframe instead of a matrix
-
 nid <- 20
 nobs <- sample(10:20, nid, rep=TRUE)
 ydata <- data.frame(
-    .id = rep(1:nid, nobs),	
+    .id = rep(1:nid, nobs),
     .index = round(runif(sum(nobs), 0, 1), 3))
 ydata$.value <- unlist(tapply(ydata$.index, 
                               ydata$.id, 
@@ -111,7 +109,7 @@ ydata$.value <- unlist(tapply(ydata$.index,
                                   dbeta(x, runif(1, 6, 8), runif(1, 3, 5))
                               )
                        )
+	
 Fit.MM = fpca.sc(ydata=ydata, var = TRUE, simul = FALSE)
 matplot(Fit.MM$efunctions[,1:2])
-}
-}
+}}
