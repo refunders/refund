@@ -1,39 +1,5 @@
-# copied from https://github.com/hadley/dplyr/blob/master/.travis.yml @ 2014/08/12
-language: c
+# see http://docs.travis-ci.com/user/languages/r/
+language: r
 
-before_install:
-  - curl -OL http://raw.github.com/craigcitro/r-travis/master/scripts/travis-tool.sh
-  - chmod 755 ./travis-tool.sh
-  - ./travis-tool.sh bootstrap
-install:
-  - mkdir ~/.R
-  - ./travis-tool.sh r_binary_install fda
-  - ./travis-tool.sh r_binary_install lattice
-  - ./travis-tool.sh r_binary_install mgcv
-  - ./travis-tool.sh r_binary_install glmnet
-  - ./travis-tool.sh r_binary_install magic
-  - ./travis-tool.sh r_binary_install nlme
-  - ./travis-tool.sh r_binary_install wavethresh
-  - ./travis-tool.sh r_binary_install Matrix
-  - ./travis-tool.sh r_binary_install gamm4
-  - ./travis-tool.sh r_binary_install matrixStats
-  - ./travis-tool.sh r_binary_install lme4
-  - ./travis-tool.sh r_binary_install RLRsim
-  - ./travis-tool.sh install_deps
-
-before_script:
-# Install package
-#- R CMD INSTALL .
-script: ./travis-tool.sh run_tests
-
-after_failure:
-  - ./travis-tool.sh dump_logs
-
-branches:
-  except:
-  - /-expt$/
-  - solaris
-notifications:
-  email:
-    on_success: change
-    on_failure: change
+# Be strict when checking our package
+warnings_are_errors: true
