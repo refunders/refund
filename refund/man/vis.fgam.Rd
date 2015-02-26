@@ -62,6 +62,7 @@ Mathew W. McLean \email{mwm79@cornell.edu}
 \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{fgam}}, \code{\link{persp}}, \code{\link{levelplot}}
 }
 \examples{
+require(splines)
 ################# DTI Example #####################
 data(DTI)
 

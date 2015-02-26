@@ -60,11 +60,7 @@ predict.pffr <- function(object,
     ## warn if any entries in ... are not arguments for predict.gam 
     dots <- list(...)
     if(length(dots)){
-        validDots <- c(names(formals(predict.gam)), "cluster")
-          # should be 
-          # unique(c(names(formals(predict.gam)), 
-          #          names(formals(predict.bam)))) 
-          # but predict.bam is not exported.
+        validDots <- names(formals(predict.gam))
         notUsed <- names(dots)[!(names(dots) %in% validDots)]
         if(length(notUsed))
             warning("Arguments <", paste(notUsed, collapse=", "), "> supplied but not used." )
@@ -199,9 +195,7 @@ predict.pffr <- function(object,
     
     
     #call predict.gam
-    call[[1]] <- if(inherits(object, "bam")){
-        mgcv::predict.bam  
-    }  else mgcv::predict.gam
+    call[[1]] <- mgcv::predict.gam
     call$object <- as.name("object")
     ret <- eval(call)
     
@@ -352,7 +346,6 @@ residuals.pffr <- function (object, reformat=TRUE, ...)
 #'  or vector (if \code{!reformat}) of fitted values 
 #' @method fitted pffr
 #' @author Fabian Scheipl
-#  TODO: fix for non-grid data without newdata, yind
 fitted.pffr <- function (object, reformat=TRUE, ...) 
 {
     if (!inherits(object, "pffr")) 

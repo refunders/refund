@@ -1,4 +1,10 @@
 \name{refund-internal}
+\alias{decomp}
+\alias{decomp2d}
+\alias{decomp3d}
+\alias{reconstr}
+\alias{reconstr2d}
+\alias{reconstr3d}
 \alias{fpcr.setup}
 \alias{first.last_test}
 \alias{getSpandDist}
@@ -17,9 +23,11 @@
 \alias{checkError}
 \alias{getRsq}
 \alias{decorrelate}
+\alias{waveletGetResult}
+\alias{waveletSetup}
 \alias{pspline.setting}
+\alias{waveletGetCV}
 \alias{irreg2mat}
-\alias{getL}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Internal functions for the refund package

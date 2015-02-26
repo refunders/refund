@@ -27,5 +27,5 @@ Reiss, P. T., and Ogden, R. T. (2007).  Functional principal component regressio
 
 Reiss, P. T., and Ogden, R. T. (2009).  Smoothing parameter selection for a class of semiparametric linear models.   \emph{Journal of the Royal Statistical Society, Series B}, 71(2), 505--523.
 }
-\seealso{\code{\link{fpcr}}}
+\seealso{\code{\link{fpcr}}, \code{\link{wcr}}, \code{\link{wnet}}}
 \keyword{datasets}

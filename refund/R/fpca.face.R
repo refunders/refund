@@ -12,6 +12,7 @@ function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,
   ## lambda: user-selected smoothing parameter
   ## method: see R function "optim" 
   ## lower, upper, control: see R function "optim"
+  #require(splines)
   #require(Matrix)
   #source("pspline.setting.R")
   
