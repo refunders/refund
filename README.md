@@ -1,4 +1,6 @@
-# `refund`
+# `refund`: Developer Version
+![](https://travis-ci.org/refunders/refund.svg?branch=devel)
+
 ## Methods for regression with functional data
 
 These packages implement various approaches to functional data regression. 
