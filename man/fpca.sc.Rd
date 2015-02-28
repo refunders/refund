@@ -64,39 +64,44 @@ Yao, F., Mueller, H.-G., and Wang, J.-L. (2005). Functional data analysis for sp
 Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, Sonja Greven \email{sonja.greven@stat.uni-muenchen.de}, Lan Huo \email{Lan.Huo@nyumc.org}, Lei Huang \email{huangracer@gmail.com}, and Philip Reiss \email{phil.reiss@nyumc.org}
 }
 \examples{\dontrun{
+library(ggplot2)
+library(reshape2)
 data(cd4)
 
 Fit.MM = fpca.sc(cd4, var = TRUE, simul = TRUE)
 
-# for one subject, examine curve estimate, pointwise and simultaneous itervals
+Fit.mu = data.frame(mu = Fit.MM$mu,
+                    d = as.numeric(colnames(cd4)))
+Fit.basis = data.frame(phi = Fit.MM$efunctions, 
+                       d = as.numeric(colnames(cd4)))
+
+## for one subject, examine curve estimate, pointwise and simultaneous itervals
 EX = 1
-EX.MM =  cbind(Fit.MM$Yhat[EX,], 
-      Fit.MM$Yhat[EX,] + 1.96 * sqrt(Fit.MM$diag.var[EX,]), 
-      Fit.MM$Yhat[EX,] - 1.96 * sqrt(Fit.MM$diag.var[EX,]),
-      Fit.MM$Yhat[EX,] + Fit.MM$crit.val[EX] * sqrt(Fit.MM$diag.var[EX,]),
-      Fit.MM$Yhat[EX,] - Fit.MM$crit.val[EX] * sqrt(Fit.MM$diag.var[EX,]))
+EX.MM = data.frame(fitted = Fit.MM$Yhat[EX,], 
+                   ptwise.UB = Fit.MM$Yhat[EX,] + 1.96 * sqrt(Fit.MM$diag.var[EX,]), 
+                   ptwise.LB = Fit.MM$Yhat[EX,] - 1.96 * sqrt(Fit.MM$diag.var[EX,]),
+                   simul.UB = Fit.MM$Yhat[EX,] + Fit.MM$crit.val[EX] * sqrt(Fit.MM$diag.var[EX,]),
+                   simul.LB = Fit.MM$Yhat[EX,] - Fit.MM$crit.val[EX] * sqrt(Fit.MM$diag.var[EX,]),
+                   d = as.numeric(colnames(cd4)))
 
+## plot data for one subject, with curve and interval estimates
+EX.MM.m = melt(EX.MM, id = "d")
+ggplot(EX.MM.m, aes(x = d, y = value, group = variable, color = variable, linetype = variable)) + 
+  geom_path() +
+  scale_linetype_manual(values = c(fitted = 1, ptwise.UB = 2, ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
+  scale_color_manual(values = c(fitted = 1, ptwise.UB = 2, ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
+  labs(x = "Months since seroconversion", y = "Total CD4 Cell Count")
 
-par(mfrow=c(1,3))
+## plot estimated mean function
+ggplot(Fit.mu, aes(x = d, y = mu)) + geom_path() +
+  labs(x = "Months since seroconversion", y = "Total CD4 Cell Count")
 
-# plot data for one subject, with curve and interval estimates
-d = as.numeric(colnames(cd4))
-plot(d[which(!is.na(cd4[EX,]))], cd4[EX,which(!is.na(cd4[EX,]))], type = 'o', pch = 19,
-  cex=.75, ylim = range(0, 3400), xlim = range(d), xlab = "Months since seroconversion", 
-    lwd = 1.2, ylab = "Total CD4 Cell Count", main = "Est. & CI - Sampled Data")
+## plot the first two estimated basis functions
+Fit.basis.m = melt(Fit.basis, id = "d")
+ggplot(subset(Fit.basis.m, variable %in% c("phi.1", "phi.2")), aes(x = d, y = value, group = variable, color = variable)) + 
+  geom_path()
 
-matpoints(d, EX.MM, col = 4, type = 'l', lwd = c(2, 1, 1, 1, 1), lty = c(1,1,1,2,2))
-
-# plot estimated mean function
-plot(d, Fit.MM$mu, type = 'l', xlab = "Months since seroconversion",
-  ylim = range(0, 3400), ylab = "Total CD4 Cell Count", main = "Est. Mean Function")
-
-# plot the first estimated basis function
-plot(d, Fit.MM$efunctions[,1], type = 'l', xlab = "Months since seroconversion",
-  ylab = "Total CD4 Cell Count", main = "First Est. Basis Function")
-  
-  
-# input a dataframe instead of a matrix
+## input a dataframe instead of a matrix
 nid <- 20
 nobs <- sample(10:20, nid, rep=TRUE)
 ydata <- data.frame(
@@ -111,5 +116,5 @@ ydata$.value <- unlist(tapply(ydata$.index,
                        )
 	
 Fit.MM = fpca.sc(ydata=ydata, var = TRUE, simul = FALSE)
-matplot(Fit.MM$efunctions[,1:2])
+
 }}
