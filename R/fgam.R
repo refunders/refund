@@ -15,7 +15,7 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
       warning("Arguments <", paste(notUsed, collapse = ", "), 
               "> supplied but not used.")
   }
-  tf <- terms.formula(formula, specials = c("s", "te", "t2",
+  tf <- terms.formula(formula, specials = c("s", "re", "te", "t2",
                                             "lf", "af", "lf.vd"))
   trmstrings <- attr(tf, "term.labels")
   terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]], 
@@ -27,6 +27,7 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
   where.s <- attr(tf, "specials")$s - 1
   where.te <- attr(tf, "specials")$te - 1
   where.t2 <- attr(tf, "specials")$t2 - 1
+  where.re <- attr(tf, "specials")$re - 1
   
   
   if (length(trmstrings)) {
@@ -46,31 +47,32 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
   if (missing(fitter) || is.na(fitter)) {
     fitter <- ifelse(nobs > 1e+05, "bam", "gam")
   }
-
+  
   fitter <- as.symbol(fitter)
   if (as.character(fitter) == "bam" && !("chunk.size" %in% 
-    names(call))) {
+                                         names(call))) {
     call$chunk.size <- max(nobs/5, 10000)
   }
   if (as.character(fitter) == "gamm4") 
     stopifnot(length(where.te) < 1)
   
   assign(x = deparse(responsename), value = as.vector(t(eval(responsename, 
-                                      envir = evalenv, enclos = frmlenv))), envir = newfrmlenv)
-
+                                                             envir = evalenv, enclos = frmlenv))), envir = newfrmlenv)
+  
   newtrmstrings <- attr(tf, "term.labels")
   if (!attr(tf, "intercept")) {
     newfrml <- paste(newfrml, "0", sep = "")
   }
   
-  if (length(c(where.af, where.lf, where.lf.vd))) {
-    fterms <- lapply(terms[c(where.af, where.lf, where.lf.vd)], function(x) {
+  where.special <- c(where.af, where.lf, where.lf.vd, where.re)
+  if (length(where.special)) {
+    fterms <- lapply(terms[ where.special], function(x) {
       eval(x, envir = evalenv, enclos = frmlenv)
     })
-    newtrmstrings[c(where.af, where.lf, where.lf.vd)] <- 
+    newtrmstrings[where.special] <- 
       sapply(fterms, function(x) {
         safeDeparse(x$call)
-        })
+      })
     lapply(fterms, function(x) {
       lapply(names(x$data), function(nm) {
         assign(x = nm, value = x$data[[nm]], envir = newfrmlenv)
@@ -155,7 +157,8 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
               where = list(where.af = where.af, 
                            where.lf = where.lf, where.lf.vd=where.lf.vd,
                            where.s = where.s, where.te = where.te, 
-                           where.t2 = where.t2, where.par = where.par),
+                           where.t2 = where.t2, where.re = where.re, 
+                           where.par = where.par),
               datameans = datameans, ft = fterms)
   if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$fgam <- ret
@@ -165,6 +168,6 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
     res$fgam <- ret
     class(res) <- c("fgam", class(res))
   }
-
-	return(res)
+  
+  return(res)
 }
