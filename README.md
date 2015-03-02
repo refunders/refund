@@ -20,3 +20,5 @@ To install the latest patched version directly from Github, please use `devtools
 
 To install the developer version `refundDevel` with experimental features directly from Github, please use `devtools::install_github("refunders/refund/refund", ref="devel")`.
 
+### Functional data:
+![http://www.fdawg.org/](./README_figures/BayesPFSR_Fig.jpg)
