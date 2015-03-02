@@ -6,12 +6,13 @@
 #' \deqn{g(E(Y_i)) = \beta_0 + \int_{T_1} F(X_{i1},t)dt+ \int_{T_2} \beta(t)X_{i2}dt + f(z_{i1}) + f(z_{i2}, z_{i3}) + \ldots}
 #' with a scalar (but not necessarily continuous) response Y, and link function g
 #' @param formula a formula with special terms as for gam, with additional special terms
-#' \code{\link{af}}() and \code{\link{lf}}().
-#' @param fitter the name of the function used to estimate the model. Defaults to \code{\link{gam}}
+#' \code{\link{af}}(), \code{\link{lf}}(), \code{\link{re}}().
+#' @param fitter the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}}
 #' if the matrix of functional responses has less than 2e5 data points and to
-#' \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}}) and "gamm4"
-#' (see \code{\link{gamm4}}) are valid options as well.
-#' @param ... additional arguments that are valid for \code{\link{gam}} or \code{\link{bam}}; for example,
+#' \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4"
+#' (see \code{\link[gamm4]{gamm4}}) are valid options as well.
+#' @param tensortype defaults to \code{\link[mgcv]{te}}, other valid option is \code{\link[mgcv]{t2}}
+#' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}; for example,
 #' specify a \code{gamma} > 1 to increase amount of smoothing when using GCV to choose smoothing
 #' parameters or \code{method="REML"} to change to REML for estimation of smoothing parameters
 #' (default is GCV).
