@@ -90,6 +90,7 @@ Collate:
     'predict.fgam.R'
     'pspline.setting.R'
     'pwcv.R'
+    're.R'
     'rlrt.pfr.R'
     'fpca2s.R'
     'fpca.ssvd.R'
