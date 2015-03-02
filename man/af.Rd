@@ -18,9 +18,15 @@ af(X, argvals = seq(0, 1, l = ncol(X)), xind=NULL, basistype = c("te", "t2", "s"
 
 \item{xind}{same as \code{argvals}. It will disappear in the next version of refund.}
 
+\item{basistype}{defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
+use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
+parameterization of tensor product splines (see \code{\link{t2}})}
+
 \item{integration}{method used for numerical integration. Defaults to \code{"simpson"}'s rule for
 calculating entries in \code{L}. Alternatively and for non-equidistant grids, \code{"trapezoidal"}
 or \code{"riemann"}. \code{"riemann"} integration is always used if \code{L} is specified}
+
+\item{L}{optional weight matrix for the linear functional}
 
 \item{splinepars}{optional arguments specifying options for representing and penalizing the
 function \eqn{F(x,t)}. Defaults to a cubic tensor product B-spline with marginal second-order
@@ -38,10 +44,6 @@ for future observed curves that take values outside of \code{range(X)}}
 applying a quantile transformation on each column of \code{X} prior to fitting?  This ensures
 \code{Xrange=c(0,1)}.  If \code{Qtransform=TRUE} and \code{presmooth=TRUE}, presmoothing is done prior
 to transforming the functional predictor}
-
-\item{defaults}{to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
-use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
-parameterization of tensor product splines (see \code{\link{t2}})}
 }
 \value{
 A list with the following entries:

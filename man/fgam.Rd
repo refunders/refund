@@ -4,18 +4,20 @@
 \alias{fgam}
 \title{Functional Generalized Additive Models}
 \usage{
-fgam(formula, fitter = NA, ...)
+fgam(formula, fitter = NA, tensortype = c("te", "t2"), ...)
 }
 \arguments{
 \item{formula}{a formula with special terms as for gam, with additional special terms
 \code{\link{af}}() and \code{\link{lf}}().}
 
-\item{fitter}{the name of the function used to estimate the model. Defaults to \code{\link{gam}}
+\item{fitter}{the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}}
 if the matrix of functional responses has less than 2e5 data points and to
-\code{\link{bam}} if not. "gamm" (see \code{\link{gamm}}) and "gamm4"
-(see \code{\link{gamm4}}) are valid options as well.}
+\code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4"
+(see \code{\link[gamm4]{gamm4}}) are valid options as well.}
 
-\item{...}{additional arguments that are valid for \code{\link{gam}} or \code{\link{bam}}; for example,
+\item{tensortype}{defaults to \code{\link[mgcv]{te}}, other valid option is \code{\link[mgcv]{t2}}}
+
+\item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}; for example,
 specify a \code{gamma} > 1 to increase amount of smoothing when using GCV to choose smoothing
 parameters or \code{method="REML"} to change to REML for estimation of smoothing parameters
 (default is GCV).}
