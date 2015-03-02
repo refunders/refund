@@ -7,7 +7,7 @@
 #' with a scalar (but not necessarily continuous) response Y, and link function g
 #' @param formula a formula with special terms as for gam, with additional special terms
 #' \code{\link{af}}() and \code{\link{lf}}().
-#' @param the name of the function used to estimate the model. Defaults to \code{\link{gam}}
+#' @param fitter the name of the function used to estimate the model. Defaults to \code{\link{gam}}
 #' if the matrix of functional responses has less than 2e5 data points and to
 #' \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}}) and "gamm4"
 #' (see \code{\link{gamm4}}) are valid options as well.
