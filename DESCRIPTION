@@ -23,7 +23,7 @@ Author: Ciprian Crainiceanu [aut], Philip Reiss [aut], Jeff Goldsmith [aut],
 Maintainer: Lei Huang <huangracer@gmail.com>
 Depends:
     R (>= 2.14.0),
-    fda,
+    fda
 Imports:
     lattice,
     boot,
@@ -37,7 +37,7 @@ Imports:
     matrixStats,
     lme4,
     RLRsim, 
-    splines,
+    splines
 Suggests:
     ggplot2,
     reshape2
@@ -98,4 +98,7 @@ Collate:
     'postprocess.pfr.R'
     'predict.pfr.R'
     'preprocess.pfr.R'
+    'preprocess.fpca.R'
+    'preprocess.bspline.R'
+    'preprocess.interpolate.R'
     'irreg2mat.R'
