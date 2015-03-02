@@ -4,7 +4,7 @@
 \alias{af}
 \title{Construct an FGAM regression term}
 \usage{
-af(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"),
+af(X, argvals = seq(0, 1, l = ncol(X)), xind=NULL, basistype = c("te", "t2", "s"),
   integration = c("simpson", "trapezoidal", "riemann"), L = NULL,
   splinepars = list(bs = "ps", k = c(min(ceiling(nrow(X)/5), 20),
   min(ceiling(ncol(X)/5), 20)), m = list(c(2, 2), c(2, 2))), presmooth = TRUE,
@@ -14,8 +14,9 @@ af(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"),
 \item{X}{an \code{N} by \code{J=ncol(xind)} matrix of function evaluations
 \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}}
 
-\item{xind}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}}
+\item{argvals}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}}
+
+\item{xind}{same as \code{argvals}. It will disappear in the next version of refund.}
 
 \item{integration}{method used for numerical integration. Defaults to \code{"simpson"}'s rule for
 calculating entries in \code{L}. Alternatively and for non-equidistant grids, \code{"trapezoidal"}
