@@ -7,10 +7,11 @@ Corrected confidence bands using functional principal components
 Uses iterated expectation and variances to obtain corrected estimates and inference for functional expansions.
 }
 \usage{
-ccb.fpc(Y, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, sim.alpha = .95)
+ccb.fpc(Y, argvals=NULL, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, sim.alpha = .95)
 }
 \arguments{
   \item{Y }{matrix of observed functions for which estimates and covariance matrices are desired.}
+  \item{argvals}{the argument values at which the observed functions are evaluated.}
   \item{nbasis }{number of splines used in the estimation of the mean function and the bivariate smoothing of the covariance matrix}
   \item{pve }{proportion of variance explained used to choose the number of principal components to be included in the expansion.}
   \item{n.boot }{number of bootstrap iterations used to estimate the distribution of FPC decomposition objects.}

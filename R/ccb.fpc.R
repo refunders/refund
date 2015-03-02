@@ -1,7 +1,11 @@
 ccb.fpc <-
-function(Y, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, sim.alpha = .95){
+function(Y, argvals=NULL, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, sim.alpha = .95){
   
   set.seed(10)
+  
+  if(!is.null(argvals)) {
+    stop("argvals is not implemented!")
+  }
   
   D = dim(Y)[2]   # size of grid
   I = dim(Y)[1]   # number of curves
