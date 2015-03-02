@@ -10,6 +10,7 @@
 #' \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}
 #' @param argvals matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
 #' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}
+#' @param xind Same as argvals. It will discard this argument in the next version of refund.
 #' @param basistype defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
 #' use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
 #' parameterization of tensor product splines (see \code{\link{t2}})

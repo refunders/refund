@@ -8,7 +8,7 @@ fgam(formula, fitter = NA, tensortype = c("te", "t2"), ...)
 }
 \arguments{
 \item{formula}{a formula with special terms as for gam, with additional special terms
-\code{\link{af}}() and \code{\link{lf}}().}
+\code{\link{af}}(), \code{\link{lf}}(), \code{\link{re}}().}
 
 \item{fitter}{the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}}
 if the matrix of functional responses has less than 2e5 data points and to
