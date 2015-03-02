@@ -58,12 +58,15 @@ psfr <- function(formula, fitter=NA, ...){
   terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]], 
                   simplify = FALSE)
   frmlenv <- environment(formula)
-  where.af <- attr(tf, "specials")$af - 1
-  where.lf <- attr(tf, "specials")$lf - 1
-  where.s <- attr(tf, "specials")$s - 1
-  where.te <- attr(tf, "specials")$te - 1
-  where.t2 <- attr(tf, "specials")$t2 - 1
+  specials <- attr(tf, "specials")
   
+  
+  
+  where.af <- specials$af - 1
+  where.lf <- specials$lf - 1
+  where.s  <- specials$s - 1
+  where.te <- specials$te - 1
+  where.t2 <- specials$t2 - 1
   
   if (length(trmstrings)) {
     where.par <- which(!(1:length(trmstrings) %in%
