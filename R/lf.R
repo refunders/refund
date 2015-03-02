@@ -1,7 +1,7 @@
 #' Construct an FLM regression term
 #'
-#' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{\link{mgcv::gam}}-formula
-#' (or \code{\link{bam}} or \code{\link{gamm}} or \code{\link{gamm4::gamm4}}) as constructed by
+#' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{\link[mgcv]{gam}}-formula
+#' (or \code{\link{bam}} or \code{\link{gamm}} or \code{\link[gamm4]{gamm4}}) as constructed by
 #' \code{\link{fgam}}, where \eqn{\beta(t)} is an unknown coefficient function and \eqn{X_i(t)}
 #' is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic B-spline with
 #' second-order difference penalties for estimating \eqn{\beta(t)}.  The functional predictor must

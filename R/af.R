@@ -10,7 +10,7 @@
 #' \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}
 #' @param xind matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
 #' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}
-#' @param defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
+#' @param basistype defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
 #' use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
 #' parameterization of tensor product splines (see \code{\link{t2}})
 #' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule for
@@ -29,6 +29,7 @@
 #' applying a quantile transformation on each column of \code{X} prior to fitting?  This ensures
 #' \code{Xrange=c(0,1)}.  If \code{Qtransform=TRUE} and \code{presmooth=TRUE}, presmoothing is done prior
 #' to transforming the functional predictor
+#' @param L optional weight matrix for the linear functional
 #' @return A list with the following entries:
 #' \enumerate{
 #' \item \code{call} - a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
@@ -57,10 +58,11 @@
 #' @importFrom utils modifyList getFromNamespace
 af <- function(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te","t2", "s"),
                integration = c("simpson", "trapezoidal", "riemann"),
-                L = NULL, splinepars = list(bs = "ps",
-                k= c(min(ceiling(nrow(X)/5),20),min(ceiling(ncol(X)/5),20)),
-                m = list(c(2, 2), c(2, 2))), presmooth = TRUE,Xrange=range(X),Qtransform=FALSE) {
-
+               L = NULL, 
+               splinepars = list(bs = "ps",
+                                 k= c(min(ceiling(nrow(X)/5),20),min(ceiling(ncol(X)/5),20)),
+                                 m = list(c(2, 2), c(2, 2))), presmooth = TRUE,Xrange=range(X),Qtransform=FALSE) {
+  
   n=nrow(X)
   nt=ncol(X)
   basistype <- match.arg(basistype)
