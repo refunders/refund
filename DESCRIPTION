@@ -21,7 +21,7 @@ Author: Ciprian Crainiceanu [aut], Philip Reiss [aut], Jeff Goldsmith [aut],
 Maintainer: Lei Huang <huangracer@gmail.com>
 Depends:
     R (>= 2.14.0),
-    fda,
+    fda
 Imports:
     lattice,
     boot,
