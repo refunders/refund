@@ -30,6 +30,7 @@
 #' @importFrom gamm4 gamm4
 #' @importFrom nlme lme4
 #' @importFrom stats terms.formula
+#' @export
 #' @examples
 #' data(DTI)
 #' ## only consider first visit and cases (no PASAT scores for controls)
@@ -92,7 +93,7 @@
 #' plot(fit)
 #' vis.fgam(fit,af.term='X_2',plot.type='contour')
 fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
-  
+
   call <- match.call()
   tensortype <- as.symbol(match.arg(tensortype))
   dots <- list(...)
@@ -104,14 +105,14 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
       c(names(formals(gam)), names(formals(gam.fit)))
     }
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
-    if (length(notUsed)) 
-      warning("Arguments <", paste(notUsed, collapse = ", "), 
+    if (length(notUsed))
+      warning("Arguments <", paste(notUsed, collapse = ", "),
               "> supplied but not used.")
   }
   tf <- terms.formula(formula, specials = c("s", "re", "te", "t2",
                                             "lf", "af", "lf.vd"))
   trmstrings <- attr(tf, "term.labels")
-  terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]], 
+  terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]],
                   simplify = FALSE)
   frmlenv <- environment(formula)
   where.af <- attr(tf, "specials")$af - 1
@@ -121,48 +122,48 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
   where.te <- attr(tf, "specials")$te - 1
   where.t2 <- attr(tf, "specials")$t2 - 1
   where.re <- attr(tf, "specials")$re - 1
-  
-  
+
+
   if (length(trmstrings)) {
     where.par <- which(!(1:length(trmstrings) %in%
                            c(where.af, where.lf, where.lf.vd,
                              where.s, where.te, where.t2)))
   }else where.par <- numeric(0)
-  
+
   responsename <- attr(tf, "variables")[2][[1]]
   newfrml <- paste(responsename, "~", sep = "")
   newfrmlenv <- new.env()
-  evalenv <- if ("data" %in% names(call)) 
+  evalenv <- if ("data" %in% names(call))
     eval(call$data)
   else NULL
   nobs <- length(eval(responsename, envir = evalenv, enclos = frmlenv))
-  
+
   if (missing(fitter) || is.na(fitter)) {
     fitter <- ifelse(nobs > 1e+05, "bam", "gam")
   }
-  
+
   fitter <- as.symbol(fitter)
-  if (as.character(fitter) == "bam" && !("chunk.size" %in% 
+  if (as.character(fitter) == "bam" && !("chunk.size" %in%
                                          names(call))) {
     call$chunk.size <- max(nobs/5, 10000)
   }
-  if (as.character(fitter) == "gamm4") 
+  if (as.character(fitter) == "gamm4")
     stopifnot(length(where.te) < 1)
-  
-  assign(x = deparse(responsename), value = as.vector(t(eval(responsename, 
+
+  assign(x = deparse(responsename), value = as.vector(t(eval(responsename,
                                                              envir = evalenv, enclos = frmlenv))), envir = newfrmlenv)
-  
+
   newtrmstrings <- attr(tf, "term.labels")
   if (!attr(tf, "intercept")) {
     newfrml <- paste(newfrml, "0", sep = "")
   }
-  
+
   where.special <- c(where.af, where.lf, where.lf.vd, where.re)
   if (length(where.special)) {
     fterms <- lapply(terms[ where.special], function(x) {
       eval(x, envir = evalenv, enclos = frmlenv)
     })
-    newtrmstrings[where.special] <- 
+    newtrmstrings[where.special] <-
       sapply(fterms, function(x) {
         safeDeparse(x$call)
       })
@@ -176,10 +177,10 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
     fterms <- lapply(fterms, function(x) x[names(x) != "data"])
   }
   else fterms <- NULL
-  
+
   where.notf <- c(where.par,where.s,where.te,where.t2)
   if (length(where.notf)) {
-    if ("data" %in% names(call)) 
+    if ("data" %in% names(call))
       frmlenv <- list2env(eval(call$data), frmlenv)
     lapply(terms[where.notf], function(x) {
       nms <- if (!is.null(names(x))) {
@@ -194,7 +195,7 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
       invisible(NULL)
     })
   }
-  
+
   newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
   environment(newfrml) <- newfrmlenv
   fgamdata <- list2df(as.list(newfrmlenv))
@@ -205,18 +206,18 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
   newcall$data <- quote(fgamdata)
   newcall$fitter <- newcall$tensortype <- NULL
   newcall[[1]] <- fitter
-  
+
   res <- eval(newcall)
   res.smooth <- if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$smooth
   } else res$smooth
-  
+
   trmmap <- newtrmstrings
   names(trmmap) <- names(terms)
   labelmap <- as.list(trmmap)
   names(trmmap) <- names(terms)
   lbls <- sapply(res.smooth, function(x) x$label)
-  
+
   if (length(where.par)) {
     for (w in where.par) labelmap[[w]] <- {
       where <- sapply(res.smooth, function(x) x$by) == names(labelmap)[w]
@@ -245,12 +246,12 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
   } else {
     res$smooth <- res.smooth
   }
-  ret <- list(formula = formula, termmap = trmmap, labelmap = labelmap, 
+  ret <- list(formula = formula, termmap = trmmap, labelmap = labelmap,
               responsename = responsename, nobs = nobs,
-              where = list(where.af = where.af, 
+              where = list(where.af = where.af,
                            where.lf = where.lf, where.lf.vd=where.lf.vd,
-                           where.s = where.s, where.te = where.te, 
-                           where.t2 = where.t2, where.re = where.re, 
+                           where.s = where.s, where.te = where.te,
+                           where.t2 = where.t2, where.re = where.re,
                            where.par = where.par),
               datameans = datameans, ft = fterms)
   if (as.character(fitter) %in% c("gamm4", "gamm")) {
@@ -261,6 +262,6 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
     res$fgam <- ret
     class(res) <- c("fgam", class(res))
   }
-  
+
   return(res)
 }

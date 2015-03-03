@@ -56,13 +56,14 @@
 #' @importFrom stats ecdf
 #' @importFrom fda int2Lfd smooth.basisPar eval.fd create.bspline.basis
 #' @importFrom utils modifyList getFromNamespace
+#' @export
 af <- function(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te","t2", "s"),
                integration = c("simpson", "trapezoidal", "riemann"),
-               L = NULL, 
+               L = NULL,
                splinepars = list(bs = "ps",
                                  k= c(min(ceiling(nrow(X)/5),20),min(ceiling(ncol(X)/5),20)),
                                  m = list(c(2, 2), c(2, 2))), presmooth = TRUE,Xrange=range(X),Qtransform=FALSE) {
-  
+
   n=nrow(X)
   nt=ncol(X)
   basistype <- match.arg(basistype)

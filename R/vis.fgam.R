@@ -42,6 +42,7 @@
 #' @importFrom gam vis.gam predict.gam
 #' @importFrom lattice levelplot
 #' @importFrom graphics persp
+#' @export
 #' @examples
 #' ################# DTI Example #####################
 #' data(DTI)

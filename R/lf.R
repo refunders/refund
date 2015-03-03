@@ -40,6 +40,7 @@
 #' \code{\link{fgam}} for examples
 #' @importFrom fda create.bspline.basis smooth.basisPar eval.fd
 #' @importFrom utils getFromNamesapce modifyList
+#' @export
 lf <- function(X, xind = seq(0, 1, l = ncol(X)),
                integration = c("simpson", "trapezoidal", "riemann"),
                L = NULL, splinepars = list(bs = "ps", k= min(ceiling(n/4),40),
