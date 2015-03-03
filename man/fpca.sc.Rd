@@ -10,12 +10,13 @@ Decomposes functional observations using functional principal components analysi
 fpca.sc(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, 
         random.int = FALSE, nbasis = 10, pve = .99, npc = NULL, 
         var = FALSE, simul = FALSE, sim.alpha = .95,
-        useSymm = FALSE, makePD = FALSE, center=TRUE, cov.est.method = 2)
+        useSymm = FALSE, makePD = FALSE, center=TRUE, cov.est.method = 2,
+        integration = "trapezoidal")
 }
 \arguments{
   \item{Y, ydata}{the user must supply either \code{Y}, a matrix of functions observed on a regular grid, or a data frame \code{ydata} representing irregularly observed functions. See Details.}
   \item{Y.pred}{if desired, a matrix of functions to be approximated using the FPC decomposition.}
-  \item{argvals}{function argument.}
+  \item{argvals}{function arguments. If not supplied, this is set to an equispaced grid on [0,1].}
   \item{random.int}{If \code{TRUE}, the mean is estimated by \code{\link[gamm4]{gamm4}} with random intercepts. If \code{FALSE} (the default), the mean is estimated by \code{\link[mgcv]{gam}} treating all the data as independent.}
   \item{nbasis}{number of B-spline basis functions used for estimation of the mean function and bivariate smoothing of the covariance surface.}
   \item{pve}{proportion of variance explained: used to choose the number of principal components.}
@@ -28,6 +29,8 @@ fpca.sc(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL,
   \item{makePD}{logical: should positive definiteness be enforced for the covariance surface estimate?}
   \item{center }{logical: should an estimated mean function be subtracted from \code{Y}? Set to \code{FALSE} if you have already demeaned the data using your favorite mean function estimate.}
   \item{cov.est.method}{covariance estimation method. If set to \code{1}, a one-step method that applies a bivariate smooth to the \eqn{y(s_1)y(s_2)} values. This can be very slow. If set to \code{2} (the default), a two-step method that obtains a naive covariance estimate which is then smoothed.}
+  \item{integration}{quadrature method for numerical integration. Currently only \code{"trapezoidal"}
+is supported.}
 }
 \details{
   This function computes a FPC decomposition for a set of observed curves, which may be sparsely observed and/or measured with error. A mixed model framework is used to estimate curve-specific scores and variances.

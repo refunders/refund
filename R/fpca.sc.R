@@ -1,7 +1,8 @@
 # npc=1 seems to give error
 fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.int = FALSE, 
          nbasis = 10, pve = .99, npc = NULL, var = FALSE, simul = FALSE, sim.alpha = .95,
-         useSymm = FALSE, makePD = FALSE, center=TRUE, cov.est.method = 2) {
+         useSymm = FALSE, makePD = FALSE, center=TRUE, cov.est.method = 2, 
+         integration="trapezoidal") {
   
     stopifnot((!is.null(Y) && is.null(ydata))||(is.null(Y) && !is.null(ydata)))
   
@@ -20,7 +21,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     I = NROW(Y)
     I.pred = NROW(Y.pred)
   
-    if (is.null(argvals)) argvals = 1:D
+    if (is.null(argvals)) argvals = seq(0,1,,D)
   
     d.vec = rep(argvals, each = I)
     id = rep(1:I, rep(D, I))
@@ -102,15 +103,27 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
             as.matrix(tmp$mat)
         }
     }
-    evalues = eigen(npc.0, symmetric = TRUE, only.values = TRUE)$values
+    ### numerical integration for calculation of eigenvalues (see Ramsay & Silverman, Chapter 8)
+    w <- quadWeights(argvals, method=integration)
+    Wsqrt <- diag(sqrt(w))
+    Winvsqrt <- diag(1/(sqrt(w)))
+    V <- Wsqrt %*% npc.0 %*% Wsqrt
+    evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values
+    ###
     evalues = replace(evalues, which(evalues <= 0), 0)
     npc = ifelse(is.null(npc), min(which(cumsum(evalues)/sum(evalues) > pve)), npc)
-    efunctions = matrix(eigen(npc.0, symmetric = TRUE)$vectors[, seq(len = npc)], nrow = D, ncol = npc)
-    evalues = eigen(npc.0, symmetric = TRUE, only.values = TRUE)$values[1:npc]
-    cov.hat = efunctions %*% tcrossprod(diag(evalues, nrow = npc, ncol = npc), efunctions)
-    DIAG = (diag.G0 - diag(cov.hat))[floor(D * 0.2):ceiling(D * 0.8)]
-    sigma2 = max(mean(DIAG, na.rm = TRUE), 0)
-    D.inv = diag(1/evalues, nrow = npc, ncol = npc)
+    efunctions = matrix(Winvsqrt%*%eigen(V, symmetric = TRUE)$vectors[, seq(len = npc)], nrow = D, ncol = npc)
+    evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values[1:npc]  # use correct matrix for eigenvalue problem
+    cov.hat = efunctions %*% diag(evalues) %*% t(efunctions)
+    ### numerical integration for estimation of sigma2
+    T.len <- argvals[D] - argvals[1] # total interval length
+    T1.min <- min(which(argvals >= argvals[1] + 0.25*T.len)) # left bound of narrower interval T1
+    T1.max <- max(which(argvals <= argvals[D] - 0.25*T.len)) # right bound of narrower interval T1
+    DIAG = (diag.G0 - diag(cov.hat))[T1.min :T1.max] # function values
+    w2 <- quadWeights(argvals[T1.min:T1.max], method = integration) 
+    sigma2 <- max(sum(DIAG*w2) / w2, 0)  # cf. Yao et al. (2005, JASA), eq. (2)
+    ####  
+    D.inv = diag(1/evalues)
     Z = efunctions
     Y.tilde = Y.pred - matrix(mu, I.pred, D, byrow = TRUE)
     Yhat = matrix(0, nrow = I.pred, ncol = D)
