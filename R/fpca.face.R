@@ -84,7 +84,7 @@
 ##'          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
 ##' @export
 ##' @importFrom stats smooth.spline optim
-##' @import Matrix
+##' @importFrom Matrix as.matrix
 fpca.face <-
 function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99,
          npc  = NULL,alpha = 1,score.method = "int", search.grid=TRUE,search.length=100,

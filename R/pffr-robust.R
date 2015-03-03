@@ -238,6 +238,7 @@ coefboot.pffr <- function(object,
 #' @return a fitted \code{pffr}-object, see \code{\link[refund]{pffr}}.
 #' @seealso \code{\link[refund]{pffr}}, \code{\link[refund]{fpca.sc}}
 #' @export
+#' @importFrom Matrix nearPD as.matrix
 #' @importFrom mgcv smooth.construct.tensor.smooth.spec smooth.construct.t2.smooth.spec gam bam
 #' @importFrom stats terms.formula
 #' @author Fabian Scheipl

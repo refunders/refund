@@ -30,6 +30,7 @@
 ##' \item{Theta}{matrix of estimated coefficients}
 ##' @author Luo Xiao \email{lxiao@@jhsph.edu}
 ##' @export
+##' @importFrom Matrix kronecker as.matrix
 ##' @references Xiao, L., Li, Y., and Ruppert, D. (2013). Fast bivariate
 ##' \emph{P}-splines: the sandwich smoother. \emph{Journal of the Royal
 ##' Statistical Society: Series B}, 75(3), 577--599.
@@ -76,7 +77,6 @@
 ##' persp(x,z,est$Yhat,zlab="f(x,z)",zlim=c(-1,2.5),phi=30,theta=45,
 ##'       expand=0.8,r=4,col="red",main="Estimated surface")
 ##' @importFrom stats optim
-##' @import Matrix
 fbps <-
 function(data, covariates = NULL, knots=35, p=3,m=2,lambda=NULL,alpha=1,
          search.grid = T, search.length = 100, method="L-BFGS-B",
