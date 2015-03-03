@@ -13,26 +13,48 @@
 ##'
 ##'
 ##' @param Y data matrix (rows: observations; columns: grid of eval. points)
+##' @param Y.pred if desired, a matrix of functions to be approximated using
+##' the FPC decomposition.
 ##' @param npc how many smooth SVs to try to extract, if \code{NA} (the
 ##' default) the hard thresholding rule of Donoho, Gavish (2013) is used (see
 ##' Details, References).
-##' @param center center \code{Y} so that its column-means are 0? Defaults to
+##' @param center logical; center \code{Y} so that its column-means are 0? Defaults to
 ##' \code{TRUE}
-##' @param maxiter how many iterations of the power algorithm to perform at
-##' most (defaults to 15)
-##' @param tol convergence tolerance for power algorithm (defaults to 1e-4)
-##' @param diffpen difference penalty order controlling the desired smoothness
-##' of the right singular vectors, defaults to 3 (i.e., deviations from local
-##' quadratic polynomials).
-##' @param gridsearch use \code{\link[stats]{optimize}} or a grid search to
-##' find GCV-optimal smoothing parameters? defaults to \code{TRUE}.
-##' @param alphagrid grid of smoothing parameter values for grid search
-##' @param lower.alpha lower limit for for smoothing parameter if
-##' \code{!gridsearch}
-##' @param upper.alpha upper limit for smoothing parameter if
-##' \code{!gridsearch}
-##' @param verbose generate graphical summary of progress and diagnostic
-##' messages?  defaults to \code{FALSE}
+##' @param argvals numeric; function argument.
+##' @param p integer; the degree of B-splines functions to use
+##' @param m integer; the order of difference penalty to use
+##' @param knots number of knots to use or the vectors of knots; defaults to 35
+##' @param lambda smoothing parameter; if not specified smoothing parameter is
+##' chosen using \code{\link[stats]{optim}} or a grid search
+##' @param pve proportion of variance explained: used to choose the number of
+##' principal components.
+##' @param alpha numeric; tuning parameter for GCV; see parameter \code{gamma}
+##' in \code{\link[mgcv]{gam}}
+## @param maxiter how many iterations of the power algorithm to perform at
+## most (defaults to 15)
+## @param tol convergence tolerance for power algorithm (defaults to 1e-4)
+## @param diffpen difference penalty order controlling the desired smoothness
+## of the right singular vectors, defaults to 3 (i.e., deviations from local
+## quadratic polynomials).
+## @param gridsearch use \code{\link[stats]{optimize}} or a grid search to
+## find GCV-optimal smoothing parameters? defaults to \code{TRUE}.
+## @param alphagrid grid of smoothing parameter values for grid search
+## @param lower.alpha lower limit for for smoothing parameter if
+## \code{!gridsearch}
+## @param upper.alpha upper limit for smoothing parameter if
+## \code{!gridsearch}
+## @param verbose generate graphical summary of progress and diagnostic
+## messages?  defaults to \code{FALSE}
+##' @param score.method character; method to use to estimate scores; one of
+##' \code{"blup"} or \code{"int"} (default)
+##' @param search.grid logical; should a grid search be used to find \code{lambda}?
+##'  Otherwise, \code{\link[stats]{optim}} is used
+##' @param search.length integer; length of grid to use for grid search for
+##' \code{lambda}; ignored if \code{search.grid} is \code{FALSE}
+##' @param method method to use; see \code{\link[stats]{optim}}
+##' @param lower see \code{\link[stats]{optim}}
+##' @param upper see \code{\link[stats]{optim}}
+##' @param control see \code{\link[stats]{optim}}
 ##' @return a list like the returned object from \code{\link{fpca.sc}}, with
 ##' entries \code{Yhat}, the smoothed trajectories, \code{scores}, the
 ##' estimated FPC loadings, \code{mu}, the column means of \code{Y} (or a

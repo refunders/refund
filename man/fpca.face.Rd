@@ -12,35 +12,49 @@ fpca.face(Y, Y.pred = NULL, center = TRUE, argvals = NULL, knots = 35,
 \arguments{
 \item{Y}{data matrix (rows: observations; columns: grid of eval. points)}
 
-\item{center}{center \code{Y} so that its column-means are 0? Defaults to
+\item{Y.pred}{if desired, a matrix of functions to be approximated using
+the FPC decomposition.}
+
+\item{center}{logical; center \code{Y} so that its column-means are 0? Defaults to
 \code{TRUE}}
+
+\item{argvals}{numeric; function argument.}
+
+\item{knots}{number of knots to use or the vectors of knots; defaults to 35}
+
+\item{p}{integer; the degree of B-splines functions to use}
+
+\item{m}{integer; the order of difference penalty to use}
+
+\item{lambda}{smoothing parameter; if not specified smoothing parameter is
+chosen using \code{\link[stats]{optim}} or a grid search}
+
+\item{pve}{proportion of variance explained: used to choose the number of
+principal components.}
 
 \item{npc}{how many smooth SVs to try to extract, if \code{NA} (the
 default) the hard thresholding rule of Donoho, Gavish (2013) is used (see
 Details, References).}
 
-\item{maxiter}{how many iterations of the power algorithm to perform at
-most (defaults to 15)}
+\item{alpha}{numeric; tuning parameter for GCV; see parameter \code{gamma}
+in \code{\link[mgcv]{gam}}}
 
-\item{tol}{convergence tolerance for power algorithm (defaults to 1e-4)}
+\item{score.method}{character; method to use to estimate scores; one of
+\code{"blup"} or \code{"int"} (default)}
 
-\item{diffpen}{difference penalty order controlling the desired smoothness
-of the right singular vectors, defaults to 3 (i.e., deviations from local
-quadratic polynomials).}
+\item{search.grid}{logical; should a grid search be used to find \code{lambda}?
+Otherwise, \code{\link[stats]{optim}} is used}
 
-\item{gridsearch}{use \code{\link[stats]{optimize}} or a grid search to
-find GCV-optimal smoothing parameters? defaults to \code{TRUE}.}
+\item{search.length}{integer; length of grid to use for grid search for
+\code{lambda}; ignored if \code{search.grid} is \code{FALSE}}
 
-\item{alphagrid}{grid of smoothing parameter values for grid search}
+\item{method}{method to use; see \code{\link[stats]{optim}}}
 
-\item{lower.alpha}{lower limit for for smoothing parameter if
-\code{!gridsearch}}
+\item{lower}{see \code{\link[stats]{optim}}}
 
-\item{upper.alpha}{upper limit for smoothing parameter if
-\code{!gridsearch}}
+\item{upper}{see \code{\link[stats]{optim}}}
 
-\item{verbose}{generate graphical summary of progress and diagnostic
-messages?  defaults to \code{FALSE}}
+\item{control}{see \code{\link[stats]{optim}}}
 }
 \value{
 a list like the returned object from \code{\link{fpca.sc}}, with
