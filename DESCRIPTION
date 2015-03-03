@@ -98,5 +98,6 @@ Collate:
     'preprocess.pfr.R'
     'pspline.setting.R'
     'pwcv.R'
+    're.R'
     'rlrt.pfr.R'
     'vis.fgam.R'
