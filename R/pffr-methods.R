@@ -46,7 +46,7 @@
 #'  containing the linear predictor and its se for each term.
 #' @method predict pffr
 #' @author Fabian Scheipl
-#' @importFrom mgcv predict.gam
+#' @importFrom mgcv predict.gam predict.bam
 predict.pffr <- function(object,
                          newdata,
                          reformat=TRUE,
