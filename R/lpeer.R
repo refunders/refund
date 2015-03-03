@@ -236,15 +236,15 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
   t<-as.matrix(t)
 
   #Check 1:Making sure Y, subj and t have only 1 column
-  if(dim(Y)[2]>1) return(cat("Error: No. of column for Y cannot be greater than 1. \nThe lpeer() will not proceed further.\n"))
-  if(dim(id)[2]>1) return(cat("Error: No. of column for subj cannot be greater than 1. \nThe lpeer() will not proceed further.\n"))
-  if(dim(t)[2]>1) return(cat("Error: No. of column for t cannot be greater than 1. \nThe lpeer() will not proceed further.\n"))
+  if(dim(Y)[2]>1) stop("No. of column for Y cannot be greater than 1. \nThe lpeer() will not proceed further.")
+  if(dim(id)[2]>1) stop("No. of column for subj cannot be greater than 1. \nThe lpeer() will not proceed further.")
+  if(dim(t)[2]>1) stop("No. of column for t cannot be greater than 1. \nThe lpeer() will not proceed further.")
 
   #Check 2: Do check for intercept in X matrix
   if (!is.null(covariates)){
     covariates<- as.matrix(covariates)
     X.chk<- apply(covariates, 2, sd)
-    if(any(X.chk==0)) return(cat("Error: Drop intercept or equivalent to intercept term from covariate. \nThe lpeer() will not proceed further.\n"))
+    if(any(X.chk==0)) stop("Drop intercept or equivalent to intercept term from covariate. \nThe lpeer() will not proceed further.")
   }
   X<-  cbind(1, covariates)
 
@@ -253,8 +253,8 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
   idl<- dim(id)[1]
   tl<- dim(t)[1]
   chk.eq<- ifelse(Yl==idl & idl==tl & tl==nrow(W), 0 ,1)
-  if(chk.eq==1) return(cat("Error: At least one of (1) length of Y, (2) lenght of subj, (3) length of \nt, and (4) number of row of funcs are not equal.\n The lpeer() will not proceed further.\n"))
-  if(!is.null(covariates) & Yl!=nrow(cbind(X,X))) return(cat("Error: length of Y and number of rows of X is not equal.\n The lpeer() will not proceed further.\n"))
+  if(chk.eq==1) stop("At least one of (1) length of Y, (2) lenght of subj, (3) length of \nt, and (4) number of row of funcs are not equal.\n The lpeer() will not proceed further.")
+  if(!is.null(covariates) & Yl!=nrow(cbind(X,X))) stop("length of Y and number of rows of X is not equal.\n The lpeer() will not proceed further.")
 
   #Organizing f(t)
   if(length(dim(f_t))>0 ){
@@ -273,7 +273,7 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
   d=min(d,5)
 
   #Check 4: check in f(t)
-  if(dim(f_t)[1]!=Yl) return(cat("Error: f_t and Y are not compatible in dimension. \nThe lpeer() will not proceed further.\n"))
+  if(dim(f_t)[1]!=Yl) stop("f_t and Y are not compatible in dimension. \nThe lpeer() will not proceed further.\n")
 
   #Sort the data by id and t & removal of missing and infinite observations
   tdata<- data.frame(id, t, Y, W, X, f_t)
@@ -294,7 +294,7 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
 
   #Checking entry for pentype
   pentypecheck<- toupper(pentype) %in% c('DECOMP', 'DECOMPOSITION', 'RIDGE', 'D2', 'USER')
-  if(!pentypecheck)  return (cat("Error: Specify valid object for argument PENTYPE.\n"))
+  if(!pentypecheck)  stop("Specify valid object for argument PENTYPE.")
 
   #Check 5: Some checking/processing for decomposition type of penalty
   if(toupper(pentype)=='DECOMP' | toupper(pentype)=='DECOMPOSITION'){
@@ -307,11 +307,11 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
     #5.2: Compatibility of Q and W matrix
     if (!comm.pen)
     {
-      if(ncol(Q)!=(d+1)*ncol(W)) return(cat('Error: For different penalty, number of columns of Q need to be (d+1) \ntimes of number of columns of funcs.\nThe lpeer() will not proceed further.\n'))
+      if(ncol(Q)!=(d+1)*ncol(W)) stop('Error: For different penalty, number of columns of Q need to be (d+1) \ntimes of number of columns of funcs.\nThe lpeer() will not proceed further.')
     }
     if (comm.pen)
     {
-      if(ncol(Q)!=ncol(W)) return(cat('Error: For common penalty, number of columns of func and Q need to be equal.\nThe lpeer() will not proceed further.\n'))
+      if(ncol(Q)!=ncol(W)) stop('For common penalty, number of columns of func and Q need to be equal.\nThe lpeer() will not proceed further.')
       Q1<- Q
       for(i in 1:d) Q1<- cbind(Q1, Q)
       Q<- Q1
@@ -319,11 +319,11 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
 
     #5.3: Singularity of Q matrix
     Q.eig<- abs(eigen(Q %*% t(Q))$values)
-    if(any(Q.eig<1e-12)) return(cat('Error: Q matrix is singular or near singular.\nThe lpeer() will not proceed further.\n'))
+    if(any(Q.eig<1e-12)) stop('Q matrix is singular or near singular.\nThe lpeer() will not proceed further.')
 
     #5.4: Checking for phia
-    if(!exists("phia")) return (cat("Error: Specify valid object for argument PHIA.\n"))
-    if(!is.numeric(phia)|is.matrix(phia)|is.matrix(phia)) return (cat("Error: Specify valid object for argument PHIA.\n"))
+    if(!exists("phia")) stop("Specify valid object for argument PHIA")
+    if(!is.numeric(phia)|is.matrix(phia)|is.matrix(phia)) stop("Specify valid object for argument PHIA.")
   }
 
   #Check 6: Some checking/processing for user type of penalty
@@ -337,11 +337,11 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
     #6.2: Dimension of L matrix
     if (!comm.pen)
     {
-      if(ncol(L)!=(d+1)*ncol(W)) return(cat('Error: For different penalty, number of columns of L need to be (d+1) \ntimes of number of columns of func.\nThe lpeer() will not proceed further.\n'))
+      if(ncol(L)!=(d+1)*ncol(W)) stop('For different penalty, number of columns of L need to be (d+1) \ntimes of number of columns of func.\nThe lpeer() will not proceed further.\n')
     }
     if (comm.pen)
     {
-      if(ncol(L)!=ncol(W)) return(cat('Error: For common penalty, number of columns of func and L.user need to be equal.\nThe lpeer() will not proceed further.\n'))
+      if(ncol(L)!=ncol(W)) stop('For common penalty, number of columns of func and L.user need to be equal.\nThe lpeer() will not proceed further.\n')
       L1<- L
       for(i in 1:d) L1<- magic::adiag(L1, L)
       L<- L1
@@ -350,7 +350,7 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
     #6.3: Singularity of L'L matrix
     LL<- t(L)%*%L
     LL.eig<- abs(eigen(LL %*% t(LL))$values)
-    if(any(LL.eig<1e-12)) return(cat("Error: L'L matrix is singular or near singular.\nThe lpeer() will not proceed further.\n"))
+    if(any(LL.eig<1e-12)) stop("L'L matrix is singular or near singular.\nThe lpeer() will not proceed further.\n")
   }
 
   #Generate L matrix for D2 penalty
@@ -416,7 +416,7 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
 
   #Fitting the model
   out_PEER<- nlme::lme(fixed=Y~X-1, random=list(id.bd1=tXX), ... )
-  cat('The fit is successful.\n')
+  message('The fit is successful.\n')
 
   #Extracting the estimates
   Gamma_PEER<-matrix(out_PEER$coeff$random$id.bd1, ncol=1)
