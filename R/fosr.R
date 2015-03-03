@@ -1,5 +1,5 @@
 # Incorporates Fabian's pcre idea for random effect functions (method="mix")
-fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL, 
+fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, argvals = NULL, 
         method = c("OLS","GLS","mix"),
         gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"), 
         cov.method = c("naive", "mod.chol"),
@@ -7,6 +7,18 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
         pen.order=2, multi.sp = ifelse(method=="OLS", FALSE, TRUE), pve=.99,
         max.iter = 1, maxlam = NULL, cv1 = FALSE, scale = FALSE)
 {
+    # parse formula
+    if (!is.null(formula)) {
+      if (is.null(data)) stop("Please specify the data.")
+      tf <- terms.formula(formula)
+      trmstrings <- attr(tf, "term.labels")
+      terms <- sapply(trmstrings, function(trm) as.call(parse(text=trm))[[1]], simplify=FALSE)
+      responsename <- as.character(attr(tf,"variables")[2][[1]])
+      Y = data[,responsename]
+      X = model.matrix(formula, data=data)
+    }
+  
+  
     if (is.null(Y)==is.null(fdobj)) stop("Please specify 'Y' or 'fdobj', but not both") 
     resp.type <- if (is.null(Y)) "fd" else "raw"
     if (is.null(argvals)) 
