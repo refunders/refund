@@ -106,7 +106,7 @@ function(Y, argvals=NULL, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, s
   n.succ = 0
   for(i.boot in 1:n.boot){
     set.seed(i.boot)
-    cat("Iteration:", i.boot, "\n")    # print iteration number
+    message("Iteration:", i.boot, "\n")    # print iteration number
 
     ## draw bootstrap sample
     boot.samp = sample(1:I, I, replace = TRUE)
