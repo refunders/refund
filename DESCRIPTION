@@ -50,6 +50,7 @@ Collate:
     'amc.R'
     'ccb.fpc.R'
     'create.prep.func.R'
+    'coefficients.pfr.R'
     'irreg2mat.R'
     'fbps.R'
     'fgam.R'
