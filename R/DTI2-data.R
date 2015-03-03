@@ -18,18 +18,17 @@
 ##'
 ##' @name DTI2
 ##' @docType data
-##' @format A data frame made up of \describe{ \item{list("cca")}{a 340 x 93
-##' matrix of fractional anisotropy profiles from the corpus callosum;}\item{
-##' }{a 340 x 93 matrix of fractional anisotropy profiles from the corpus
-##' callosum;} \item{list("rcst")}{a 340 x 55 matrix of fractional anisotropy
-##' profiles from the right corticospinal tract;}\item{ }{a 340 x 55 matrix of
-##' fractional anisotropy profiles from the right corticospinal tract;}
-##' \item{list("id")}{numeric vector of subject ID numbers;}\item{ }{numeric
-##' vector of subject ID numbers;} \item{list("visit")}{numeric vector of the
-##' subject-specific visit numbers;}\item{ }{numeric vector of the
-##' subject-specific visit numbers;} \item{list("pasat")}{numeric vector
-##' containing the PASAT score at each visit.}\item{ }{numeric vector
-##' containing the PASAT score at each visit.} }
+##' @format A data frame made up of \describe{
+##' \item{cca}{a 340 x 93
+##' matrix of fractional anisotropy profiles from the corpus callosum;}
+##' \item{rcst}{a 340 x 55 matrix of fractional anisotropy
+##' profiles from the right corticospinal tract;}
+##' \item{id}{numeric vector of subject ID numbers;}
+##' \item{visit}{numeric vector of the
+##' subject-specific visit numbers;}
+##' \item{pasat}{numeric vector
+##' containing the PASAT score at each visit.}
+##' }
 ##' @references Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich,
 ##' D. (2011). Penalized functional regression. \emph{Journal of Computational
 ##' and Graphical Statistics}, 20(4), 830--851.

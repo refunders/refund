@@ -8,9 +8,12 @@
 ##'
 ##' @name gasoline
 ##' @docType data
-##' @format A data frame comprising \describe{ \item{list("octane")}{a numeric
-##' vector of octane numbers for the 60 samples.} \item{list("NIR")}{a 60 x 401
-##' matrix of NIR spectra.} }
+##' @format A data frame comprising \describe{
+##' \item{octane}{a numeric
+##' vector of octane numbers for the 60 samples.}
+##' \item{NIR}{a 60 x 401
+##' matrix of NIR spectra.}
+##' }
 ##' @seealso \code{\link{fpcr}}
 ##' @references For applications of functional principal component regression
 ##' to this data set:

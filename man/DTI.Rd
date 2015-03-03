@@ -4,23 +4,23 @@
 \name{DTI}
 \alias{DTI}
 \title{Diffusion Tensor Imaging: tract profiles and outcomes}
-\format{A data frame made up of \describe{ \item{list("cca")}{A 382 x 93
+\format{A data frame made up of \describe{
+\item{cca}{A 382 x 93
 matrix of fractional anisotropy tract profiles from the corpus
-callosum;}\item{ }{A 382 x 93 matrix of fractional anisotropy tract
-profiles from the corpus callosum;} \item{list("rcst")}{A 382 x 55 matrix
+callosum;}
+\item{rcst}{A 382 x 55 matrix
 of fractional anisotropy tract profiles from the right corticospinal
-tract;}\item{ }{A 382 x 55 matrix of fractional anisotropy tract profiles
-from the right corticospinal tract;} \item{list("ID")}{Numeric vector of
-subject ID numbers;}\item{ }{Numeric vector of subject ID numbers;}
-\item{list("visit")}{Numeric vector of the subject-specific visit
-numbers;}\item{ }{Numeric vector of the subject-specific visit numbers;}
-\item{list("Nscans")}{Numeric vector indicating the total number of visits
-for each subject;}\item{ }{Numeric vector indicating the total number of
-visits for each subject;} \item{list("case")}{Numeric vector of multiple
-sclerosis case status: 0 - healthy control, 1 - MS case;}\item{ }{Numeric
-vector of multiple sclerosis case status: 0 - healthy control, 1 - MS
-case;} \item{list("pasat ")}{Numeric vector containing the PASAT score at
-each visit.} }}
+tract;}
+\item{ID}{Numeric vector of subject ID numbers;}
+\item{visit}{Numeric vector of the subject-specific visit
+numbers;}
+\item{Nscans}{Numeric vector indicating the total number of visits
+for each subject;}
+\item{case}{Numeric vector of multiple
+sclerosis case status: 0 - healthy control, 1 - MS case;}
+\item{pasat}{Numeric vector containing the PASAT score at
+each visit.}
+}}
 \description{
 Fractional anisotropy (FA) tract profiles for the corpus callosum (cca) and
 the right corticospinal tract (rcst). Accompanying the tract profiles are
