@@ -4,7 +4,7 @@
 \alias{Predict.matrix.pcre.random.effect}
 \title{mgcv-style constructor for prediction of PC-basis functional random effects}
 \usage{
-Predict.matrix.pcre.random.effect(object, data)
+\method{Predict.matrix}{pcre.random.effect}(object, data)
 }
 \arguments{
 \item{object}{a smooth specification object, see \code{\link[mgcv]{smooth.construct}}}

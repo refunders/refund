@@ -92,6 +92,7 @@ Collate:
     'postprocess.pfr.R'
     'predict.fgam.R'
     'predict.pfr.R'
+    'predict.pfr_old.R'
     'preprocess.pfr.R'
     'pspline.setting.R'
     'pwcv.R'
