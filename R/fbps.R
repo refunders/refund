@@ -40,14 +40,14 @@
 ##' ##########################
 ##' n1 <- 60
 ##' n2 <- 80
-##' x <- (1: n1)/n1-1/2/n1
-##' z <- (1: n2)/n2-1/2/n2
+##' x <- (1:n1)/n1-1/2/n1
+##' z <- (1:n2)/n2-1/2/n2
 ##' MY <- array(0,c(length(x),length(z)))
 ##'
 ##' sigx <- .3
 ##' sigz <- .4
-##' for(i in 1: length(x))
-##' for(j in 1: length(z))
+##' for(i in 1:length(x))
+##' for(j in 1:length(z))
 ##' {
 ##' #MY[i,j] <- .75/(pi*sigx*sigz) *exp(-(x[i]-.2)^2/sigx^2-(z[j]-.3)^2/sigz^2)
 ##' #MY[i,j] <- MY[i,j] + .45/(pi*sigx*sigz) *exp(-(x[i]-.7)^2/sigx^2-(z[j]-.8)^2/sigz^2)
@@ -76,6 +76,7 @@
 ##' persp(x,z,est$Yhat,zlab="f(x,z)",zlim=c(-1,2.5),phi=30,theta=45,
 ##'       expand=0.8,r=4,col="red",main="Estimated surface")
 ##' @importFrom stats optim
+##' @import Matrix
 fbps <-
 function(data, covariates = NULL, knots=35, p=3,m=2,lambda=NULL,alpha=1,
          search.grid = T, search.length = 100, method="L-BFGS-B",
