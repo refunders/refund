@@ -16,7 +16,6 @@ safeDeparse <- function(expr){
 #' @param expand.dots logical. Should arguments matching ... in the call be included or left as a ... argument? See \code{\link[base]{match.call}}.
 #' @return An object of mode "\code{\link[base]{call}}".
 #' @author Fabian Scheipl
-#' @export
 #' @seealso \code{\link[base]{match.call}}
 expand.call <-
         function(definition=NULL, call=sys.call(sys.parent(1)), expand.dots = TRUE)
