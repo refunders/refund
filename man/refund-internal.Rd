@@ -19,7 +19,6 @@
 \alias{decorrelate}
 \alias{pspline.setting}
 \alias{irreg2mat}
-\alias{getL}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Internal functions for the refund package

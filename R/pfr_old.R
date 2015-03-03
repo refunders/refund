@@ -1,6 +1,11 @@
 pfr_old  <- function (Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,
                             family = "gaussian", method="REML", smooth.option="fpca.sc", pve=0.99,...)
 {
+  warning(paste0("The interface for pfr() has changed to using a formula ",
+                 "argument, with linear functional terms specified by lf(). ",
+                 "See ?pfr for details. The old interface wil be depricated ",
+                 "in the next refund release."))
+  
   ## Step 1:
   ## parse formulae, etc.
   ## parse.pfr() In progress.
