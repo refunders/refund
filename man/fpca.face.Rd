@@ -61,9 +61,6 @@ Otherwise, \code{\link[stats]{optim}} is used}
 \item{upper}{see \code{\link[stats]{optim}}}
 
 \item{control}{see \code{\link[stats]{optim}}}
-
-\item{score.method}{character; method to use to estimate scores; one of
-\code{"blup"} or \code{"int"} (default)}
 }
 \value{
 a list like the returned object from \code{\link{fpca.sc}}, with

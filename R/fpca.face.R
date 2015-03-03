@@ -50,8 +50,8 @@
 ## \code{!gridsearch}
 ## @param verbose generate graphical summary of progress and diagnostic
 ## messages?  defaults to \code{FALSE}
-##' @param score.method character; method to use to estimate scores; one of
-##' \code{"blup"} or \code{"int"} (default)
+## @param score.method character; method to use to estimate scores; one of
+## \code{"blup"} or \code{"int"} (default)
 ##' @param search.grid logical; should a grid search be used to find \code{lambda}?
 ##'  Otherwise, \code{\link[stats]{optim}} is used
 ##' @param search.length integer; length of grid to use for grid search for
