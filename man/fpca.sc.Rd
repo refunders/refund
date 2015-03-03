@@ -113,18 +113,20 @@ Fit.basis = data.frame(phi = Fit.MM$efunctions,
 ## for one subject, examine curve estimate, pointwise and simultaneous itervals
 EX = 1
 EX.MM = data.frame(fitted = Fit.MM$Yhat[EX,],
-                   ptwise.UB = Fit.MM$Yhat[EX,] + 1.96 * sqrt(Fit.MM$diag.var[EX,]),
-                   ptwise.LB = Fit.MM$Yhat[EX,] - 1.96 * sqrt(Fit.MM$diag.var[EX,]),
-                   simul.UB = Fit.MM$Yhat[EX,] + Fit.MM$crit.val[EX] * sqrt(Fit.MM$diag.var[EX,]),
-                   simul.LB = Fit.MM$Yhat[EX,] - Fit.MM$crit.val[EX] * sqrt(Fit.MM$diag.var[EX,]),
-                   d = as.numeric(colnames(cd4)))
+           ptwise.UB = Fit.MM$Yhat[EX,] + 1.96 * sqrt(Fit.MM$diag.var[EX,]),
+           ptwise.LB = Fit.MM$Yhat[EX,] - 1.96 * sqrt(Fit.MM$diag.var[EX,]),
+           simul.UB = Fit.MM$Yhat[EX,] + Fit.MM$crit.val[EX] * sqrt(Fit.MM$diag.var[EX,]),
+           simul.LB = Fit.MM$Yhat[EX,] - Fit.MM$crit.val[EX] * sqrt(Fit.MM$diag.var[EX,]),
+           d = as.numeric(colnames(cd4)))
 
 ## plot data for one subject, with curve and interval estimates
 EX.MM.m = melt(EX.MM, id = "d")
 ggplot(EX.MM.m, aes(x = d, y = value, group = variable, color = variable, linetype = variable)) +
   geom_path() +
-  scale_linetype_manual(values = c(fitted = 1, ptwise.UB = 2, ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
-  scale_color_manual(values = c(fitted = 1, ptwise.UB = 2, ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
+  scale_linetype_manual(values = c(fitted = 1, ptwise.UB = 2,
+                        ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
+  scale_color_manual(values = c(fitted = 1, ptwise.UB = 2,
+                     ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
   labs(x = "Months since seroconversion", y = "Total CD4 Cell Count")
 
 ## plot estimated mean function
@@ -133,8 +135,8 @@ ggplot(Fit.mu, aes(x = d, y = mu)) + geom_path() +
 
 ## plot the first two estimated basis functions
 Fit.basis.m = melt(Fit.basis, id = "d")
-ggplot(subset(Fit.basis.m, variable \%in\% c("phi.1", "phi.2")), aes(x = d, y = value, group = variable, color = variable)) +
-  geom_path()
+ggplot(subset(Fit.basis.m, variable \%in\% c("phi.1", "phi.2")), aes(x = d,
+y = value, group = variable, color = variable)) + geom_path()
 
 ## input a dataframe instead of a matrix
 nid <- 20
