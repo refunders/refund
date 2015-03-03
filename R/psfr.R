@@ -31,7 +31,7 @@
 #' @seealso \code{\link{af}}, \code{\link{lf}}
 #' @importFrom mgcv gam gam.fit bam s te t2
 #' @importFrom gamm4 gamm4
-#' @importFrom nlme lme4
+#' @importFrom lme4 lmer
 #' @importFrom stats terms.formula
 #' @export
 #'
