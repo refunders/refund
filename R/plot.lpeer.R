@@ -17,7 +17,7 @@
 ##' @importFrom stats qnorm
 ##' @references Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012).
 ##' Longitudinal functional models with structured penalties. (Please contact
-##' J. Harezlak at \email{harezlak@iupui.edu}.)
+##' J. Harezlak at \email{harezlak@@iupui.edu}.)
 ##'
 ##' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
 ##' functional linear models - partially empirical eigenvectors for regression.
