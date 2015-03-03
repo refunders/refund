@@ -445,7 +445,7 @@ plot.pffr <- function (x, ...)
 #' \emph{Journal of the American Statistical Association}, under revision.
 #' \url{http://www.columbia.edu/~yw2016/Marginal Spline6.pdf}
 #' @method coef pffr
-#' @importFrom mgcv PredictMat
+#' @importFrom mgcv PredictMat get.var
 #' @seealso \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
 #'   based on.
 #' @author Fabian Scheipl
