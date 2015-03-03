@@ -1,5 +1,5 @@
 #' Penalized Scalar-on-Function Regression
-#' 
+#'
 #' Implements various approaches to penalized scalar-on-function regression.
 #' These techniques include Penalized Functional Regression (Goldsmith et al.,
 #' 2011), Functional Principal Component Regression (Reiss and Ogden, 2007),
@@ -8,7 +8,7 @@
 #' This function is a wrapper for mgcv's \code{\link{gam}}
 #' and its siblings to fit models with a scalar (but necessarily continuous)
 #' response.
-#' 
+#'
 #' @param formula a formula with special terms as for \code{\link{gam}},
 #' with additional special terms \code{\link{af}}() and \code{\link{lf}}().
 #' @param fitter the name of the function used to estimate the model. Defaults to \code{\link{gam}}
@@ -29,14 +29,14 @@
 #' pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @seealso \code{\link{af}}, \code{\link{lf}}
-#' @importFrom mgcv gam gam.fit gamm4 bam s te t2
+#' @importFrom mgcv gam gam.fit bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom nlme lme4
 #' @importFrom stats terms.formula
 #' @export
-#' 
+#'
 psfr <- function(formula, fitter=NA, ...){
-  
+
   call <- match.call()
   dots <- list(...)
   if (length(dots)) {
@@ -47,14 +47,14 @@ psfr <- function(formula, fitter=NA, ...){
       c(names(formals(gam)), names(formals(gam.fit)))
     }
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
-    if (length(notUsed)) 
-      warning("Arguments <", paste(notUsed, collapse = ", "), 
+    if (length(notUsed))
+      warning("Arguments <", paste(notUsed, collapse = ", "),
               "> supplied but not used.")
   }
   tf <- terms.formula(formula, specials = c("s", "te", "t2", "lf", "af",
                                             "lf.vd", "re"))
   trmstrings <- attr(tf, "term.labels")
-  terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]], 
+  terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]],
                   simplify = FALSE)
   frmlenv <- environment(formula)
   specials <- attr(tf, "specials")
@@ -67,41 +67,41 @@ psfr <- function(formula, fitter=NA, ...){
   where.lf.vd <- specials$lf.vd - 1
   where.all <- c(where.af, where.lf, where.s, where.te, where.t2, where.re,
                  where.lf.vd)
-  
+
   if (length(trmstrings)) {
     where.par <- which(!(1:length(trmstrings) %in% where.all))
   } else where.par <- numeric(0)
-  
+
   responsename <- attr(tf, "variables")[2][[1]]
   newfrml <- paste(responsename, "~", sep = "")
   newfrmlenv <- new.env()
-  evalenv <- if ("data" %in% names(call)) 
+  evalenv <- if ("data" %in% names(call))
     eval(call$data)
   else NULL
   nobs <- length(eval(responsename, envir = evalenv, enclos = frmlenv))
-  
+
   if (missing(fitter) || is.na(fitter)) {
     fitter <- ifelse(nobs > 1e+05, "bam", "gam")
   }
-  
+
   fitter <- as.symbol(fitter)
-  if (as.character(fitter) == "bam" && !("chunk.size" %in% 
+  if (as.character(fitter) == "bam" && !("chunk.size" %in%
                                            names(call))) {
     call$chunk.size <- max(nobs/5, 10000)
   }
-  if (as.character(fitter) == "gamm4") 
+  if (as.character(fitter) == "gamm4")
     stopifnot(length(where.te) < 1)
-  
+
   assign(x = deparse(responsename),
          value = as.vector(t(eval(responsename, envir = evalenv,
                                   enclos = frmlenv))),
          envir = newfrmlenv)
-  
+
   newtrmstrings <- attr(tf, "term.labels")
   if (!attr(tf, "intercept")) {
     newfrml <- paste(newfrml, "0", sep = "")
   }
-  
+
   where.special <- c(where.af, where.lf, where.lf.vd, where.re)
   if (length(where.special)) {
     fterms <- lapply(terms[where.special], function(x) {
@@ -120,10 +120,10 @@ psfr <- function(formula, fitter=NA, ...){
     fterms <- lapply(fterms, function(x) x[names(x) != "data"])
   }
   else fterms <- NULL
-  
+
   where.notf <- c(where.par, where.s, where.te, where.t2)
   if (length(where.notf)) {
-    if ("data" %in% names(call)) 
+    if ("data" %in% names(call))
       frmlenv <- list2env(eval(call$data), frmlenv)
     lapply(terms[where.notf], function(x) {
       nms <- if (!is.null(names(x))) {
@@ -138,7 +138,7 @@ psfr <- function(formula, fitter=NA, ...){
       invisible(NULL)
     })
   }
-  
+
   newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
   environment(newfrml) <- newfrmlenv
   psfrdata <- list2df(as.list(newfrmlenv))
@@ -148,19 +148,19 @@ psfr <- function(formula, fitter=NA, ...){
   newcall$formula <- newfrml
   newcall$data <- quote(psfrdata)
   newcall[[1]] <- fitter
-  
+
   # Evaluate call to fitter
   res <- eval(newcall)
-  
+
   res.smooth <- if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$smooth
   } else res$smooth
-  
+
   trmmap <- newtrmstrings
   names(trmmap) <- names(terms)
   labelmap <- as.list(trmmap)
   names(trmmap) <- names(terms)
-  
+
   lbls <- sapply(res.smooth, function(x) x$label)
   if (length(where.par)) {
     for (w in where.par) labelmap[[w]] <- {
@@ -194,12 +194,12 @@ psfr <- function(formula, fitter=NA, ...){
   } else {
     res$smooth <- res.smooth
   }
-  
+
   termtype <- rep("par", length(terms))
   for (i in 1:length(specials))
     termtype[specials[[i]]-1] <- names(specials)[i]
-  
-  ret <- list(formula = formula, termmap = trmmap, labelmap = labelmap, 
+
+  ret <- list(formula = formula, termmap = trmmap, labelmap = labelmap,
               responsename = responsename, nobs = nobs,
               termtype = termtype, datameans=datameans, ft = fterms)
   if (as.character(fitter) %in% c("gamm4", "gamm")) {
@@ -210,7 +210,7 @@ psfr <- function(formula, fitter=NA, ...){
     res$psfr <- ret
     class(res) <- c("psfr", class(res))
   }
-  
+
   return(res)
 }
 
