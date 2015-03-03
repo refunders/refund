@@ -1,4 +1,4 @@
-create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL, nbasis=10){
+create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL){
   
   ## creates a function to preprocess predictor functions. this function is
   ## later used to actually preprocess data prior to analysis in scalar-on-function
@@ -6,37 +6,44 @@ create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL, n
   ##
   ## To Do:
   ## - unify inputs with other functions
-  ## - add options
   ##
-  ## Assumes:
-  ## - argvals is the grid on which X (and newX) are observed
   
   if(is.null(argvals)){
     argvals = seq(0, 1, length = dim(X)[2])
   }
   
   if(method == "fpca.sc"){
-    prep.func = function(newX = NULL, argvals. = argvals){
-      processed = fpca.sc(Y=X, Y.pred=newX, argvals = argvals.)$Yhat
+    prep.func = function(newX = NULL, argvals. = argvals, options. = options){
+      args. = as.list(options.)
+      args.$Y = X; args.$argvals = argvals.; args.$Y.pred = newX
+      call = do.call(fpca.sc, args = args.)
+      processed = eval(call)$Yhat
       ret = list(processed = processed)
       return(ret)
     }
   } else if(method == "fpca.face"){
-    prep.func = function(newX = NULL, argvals. = argvals){
-      processed = fpca.face(Y=X, Y.pred=newX, argvals = argvals.)$Yhat
+    prep.func = function(newX = NULL, argvals. = argvals, options. = options){
+      args. = as.list(options.)
+      args.$Y = X; args.$argvals = argvals.; args.$Y.pred = newX
+      call = do.call(fpca.face, args = args.)
+      processed = eval(call)$Yhat
       ret = list(processed = processed)
       return(ret)
     }
   } else if(method == "fpca.ssvd"){
     warning("Preprocssing method `fpca.ssvd` has not been implemented for prediction. Argument argvals not used.")
-    prep.func = function(newX = NULL, argvals. = argvals){
-      processed = fpca.ssvd(Y=newX)$Yhat
+    prep.func = function(newX = NULL, argvals. = argvals, options. = options){
+      args. = as.list(options.)
+      args.$Y = X; args.$argvals = argvals.; args.$Y.pred = newX
+      call = do.call(fpca.ssvd, args = args.)
+      processed = eval(call)$Yhat
       ret = list(processed = processed)
       return(ret)
     }
   } else if(method == "bspline"){
-    prep.func = function(newX = NULL, argvals. = argvals, nbasis.=nbasis){
-      Bspline = bs(x = argvals., degree=3, df=nbasis.)
+    prep.func = function(newX = NULL, argvals. = argvals, options. = options){
+      nbasis = ifelse(is.null(options.$nbasis), 10, options.$nbasis)
+      Bspline = bs(x = argvals., degree=3, df=nbasis)
       processed = matrix(NA, nrow = nrow(newX), ncol = ncol(newX))
       for(i in 1:nrow(newX)){
         processed[i,] = Bspline %*% coef(lm(newX[i, ]~ 0+Bspline ))
