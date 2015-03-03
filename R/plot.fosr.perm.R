@@ -1,4 +1,5 @@
 #' @export
+#' @rdname fosr.perm
 plot.fosr.perm <-
 function(x, level=.05, xlabel="", title=NULL,...) {
 	if (is.null(level)) {

@@ -9,6 +9,7 @@
 ##'
 ##'
 ##' @aliases fosr.perm fosr.perm.fit fosr.perm.test plot.fosr.perm
+##' @rdname fosr.perm
 ##' @param Y,fdobj the functional responses, given as either an \eqn{n\times d}
 ##' matrix \code{Y} or a functional data object (class \code{"\link[fda]{fd}"})
 ##' as in the \pkg{fda} package.

@@ -1,3 +1,5 @@
+#' @export
+#' @rdname fosr.perm
 fosr.perm.test <-
 function(x, level=.05) {
 	if (class(x)!="fosr.perm") stop("First argument must be an object of class 'fosr.perm")
