@@ -94,7 +94,6 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("
     stopifnot(nrow(xind) == n)
   }
 
-  Xfd=NULL
   if(!is.null(presmooth)){
     # create preprocessing function
     prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth, options = presmooth.opts)
@@ -149,6 +148,6 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("
   res <-list(call = call, data = data, xind = xind[1,], L = L, xindname = xindname, tindname=tindname,
              Lname=Lname,Qtransform=Qtransform,presmooth=presmooth,Xrange=Xrange)
   if(Qtransform) res$ecdflist <- ecdflist
-  if(!is.null(presmooth)) {res$Xfd <- Xfd; res$prep.func <- prep.func} 
+  if(!is.null(presmooth)) {res$prep.func <- prep.func} 
   return(res)
 }

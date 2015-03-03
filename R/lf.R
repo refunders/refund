@@ -74,7 +74,6 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
     stopifnot(nrow(xind) == n)
   }
 
-  Xfd=NULL
   if(!is.null(presmooth)){
     # create preprocessing function
     prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth, options = presmooth.opts)
@@ -109,6 +108,6 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
                          by = as.symbol(substitute(LXname))),frmls))
   res <-list(call = call, data = data, xind = xind[1,], L = L, tindname=tindname,
              LXname=LXname,presmooth=presmooth)
-  if(!is.null(presmooth)) {res$Xfd <- Xfd; res$prep.func <- prep.func} 
+  if(!is.null(presmooth)) {res$prep.func <- prep.func} 
   return(res)
 }
