@@ -8,48 +8,32 @@ A fast implementation of the sandwich smoother (Xiao et al., 2013) for covarianc
 at the data level is used for selecting the smoothing parameter. 
 }
 \usage{
-fpca.face(Y, Y.pred=NULL, center = TRUE, argvals = NULL, 
-          knots = 35, p = 3, m = 2, lambda = NULL,pve = 0.99, 
-          npc=NULL,alpha = 1, score.method = "int", search.grid = TRUE,
-          search.length = 100, method = "L-BFGS-B", lower = -20, 
-          upper = 20, control = NULL)
+fpca.face(Y=NULL, ydata=NULL, Y.pred=NULL, argvals = NULL,pve = 0.99,npc=NULL,
+          var=FALSE,simul = FALSE, sim.alpha = 0.95,
+          center=TRUE,knots = 35, p = 3, m = 2, lambda = NULL, alpha = 1,
+          search.grid = TRUE,search.length = 100,
+          method = "L-BFGS-B", lower = -20,upper = 20, control = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-   \item{Y}{data matrix (rows: observations; columns: grid
+\item{Y, ydata}{data matrix (currently only support \code{Y}; rows: observations; columns: grid
   of eval. points); missing data allowed but caution is needed for very sparse data}
-  \item{Y.pred }{if desired, a matrix of observed functions that will be estimated using the FPC decomposition of Y.}
-  
-  \item{center}{center \code{Y} so that its column-means
-  are 0? Defaults to \code{TRUE}}
-  
-  \item{argvals}{
-vector of points at which the functions are observed.
-}
-  \item{knots}{
-vector of knots or number of (interior) knots; defaults to 35.
-}
-  \item{p}{
-degrees of B-splines; defaults to 3.
-}
-  \item{m}{
-order of differencing penalty; defaults to 2.
-}
-  \item{lambda}{
-user-specified smoothing parameter; defaults to NULL and uses grid-searching method or \command{optim}.
-}
-  \item{pve}{
-percentage of variance explained for selecting the number of principal components; defaults to 0.99.  	
-}
-  \item{npc}{
-number of extracted principal components; defaults to NULL and use \code{pve}.
-  }
+  \item{Y.pred }{if desired, a matrix of observed functions to be approximated using the FPC decomposition.}
+  \item{argvals}{function argument.}
+  \item{pve}{percentage of variance explained for selecting the number of principal components; defaults to 0.99.}
+  \item{npc}{number of extracted principal components; defaults to NULL and use \code{pve}.}
+  \item{var}{\code{TRUE} or \code{FALSE} indicating whether model-based estimates for the variance of FPCA expansions should be computed.}
+\item{simul}{logical: should critical values be estimated for simultaneous confidence intervals?}
+\item{sim.alpha}{1 - coverage probability of the simultaneous intervals.}
+\item{center}{center \code{Y} so that its column-means are 0? Defaults to \code{TRUE}}
+  \item{knots}{vector of knots or number of (interior) knots; defaults to 35.}
+  \item{p}{degrees of B-splines; defaults to 3.}
+  \item{m}{order of differencing penalty; defaults to 2.}
+  \item{lambda}{user-specified smoothing parameter; defaults to NULL and uses grid-searching method or \command{optim}.}
+
   \item{alpha}{
   the coefficient of the penalty for degrees of freedom in the GCV criterion; defaults to 1
   }
-  \item{score.method}{
-method for predicting scores; \code{"int"} (the default) for numerical integration, or \code{"blup"} for best linear unbiased prediction.
-}
   \item{search.grid}{
 logical; defaults to TRUE, if FALSE, uses \command{optima}.
 }
@@ -70,15 +54,18 @@ passed to \command{optim}.
 
 \value{A list with components
 \item{Yhat}{If Y.pred is specified, the smooth version of Y.pred.   Otherwise, if Y.pred=NULL, the smooth version of Y.}
-\item{scores}{matrix of scores}
-\item{mu}{mean function}
-\item{npc}{number of principal components}
-\item{eigenvectors}{matrix of eigenvectors}
-\item{eigenvalues}{vector of eigenvalues}
-
+\item{scores}{ \eqn{ n \itmes npc} matrix of scores.}
+\item{mu}{estimated mean function (or a vector of zeroes if \code{center==FALSE}).}
+\item{efunctions}{matrix of estimated eigenvectors.}
+\item{evalues}{vector of estimated eigenvalues.}
+\item{npc}{number of principal components.}
+\item{sigma2}{estimated measurement error variance.}
+\item{diag.var}{diagonal elements of the covariance matrices for each estimated curve.}
+\item{VarMats}{a list containing the estimated covariance matrices for each curve in \code{Y}.}
+\item{crit.val}{estimated critical values for constructing simultaneous confidence intervals.}
 }
 
-\note{We expect to merge this function into \code{\link{fpca.sc}} in future releases of the package.}
+\note{We expect to merge this function into \code{\link{fpca.sc}} in future releases of the package; see the details of \code{\link{fpca.sc}} for explanation of some of the inputs and outpus.}
 
 \references{
 Xiao, L., Li, Y., and Ruppert, D. (2013).
@@ -86,7 +73,9 @@ Fast bivariate \emph{P}-splines: the sandwich smoother,
 \emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577-599.
 
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013).
-Fast covariance estimation for high-dimensional functional data. Submitted). Available at \url{http://arxiv.org/abs/1306.5718}.
+Fast covariance estimation for high-dimensional functional data. Submitted). To appear in \emph{Statistics and Computing}. Available at \url{http://arxiv.org/abs/1306.5718}.
+
+Goldsmith, J., Greven, S., and Crainiceanu, C. (2013). Corrected confidence bands for functional data using principal components. \emph{Biometrics}, 69(1), 41--51.
 }
 \author{
 Luo Xiao \email{lxiao@jhsph.edu}
@@ -128,8 +117,8 @@ results <- fpca.face(Y,center = TRUE, argvals=t,knots=100,pve=0.99)
 ###################################################
 ####               FACE                ########
 ###################################################  
-Phi <- results$eigenvectors
-eigenvalues <- results$eigenvalues
+Phi <- results$efunctions
+eigenvalues <- results$evalues
 
 for(k in 1:N){
   if(Phi[,k]\%*\%phi[,k]< 0) 
