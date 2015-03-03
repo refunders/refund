@@ -55,6 +55,8 @@
 ##' one-step method that applies a bivariate smooth to the \eqn{y(s_1)y(s_2)}
 ##' values. This can be very slow. If set to \code{2} (the default), a two-step
 ##' method that obtains a naive covariance estimate which is then smoothed.
+##' @param integration quadrature method for numerical integration; only 
+##' \code{"trapezoidal"} is currently supported.
 ##' @return \item{Yhat}{FPC approximation (projection onto leading components)
 ##' of \code{Y.pred} if specified, or else of \code{Y}.} \item{scores}{\eqn{n
 ##' \times npc} matrix of estimated FPC scores.} \item{mu}{estimated mean
@@ -153,7 +155,8 @@
 ## npc=1 seems to give error
 fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.int = FALSE,
          nbasis = 10, pve = .99, npc = NULL, var = FALSE, simul = FALSE, sim.alpha = .95,
-         useSymm = FALSE, makePD = FALSE, center=TRUE, cov.est.method = 2) {
+         useSymm = FALSE, makePD = FALSE, center=TRUE, cov.est.method = 2,
+         integration="trapezoidal") {
 
     stopifnot((!is.null(Y) && is.null(ydata))||(is.null(Y) && !is.null(ydata)))
 
@@ -172,7 +175,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     I = NROW(Y)
     I.pred = NROW(Y.pred)
 
-    if (is.null(argvals)) argvals = 1:D
+    if (is.null(argvals)) argvals = seq(0,1,,D)
 
     d.vec = rep(argvals, each = I)
     id = rep(1:I, rep(D, I))
@@ -201,9 +204,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
         if (!useSymm) {
             row.vec = rep(argvals, each = D)
             col.vec = rep(argvals, D)
-            npc.0 = matrix(predict(gam(as.vector(G.0) ~ te(row.vec, col.vec, k = nbasis), weights = as.vector(cov.count)),
-                                   newdata = data.frame(row.vec = row.vec,col.vec = col.vec)),
-                                   D, D)
+            npc.0 = matrix(predict(gam(as.vector(G.0) ~ te(row.vec, col.vec, k = nbasis), weights =as.vector(cov.count)), newdata = data.frame(row.vec = row.vec,col.vec = col.vec)), D, D)
             npc.0 = (npc.0 + t(npc.0))/2
         }
         else {
@@ -254,15 +255,27 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
             as.matrix(tmp$mat)
         }
     }
-    evalues = eigen(npc.0, symmetric = TRUE, only.values = TRUE)$values
+    ### numerical integration for calculation of eigenvalues (see Ramsay & Silverman, Chapter 8)
+    w <- quadWeights(argvals, method=integration)
+    Wsqrt <- diag(sqrt(w))
+    Winvsqrt <- diag(1/(sqrt(w)))
+    V <- Wsqrt %*% npc.0 %*% Wsqrt
+    evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values
+    ###
     evalues = replace(evalues, which(evalues <= 0), 0)
     npc = ifelse(is.null(npc), min(which(cumsum(evalues)/sum(evalues) > pve)), npc)
-    efunctions = matrix(eigen(npc.0, symmetric = TRUE)$vectors[, seq(len = npc)], nrow = D, ncol = npc)
-    evalues = eigen(npc.0, symmetric = TRUE, only.values = TRUE)$values[1:npc]
-    cov.hat = efunctions %*% tcrossprod(diag(evalues, nrow = npc, ncol = npc), efunctions)
-    DIAG = (diag.G0 - diag(cov.hat))[floor(D * 0.2):ceiling(D * 0.8)]
-    sigma2 = max(mean(DIAG, na.rm = TRUE), 0)
-    D.inv = diag(1/evalues, nrow = npc, ncol = npc)
+    efunctions = matrix(Winvsqrt%*%eigen(V, symmetric = TRUE)$vectors[, seq(len = npc)], nrow = D, ncol = npc)
+    evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values[1:npc]  # use correct matrix for eigenvalue problem
+    cov.hat = efunctions %*% diag(evalues) %*% t(efunctions)
+    ### numerical integration for estimation of sigma2
+    T.len <- argvals[D] - argvals[1] # total interval length
+    T1.min <- min(which(argvals >= argvals[1] + 0.25*T.len)) # left bound of narrower interval T1
+    T1.max <- max(which(argvals <= argvals[D] - 0.25*T.len)) # right bound of narrower interval T1
+    DIAG = (diag.G0 - diag(cov.hat))[T1.min :T1.max] # function values
+    w2 <- quadWeights(argvals[T1.min:T1.max], method = integration) 
+    sigma2 <- max(sum(DIAG*w2) / w2, 0)  # cf. Yao et al. (2005, JASA), eq. (2)
+    ####  
+    D.inv = diag(1/evalues)
     Z = efunctions
     Y.tilde = Y.pred - matrix(mu, I.pred, D, byrow = TRUE)
     Yhat = matrix(0, nrow = I.pred, ncol = D)
@@ -273,7 +286,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     crit.val = rep(0, I.pred)
     for (i.subj in 1:I.pred) {
         obs.points = which(!is.na(Y.pred[i.subj, ]))
-        if (sigma2 == 0 & length(obs.points) < npc)
+        if (sigma2 == 0 & length(obs.points) < npc) 
             stop("Measurement error estimated to be zero and there are fewer observed points than PCs; scores cannot be estimated.")
         Zcur = matrix(Z[obs.points, ], nrow = length(obs.points), ncol = dim(Z)[2])
         ZtZ_sD.inv = solve(crossprod(Zcur) + sigma2 * D.inv)
@@ -288,6 +301,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
             }
         }
     }
+
     ret.objects = c("Yhat", "scores", "mu", "efunctions", "evalues", "npc")
     if (var) {
         ret.objects = c(ret.objects, "sigma2", "diag.var", "VarMats")

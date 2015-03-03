@@ -85,4 +85,3 @@ pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982
 \code{\link{fgam}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
 \code{\link{fgam}} for examples
 }
-
