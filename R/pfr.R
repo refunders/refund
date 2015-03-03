@@ -42,14 +42,9 @@ pfr <- function(formula=NULL, fitter=NA, ...){
   
   if (class(formula) != "formula") {
     # Call pfr_old()
-    fit <- if (is.null(formula) & is.na(fitter))
-      pfr_old(...)
-    else if (is.null(formula))
-      pfr_old(subj=fitter, ...)
-    else if (is.na(fitter))
-      pfr_old(Y=formula, ...)
-    else
-      pfr_old(Y=formula, subj=fitter, ...)
+    call <- sys.call()
+    call[[1]] <- as.symbol("pfr_old")
+    fit <- eval(call)
     return(fit)
   }
 
@@ -67,6 +62,8 @@ pfr <- function(formula=NULL, fitter=NA, ...){
       warning("Arguments <", paste(notUsed, collapse = ", "), 
               "> supplied but not used.")
   }
+  
+  # Set up terms
   tf <- terms.formula(formula, specials = c("s", "te", "t2", "lf", "af",
                                             "lf.vd", "re"))
   trmstrings <- attr(tf, "term.labels")
@@ -88,6 +85,7 @@ pfr <- function(formula=NULL, fitter=NA, ...){
     where.par <- which(!(1:length(trmstrings) %in% where.all))
   } else where.par <- numeric(0)
   
+  # Set up new formula and response
   responsename <- attr(tf, "variables")[2][[1]]
   newfrml <- paste(responsename, "~", sep = "")
   newfrmlenv <- new.env()
@@ -118,12 +116,13 @@ pfr <- function(formula=NULL, fitter=NA, ...){
     newfrml <- paste(newfrml, "0", sep = "")
   }
   
-  where.special <- c(where.af, where.lf, where.lf.vd, where.re)
-  if (length(where.special)) {
-    fterms <- lapply(terms[where.special], function(x) {
+  # Process refund-type terms
+  where.refund <- c(where.af, where.lf, where.lf.vd, where.re)
+  if (length(where.refund)) {
+    fterms <- lapply(terms[where.refund], function(x) {
       eval(x, envir = evalenv, enclos = frmlenv)
     })
-    newtrmstrings[where.special] <- sapply(fterms, function(x) {
+    newtrmstrings[where.refund] <- sapply(fterms, function(x) {
       safeDeparse(x$call)
     })
     lapply(fterms, function(x) {
@@ -137,11 +136,12 @@ pfr <- function(formula=NULL, fitter=NA, ...){
   }
   else fterms <- NULL
   
-  where.notf <- c(where.par, where.s, where.te, where.t2)
-  if (length(where.notf)) {
+  # Process mgcv-type terms
+  where.mgcv <- c(where.par, where.s, where.te, where.t2)
+  if (length(where.mgcv)) {
     if ("data" %in% names(call)) 
       frmlenv <- list2env(eval(call$data), frmlenv)
-    lapply(terms[where.notf], function(x) {
+    lapply(terms[where.mgcv], function(x) {
       nms <- if (!is.null(names(x))) {
         all.vars(x[names(x) == ""])
       }
@@ -155,6 +155,7 @@ pfr <- function(formula=NULL, fitter=NA, ...){
     })
   }
   
+  # Finalize call to fitter
   newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
   environment(newfrml) <- newfrmlenv
   psfrdata <- list2df(as.list(newfrmlenv))
@@ -165,9 +166,10 @@ pfr <- function(formula=NULL, fitter=NA, ...){
   newcall$data <- quote(psfrdata)
   newcall[[1]] <- fitter
   
-  # Evaluate call to fitter
+  # Evaluate call
   res <- eval(newcall)
   
+  # Post-process fit
   res.smooth <- if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$smooth
   } else res$smooth
