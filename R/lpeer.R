@@ -1,7 +1,10 @@
-lpeer<- function(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE,  
+lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE,  
                  pentype='Ridge', L.user=NULL, f_t=NULL, Q=NULL, phia=10^3,
                  se=FALSE, ...)
 {
+  if (!is.null(argvals)) 
+    stop("argvals is not implemented in this version of refund")
+  
   pd1 = pd2 = pd3 = pd4 = pd5 = pd6 = NULL
   
   #Determining K, converting W, Y, id and t to matrix

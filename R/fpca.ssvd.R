@@ -9,6 +9,7 @@
 #'  Please note that Donoho, Gavish (2013) should be regarded as experimental for functional PCA, and will typically not work well if you have more observations than grid points.  
 #'   
 #'    @param Y data matrix (rows: observations; columns: grid of eval. points)
+#'    @param argvals the argument values where functions are evaluated. It is implemented yet.
 #'    @param npc how many smooth SVs to try to extract, if \code{NA} (the default) the hard thresholding
 #'     rule of Donoho, Gavish (2013) is used (see Details, References).
 #'    @param center center \code{Y} so that its column-means are 0? Defaults to \code{TRUE} 
@@ -67,13 +68,15 @@
 #'          main="true smooth Y", bty="n")
 #'  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="", 
 #'          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
-fpca.ssvd <- function(Y, npc=NA, center=TRUE,
+fpca.ssvd <- function(Y, argvals=NULL, npc=NA, center=TRUE,
         maxiter=15, tol=1e-4, 
         diffpen=3,
         gridsearch=TRUE,
         alphagrid=1.5^(-20:40), 
         lower.alpha=1e-5, upper.alpha=1e7,
         verbose=FALSE){
+  
+    if(!is.null(argvals)) stop("argvals is not supported.")
     
     #GCV criterion from eq. (10), App. C:
     gcv <- function(alpha, w, m, lambda){

@@ -4,12 +4,14 @@
 \alias{fpca.ssvd}
 \title{Smoothed FPCA via iterative penalized rank one SVDs.}
 \usage{
-fpca.ssvd(Y, npc = NA, center = TRUE, maxiter = 15, tol = 1e-04,
-  diffpen = 3, gridsearch = TRUE, alphagrid = 1.5^(-20:40),
+fpca.ssvd(Y, argvals = NULL, npc = NA, center = TRUE, maxiter = 15,
+  tol = 1e-04, diffpen = 3, gridsearch = TRUE, alphagrid = 1.5^(-20:40),
   lower.alpha = 1e-05, upper.alpha = 1e+07, verbose = FALSE)
 }
 \arguments{
 \item{Y}{data matrix (rows: observations; columns: grid of eval. points)}
+
+\item{argvals}{the argument values where functions are evaluated. It is implemented yet.}
 
 \item{npc}{how many smooth SVs to try to extract, if \code{NA} (the default) the hard thresholding
  rule of Donoho, Gavish (2013) is used (see Details, References).}

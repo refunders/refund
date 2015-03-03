@@ -1,7 +1,8 @@
-peer<- function(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL, 
+peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL, 
                 phia=10^3, se=FALSE, ...)
 {
-  
+  if(!is.null(argvals))
+    stop("argvals is not supported in the current version of refund.")
   #Determining K, converting W and Y to matrix
   W<- as.matrix(funcs)
   K<- ncol(W)

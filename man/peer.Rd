@@ -5,12 +5,13 @@
 Implements functional model with structured penalties (Randloph et al., 2012) with scalar outcome and single functional predictor through mixed model equivalence.
 }
 \usage{
-peer(Y, funcs, pentype='Ridge', L.user=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
+peer(Y, funcs, argvals = NULL, pentype='Ridge', L.user=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
 }
 
 \arguments{
 \item{Y}{vector of all outcomes}
 \item{funcs}{matrix containing observed functional predictors as rows. Rows with \code{NA} and \code{Inf} values will be deleted.} 
+\item{argvals}{The argument values the functions are evaluated. It is not implemented int the current version.}
 \item{pentype}{type of penalty. It can be either decomposition based penalty (\code{DECOMP}) or ridge (\code{RIDGE}) or second-order difference penalty (\code{D2}) or any user defined penalty (\code{USER}). For decomposition based penalty user need to specify Q matrix in Q argument (see details). For user defined penalty user need to specify L matrix in L argument (see details). For Ridge and second-order difference penalty, specification for arguments L and Q will be ignored.
 Default is \code{RIDGE}.}
 \item{L.user}{penalty matrix. Need to be specified with \code{pentype='USER'}. Number of columns need to be equal with number of columns of matrix specified to \code{funcs}. Each row represents a constraint on functional predictor. This argument will be ignored when value of \code{pentype} is other than \code{USER}.}

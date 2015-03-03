@@ -233,5 +233,3 @@ pfr <- function(formula=NULL, fitter=NA, ...){
   
   return(res)
 }
-
-

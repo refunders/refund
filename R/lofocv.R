@@ -1,6 +1,10 @@
 lofocv <-
-function(Y, X, S1, lamvec=NULL, constr=NULL, maxlam=NULL) {
-	nn = nrow(X)
+function(Y, X, S1, argvals = NULL, lamvec=NULL, constr=NULL, maxlam=NULL) {
+	
+  if (!is.null(argvals)) 
+    stop("argvals is not implemented yet.")
+  
+  nn = nrow(X)
 	N = NROW(Y); K = NCOL(Y)
 	if (N*K!=nn) stop('Number of elements of Y must equal number of rows of X')
 	y = as.vector(t(Y))

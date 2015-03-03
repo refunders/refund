@@ -4,18 +4,20 @@
 \alias{af}
 \title{Construct an FGAM regression term}
 \usage{
-af(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"),
-  integration = c("simpson", "trapezoidal", "riemann"), L = NULL,
-  splinepars = list(bs = "ps", k = c(min(ceiling(nrow(X)/5), 20),
+af(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("te",
+  "t2", "s"), integration = c("simpson", "trapezoidal", "riemann"),
+  L = NULL, splinepars = list(bs = "ps", k = c(min(ceiling(nrow(X)/5), 20),
   min(ceiling(ncol(X)/5), 20)), m = list(c(2, 2), c(2, 2))), presmooth = TRUE,
   Xrange = range(X), Qtransform = FALSE)
 }
 \arguments{
-\item{X}{an \code{N} by \code{J=ncol(xind)} matrix of function evaluations
+\item{X}{an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
 \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}}
 
-\item{xind}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
+\item{argvals}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
 \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}}
+
+\item{xind}{Same as argvals. It will discard this argument in the next version of refund.}
 
 \item{basistype}{defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
 use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
@@ -49,10 +51,10 @@ A list with the following entries:
 \enumerate{
 \item \code{call} - a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
 constructed covariate and weight matrices.
-\item \code{xind} - the \code{xind} argument supplied to \code{af}
+\item \code{argvals} - the \code{argvals} argument supplied to \code{af}
 \item \code{L}{ the  matrix of weights used for the integration
 \item \code{xindname}{ the name used for the functional predictor variable in the \code{formula} used by \code{mgcv}.}
-\item \code{tindname} - the name used for \code{xind} variable in the \code{formula} used by \code{mgcv}
+\item \code{tindname} - the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}
 \item \code{Lname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
 \item \code{presmooth} - the \code{presmooth} argument supplied to \code{af}
 \item \code{Qtranform} - the \code{Qtransform} argument supplied to \code{af}
