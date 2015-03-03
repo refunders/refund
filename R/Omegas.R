@@ -1,3 +1,5 @@
+#' @keywords internal
+#' @importFrom fda eval.basis
 Omegas = function(bspline.basis, ss)   {
     k.n = length(bspline.basis$params)
     k = c(rep(bspline.basis$rangeval[1],4), bspline.basis$params, rep(bspline.basis$rangeval[2],4))

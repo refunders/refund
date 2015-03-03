@@ -28,6 +28,7 @@
 #' same dimension as the response for newdata containing the linear predictor and its se for each term
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @seealso \code{\link{fgam}}, \code{\link[mgcv]{predict.gam}}
+#' @export
 #' @examples
 #' ######### Octane data example #########
 #' data(gasoline)

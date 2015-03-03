@@ -4,18 +4,15 @@
 \alias{af}
 \title{Construct an FGAM regression term}
 \usage{
-af(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("te",
-  "t2", "s"), integration = c("simpson", "trapezoidal", "riemann"),
-  L = NULL, splinepars = list(bs = "ps", k = c(min(ceiling(nrow(X)/5), 20),
+af(X, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2", "s"),
+  integration = c("simpson", "trapezoidal", "riemann"), L = NULL,
+  splinepars = list(bs = "ps", k = c(min(ceiling(nrow(X)/5), 20),
   min(ceiling(ncol(X)/5), 20)), m = list(c(2, 2), c(2, 2))), presmooth = TRUE,
   Xrange = range(X), Qtransform = FALSE)
 }
 \arguments{
 \item{X}{an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
 \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}}
-
-\item{argvals}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}}
 
 \item{xind}{Same as argvals. It will discard this argument in the next version of refund.}
 
@@ -45,6 +42,9 @@ for future observed curves that take values outside of \code{range(X)}}
 applying a quantile transformation on each column of \code{X} prior to fitting?  This ensures
 \code{Xrange=c(0,1)}.  If \code{Qtransform=TRUE} and \code{presmooth=TRUE}, presmoothing is done prior
 to transforming the functional predictor}
+
+\item{argvals}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
+\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}}
 }
 \value{
 A list with the following entries:

@@ -20,16 +20,14 @@ Depends:
     R (>= 2.14.0),
     fda
 Imports:
+    Matrix,
     lattice,
     boot,
-    mgcv (>= 1.7-28),
+    mgcv (>= 1.8-4),
     MASS,
-    glmnet,
     magic,
     nlme,
-    Matrix,
     gamm4,
-    matrixStats,
     lme4,
     RLRsim,
     splines
@@ -97,3 +95,8 @@ Collate:
     'predict.pfr.R'
     'preprocess.pfr.R'
     'irreg2mat.R'
+    'CD4-data.R'
+    'DTI-data.R'
+    'DTI2-data.R'
+    'PEER.Sim-data.R'
+    'gasoline-data.R'

@@ -39,9 +39,10 @@
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}
 #' @seealso \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{fgam}}, \code{\link{persp}},
 #' \code{\link{levelplot}}
-#' @importFrom gam vis.gam predict.gam
+#' @importFrom mgcv vis.gam predict.gam
 #' @importFrom lattice levelplot
 #' @importFrom graphics persp
+#' @export
 #' @examples
 #' ################# DTI Example #####################
 #' data(DTI)
