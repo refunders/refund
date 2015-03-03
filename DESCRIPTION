@@ -2,25 +2,20 @@ Package: refundDevel
 Type: Package
 Title: developer version of refund: Regression with Functional Data
 Version: 0.3-3
-Date: 2014-10-21
-Authors@R: c(person("Ciprian Crainiceanu", role = "aut", email =
-    "ccrainic@jhsph.edu"), person("Philip Reiss", role = "aut", email =
-    "phil.reiss@nyumc.org"), person("Jeff Goldsmith", role = "aut", email =
-    "jeff.goldsmith@columbia.edu"), person("Lei Huang", role = c("aut","cre"),
-    email = "huangracer@gmail.com"), person("Lan Huo", role = "aut", email =
-    "lan.huo@nyumc.org"), person("Fabian Scheipl", role = "aut", email =
-    "fabian.scheipl@stat.uni-muenchen.de"), person("Bruce Swihart", role =
-    "ctb", email = "bswihart@jhsph.edu"), person("Sonja Greven", role = "ctb"),
-    person("Jaroslaw Harezlak", role="ctb"), person("Madan Gopal Kundu",
-    role="ctb"), person("Yihong Zhao", role="ctb"), person("Matt McLean",
-    role="ctb"), person("Luo Xiao", role="ctb", email = "lxiao@jhsph.edu"),
-    person("Jonathan Gellar", role="ctb", email="jgellar1@jhu.edu"))
-Author: Ciprian Crainiceanu [aut], Philip Reiss [aut], Jeff Goldsmith [aut],
-    Lei Huang [aut, cre], Lan Huo [aut], Fabian Scheipl [aut], Bruce Swihart
-    [ctb], Sonja Greven [ctb], Jaroslaw Harezlak [ctb], Madan Gopal Kundu
-    [ctb], Yihong Zhao [ctb], Matt McLean [ctb], Luo Xiao [ctb],
-    Jonathan Gellar [ctb]
-Maintainer: Lei Huang <huangracer@gmail.com>
+Date: 2015-03-03
+Authors@R: c(person("Ciprian", "Crainiceanu", role = "aut", email =
+    "ccrainic@jhsph.edu"), person("Philip", "Reiss", role = "aut", email =
+    "phil.reiss@nyumc.org"), person("Jeff", "Goldsmith", role = "aut", email =
+    "jeff.goldsmith@columbia.edu"), person("Lei", "Huang", role = c("aut","cre"),
+    email = "huangracer@gmail.com"), person("Lan", "Huo", role = "aut", email =
+    "lan.huo@nyumc.org"), person("Fabian", "Scheipl", role = "aut", email =
+    "fabian.scheipl@stat.uni-muenchen.de"), person("Bruce", "Swihart", role =
+    "ctb", email = "bswihart@jhsph.edu"), person("Sonja", "Greven", role = "ctb"),
+    person("Jaroslaw", "Harezlak", role="ctb"), person(c("Madan", "Gopal"), "Kundu",
+    role="ctb"), person("Yihong", "Zhao", role="ctb"), person(c("Mathew", "W."), "McLean",
+    role="ctb", email = "mathew.w.mclean@gmail.com"), person("Luo", "Xiao", role="ctb",
+    email = "lxiao@jhsph.edu"), person("Jonathan", "Gellar", role="ctb",
+    email="jgellar1@jhu.edu"))
 Depends:
     R (>= 2.14.0),
     fda
@@ -36,11 +31,12 @@ Imports:
     gamm4,
     matrixStats,
     lme4,
-    RLRsim, 
+    RLRsim,
     splines
 Suggests:
     ggplot2,
-    reshape2
+    reshape2,
+    testthat
 Description: Developer version of refund. Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to
