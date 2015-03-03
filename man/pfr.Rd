@@ -12,7 +12,7 @@ subject-specific random intercepts.  The function refund::lpfr is no
 longer supported.
 }
 \usage{
-pfr(Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,
+pfr(Y, subj=NULL, covariates = NULL, funcs, argvals=NULL, kz = 10, kb = 30, nbasis=10,
 family = "gaussian", method="REML", smooth.option="fpca.sc", pve=0.99, ...)
 }
 \arguments{
@@ -20,6 +20,7 @@ family = "gaussian", method="REML", smooth.option="fpca.sc", pve=0.99, ...)
   \item{subj }{vector containing the subject number for each observation}
   \item{covariates }{matrix of scalar covariates}
   \item{funcs }{matrix, or list of matrices, containing observed functional predictors as rows. NA values are allowed.}
+  \item{argvals}{The argument values where functions are evaluated. It is not implemented in the current refund.}
   \item{kz }{can be NULL; can be a scalar, in which case this will be the dimension of principal components basis for each and every observed functional predictors; can be a vector of length equal to the number of functional predictors, in which case each element will correspond to the dimension of principal components basis for the corresponding observed functional predictors}
   \item{kb }{dimension of the B-spline basis for the coefficient
     function (note: this is a change from versions 0.1-7 and previous) }

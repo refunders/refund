@@ -1,6 +1,8 @@
-pfr  <- function (Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, nbasis=10,
+pfr  <- function (Y, subj=NULL, covariates = NULL, funcs, argvals = NULL, kz = 10, kb = 30, nbasis=10,
                             family = "gaussian", method="REML", smooth.option="fpca.sc", pve=0.99,...)
 {
+  if (!is.null(argvals))
+    stop("argvals is not supported in the current version of refund.")
   ## Step 1:
   ## parse formulae, etc.
   ## parse.pfr() In progress.

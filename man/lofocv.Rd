@@ -9,7 +9,7 @@ This internal function, called by \code{fosr()} when \code{method="OLS"},
 performs efficient leave-one-function-out cross-validation using Demmler-Reinsch orthogonalization to choose the
 smoothing parameter.}
 \usage{
-lofocv(Y, X, S1, lamvec = NULL, constr = NULL, maxlam = NULL)
+lofocv(Y, X, S1, argvals=NULL, lamvec = NULL, constr = NULL, maxlam = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -19,6 +19,7 @@ matrix of responses, e.g. with columns corresponding to basis function coefficie
 model matrix.}
   \item{S1}{
 penalty matrix.}
+  \item{argvals}{The argument values the functions are evaluated}
   \item{lamvec}{
 vector of candidate smoothing parameter values.  If \code{NULL}, smoothing parameter is chosen by \code{\link{optimize}}.}
   \item{constr}{

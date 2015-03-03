@@ -5,7 +5,7 @@
 Implements longitudinal functional model with structured penalties (Kundu et al., 2012) with scalar outcome, single functional predictor, one or more scalar covariates and subject-specific random intercepts through mixed model equivalence. 
 }
 \usage{
-lpeer(Y, subj, t, funcs, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user=NULL, 
+lpeer(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user=NULL, 
 f_t=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
 
 }
@@ -14,6 +14,7 @@ f_t=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
 \item{subj}{vector containing the subject number for each observation}
 \item{t}{vector containing the time information when the observation are taken}
 \item{covariates}{matrix of scalar covariates.}
+\item{argvals}{The argument values the functions are evaluated. It is not implemented int the current version.}
 \item{funcs}{matrix containing observed functional predictors as rows. Rows with \code{NA} and \code{Inf} values will be deleted.}
 \item{comm.pen}{logical value indicating whether common penalty for all the components of regression function. Default is TRUE.}
 \item{pentype}{type of penalty: either decomposition based penalty (\code{'DECOMP'}) or ridge (\code{'RIDGE'}) or second-order difference penalty (\code{'D2'}) or any user defined penalty (\code{'USER'}). For decomposition based penalty user need to specify Q matrix in \code{Q} argument (see details). For user defined penalty user need to specify L matrix in \code{L} argument (see details). For Ridge and second-order difference penalty, specification for arguments \code{L} and \code{Q} will be ignored. Default is \code{'RIDGE'}.}
