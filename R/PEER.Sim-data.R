@@ -14,7 +14,7 @@
 ##' please refer to Kundu et. al. (2012).
 ##'
 ##'
-##' @name PEER.Sim, Q
+##' @name PEER.Sim
 ##' @aliases PEER.Sim Q
 ##' @docType data
 ##' @format The data frame \code{PEER.Sim} is made up of subject ID
