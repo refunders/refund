@@ -23,5 +23,5 @@
 ##' (\code{Y})
 ##' @references Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012).
 ##' Longitudinal functional models with structured penalties. (please contact
-##' J. Harezlak at harezlak@iupui.edu)
+##' J. Harezlak at \email{harezlak@@iupui.edu})
 NULL
