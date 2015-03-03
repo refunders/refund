@@ -7,7 +7,7 @@
 lf(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   integration = c("simpson", "trapezoidal", "riemann"), L = NULL,
   splinepars = list(bs = "ps", k = min(ceiling(n/4), 40), m = c(2, 2)),
-  presmooth = TRUE)
+  presmooth = NULL, presmooth.opts = NULL)
 }
 \arguments{
 \item{X}{an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations

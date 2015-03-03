@@ -44,7 +44,8 @@
 lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
                integration = c("simpson", "trapezoidal", "riemann"),
                L = NULL, splinepars = list(bs = "ps", k= min(ceiling(n/4),40),
-                                  m = c(2, 2)), presmooth = TRUE) {
+                                  m = c(2, 2)), presmooth = NULL, 
+               presmooth.opts = NULL) {
   if (!is.null(xind)) {
     cat("Argument xind is placed by argvals. xind will not be supported in the next
         version of refund.")
@@ -74,15 +75,12 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   }
 
   Xfd=NULL
-  if(presmooth){
-    bbt=create.bspline.basis(rangeval=range(xind),nbasis=ceiling(nt/4),
-                             norder=splinepars$m[1]+2, breaks=NULL)
-
-    # pre-smooth functional predictor
-    temp <- smooth.basisPar(t(xind),t(X),bbt,int2Lfd(splinepars$m[2]))
-    Xfd <- temp$fd
-    Xfd$y2cMap <-temp$y2cMap
-    X <- t(sapply(1:n,function(i){eval.fd(xind[i,],Xfd[i])}))
+  if(!is.null(presmooth)){
+    # create preprocessing function
+    prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth, options = presmooth.opts)
+    
+    # preprocess data
+    X <- prep.func(newX = X)$processed
   }
 
   if (!is.null(L)) {
@@ -111,7 +109,6 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
                          by = as.symbol(substitute(LXname))),frmls))
   res <-list(call = call, data = data, xind = xind[1,], L = L, tindname=tindname,
              LXname=LXname,presmooth=presmooth)
-  if(presmooth) res$Xfd <- Xfd
+  if(!is.null(presmooth)) {res$Xfd <- Xfd; res$prep.func <- prep.func} 
   return(res)
 }
-

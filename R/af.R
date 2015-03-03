@@ -61,7 +61,8 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("
                integration = c("simpson", "trapezoidal", "riemann"),
                 L = NULL, splinepars = list(bs = "ps",
                 k= c(min(ceiling(nrow(X)/5),20),min(ceiling(ncol(X)/5),20)),
-                m = list(c(2, 2), c(2, 2))), presmooth = TRUE,Xrange=range(X),Qtransform=FALSE) {
+                m = list(c(2, 2), c(2, 2))), presmooth = NULL, presmooth.opts = NULL, 
+               Xrange=range(X),Qtransform=FALSE) {
 
   if (!is.null(xind)) {
     argvals = xind
@@ -94,15 +95,12 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("
   }
 
   Xfd=NULL
-  if(presmooth){
-    bbt=create.bspline.basis(rangeval=range(xind),nbasis=ceiling(nt/4),
-                             norder=splinepars$m[[2]][1]+2, breaks=NULL)
-
-    # pre-smooth functional predictor
-    temp <- smooth.basisPar(t(xind),t(X),bbt,int2Lfd(splinepars$m[[2]][2]))
-    Xfd <- temp$fd
-    Xfd$y2cMap <-temp$y2cMap
-    X <- t(sapply(1:n,function(i){eval.fd(xind[i,],Xfd[i])}))
+  if(!is.null(presmooth)){
+    # create preprocessing function
+    prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth, options = presmooth.opts)
+    
+    # preprocess data
+    X <- prep.func(newX = X)$processed
 
     # need to check that smoothing didn't change range of data
     if(!Qtransform){
@@ -151,8 +149,6 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("
   res <-list(call = call, data = data, xind = xind[1,], L = L, xindname = xindname, tindname=tindname,
              Lname=Lname,Qtransform=Qtransform,presmooth=presmooth,Xrange=Xrange)
   if(Qtransform) res$ecdflist <- ecdflist
-  if(presmooth) res$Xfd <- Xfd
+  if(!is.null(presmooth)) {res$Xfd <- Xfd; res$prep.func <- prep.func} 
   return(res)
 }
-
-
