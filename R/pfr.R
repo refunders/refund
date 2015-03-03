@@ -52,11 +52,7 @@ pfr <- function(formula=NULL, fitter=NA, ...){
       pfr_old(Y=formula, subj=fitter, ...)
     return(fit)
   }
-  
-  if (!is.formula(formula)) {
-    
-  }
-  
+
   call <- match.call()
   dots <- list(...)
   if (length(dots)) {
