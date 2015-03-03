@@ -54,7 +54,7 @@ passed to \command{optim}.
 
 \value{A list with components
 \item{Yhat}{If Y.pred is specified, the smooth version of Y.pred.   Otherwise, if Y.pred=NULL, the smooth version of Y.}
-\item{scores}{ \eqn{ n \itmes npc} matrix of scores.}
+\item{scores}{ \eqn{ n \times npc} matrix of scores.}
 \item{mu}{estimated mean function (or a vector of zeroes if \code{center==FALSE}).}
 \item{efunctions}{matrix of estimated eigenvectors.}
 \item{evalues}{vector of estimated eigenvalues.}
