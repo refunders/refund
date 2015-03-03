@@ -452,6 +452,7 @@ plot.pffr <- function (x, ...)
 #' @method coef pffr
 #' @export
 #' @importFrom mgcv PredictMat get.var
+#' @importFrom Matrix Diagonal kronecker t
 #' @seealso \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
 #'   based on.
 #' @author Fabian Scheipl
