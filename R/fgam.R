@@ -26,7 +26,7 @@
 #' pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{predict.fgam}}, \code{\link{vis.fgam}}
-#' @importFrom mgcv gam gam.fit gamm4 bam s te t2
+#' @importFrom mgcv gam gam.fit bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom nlme lme4
 #' @importFrom stats terms.formula
