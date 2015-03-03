@@ -44,6 +44,7 @@
 #'  If \code{se == TRUE}, a list with entries \code{fit} and \code{se.fit} containing fits and standard errors, respectively.
 #'  If \code{type == "terms"} or \code{"iterms"} each of these lists is a list of matrices of the same dimension as the response for \code{newdata}
 #'  containing the linear predictor and its se for each term.
+#' @export
 #' @method predict pffr
 #' @author Fabian Scheipl
 #' @importFrom mgcv predict.gam predict.bam
@@ -313,6 +314,8 @@ model.matrix.pffr <- function (object, ...)
 #' @param ... other arguments, passed to \code{\link[mgcv]{residuals.gam}}.
 #'
 #' @return A matrix or vector of residuals
+#' @export
+#' @importFrom mgcv residuals.gam
 #' @method residuals pffr
 #' @author Fabian Scheipl
 residuals.pffr <- function (object, reformat=TRUE, ...)
@@ -352,6 +355,7 @@ residuals.pffr <- function (object, reformat=TRUE, ...)
 #' @return A matrix (grid data) or \code{data.frame} (sparse/irregular data)
 #'  or vector (if \code{!reformat}) of fitted values
 #' @method fitted pffr
+#' @export
 #' @author Fabian Scheipl
 #  TODO: fix for non-grid data without newdata, yind
 fitted.pffr <- function (object, reformat=TRUE, ...)
@@ -385,6 +389,7 @@ fitted.pffr <- function (object, reformat=TRUE, ...)
 #'
 #' @return This function only generates plots.
 #' @method plot pffr
+#' @importFrom mgcv plot.gam
 #' @author Fabian Scheipl
 plot.pffr <- function (x, ...)
 {
@@ -445,6 +450,7 @@ plot.pffr <- function (x, ...)
 #' \emph{Journal of the American Statistical Association}, under revision.
 #' \url{http://www.columbia.edu/~yw2016/Marginal Spline6.pdf}
 #' @method coef pffr
+#' @export
 #' @importFrom mgcv PredictMat get.var
 #' @seealso \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
 #'   based on.
@@ -673,7 +679,9 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
 #' @param ... see \code{\link[mgcv]{summary.gam}()} for options.
 #'
 #' @return A list with summary information, see \code{\link[mgcv]{summary.gam}()}
+#' @export
 #' @method summary pffr
+#' @importFrom mgcv summary.gam
 #' @author Fabian Scheipl, adapted from \code{\link[mgcv]{summary.gam}()} by Simon Wood, Henric Nilsson
 summary.pffr <- function (object, ...) {
     call <- match.call()
@@ -719,6 +727,8 @@ summary.pffr <- function (object, ...) {
 #'
 #' @return A \code{\link{summary.pffr}} object
 #' @method print summary.pffr
+#' @importFrom stats printCoefmat
+#' @export
 #' @author Fabian Scheipl, adapted from \code{\link[mgcv]{print.summary.gam}()} by Simon Wood, Henric Nilsson
 print.summary.pffr <- function(x, digits = max(3, getOption("digits") - 3),
                                signif.stars = getOption("show.signif.stars"), ...){
