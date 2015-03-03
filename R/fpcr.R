@@ -178,6 +178,7 @@
 ##' }
 ##' @export
 ##' @importFrom mgcv gam
+##' @importFrom MASS ginv
 fpcr <- function(y, xfuncs = NULL, fdobj = NULL, ncomp=NULL, pve = 0.99, nbasis = NULL, basismat = NULL, 
                  penmat = NULL, argvals = NULL, covt = NULL, mean.signal.term = FALSE, 
                  spline.order = NULL, family = "gaussian", method = "REML", sp = NULL, 
