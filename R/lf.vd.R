@@ -1,5 +1,5 @@
 #' Construct a VDFR regression term
-#' 
+#'
 #' This function defines the a variable-domain functional regression term
 #' for inclusion in an \code{mgcv::gam-formula} (or \code{bam} or
 #' \code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{fgam}}.
@@ -11,7 +11,7 @@
 #' quadratic, or not present at all. Basis choice is fully custiomizable using
 #' the options of \code{mgcv::s} and \code{mgcv::te}, though tensor-product
 #' bases are not allowed except in the standardized-domain case.
-#' 
+#'
 #' @param X matrix containing variable-domain functions. Should be \eqn{N x J},
 #'    where \eqn{N} is the number of subjects and \eqn{J} is the maximum number of time
 #'    points per subject. Most rows will have \code{NA} values in the right-most
@@ -49,13 +49,13 @@
 #'    (\code{basistype="te"}) are not allowed, but any bivariate basis
 #'    allowed by \code{mgcv::s} is supported, such as thin-plate regression splines
 #'    (the default).
-#'    
+#'
 #'    The ``lagged" VDFR model is similar to the ``untransformed" model, but
 #'    each function is aligned according to their final measurement of
 #'    \eqn{X_i(t)} as opposed to their first. This model is equivalent to
 #'    the untransformed model, up to the assumptions imposed by the basis
 #'    choice and smoothness.
-#'    
+#'
 #'    The ``standardized" models apply the subject-specific domain transformation
 #'    \eqn{s = t/T_i}, which linearly stretches (or compresses) each function to
 #'    the domain \eqn{[0,1]}. For nonparametric interactions, the functional
@@ -69,7 +69,7 @@
 #'    rescaled domain \eqn{{s,T_i: 0\le s\le 1, 0\le T_i\le max_i(T_i)}}, when transformed
 #'    back to the original time domain \eqn{t}, the resulting coefficient function can be
 #'    less smooth (across \eqn{t}) for smaller values of \eqn{T_i} than for larger values.
-#'    
+#'
 #'    Since the domain of the standardized coefficient function is rectangular, tensor product
 #'    bases are allowed. This form also allows us to easily parameterize the interaction
 #'    between \eqn{t} and \eqn{T_i}. The software supports three different parameterizations
@@ -110,7 +110,7 @@ lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
 	rescale.unit = TRUE,
 	splinepars = NULL) {
 	# splinepars = list(bs = "ps", k = min(ceiling(n/4), 40), m = c(2, 2))){
-	
+
 	n = nrow(X)
   J = ncol(X)
 	J.i <- apply(X, 1, function(x) max(which(!is.na(x))))
@@ -126,10 +126,10 @@ lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
 		NULL
 	} else {
 		frmls <- formals(getFromNamespace(deparse(splinefun), ns = "mgcv"))
-		modifyList(frmls[names(frmls) %in% names(splinepars)], 
+		modifyList(frmls[names(frmls) %in% names(splinepars)],
 	        splinepars)
 	}
-	
+
 	# Check domain/interaction/basis compatability
 	if (domain %in% c("untransformed","lagged")) {
 		if (interaction!="nonparametric") {
@@ -146,18 +146,18 @@ lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
 	} else if (interaction!="nonparametric" & basistype %in% c("te","ti","t2")) {
 		stop("Tensor product smooths are not allowed for parametric interactions.")
 	}
-	
+
 	# Create index matrices
 	if (is.null(dim(tind))) {
 		tind <- t(tind)
 		stopifnot(ncol(tind) == J)
 		if (nrow(tind) == 1) {
-			tind <- matrix(as.vector(tind), nrow = n, ncol = J, 
+			tind <- matrix(as.vector(tind), nrow = n, ncol = J,
 				byrow = T)
 		}
 		stopifnot(nrow(tind) == n)
 	}
-	if (is.null(Tind)) 
+	if (is.null(Tind))
 		Tind <- sapply(1:nrow(X), function(i) tind[i,max(which(!is.na(X[i,])))])
 	Tind <- T.trans(Tind)
   if (is.null(dim(Tind))) {
@@ -172,7 +172,7 @@ lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
 		tind <- (tind-min(tind))/(max(tind)-min(tind))
 		Tind <- (Tind-min(Tind))/(max(Tind)-min(Tind))
 	}
-	
+
 	# Process functional predictor
 	if (domain=="standardized") {
 		X <- t(apply(X, 1, function(x) {
@@ -196,7 +196,7 @@ lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
 		}
 		LX[is.na(LX)] <- 0
 	}
-	
+
 	if (interaction=="nonparametric") {
 		data <- list(tind, Tind, LX)
 		names(data) <- c(tindname, Tindname, LXname)
@@ -208,7 +208,7 @@ lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
 		data <- list(tind, LX)
 		names(data) <- c(tindname, LXname)
 		call <- as.call(c(list(splinefun), as.symbol(substitute(tindname)),
-						by=as.symbol(substitute(LXname)), frmls))		
+						by=as.symbol(substitute(LXname)), frmls))
 		if (interaction %in% c("linear","quadratic")) {
 			LX.lin <- LX * Tind
 			LXname.lin <- paste0(LXname, ".lin")
@@ -224,17 +224,16 @@ lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
 						by=as.symbol(substitute(LXname.qud)), frmls)))
 		}
 	}
-	
+
 	res <- list(call = call, data = data, L = L,
               tindname = tindname, Tindname=Tindname, LXname = LXname)
 	return(res)
 }
 
 
-#' Get the weight matrix for a linear functional term
-#' 
+#' @importFrom stats filter
 #' @keywords internal
-
+# Get the weight matrix for a linear functional term
 getL <- function(tind, integration, n.int=NULL) {
 	nt <- ncol(tind)
 	if (is.null(n.int)) {n.int=rep(nt,nrow(tind))}
@@ -246,7 +245,7 @@ getL <- function(tind, integration, n.int=NULL) {
 		} else {
 			tind.i <- tind[i,1:nt.i]
 			L.i <- switch(integration, simpson = {
-					((tind.i[nt.i] - tind.i[1])/nt.i)/3 * c(1, rep(c(4, 
+					((tind.i[nt.i] - tind.i[1])/nt.i)/3 * c(1, rep(c(4,
 					2), length = nt.i - 2), 1)
 			}, trapezoidal = {
 				diffs <- diff(tind.i)
