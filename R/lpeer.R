@@ -416,7 +416,7 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
 
   #Fitting the model
   out_PEER<- nlme::lme(fixed=Y~X-1, random=list(id.bd1=tXX), ... )
-  message('The fit is successful.\n')
+  message('The fit is successful.')
 
   #Extracting the estimates
   Gamma_PEER<-matrix(out_PEER$coeff$random$id.bd1, ncol=1)
@@ -472,7 +472,7 @@ lpeer<- function(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE
     if(i>0) lambda<- c(lambda, tLambda)
   }
   names(lambda)<- paste('lambda', 0:d, sep='')
-  print(lambda)
+  message(paste(lambda, sep = " = ", collapse = ", "))
   sd_int.est<- as.numeric(unique(tVarCorr[((d+1)*r+1):((d+1)*r+N)]))
   sigma<- out_PEER$sigma
   Sigma.u<- sd_int.est
