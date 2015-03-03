@@ -133,7 +133,7 @@
 ##' glsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="GLS")
 ##' plot(glsmod, 1)
 ##' }
-##' @importFrom fda create.bspline.basis eval.basis getbasispenalty fd pca.fd
+##' @importFrom fda create.bspline.basis eval.basis getbasispenalty fd pca.fd is.fd
 ##' @export
 fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL, 
         method = c("OLS","GLS","mix"),

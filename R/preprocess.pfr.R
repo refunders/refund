@@ -1,7 +1,8 @@
+#' @importFrom splines bs
 preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb = NULL, nbasis=10, funcs.new=NULL, smooth.option="fpca.sc",pve=0.99){
 ## TBD:  make kz,kb take the value from pfr.obj in predict.pfr() calls.
- 
-  
+
+
   N_subj = length(unique(subj))
   p = ifelse(is.null(covariates), 0, dim(covariates)[2])
   ## handle if funcs is a list (multiple predictors) or matrix (single predictor)
@@ -26,20 +27,20 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
   }
   kz.adj = rep(NA, N.Pred)
   ### end of change
-  
+
   ## outcome length "o.len" is number of rows of original data if no predictive data provided
   ## if predictive data provided, then must be the number of rows for predictive data
   if(is.null(funcs.new)){o.len <- nrow(as.matrix(Funcs[[1]]))
                        }else{o.len <- nrow(as.matrix(Funcs.new[[1]]))}
   t <- phi <- FPCA <- psi <- C <- J <- CJ <- D <- list()
-  
+
   ## obtain FPCA decomposition of each predictor
   if (smooth.option=="fpca.sc"){
       # using fpca.sc()
       for(i in 1:N.Pred){
         t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
         ## for fpca() (not fpca.sc()):  when I have K=kz, I have to lower kz a bit
-        FPCA[[i]] = fpca.sc(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], pve=pve, nbasis=nbasis, npc=kz[i]) 
+        FPCA[[i]] = fpca.sc(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], pve=pve, nbasis=nbasis, npc=kz[i])
         psi[[i]] = FPCA[[i]]$efunctions
         C[[i]]=FPCA[[i]]$scores
         kz.adj[i]=FPCA[[i]]$npc
@@ -48,16 +49,16 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
         ##    C[[i]]=FPCA[[i]]$xi.hat
       }
   }
-  
+
   if (smooth.option=="fpca.face"){
     # using face
     for(i in 1:N.Pred){
-  
+
         Funcs[[i]] = apply(Funcs[[i]],2,function(x){x-0*mean(x,na.rm=TRUE)})
         if(!is.null(Funcs.new[[i]])) Funcs.new[[i]] = apply(Funcs.new[[i]],2,function(x){x-0*mean(x,na.rm=TRUE)})
-        
+
         t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
-        #if (length(t[[i]])>70) nbasis = max(nbasis,35)  
+        #if (length(t[[i]])>70) nbasis = max(nbasis,35)
         FPCA[[i]] = fpca.face(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], knots=nbasis,pve = pve)
         if (is.null(kz[i]) || kz[i]>dim(FPCA[[i]]$eigenvectors)[2]){
             psi[[i]] = FPCA[[i]]$eigenvectors
@@ -72,12 +73,12 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
             C[[i]]=FPCA[[i]]$scores[,1:kz[i]]*sqrt(dim(Funcs[[i]])[2])
             kz.adj[i] =  kz[i]
         }
-        
+
     }
-        
+
   }
-  
-  
+
+
   ## construct phi for b-splines; J and CJ.
   for(i in 1:N.Pred){
     phi[[i]] = cbind(1, bs(t[[i]], df=kb-1, intercept=FALSE, degree=3))
@@ -133,7 +134,7 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
   }
   ## only need (Z1, C, psi) for predict.pfr
   ## having fixed.mat, rand.mat useful for rlrt.pfr
-  ## pfr() requires 
+  ## pfr() requires
   ret <- list( X, D,  phi, psi, C, J, CJ,
               Z1, subj,
               fixed.mat, rand.mat, N_subj, p, N.Pred,
