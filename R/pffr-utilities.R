@@ -137,7 +137,7 @@ getShrtlbls <- function(object){
 #' @param limits a function that defines an integration range, see
 #'   \code{\link{ff}}
 #' @export
-#' @importFrom splines splines.des
+#' @importFrom splines spline.des
 #' @importFrom stats dnorm rnorm
 #' @return a named list with the simulated data, and the true components of the
 #'   predictor etc as attributes.
@@ -316,6 +316,7 @@ smooth.construct.pss.smooth.spec<-function(object,data,knots)
   object
 }
 
+#' @importFrom mgcv Predict.matrix.pspline.smooth
 Predict.matrix.pss.smooth<-function(object,data)
 {
   Predict.matrix.pspline.smooth(object,data)

@@ -13,7 +13,7 @@
 #'  for the elements that this object will contain.
 #' @author Fabian Scheipl;  adapted from 're' constructor by S.N. Wood.
 #' @export
-#' @importFrom mgcv tensor.prod.model.matrix
+#' @importFrom mgcv tensor.prod.model.matrix smooth.construct
 #' @importFrom stats as.formula model.matrix
 #' @importFrom MASS Null
 smooth.construct.pcre.smooth.spec <- function(object, data, knots) {
@@ -52,7 +52,7 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots) {
 #' @author Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
 #' @export
 #' @importFrom stats model.matrix as.formula
-#' @importFrom mgcv tensor.prod.model.matrix
+#' @importFrom mgcv tensor.prod.model.matrix Predict.matrix
 Predict.matrix.pcre.random.effect <- function(object, data){
   X_id <- model.matrix(as.formula(paste("~ 0 +", object$term[1])), data)
   X_id <- X_id %*% Null(t(as.matrix(object$Cr)))

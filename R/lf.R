@@ -39,7 +39,7 @@
 #' @seealso \code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}},
 #' \code{\link{fgam}} for examples
 #' @importFrom fda create.bspline.basis smooth.basisPar eval.fd
-#' @importFrom utils getFromNamesapce modifyList
+#' @importFrom utils getFromNamespace modifyList
 #' @export
 lf <- function(X, xind = seq(0, 1, l = ncol(X)),
                integration = c("simpson", "trapezoidal", "riemann"),
