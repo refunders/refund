@@ -4,12 +4,11 @@
 \alias{predict.pfr}
 \title{Prediction from a fitted pfr model}
 \usage{
-\method{predict}{pfr}(object, new.data = NULL, levels = NULL, ...)
+\method{predict}{pfr}(object, newdata, type = "response", se.fit = FALSE,
+  terms = NULL, PredOutOfRange = FALSE, ...)
 }
 \arguments{
 \item{object}{a fitted \code{pfr} object as produced by \code{\link{pfr}}}
-
-\item{...}{additional arguments passed on to \code{\link{predict.gam}}}
 
 \item{newdata}{a named list containing the values of the model covariates at which predictions
 are required. If this is not provided then predictions corresponding to the original data are
@@ -31,6 +30,8 @@ newdata corresponding to \code{pfr} terms that are greater[less] than the maximu
 domain of the marginal basis for the rows of the tensor product smooth are set to the maximum[minimum]
 of the domain.  If this argument is false, attempting to predict a value of the functional predictor
 outside the range of this basis produces an error}
+
+\item{...}{additional arguments passed on to \code{\link{predict.gam}}}
 }
 \value{
 If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long
