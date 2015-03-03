@@ -21,8 +21,8 @@
 #' (default is GCV).
 #' @section Warning:
 #' Binomial responses should be specified as a numeric vector rather than as a matrix or a factor.
-#' @return a fitted psfr-object, which is a \code{\link{gam}}-object with some additional information
-#' in a psfr-entry. If fitter is "gamm" or "gamm4", only the $gam part of the
+#' @return A fitted psfr-object, which is a \code{\link{gam}}-object with some additional information
+#' in a psfr-element If fitter is "gamm" or "gamm4", only the $gam part of the
 #' returned list is modified in this way.
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 #' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
@@ -33,10 +33,8 @@
 #' @importFrom gamm4 gamm4
 #' @importFrom nlme lme4
 #' @importFrom stats terms.formula
-#' @examples
-
-
-
+#' @export
+#' 
 psfr <- function(formula, fitter=NA, ...){
   
   call <- match.call()
@@ -53,24 +51,25 @@ psfr <- function(formula, fitter=NA, ...){
       warning("Arguments <", paste(notUsed, collapse = ", "), 
               "> supplied but not used.")
   }
-  tf <- terms.formula(formula, specials = c("s", "te", "t2", "lf", "af"))
+  tf <- terms.formula(formula, specials = c("s", "te", "t2", "lf", "af",
+                                            "lf.vd", "re"))
   trmstrings <- attr(tf, "term.labels")
   terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]], 
                   simplify = FALSE)
   frmlenv <- environment(formula)
   specials <- attr(tf, "specials")
-  
-  
-  
   where.af <- specials$af - 1
   where.lf <- specials$lf - 1
-  where.s  <- specials$s - 1
+  where.s  <- specials$s  - 1
   where.te <- specials$te - 1
   where.t2 <- specials$t2 - 1
+  where.re <- specials$re - 1
+  where.lf.vd <- specials$lf.vd - 1
+  where.all <- c(where.af, where.lf, where.s, where.te, where.t2, where.re,
+                 where.lf.vd)
   
   if (length(trmstrings)) {
-    where.par <- which(!(1:length(trmstrings) %in%
-                           c(where.af, where.lf, where.s,where.te, where.t2)))
+    where.par <- which(!(1:length(trmstrings) %in% where.all))
   } else where.par <- numeric(0)
   
   responsename <- attr(tf, "variables")[2][[1]]
@@ -103,14 +102,14 @@ psfr <- function(formula, fitter=NA, ...){
     newfrml <- paste(newfrml, "0", sep = "")
   }
   
-  if (length(c(where.af, where.lf))) {
-    fterms <- lapply(terms[c(where.af, where.lf)], function(x) {
+  where.special <- c(where.af, where.lf, where.lf.vd, where.re)
+  if (length(where.special)) {
+    fterms <- lapply(terms[where.special], function(x) {
       eval(x, envir = evalenv, enclos = frmlenv)
     })
-    newtrmstrings[c(where.af, where.lf)] <-
-      sapply(fterms, function(x) {
-        safeDeparse(x$call)
-        })
+    newtrmstrings[where.special] <- sapply(fterms, function(x) {
+      safeDeparse(x$call)
+    })
     lapply(fterms, function(x) {
       lapply(names(x$data), function(nm) {
         assign(x = nm, value = x$data[[nm]], envir = newfrmlenv)
@@ -122,12 +121,11 @@ psfr <- function(formula, fitter=NA, ...){
   }
   else fterms <- NULL
   
-  where.notf <- c(where.par,where.s,where.te,where.t2)
+  where.notf <- c(where.par, where.s, where.te, where.t2)
   if (length(where.notf)) {
     if ("data" %in% names(call)) 
       frmlenv <- list2env(eval(call$data), frmlenv)
     lapply(terms[where.notf], function(x) {
-      
       nms <- if (!is.null(names(x))) {
         all.vars(x[names(x) == ""])
       }
