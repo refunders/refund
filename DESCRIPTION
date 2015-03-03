@@ -76,6 +76,8 @@ Collate:
     'pffr-utilities.R'
     'pffr.R'
     'pfr.R'
+    'pfr_old.R'
+    'psfr.R'
     'plot.fosr.R'
     'plot.fosr.perm.R'
     'plot.fpcr.R'
