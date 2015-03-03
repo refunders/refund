@@ -1,12 +1,29 @@
+#' Construct a function for preprocessing functional predictors
+#'
+#' Prior to using functions \code{X} as predictors in a scalar-on-function regression, it is often
+#' necessary to presmooth curves to remove measurement error or interpolate to a common grid. This
+#' function creates a function to do this preprocessing depending on the method specified.
+#' @param X an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
+#' \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.} For FPCA-based processing methods, these functions are
+#' used to define the eigen decomposition used to preprocess current and future data (for example, in
+#' \code{\link{predict.pfr}})
+#' @param argvals matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
+#' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}
+#' @param method approach used to preprocess curves. Options are \code{fpca.sc}, \code{fpca.face}, 
+#' \code{fpca.ssvd}, \code{fpca.bspline}, and \code{fpca.interpolate}. The first three are use existing
+#' functions; \code{fpca.bspline} uses an (unpenalized) cubic bspline smoother with \code{nbasis} basis 
+#' funcitons; \code{fpca.interpolate} uses linear interpolation.
+#' @param options list of options passed to the preprocessing method; as an example, options for \code{fpca.sc}
+#' include \code{pve}, \code{nbasis}, and \code{npc}.
+#' @return a list with the following entries
+#' \enumerate{
+#' \item \code{prep.func} - a function that will preprocess functional predictors using on the method and options 
+#' specified and, where appropriate, the original data. This function can be used for current and future 
+#' functional predictors.
+#' }
+#' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
+#' @seealso \code{\link{pfr}}, \code{\link{fpca.sc}}, \code{\link{fpca.face}}, \code{\link{fpca.ssvd}}
 create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL){
-  
-  ## creates a function to preprocess predictor functions. this function is
-  ## later used to actually preprocess data prior to analysis in scalar-on-function
-  ## regression; creating a preprocessor function facilitates prediction.
-  ##
-  ## To Do:
-  ## - unify inputs with other functions
-  ##
   
   if(is.null(argvals)){
     argvals = seq(0, 1, length = dim(X)[2])

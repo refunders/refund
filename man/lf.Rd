@@ -30,8 +30,13 @@ integration over \code{t}}
 functional coefficient \eqn{\beta(t)}. Defaults to a cubic B-spline with second-order difference
 penalties, i.e. \code{list(bs="ps", m=c(2, 1))} See \code{\link{te}} or \code{\link{s}} for details}
 
-\item{presmooth}{logical; if true, the functional predictor is pre-smoothed prior to fitting.  See
-\code{\link{smooth.basisPar}}}
+\item{presmooth}{string indicating the method to be used for preprocessing functional predictor prior
+to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
+\code{fpca.interpolate}. Defaults to \code{NULL} indicateing no preprocessing. See
+\code{\link{create.prep.func}}.}
+
+\item{presmooth.opts}{list including options passed to preprocessing method
+\code{\link{create.prep.func}}.}
 }
 \value{
 a list with the following entries
@@ -45,8 +50,8 @@ used by \code{mgcv}
 \item \code{tindname} - the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}
 \item \code{LXname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
 \item \code{presmooth} - the \code{presmooth} argument supplied to \code{lf}
-\item \code{Xfd} - an \code{fd} object from presmoothing the functional predictors using
-\code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}
+\item \code{prep.func} - a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
+\code{\link{create.prep.func}}.
 }
 }
 \description{

@@ -34,8 +34,13 @@ function \eqn{F(x,t)}. Defaults to a cubic tensor product B-spline with marginal
 difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 2), c(2, 2))}, see \code{\link{te}} or
 \code{\link{s}} for details}
 
-\item{presmooth}{logical; if true, the functional predictor is pre-smoothed prior to fitting; see
-\code{\link{smooth.basisPar}}}
+\item{presmooth}{string indicating the method to be used for preprocessing functional predictor prior
+to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
+\code{fpca.interpolate}. Defaults to \code{NULL} indicateing no preprocessing. See
+\code{\link{create.prep.func}}.}
+
+\item{presmooth.opts}{list including options passed to preprocessing method
+\code{\link{create.prep.func}}.}
 
 \item{Xrange}{numeric; range to use when specifying the marginal basis for the \emph{x}-axis.  It may
 be desired to increase this slightly over the default of \code{range(X)} if concerned about predicting
@@ -52,7 +57,7 @@ A list with the following entries:
 \item \code{call} - a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
 constructed covariate and weight matrices.
 \item \code{argvals} - the \code{argvals} argument supplied to \code{af}
-\item \code{L}{ the  matrix of weights used for the integration
+\item \code{L} the  matrix of weights used for the integration
 \item \code{xindname}{ the name used for the functional predictor variable in the \code{formula} used by \code{mgcv}.}
 \item \code{tindname} - the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}
 \item \code{Lname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
@@ -61,8 +66,8 @@ constructed covariate and weight matrices.
 \item \code{Xrange} - the \code{Xrange} argument supplied to \code{af}
 \item \code{ecdflist} - a list containing one empirical cdf function from applying \code{\link{ecdf}}
 to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}
-\item \code{Xfd} - an \code{fd} object from presmoothing the functional predictors using
-\code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}.}
+\item \code{prep.func} - a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
+\code{\link{create.prep.func}}.
 }
 }
 \description{
