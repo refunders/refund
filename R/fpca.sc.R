@@ -145,7 +145,7 @@
 ##'
 ##' }
 ##' @export
-##' @importFrom Matrix nearPD
+##' @import Matrix
 ##' @importFrom mgcv gam predict.gam
 ##' @importFrom gamm4 gamm4
 ## npc=1 seems to give error
