@@ -88,8 +88,9 @@ EX.MM = data.frame(fitted = Fit.MM$Yhat[EX,],
 EX.MM.m = melt(EX.MM, id = "d")
 ggplot(EX.MM.m, aes(x = d, y = value, group = variable, color = variable, linetype = variable)) + 
   geom_path() +
-  scale_linetype_manual(values = c(fitted = 1, ptwise.UB = 2, ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
-  scale_color_manual(values = c(fitted = 1, ptwise.UB = 2, ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
+  scale_linetype_manual(values = c(fitted = 1, ptwise.UB = 2,
+  ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) + scale_color_manual(values = c(fitted = 1,
+  ptwise.UB = 2, ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
   labs(x = "Months since seroconversion", y = "Total CD4 Cell Count")
 
 ## plot estimated mean function

@@ -1,9 +1,11 @@
 fpca.face <-
-function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,pve = 0.99, 
-         npc  = NULL,alpha = 1,score.method = "int", search.grid=TRUE,search.length=100,
+function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
+         var = FALSE, simul = FALSE, sim.alpha = 0.95,
+         center=TRUE,knots=35,p=3,m=2,lambda=NULL,alpha = 1,
+         search.grid=TRUE,search.length=100,
          method="L-BFGS-B", lower=-20,upper=20, control=NULL){
   
-  ## data: Y, I by J data matrix
+  ## data: Y, I by J data matrix, functions on rows
   ## argvals:  vector of J
   ## knots: to specify either the number of knots or the vectors of knots;
   ##        defaults to 35;
@@ -14,29 +16,35 @@ function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,
   ## lower, upper, control: see R function "optim"
   #require(Matrix)
   #source("pspline.setting.R")
-  
-  Y <- t(Y) ## becomes J by I
+  stopifnot(!is.null(Y))
+  stopifnot(is.matrix(Y))
   data_dim <- dim(Y)
-  J <- data_dim[1] 
-  I <- data_dim[2]  
+  I <- data_dim[1] ## number of subjects
+  J <- data_dim[2] ## number of obs per function
   
   if(is.null(argvals))  argvals <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
   
   meanX <- rep(0,J)
-  if(center) {
-    meanX <- apply(Y,1,function(x) mean(x,na.rm=TRUE))
+  if(center) {##center the functions
+    meanX <- apply(Y,2,function(x) mean(x,na.rm=TRUE))
     meanX <- smooth.spline(argvals,meanX,all.knots =TRUE)$y
-    Y <- Y-meanX
+    Y <- t(t(Y)- meanX)
   }
   
+  ## specify the B-spline basis: knots
   p.p <- p
   m.p <- m
   if(length(knots)==1){
+    if(knots+p.p>=J) cat("Too many knots!\n")
+    stopifnot(knots+p.p<J)
+    
     K.p <- knots
     knots <- seq(-p.p,K.p+p.p,length=K.p+1+2*p.p)/K.p
     knots <- knots*(max(argvals)-min(argvals)) + min(argvals)
   }
   if(length(knots)>1) K.p <- length(knots)-2*p.p-1
+  if(K.p>=J) cat("Too many knots!\n")
+  stopifnot(K.p <J)
   c.p <- K.p + p.p
   ######### precalculation for smoothing #############
   List <- pspline.setting(argvals,knots,p.p,m.p)
@@ -52,7 +60,6 @@ function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,
     if(option==1)
       return(A*(rep(1,dim(A)[1])%*%t(s)))
   }
-  
   ######## precalculation for missing data ########
   imputation <- FALSE
   Niter.miss <- 1
@@ -62,7 +69,7 @@ function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,
     num.miss <- apply(Y,2,function(x){sum(is.na(x))})
     for(i in 1:I){
       if(num.miss[i]>0){
-        y <- Y[,i]
+        y <- Y[i,]
         seq <- (1:J)[!is.na(y)]
         seq2 <-(1:J)[is.na(y)]
         t1 <- argvals[seq]
@@ -71,7 +78,7 @@ function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,
         temp <- predict(fit,t2,all.knots=TRUE)$y
         if(max(t2)>max(t1)) temp[t2>max(t1)] <- mean(y[seq])#y[seq[length(seq)]]
         if(min(t2)<min(t1)) temp[t2<min(t1)] <- mean(y[seq])#y[seq[1]]
-        Y[seq2,i] <- temp
+        Y[i,seq2] <- temp
       }
     }
     
@@ -87,7 +94,7 @@ function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,
   ###################################################
   ######## Transform the Data           #############
   ###################################################
-  Ytilde <- as.matrix(t(A0)%*%as.matrix(Bt%*%Y))
+  Ytilde <- as.matrix(t(A0)%*%as.matrix(Bt%*%t(Y)))
   C_diag <- rowSums(Ytilde^2)
   if(iter.miss==1) Y0 = Ytilde
   ###################################################
@@ -158,8 +165,7 @@ function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,
   d <- d[d>0]
   N <- length(d)
   per <- cumsum(d)/sum(d)
-  
-  N <- 1;
+  N <- 1
   while(per[N]<pve) N <- N + 1;
 
   #print(c(iter.miss,convergence.vector[iter.miss+1],lambda,diff))
@@ -171,53 +177,72 @@ function(Y,Y.pred = NULL, center=TRUE,argvals=NULL,knots=35,p=3,m=2,lambda=NULL,
   if(imputation==T){
     A.N <- A[,1:N]
     d <- Sigma[1:N]
-    if(score.method=="int") sigmahat2 <- 0
-    if(score.method=="blup") sigmahat2 <- sum(Y[!Index.miss]^2)/(J*I - sum(Index.miss)) -sum(Sigma[Sigma>0])
-    sigmahat2 <- max(0,sigmahat2)
-    
+    sigmahat2  <-  max(mean(Y[!Index.miss]^2) -sum(Sigma),0)
     
     Xi <- t(A.N)%*%Ytilde
-    Xi <- as.matrix(B%*%(A0%*%((A.N%*%diag(d/(d+sigmahat2/J)))%*%Xi)))
+    Xi <- t(as.matrix(B%*%(A0%*%((A.N%*%diag(d/(d+sigmahat2/J)))%*%Xi))))
     Y <- Y*(1-Index.miss) + Xi*Index.miss
     if(sum(is.na(Y))>0) print("error")
  
   }
   #if(iter.miss%%10==0) print(iter.miss)
    
-  }## end of while loop
-  #if(sum(Index.miss)>0) cat("The number of iterations is:",iter.miss,"\n")
-  
-  #cat("Smoothing is done! The smoothing parameter is ",lambda,"\n")
-  if(!is.null(npc)) {
-      if(npc>N){
-          cat("Warnig! The number of PCs is ", N,"s maller than ", npc,"\n");
-          cat("Will use",N,"PCs\n");
-      }
-      if(npc <= N) N <- npc;
-  }
-                     
+  }## end of while loop         
   ### now calculate scores
   if(is.null(Y.pred)) Y.pred = Y
-  else { Y.pred = t(as.matrix(Y.pred))-meanX}
+  else {Y.pred = t(t(as.matrix(Y.pred))-meanX)}
 
 
-  Ytilde <- as.matrix(t(A0)%*%(Bt%*%Y.pred))
-  if(score.method=="int") Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
-  if(score.method=="blup"){
-      sigmahat2 <- sum(Y[!Index.miss]^2)/(J*I - sum(Index.miss)) -sum(Sigma[1:N])
-      Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
-      Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J))
-  }
-    
+  Ytilde <- as.matrix(t(A0)%*%(Bt%*%t(Y.pred)))
+  sigmahat2 <- max(mean(Y[!Index.miss]^2) -sum(Sigma),0)
+  Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
+  Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J))
+
   eigenvectors = as.matrix(B%*%(A0%*%A[,1:N]))
-  eigenvalues = Sigma[1:N]
-  
-  if(score.method=="int") sigmahat2 <- 0
-  if(score.method=="blup") sigmahat2 <- sum(Y[!Index.miss]^2)/(J*I - sum(Index.miss)) -sum(Sigma[Sigma>0])
+  eigenvalues = Sigma[1:N] #- sigmahat2/J
   
   Yhat <- t(A[,1:N])%*%Ytilde
   Yhat <- as.matrix(B%*%(A0%*%A[,1:N]%*%diag(eigenvalues/(eigenvalues+sigmahat2/J))%*%Yhat))
   Yhat <- t(Yhat + meanX)
-  results <- list(Yhat = Yhat,scores = Xi,mu=meanX,eigenvectors=eigenvectors, eigenvalues = eigenvalues,npc = N)
-  return(results)      	                	
+  
+  if(!is.null(npc)) {
+    if(npc>N){
+      cat("Warnig! The number of PCs is ", N,"s maller than ", npc,"\n");
+      cat("Will use",N,"PCs\n");
+      npc = N
+    }
+  }
+  if(is.null(npc)) npc = N
+  
+  scores <- sqrt(J)*Xi[,1:npc]
+  mu <- meanX
+  efunctions <- eigenvectors[,1:npc]
+  evalues <- J*eigenvalues[1:npc]
+  
+  
+  ret.objects <- c("Yhat", "scores", "mu", "efunctions", "evalues", "npc")
+  if(var){
+    sigma2 = sigmahat2
+    VarMats = vector("list",I)
+    diag.var = matrix(NA, nrow=I,ncol=J)
+    crit.val = rep(0,I)
+    for(i.subj in 1:I){
+      temp = sigma2*eigenvectors%*%solve(t(eigenvectors)%*%eigenvectors + sigma2*diag(eigenvalues))%*%t(eigenvectors)
+      VarMats[[i.subj]] = temp
+      diag.var[i.subj,] = diag(temp)
+      if (simul & sigma2 != 0) {
+        norm.samp = mvrnorm(2500, mu = rep(0, J), Sigma = VarMats[[i.subj]])/matrix(sqrt(diag(VarMats[[i.subj]])), 
+                                                  nrow = 2500, ncol = J, byrow = TRUE)
+        crit.val[i.subj] = quantile(apply(abs(norm.samp), 1, max), sim.alpha)
+      }
+    }
+    ret.objects = c(ret.objects,"sigma2","diag.var","VarMats")
+    if (simul) {
+      #require(MASS)
+      ret.objects = c(ret.objects, "crit.val")
+    }
+  }
+  ret = lapply(1:length(ret.objects), function(u) get(ret.objects[u]))
+  names(ret) = ret.objects
+  return(ret)      	                	
 }
