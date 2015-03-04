@@ -103,14 +103,11 @@ predict.fgam <- function (object, newdata, type = "response", se.fit = FALSE,
                 newdata[[cov]][newdata[[cov]]>af$Xrange[2]]  <- af$Xrange[2]
                 newdata[[cov]][newdata[[cov]]<af$Xrange[1]]  <- af$Xrange[1]
               }
-              if (af$presmooth) {
+              if (!is.null(af$presmooth)) {
                 if(type=='lpmatrix' & J!=length(af$xind)){
                   warning('Presmoothing of new functional covariates is only implemented for when new covariates observed at same time points as original data. No presmoothing of new covariates done.')
                 }else{
-                  newXfd <- fd(tcrossprod(af$Xfd$y2cMap,
-                                          newdata[[cov]]), af$Xfd$basis)
-                  newdata[[cov]] <- t(eval.fd(af$xind,
-                                              newXfd))
+                  newdata[[cov]] <- af$prep.func(newX = newdata[[cov]])$processed
                 }
               }
               if (af$Qtransform) {
@@ -164,14 +161,11 @@ predict.fgam <- function (object, newdata, type = "response", se.fit = FALSE,
                   }
                 }
               }
-              if (lf$presmooth) {
+              if (!is.null(lf$presmooth)) {
                 if(type=='lpmatrix' & J!=length(lf$xind)){
                   warning('Presmoothing of new functional covariates is only implemented for when new covariates observed at same time points as original data. No presmoothing of new covariates done.')
                 }else{
-                  newXfd <- fd(tcrossprod(lf$Xfd$y2cMap,
-                                          newdata[[cov]]), lf$Xfd$basis)
-                  newdata[[cov]] <- t(eval.fd(lf$xind,
-                                              newXfd))
+                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])$processed  
                 }
               }
               if(type=='lpmatrix') newdata[[cov]] <- as.vector(newdata[[cov]])
