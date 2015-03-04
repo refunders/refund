@@ -5,5 +5,4 @@ language: r
 warnings_are_errors: true
 
 # Use github version of testthat
-install:
-  - ./travis-tool.sh install_github hadley/testthat
+- ./travis-tool.sh install_github hadley/testthat
