@@ -26,10 +26,17 @@ test_that("lpfr works with one predictor", {
 })
 
 test_that("lpfr works two predictors", {
-    skip_on_cran()
+   skip_on_cran()
+
+   data(DTI)
+
+   # subset data as needed for this example
+   cca = DTI$cca[which(DTI$case == 1),]
+   rcst = DTI$rcst[which(DTI$case == 1),]
+   DTI = DTI[which(DTI$case == 1),]
 
    # fit a model with two functional predictors and plot the results
    fit.cca.rcst = lpfr(Y=DTI$pasat, subj=DTI$ID, funcs = list(cca,rcst),
        smooth.cov=FALSE)
-   expect_equal_to_reference(fit.ccs.rcst, "lpfr.fit.rds")
+   expect_equal_to_reference(fit.cca.rcst, "lpfr.fit.rds")
 })
