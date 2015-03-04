@@ -7,3 +7,10 @@ warnings_are_errors: true
 # Use github version of testthat
 r_github_packages:
  - hadley/testthat
+
+notifications:
+  email:
+    recipients:
+      - mathew.w.mclean@gmail.com
+    on_success: change # always|never|change, default: change
+    on_failure: always # default: always
