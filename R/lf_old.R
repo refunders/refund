@@ -17,17 +17,11 @@
 #' \code{L} is specified
 #' @param L an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
 #' integration over \code{t}
-#' @param presmooth string indicating the method to be used for preprocessing functional predictor prior 
-#' to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and 
-#' \code{fpca.interpolate}. Defaults to \code{NULL} indicateing no preprocessing. See
-#' \code{\link{create.prep.func}}.
-#' @param presmooth.opts list including options passed to preprocessing method
-#' \code{\link{create.prep.func}}.
-#' @param ... optional arguments for basis and penalization to be passed to the
-#' function indicated by \code{basistype}. These could include, for example,
-#' \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
-#' \code{\link{s}} for details.
-#' 
+#' @param splinepars optional arguments specifying options for representing and penalizing the
+#' functional coefficient \eqn{\beta(t)}. Defaults to a cubic B-spline with second-order difference
+#' penalties, i.e. \code{list(bs="ps", m=c(2, 1))} See \code{\link{te}} or \code{\link{s}} for details
+#' @param presmooth logical; if true, the functional predictor is pre-smoothed prior to fitting.  See
+#' \code{\link{smooth.basisPar}}
 #' @return a list with the following entries
 #' \enumerate{
 #' \item \code{call} - a \code{call} to \code{te} (or \code{s}, \code{t2}) using the appropriately
@@ -39,32 +33,19 @@
 #' \item \code{tindname} - the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}
 #' \item \code{LXname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
 #' \item \code{presmooth} - the \code{presmooth} argument supplied to \code{lf}
-#' \item \code{prep.func} - a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
-#' \code{\link{create.prep.func}}.
+#' \item \code{Xfd} - an \code{fd} object from presmoothing the functional predictors using
+#' \code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}
 #' }
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @seealso \code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}},
 #' \code{\link{fgam}} for examples
 #' @importFrom fda create.bspline.basis smooth.basisPar eval.fd
-#' @importFrom utils getFromNamesapce modifyList
-lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
+#' @importFrom utils getFromNamespace modifyList
+#' @export
+lf_old <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
                integration = c("simpson", "trapezoidal", "riemann"),
-               L = NULL, presmooth = NULL, presmooth.opts = NULL, ...) {
-  
-  # Catch if lf_old syntax is used
-  dots <- list(...)
-  dots.unmatched <- names(dots)[!(names(dots) %in% names(formals(s)))]
-  if (any(dots.unmatched %in% names(formals(lf_old))) | is.logical(presmooth)) {
-    warning(paste0("The interface for lf() has changed, see ?lf for details. ",
-                   "This interface will not be supported in the next ",
-                   "refund release."))
-    # Call lf_old()
-    call <- sys.call()
-    call[[1]] <- as.symbol("lf_old")
-    ret <- eval(call, envir=parent.frame())
-    return(ret)
-  }
-  
+               L = NULL, splinepars = list(bs = "ps", k= min(ceiling(n/4),40),
+                                           m = c(2, 2)), presmooth = TRUE) {
   if (!is.null(xind)) {
     cat("Argument xind is placed by argvals. xind will not be supported in the next
         version of refund.")
@@ -75,11 +56,14 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   n=nrow(X)
   nt=ncol(X)
   integration <- match.arg(integration)
-
+  if(is.null(splinepars$bs)) splinepars$bs <- 'ps'
+  if(is.null(splinepars$k)) splinepars$k <- min(ceiling(n/4),40)
+  if(is.null(splinepars$m)) splinepars$m = c(2, 2)
+  
   tindname <- paste(deparse(substitute(X)), ".tmat", sep = "")
   LXname <- paste("L.", deparse(substitute(X)), sep = "")
   basistype = "s"
-
+  
   if (is.null(dim(xind))) {
     xind <- t(xind)
     stopifnot(ncol(xind) == nt)
@@ -89,15 +73,19 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
     }
     stopifnot(nrow(xind) == n)
   }
-
-  if(!is.null(presmooth)){
-    # create preprocessing function
-    prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth, options = presmooth.opts)
+  
+  Xfd=NULL
+  if(presmooth){
+    bbt=create.bspline.basis(rangeval=range(xind),nbasis=ceiling(nt/4),
+                             norder=splinepars$m[1]+2, breaks=NULL)
     
-    # preprocess data
-    X <- prep.func(newX = X)$processed
+    # pre-smooth functional predictor
+    temp <- smooth.basisPar(t(xind),t(X),bbt,int2Lfd(splinepars$m[2]))
+    Xfd <- temp$fd
+    Xfd$y2cMap <-temp$y2cMap
+    X <- t(sapply(1:n,function(i){eval.fd(xind[i,],Xfd[i])}))
   }
-
+  
   if (!is.null(L)) {
     stopifnot(nrow(L) == n, ncol(L) == nt)
   }else {
@@ -117,10 +105,13 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   data <- list(xind, LX)
   names(data) <- c(tindname, LXname)
   splinefun <- as.symbol(basistype)
+  frmls <- formals(getFromNamespace(deparse(splinefun), ns = "mgcv"))
+  frmls <- modifyList(frmls[names(frmls) %in% names(splinepars)],
+                      splinepars)
   call <- as.call(c(list(splinefun, x = as.symbol(substitute(tindname)),
-                         by = as.symbol(substitute(LXname))), dots))
+                         by = as.symbol(substitute(LXname))),frmls))
   res <-list(call = call, data = data, xind = xind[1,], L = L, tindname=tindname,
              LXname=LXname,presmooth=presmooth)
-  if(!is.null(presmooth)) {res$prep.func <- prep.func} 
+  if(presmooth) res$Xfd <- Xfd
   return(res)
 }

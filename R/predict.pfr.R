@@ -117,9 +117,18 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
               if (!is.null(af$presmooth)) {
                 if(type=='lpmatrix' & J!=length(af$xind)){
                   warning('Presmoothing of new functional covariates is only implemented for when new covariates observed at same time points as original data. No presmoothing of new covariates done.')
-                }else{
-                  newdata[[cov]] <- af$prep.func(newX = newdata[[cov]])$processed
+                } else if (is.logical(af$presmooth)) {
+                  # af_old term
+                  if (af$presmooth) {
+                    newXfd <- fd(tcrossprod(af$Xfd$y2cMap,
+                                            newdata[[cov]]), af$Xfd$basis)
+                    newdata[[cov]] <- t(eval.fd(af$xind, newXfd))
+                  }
+                } else {
+                  # af() term
+                  newdata[[cov]] <- af$prep.func(newX = newdata[[cov]])$processed  
                 }
+                
               }
               if (af$Qtransform) {
                 if(type=='lpmatrix' & J!=length(af$xind)){
@@ -175,9 +184,18 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
               if (!is.null(lf$presmooth)) {
                 if(type=='lpmatrix' & J!=length(lf$xind)){
                   warning('Presmoothing of new functional covariates is only implemented for when new covariates observed at same time points as original data. No presmoothing of new covariates done.')
-                }else{
+                } else if (is.logical(lf$presmooth)) {
+                  # lf_old term
+                  if (lf$presmooth) {
+                    newXfd <- fd(tcrossprod(lf$Xfd$y2cMap,
+                                            newdata[[cov]]), lf$Xfd$basis)
+                    newdata[[cov]] <- t(eval.fd(lf$xind, newXfd))
+                  }
+                } else {
+                  # lf() term
                   newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])$processed  
                 }
+                
               }
               if(type=='lpmatrix') newdata[[cov]] <- as.vector(newdata[[cov]])
               gamdata[[paste(cov, ".tmat", sep = "")]] <- tmat

@@ -70,7 +70,6 @@
 #' pred <- predict(fit, newdata = list(X=X[test, ], X_2 = X_2[test, ]), type='response',
 #'                 PredOutOfRange = TRUE)
 #' sqrt(mean((y[test] - pred)^2))
-
 #' ## Try to predict the binary response disease status (case or control)
 #' ##   using the quantile transformed measurements from the rcst tract
 #' ##   with a smooth component for a scalar covariate that is pure noise

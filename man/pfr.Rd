@@ -17,10 +17,11 @@ data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
 and "gamm4" (see \code{\link{gamm4}}) are valid options as well.}
 
 \item{...}{additional arguments that are valid for \code{\link{gam}} or
-\code{\link{bam}}; for example, specify a \code{gamma} > 1 to increase amount
-of smoothing when using GCV to choose smoothing parameters or
-\code{method="REML"} to change to REML for estimation of smoothing parameters
-(default is GCV).}
+\code{\link{bam}}. These include \code{data} and \code{family} to specify
+the input data and outcome family, as well as many options to control the
+estimation. For example, \code{method="REML"} changes to REML estimation of
+smoothing parameters, and \code{gamma} > 1 to increase amount
+of smoothing when using GCV to choose smoothing parameters.}
 }
 \value{
 A fitted pfr-object, which is a \code{\link{gam}}-object with some
@@ -40,6 +41,36 @@ to fit models with a scalar (but not necessarily continuous) response.
 
 Binomial responses should be specified as a numeric vector rather than as a
 matrix or a factor.
+}
+\examples{
+data(DTI)
+DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
+par(mfrow=c(1,2))
+
+# Fit model with linear functional term for CCA
+fit.lf <- pfr(pasat ~ lf(cca, k=30), data=DTI1)
+plot(fit.lf, ylab=expression(paste(beta(t))), xlab="t")
+bhat.lf <- coef(fit.lf, n=101)
+bhat.lf$upper <- bhat.lf$value + 1.96*bhat.lf$se
+bhat.lf$lower <- bhat.lf$value - 1.96*bhat.lf$se
+matplot(bhat.lf$cca.argvals, bhat.lf[,c("value", "upper", "lower")],
+        type="l", lty=c(1,2,2), col=1,
+        ylab=expression(paste(beta(t))), xlab="t")
+
+# Fit model with additive functional term for CCA, using tensor product basis
+fit.af <- pfr(pasat ~ af(cca, Qtransform=TRUE, k=c(7,7)), data=DTI1)
+plot(fit.af, scheme=2, xlab="cca(t)", ylab="t", main="Additive Term", rug=FALSE)
+
+# Change basistype to thin-plate regression splines
+fit.af.s <- pfr(pasat ~ af(cca, basistype="s", Qtransform=TRUE, k=50),
+                data=DTI1)
+plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="Additive Term",
+     rug=FALSE)
+
+# Include random intercept for subject
+DTI <- DTI[complete.cases(DTI),]
+fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI1)
+coef.re <- coef(fit.re)
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Jonathan

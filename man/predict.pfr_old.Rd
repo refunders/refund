@@ -1,5 +1,5 @@
-\name{predict.pfr}
-\alias{predict.pfr}
+\name{predict.pfr_old}
+\alias{predict.pfr_old}
 \title{
 Prediction for penalized functional regression
 }
@@ -10,7 +10,7 @@ population and subject-specific scale.
 }
 
 \usage{
-  \method{predict}{pfr}(object, new.data=NULL, levels=NULL, ...)
+  \method{predict}{pfr_old}(object, new.data=NULL, levels=NULL, ...)
 }
 
 \arguments{

@@ -16,10 +16,12 @@
 #' data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
 #' and "gamm4" (see \code{\link{gamm4}}) are valid options as well.
 #' @param ... additional arguments that are valid for \code{\link{gam}} or
-#' \code{\link{bam}}; for example, specify a \code{gamma} > 1 to increase amount
-#' of smoothing when using GCV to choose smoothing parameters or
-#' \code{method="REML"} to change to REML for estimation of smoothing parameters
-#' (default is GCV).
+#' \code{\link{bam}}. These include \code{data} and \code{family} to specify
+#' the input data and outcome family, as well as many options to control the
+#' estimation. For example, \code{method="REML"} changes to REML estimation of
+#' smoothing parameters, and \code{gamma} > 1 to increase amount
+#' of smoothing when using GCV to choose smoothing parameters.
+#' 
 #' @section Warning:
 #' Binomial responses should be specified as a numeric vector rather than as a
 #' matrix or a factor.
@@ -68,9 +70,43 @@
 #' @importFrom stats terms.formula
 #' @export
 #' 
+#' @examples
+#' data(DTI)
+#' DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
+#' par(mfrow=c(1,2))
+#' 
+#' # Fit model with linear functional term for CCA
+#' fit.lf <- pfr(pasat ~ lf(cca, k=30), data=DTI1)
+#' plot(fit.lf, ylab=expression(paste(beta(t))), xlab="t")
+#' bhat.lf <- coef(fit.lf, n=101)
+#' bhat.lf$upper <- bhat.lf$value + 1.96*bhat.lf$se
+#' bhat.lf$lower <- bhat.lf$value - 1.96*bhat.lf$se
+#' matplot(bhat.lf$cca.argvals, bhat.lf[,c("value", "upper", "lower")],
+#'         type="l", lty=c(1,2,2), col=1,
+#'         ylab=expression(paste(beta(t))), xlab="t")
+#' 
+#' # Fit model with additive functional term for CCA, using tensor product basis
+#' fit.af <- pfr(pasat ~ af(cca, Qtransform=TRUE, k=c(7,7)), data=DTI1)
+#' plot(fit.af, scheme=2, xlab="cca(t)", ylab="t", main="Additive Term", rug=FALSE)
+#' 
+#' # Change basistype to thin-plate regression splines
+#' fit.af.s <- pfr(pasat ~ af(cca, basistype="s", Qtransform=TRUE, k=50),
+#'                 data=DTI1)
+#' plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="Additive Term",
+#'      rug=FALSE)
+#' 
+#' # Include random intercept for subject
+#' DTI <- DTI[complete.cases(DTI),]
+#' fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI1)
+#' coef.re <- coef(fit.re)
+#' 
 pfr <- function(formula=NULL, fitter=NA, ...){
   
   if (class(formula) != "formula") {
+    warning(paste0("The interface for pfr() has changed to using a formula ",
+                   "argument, with linear functional terms specified by lf(). ",
+                   "See ?pfr for details. The old interface wil be depricated ",
+                   "in the next refund release."))
     # Call pfr_old()
     call <- sys.call()
     call[[1]] <- as.symbol("pfr_old")
@@ -188,12 +224,12 @@ pfr <- function(formula=NULL, fitter=NA, ...){
   # Finalize call to fitter
   newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
   environment(newfrml) <- newfrmlenv
-  psfrdata <- list2df(as.list(newfrmlenv))
+  pfrdata <- list2df(as.list(newfrmlenv))
   datameans <- sapply(as.list(newfrmlenv),mean)
   newcall <- expand.call(pfr, call)
   newcall$fitter  <- newcall$bs.int <- newcall$bs.yindex <- NULL
   newcall$formula <- newfrml
-  newcall$data <- quote(psfrdata)
+  newcall$data <- quote(pfrdata)
   newcall[[1]] <- fitter
   
   # Evaluate call
