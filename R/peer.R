@@ -143,12 +143,12 @@ peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL,
   Y<- as.matrix(Y)
 
   #Check 1:Making sure Y has only 1 column
-  if(dim(Y)[2]>1) return(cat("Error: No. of column for Y cannot be greater than 1. \nThe peer() will not proceed further.\n"))
+  if(dim(Y)[2]>1) stop("No. of column for Y cannot be greater than 1. \nThe peer() will not proceed further.")
 
   #Check 2: Check the dimension of Y, id, t, W and X
   Yl<- dim(Y)[1]
   chk.eq<- ifelse(Yl==nrow(W), 0 ,1)
-  if(chk.eq==1) return(cat("Error: Length of Y and number of rows of funcs are not equal.\n The peer() will not proceed further.\n"))
+  if(chk.eq==1) stop("Length of Y and number of rows of funcs are not equal.\n The peer() will not proceed further.\n")
 
   #Removal of missing and infinite observations
   tdata<- data.frame(Y, W)
@@ -163,7 +163,7 @@ peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL,
 
   #Check 3: Checking entry for pentype
   pentypecheck<- toupper(pentype) %in% c('DECOMP', 'DECOMPOSITION', 'RIDGE', 'D2', 'USER')
-  if(!pentypecheck)  return (cat("Error: Specify valid object for argument PENTYPE.\n"))
+  if(!pentypecheck)  stop("Error: Specify valid object for argument PENTYPE.")
 
   #Check 4: Some checking/processing for decomposition type of penalty
   if(toupper(pentype)=='DECOMP' | toupper(pentype)=='DECOMPOSITION'){
@@ -174,15 +174,15 @@ peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL,
     Q<- matrix(Q, ncol=K)
 
     #4.2: Compatibility of Q and W matrix
-    if(ncol(Q)!=ncol(W)) return(cat('Error: number of columns of Q need to be equal with number of columns of funcs.\nThe peer() will not proceed further.\n'))
+    if(ncol(Q)!=ncol(W)) stop('number of columns of Q need to be equal with number of columns of funcs.\nThe peer() will not proceed further.')
 
     #4.3: Singularity of Q matrix
     Q.eig<- abs(eigen(Q %*% t(Q))$values)
-    if(any(Q.eig<1e-12)) return(cat('Error: Q matrix is singular or near singular.\nThe peer() will not proceed further.\n'))
+    if(any(Q.eig<1e-12)) stop('Q matrix is singular or near singular.\nThe peer() will not proceed further.\n')
 
     #4.4: Checking for phia
-    if(!exists("phia")) return (cat("Error: Specify valid object for argument PHIA.\n"))
-    if(!is.numeric(phia)|is.matrix(phia)|is.matrix(phia)) return (cat("Error: Specify valid object for argument PHIA.\n"))
+    if(!exists("phia")) stop("Error: Specify valid object for argument PHIA.")
+    if(!is.numeric(phia)|is.matrix(phia)|is.matrix(phia)) stop("Specify valid object for argument PHIA.")
   }
 
   #Check 5: Some checking/processing for user type of penalty
@@ -195,12 +195,12 @@ peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL,
     L<- matrix(L, ncol=K)
 
     #Check 5.2: Dimension of L matrix
-    if(ncol(L)!=ncol(W)) return(cat('Error: number of columns of L need to be equal with number of columns of funcs.\nThe peer() will not proceed further.\n'))
+    if(ncol(L)!=ncol(W)) stop('number of columns of L need to be equal with number of columns of funcs.\nThe peer() will not proceed further.')
 
     #Check 5.3: Singularity of L'L matrix
     LL<- t(L)%*%L
     LL.eig<- abs(eigen(LL %*% t(LL))$values)
-    if(any(LL.eig<1e-12)) return(cat("Error: L'L matrix is singular or near singular.\nThe peer() will not proceed further.\n"))
+    if(any(LL.eig<1e-12)) stop("Error: L'L matrix is singular or near singular.\nThe peer() will not proceed further.")
   }
 
   #Generate L matrix for D2 penalty
@@ -236,7 +236,7 @@ peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL,
                  random=list(id.bd1=nlme::pdIdent(~W1_PEER-1)),
                  ...
   )
-  cat('The fit is successful.\n')
+  message('The fit is successful.\n')
 
   #Extracting estimates
   Gamma.PEER.hat<-matrix(out_PEER$coeff$random$id.bd1, ncol=1)
@@ -253,7 +253,7 @@ peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL,
   tVarCorr<- nlme::VarCorr(out_PEER, rdig=4)[,2]
   r<- ncol(v)
   lambda<- 1/ as.numeric(unique(tVarCorr[1:r]))
-  print(lambda)
+   message(paste(lambda, sep = " = ", collapse = ", "))
   sigma<- out_PEER$sigma
   sigma.e<- sigma
 
