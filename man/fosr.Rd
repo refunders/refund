@@ -4,17 +4,22 @@
 \alias{fosr}
 \title{Function-on-scalar regression}
 \usage{
-fosr(Y = NULL, fdobj = NULL, X, con = NULL, argvals = NULL,
-  method = c("OLS", "GLS", "mix"), gam.method = c("REML", "ML", "GCV.Cp",
-  "GACV.Cp", "P-REML", "P-ML"), cov.method = c("naive", "mod.chol"),
-  lambda = NULL, nbasis = 15, norder = 4, pen.order = 2,
-  multi.sp = ifelse(method == "OLS", FALSE, TRUE), pve = 0.99,
-  max.iter = 1, maxlam = NULL, cv1 = FALSE, scale = FALSE)
+fosr(formula = NULL, Y = NULL, fdobj = NULL, data = NULL, X,
+  con = NULL, argvals = NULL, method = c("OLS", "GLS", "mix"),
+  gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"),
+  cov.method = c("naive", "mod.chol"), lambda = NULL, nbasis = 15,
+  norder = 4, pen.order = 2, multi.sp = ifelse(method == "OLS", FALSE,
+  TRUE), pve = 0.99, max.iter = 1, maxlam = NULL, cv1 = FALSE,
+  scale = FALSE)
 }
 \arguments{
+\item{formula}{Formula for fitting fosr. If used, data argument must not be null.}
+
 \item{Y,fdobj}{the functional responses, given as either an \eqn{n\times d}
 matrix \code{Y} or a functional data object (class \code{"\link[fda]{fd}"})
 as in the \pkg{fda} package.}
+
+\item{data}{data frame containing the predictors and responses.}
 
 \item{X}{the model matrix, whose columns represent scalar predictors.
 Should ordinarily include a column of 1s.}
@@ -139,6 +144,13 @@ constraints = matrix(c(0,1,1,1,1), 1)
 # Penalized OLS with smoothing parameter chosen by grid search
 olsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="OLS", lambda=100*10:30)
 plot(olsmod, 1)
+
+# Test use formula to fit fosr
+set.seed(2121)
+data1 <- pffrSim(scenario="ff", n=40)
+formod = fosr(Y~xlin+xsmoo, data=data1)
+plot(formod, 1)
+
 \dontrun{
 # Penalized GLS
 glsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="GLS")

@@ -1,5 +1,3 @@
-## Incorporates Fabian's pcre idea for random effect functions (method="mix")
-
 ##' Function-on-scalar regression
 ##'
 ##' Fit linear regression with functional responses and scalar predictors, with
@@ -30,9 +28,11 @@
 ##' Please note that currently, if \code{multi.sp = TRUE}, then \code{lambda}
 ##' must be \code{NULL} and \code{method} must be \code{"GLS"}.
 ##'
+##' @param formula Formula for fitting fosr. If used, data argument must not be null.
 ##' @param Y,fdobj the functional responses, given as either an \eqn{n\times d}
 ##' matrix \code{Y} or a functional data object (class \code{"\link[fda]{fd}"})
 ##' as in the \pkg{fda} package.
+##' @param data data frame containing the predictors and responses.
 ##' @param X the model matrix, whose columns represent scalar predictors.
 ##' Should ordinarily include a column of 1s.
 ##' @param con a row vector or matrix of linear contrasts of the coefficient
@@ -128,6 +128,13 @@
 ##' # Penalized OLS with smoothing parameter chosen by grid search
 ##' olsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="OLS", lambda=100*10:30)
 ##' plot(olsmod, 1)
+##' 
+##' # Test use formula to fit fosr
+##' set.seed(2121)
+##' data1 <- pffrSim(scenario="ff", n=40)
+##' formod = fosr(Y~xlin+xsmoo, data=data1)
+##' plot(formod, 1)
+##' 
 ##' \dontrun{
 ##' # Penalized GLS
 ##' glsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="GLS")
@@ -135,19 +142,32 @@
 ##' }
 ##' @importFrom fda create.bspline.basis eval.basis getbasispenalty fd pca.fd is.fd
 ##' @export
-fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL, 
+
+fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, argvals = NULL, 
         method = c("OLS","GLS","mix"),
         gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"), 
         cov.method = c("naive", "mod.chol"),
-        lambda = NULL, nbasis=15, norder=4,
+        lambda = NULL, nbasis=15, norder=4, 
         pen.order=2, multi.sp = ifelse(method=="OLS", FALSE, TRUE), pve=.99,
         max.iter = 1, maxlam = NULL, cv1 = FALSE, scale = FALSE)
 {
-    if (is.null(Y)==is.null(fdobj)) stop("Please specify 'Y' or 'fdobj', but not both")
+    # parse formula
+    if (!is.null(formula)) {
+      if (is.null(data)) stop("Please specify the data.")
+      tf <- terms.formula(formula)
+      trmstrings <- attr(tf, "term.labels")
+      terms <- sapply(trmstrings, function(trm) as.call(parse(text=trm))[[1]], simplify=FALSE)
+      responsename <- as.character(attr(tf,"variables")[2][[1]])
+      Y = data[,responsename]
+      X = model.matrix(formula, data=data)
+    }
+  
+  
+    if (is.null(Y)==is.null(fdobj)) stop("Please specify 'Y' or 'fdobj', but not both") 
     resp.type <- if (is.null(Y)) "fd" else "raw"
-    if (is.null(argvals))
-        argvals <- if (is.null(fdobj)) seq(0,1, length=ncol(Y))
-                else seq(min(fdobj$basis$range), max(fdobj$basis$range), length=201)
+    if (is.null(argvals)) 
+        argvals <- if (is.null(fdobj)) seq(0,1, length=ncol(Y)) 
+                else seq(min(fdobj$basis$range), max(fdobj$basis$range), length=201)                
     method <- match.arg(method)
     cov.method <- match.arg(cov.method)
     gam.method <- match.arg(gam.method)
@@ -179,7 +199,6 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
     newfit = U = pca.resid = NULL
     X.sc = scale(X, center = FALSE, scale = scale)
     q = ncol(X)
-
     ncurve <- nrow(respmat)
     if (multi.sp) {
         pen = vector("list", q)
@@ -208,7 +227,6 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
 
     firstfit <- amc(as.vector(t(respmat)), X.sc %x% Bmat,
             gam.method = gam.method, S = pen, C = constr, lambda = lambda)
-
     coefmat = coefmat.ols = t(matrix(firstfit$coef, ncol = q))
     se = NULL
     if (method != "OLS") {
@@ -294,6 +312,14 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
                         efuncmat.scaled <- t(t(pca.resid$efunctions) * sqrt(evalues))
                     }
                     if (iter==1) cat("Using leading", npc, "PCs of residual functions for random effects\n")
+                    
+                    npen <- length(pen); pendim <- ncol(pen[[1]])
+                    pen.aug = vector("list", npen+1)
+                    for (l in 1:npen) {
+                        pen.aug[[l]] <- matrix(0, pendim+npc*ncurve, pendim+npc*ncurve)
+                        pen.aug[[l]][1:pendim, 1:pendim] <- pen[[l]]
+                    }
+                    if (iter==1) cat("Using leading", npc, "PCs of residual functions for random effects\n")
 
                     npen <- length(pen); pendim <- ncol(pen[[1]])
                     pen.aug = vector("list", npen+1)
@@ -311,7 +337,6 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
                             }
                     #/F
                     #browser()
-
                     newfit <- amc(as.vector(t(respmat)),
                             cbind(X.sc %x% Bmat,diag(ncurve) %x% efuncmat.scaled),
                             gam.method = gam.method, S = pen.aug, C = constr.aug, 
@@ -325,7 +350,6 @@ fosr <- function (Y=NULL, fdobj=NULL, X, con = NULL, argvals = NULL,
                 } #end mix
         } #end while 
     } # end !OLS
-
     if (method == "OLS" | max.iter == 0) {
         residvec <- as.vector(t(respmat)) - (X.sc %x% Bmat) %*% firstfit$coef
         covmat = ((ncurve - 1)/ncurve) * cov(t(matrix(residvec, ncol = ncurve)))
