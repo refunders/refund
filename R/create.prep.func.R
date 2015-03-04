@@ -29,8 +29,8 @@ create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL){
     argvals = seq(0, 1, length = dim(X)[2])
   }
   
-  if(method == "fpca.sc"){
-    prep.func = function(newX = NULL, argvals. = argvals, options. = options){
+  prep.func <- if (method == "fpca.sc"){
+    function(newX = NULL, argvals. = argvals, options. = options) {
       args. = as.list(options.)
       args.$Y = X; args.$argvals = argvals.; args.$Y.pred = newX
       call = do.call(fpca.sc, args = args.)
@@ -38,8 +38,8 @@ create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL){
       ret = list(processed = processed)
       return(ret)
     }
-  } else if(method == "fpca.face"){
-    prep.func = function(newX = NULL, argvals. = argvals, options. = options){
+  } else if (method == "fpca.face"){
+    function(newX = NULL, argvals. = argvals, options. = options){
       args. = as.list(options.)
       args.$Y = X; args.$argvals = argvals.; args.$Y.pred = newX
       call = do.call(fpca.face, args = args.)
@@ -47,9 +47,9 @@ create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL){
       ret = list(processed = processed)
       return(ret)
     }
-  } else if(method == "fpca.ssvd"){
+  } else if (method == "fpca.ssvd"){
     warning("Preprocssing method `fpca.ssvd` has not been implemented for prediction. Argument argvals not used.")
-    prep.func = function(newX = NULL, argvals. = argvals, options. = options){
+    function(newX = NULL, argvals. = argvals, options. = options){
       args. = as.list(options.)
       args.$Y = X; args.$argvals = argvals.; args.$Y.pred = newX
       call = do.call(fpca.ssvd, args = args.)
@@ -57,8 +57,8 @@ create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL){
       ret = list(processed = processed)
       return(ret)
     }
-  } else if(method == "bspline"){
-    prep.func = function(newX = NULL, argvals. = argvals, options. = options){
+  } else if (method == "bspline"){
+    function(newX = NULL, argvals. = argvals, options. = options){
       nbasis = ifelse(is.null(options.$nbasis), 10, options.$nbasis)
       Bspline = bs(x = argvals., degree=3, df=nbasis)
       processed = matrix(NA, nrow = nrow(newX), ncol = ncol(newX))
@@ -68,8 +68,8 @@ create.prep.func = function(X, argvals=NULL, method = "fpca.sc", options=NULL){
       ret = list(processed = processed)
       return(ret)
     }
-  } else if(method == "interpolate") {
-    prep.func = function(newX = NULL, argvals. = argvals){
+  } else if (method == "interpolate") {
+    function(newX = NULL, argvals. = argvals){
       processed = matrix(NA, nrow = nrow(newX), ncol = ncol(newX))
       for(i in 1:nrow(newX)){
         obs.pts = which(!is.na(newX[i,]))
