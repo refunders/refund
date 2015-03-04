@@ -3,3 +3,7 @@ language: r
 
 # Be strict when checking our package
 warnings_are_errors: true
+
+# Use github version of testthat
+install:
+  - ./travis-tool.sh install_github hadley/testthat
