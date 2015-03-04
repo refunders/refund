@@ -7,7 +7,8 @@
 fpca.sc(Y = NULL, ydata = NULL, Y.pred = NULL, argvals = NULL,
   random.int = FALSE, nbasis = 10, pve = 0.99, npc = NULL,
   var = FALSE, simul = FALSE, sim.alpha = 0.95, useSymm = FALSE,
-  makePD = FALSE, center = TRUE, cov.est.method = 2)
+  makePD = FALSE, center = TRUE, cov.est.method = 2,
+  integration = "trapezoidal")
 }
 \arguments{
 \item{Y,ydata}{the user must supply either \code{Y}, a matrix of functions
@@ -57,6 +58,9 @@ your favorite mean function estimate.}
 one-step method that applies a bivariate smooth to the \eqn{y(s_1)y(s_2)}
 values. This can be very slow. If set to \code{2} (the default), a two-step
 method that obtains a naive covariance estimate which is then smoothed.}
+
+\item{integration}{quadrature method for numerical integration; only
+\code{"trapezoidal"} is currently supported.}
 }
 \value{
 \item{Yhat}{FPC approximation (projection onto leading components)
