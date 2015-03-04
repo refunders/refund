@@ -1,29 +1,53 @@
-context("Testing peer")
+context("Testing rlrt.pfr")
 library(refundDevel)
 
-test_that("lpeer with ridge penalty works", {
+test_that("basis rlrt tests are working", {
   skip_on_cran()
 
- ##Load Data
- data(DTI)
+  data(DTI2)
+  O  <- DTI2$pasat ## PASAT outcome
+  id <- DTI2$id    ## subject id
+  W1 <- DTI2$cca   ## Corpus Callosum
+  W2 <- DTI2$rcst  ## Right corticospinal
+  V  <- DTI2$visit ## visit
 
- ## Extract values for arguments for lpeer() from given data
- cca = DTI$cca[which(DTI$case == 1),]
- DTI = DTI[which(DTI$case == 1),]
+ ## prep scalar covariate
+ visit.1.rest <- matrix(as.numeric(V > 1), ncol=1)
+ covar.in <- visit.1.rest
 
- ##1.1 Fit the model with single component function
- ##    gamma(t,s)=gamm0(s)
- t<- DTI$visit
- expect_message(lpeer(Y=DTI$pasat, t=t, subj=DTI$ID, funcs = cca),
-                 "The fit is successful.")
 
- plot(fit.cca.lpeer1)
+  ## fit two univariate models, then one model with both functional predictors
+  suppressWarnings({
+    pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
+    pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
+    pfr.obj.t3 <- pfr(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
+  })
 
- ##1.2 Fit the model with two component function
- ##    gamma(t,s)=gamm0(s) + t*gamma1(s)
- fit.cca.lpeer2 = lpeer(Y=DTI$pasat, t=t, subj=DTI$ID, funcs = cca,
-                       f_t=t, se=TRUE)
- plot(fit.cca.lpeer2)
+ ## do some testing
+ t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
+ t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
+ t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
+
+  expect_is(t1, "list")
+  expect_is(t2, "list")
+  expect_is(t3, "list")
+})
+
+test_that("tests work with subj = NULL", {
+  skip_on_cran()
+
+  suppressWarnings({
+    pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = NULL, kz = 10, kb = 50)
+    pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = NULL, kz = 10, kb = 50)
+    pfr.obj.t3 <- pfr(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = NULL, kz = 10, kb = 50)
+  })
+  t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
+  t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
+  t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
+
+  expect_is(t1, "list")
+  expect_is(t2, "list")
+  expect_is(t3, "list")
 })
 
 test_that("lpeer with pentype='DECOMP' works", {
