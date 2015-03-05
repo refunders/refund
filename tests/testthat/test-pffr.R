@@ -21,7 +21,7 @@ test_that("all pffr terms are working", {
 
 test_that("convenience functions are working", {
    expect_is(summary(m2), "summary.pffr")
-   plot(m2, pers=TRUE, pages=1)
+   plot(m2, pers=TRUE)
    expect_is(coef(m2), "list")
    # convenience functions:
    preddata <- pffrSim(scenario="all", n=20)
@@ -75,7 +75,7 @@ test_that("ffpc terms are working", {
    expect_equal_to_reference(m.pc$coefficients, "pffr.ffpc.coef.rds")
    expect_is(summary(m.pc), "summary.pffr")
 
-   expect_is(ffpcplot(m.pc, type="surf", auto.layout=FALSE, theta = 50, phi = 40, pages = 1), "list")
+   expect_is(ffpcplot(m.pc, type="surf", auto.layout=FALSE, theta = 50, phi = 40), "list")
 })
 
 test_that("another ff term example", {
