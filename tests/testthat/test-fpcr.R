@@ -34,7 +34,7 @@ test_that("Check that all 3 fpcr calls yield essentially identical estimates", {
 
 test_that("Cross-validation is working", {
    skip_on_cran()
-
+   set.seed(8659)
    data(gasoline)
    cv.gas = fpcr(gasoline$octane, xfuncs = gasoline$NIR,
                   nbasis=seq(20,40,5), ncomp = seq(10,20,5), store.cv = TRUE)
