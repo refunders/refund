@@ -4,6 +4,7 @@ library(refundDevel)
 test_that("basis rlrt tests are working", {
   skip_on_cran()
 
+  set.seed(97867)
   data(DTI2)
   O  <- DTI2$pasat ## PASAT outcome
   id <- DTI2$id    ## subject id
@@ -36,6 +37,7 @@ test_that("basis rlrt tests are working", {
 test_that("tests work with subj = NULL", {
   skip_on_cran()
 
+  set.seed(4287)
   suppressWarnings({
     pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = NULL, kz = 10, kb = 50)
     pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = NULL, kz = 10, kb = 50)
