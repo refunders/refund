@@ -99,6 +99,7 @@ Collate:
     'preprocess.pfr.R'
     'pspline.setting.R'
     'pwcv.R'
+    'smooth.construct.peer.smooth.spec.R'
     're.R'
     'rlrt.pfr.R'
     'vis.fgam.R'
