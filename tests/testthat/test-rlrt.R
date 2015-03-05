@@ -38,6 +38,17 @@ test_that("tests work with subj = NULL", {
   skip_on_cran()
 
   set.seed(4287)
+  data(DTI2)
+  O  <- DTI2$pasat ## PASAT outcome
+  id <- DTI2$id    ## subject id
+  W1 <- DTI2$cca   ## Corpus Callosum
+  W2 <- DTI2$rcst  ## Right corticospinal
+  V  <- DTI2$visit ## visit
+
+  ## prep scalar covariate
+  visit.1.rest <- matrix(as.numeric(V > 1), ncol=1)
+  covar.in <- visit.1.rest
+
   suppressWarnings({
     pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = NULL, kz = 10, kb = 50)
     pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = NULL, kz = 10, kb = 50)
