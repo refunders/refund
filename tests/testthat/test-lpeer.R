@@ -17,7 +17,7 @@ test_that("lpeer with ridge penalty works", {
  expect_message(lpeer(Y=DTI$pasat, t=t, subj=DTI$ID, funcs = cca),
                  "The fit is successful.")
 
- plot(fit.cca.lpeer1)
+ ## plot(fit.cca.lpeer1)
 
  ##1.2 Fit the model with two component function
  ##    gamma(t,s)=gamm0(s) + t*gamma1(s)
