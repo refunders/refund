@@ -3,7 +3,7 @@ library(refundDevel)
 
 set.seed(9312)
 data2 <- pffrSim(scenario="all", n=200)
-t <- attr(data2, "yindex")
+argvals <- attr(data2, "yindex")
 s <- attr(data2, "xindex")
 m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
 ##                ff(X2, xind=s) + #linear function-on-function
@@ -11,7 +11,7 @@ m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
                c(te(xte1, xte2)) + #bivariate smooth term in xte1 & xte2, const. over Y-index
                s(xsmoo) + #smooth effect of xsmoo varying over Y-index
                c(xconst), # linear effect of xconst constant over Y-index
-       yind=t,
+       yind=argvals,
           data=data2)
 
 test_that("all pffr terms are working", {
@@ -47,9 +47,9 @@ test_that("example with sparse data works", {
 set.seed(1122)
 n <- 55
 S <- 60
-T <- 50
+n.argvals <- 50
 s <- seq(0,1, l=S)
-t <- seq(0,1, l=T)
+argvals <- seq(0,1, l=n.argvals)
 
 #generate X from a polynomial FPC-basis:
 rankX <- 5
@@ -59,9 +59,9 @@ Xi <- sapply(lambda, function(l)
            scale(rnorm(n, sd=sqrt(l)), scale=FALSE))
 X <- Xi %*% t(Phi)
 
-beta.st <- outer(s, t, function(s, t) cos(2 * pi * s * t))
+beta.st <- outer(s, argvals, function(s, argvals) cos(2 * pi * s * argvals))
 
-y <- (1/S*X) %*% beta.st + 0.1 * matrix(rnorm(n * T), nrow=n, ncol=T)
+y <- (1/S*X) %*% beta.st + 0.1 * matrix(rnorm(n * n.argvals), nrow=n, ncol=n.argvals)
 
 data <- list(y=y, X=X)
 
@@ -70,8 +70,8 @@ test_that("ffpc terms are working", {
 
 
    # set number of FPCs to true rank of process for this example:
-   m.pc <- pffr(y ~ c(1) + 0 + ffpc(X, yind=t, decomppars=list(npc=rankX)),
-                data=data, yind=t)
+   m.pc <- pffr(y ~ c(1) + 0 + ffpc(X, yind=argvals, decomppars=list(npc=rankX)),
+                data=data, yind=argvals)
    expect_equal_to_reference(m.pc$coefficients, "pffr.ffpc.coef.rds")
    expect_is(summary(m.pc), "summary.pffr")
 
@@ -79,7 +79,7 @@ test_that("ffpc terms are working", {
 })
 
 test_that("another ff term example", {
-   m.ff <- pffr(y ~ c(1) + 0 + ff(X, yind=t), data=data, yind=t)
+   m.ff <- pffr(y ~ c(1) + 0 + ff(X, yind=argvals), data=data, yind=argvals)
    expect_equal_to_reference(m.ff$coefficients, "pffr.ff.coef.rds")
 
    expect_is(summary(m.ff), "summary.pffr")
