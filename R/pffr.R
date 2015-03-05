@@ -152,6 +152,7 @@
 #'   Models. Journal of Computational \& Graphical Statistics, to appear.
 #'   \url{http://arxiv.org/abs/1207.5947}
 #' @export
+#' @importFrom mgcv ti
 #' @examples
 #' ###############################################################################
 #' # univariate model:
