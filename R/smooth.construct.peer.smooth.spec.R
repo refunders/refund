@@ -113,6 +113,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
   #object$rank <- K - ifelse(is.na(m), 0, m)
   object$rank <- k - ifelse(is.na(m), 0, m)
   object$null.space.dim <- ifelse(is.na(m), 0, m)
+  object$argvals <- data[[1]]
   object$v <- v
   class(object) <- "peer.smooth"
   object
@@ -127,5 +128,6 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
 #' @author Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
 
 Predict.matrix.peer.smooth <- function(object, data) {
-  object$v
+  apply(object$v, 2, function(x)
+    approx(object$argvals, x, data[[object$term]])$y)
 }
