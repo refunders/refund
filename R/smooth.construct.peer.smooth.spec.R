@@ -48,6 +48,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
   #  stop("argvals is not supported in the current version of refund.")
   
   K <- length(data[[1]])
+  k <- object$bs.dim
   m <- object$p.order
   xt <- object$xt
   pentype <- xt$pentype
@@ -77,7 +78,11 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
     if (is.na(m)) m <- 2
     L <- diag(K)
     for (i in 1:m) L <- diff(L)
-    L
+    #L
+    Left<- cbind(diag(rep(1,K-2)),rep(0,K-2),rep(0,K-2))
+    Middle<- cbind(rep(0,K-2),diag(rep(-2,K-2)),rep(0,K-2))
+    Right<- cbind(rep(0,K-2),rep(0,K-2),diag(rep(1,K-2)))
+    rbind(Left+Middle+Right, c(rep(0, K-2), 1, -2), c(rep(0, K-2), 0, 1))
   } else if (toupper(pentype)=="USER") {
     L <- xt$L
     if (is.null(L)) stop("Must enter a non-null L matrix for DECOMP penalty")
@@ -93,14 +98,22 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
     stop("Invalid pentype entry for PEER smooth")
   }
   
-  D <- t(L) %*% L
+  # Default k
+  if (k<0) k <- 75
+  
+  W <- xt$W
+  v <- svd(data.matrix(W) %*% solve(L))$v[,1:k]
+  D <- L %*% v
+  D <- t(D) %*% D
   D <- (D + t(D))/2
   
   # Return object
-  object$X <- diag(K)
+  object$X <- diag(K) %*% v
   object$S <- list(D)
-  object$rank <- K - ifelse(is.na(m), 0, m)
+  #object$rank <- K - ifelse(is.na(m), 0, m)
+  object$rank <- k - ifelse(is.na(m), 0, m)
   object$null.space.dim <- ifelse(is.na(m), 0, m)
+  object$v <- v
   class(object) <- "peer.smooth"
   object
 }
@@ -114,6 +127,5 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
 #' @author Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
 
 Predict.matrix.peer.smooth <- function(object, data) {
-  K <- nrow(object$S[[1]])
-  diag(K)
+  object$v
 }

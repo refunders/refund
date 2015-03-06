@@ -71,6 +71,9 @@ peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL,
   
   #Generate L matrix for D2 penalty
   if(toupper(pentype)=='D2'){
+    #L <- diag(K)
+    #for (i in 1:2) L <- diff(L)
+    #D.2 <- L
     Left<- cbind(diag(rep(1,K-2)),rep(0,K-2),rep(0,K-2))
     Middle<- cbind(rep(0,K-2),diag(rep(-2,K-2)),rep(0,K-2))
     Right<- cbind(rep(0,K-2),rep(0,K-2),diag(rep(1,K-2)))
@@ -92,8 +95,7 @@ peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL,
           L_PEER<- L
         } 
   
-  v<- diag(K)
-  if(K>N) v<-  svd((data.matrix(W))%*% solve(L_PEER))$v
+  v<-  svd((data.matrix(W))%*% solve(L_PEER))$v
   W1_PEER<- (data.matrix(W))%*% solve(L_PEER) %*% v
   
   #Fitting the model
