@@ -113,3 +113,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
 #' @return design matrix for PC-based functional random effects
 #' @author Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
 
+Predict.matrix.peer.smooth <- function(object, data) {
+  K <- length(data[[1]])
+  diag(K)
+}
