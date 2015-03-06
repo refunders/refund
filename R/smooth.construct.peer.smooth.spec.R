@@ -108,7 +108,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
   D <- (D + t(D))/2
   
   # Return object
-  object$X <- diag(K) %*% v
+  object$X <- v
   object$S <- list(D)
   #object$rank <- K - ifelse(is.na(m), 0, m)
   object$rank <- k - ifelse(is.na(m), 0, m)
