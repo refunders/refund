@@ -58,7 +58,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
     Q <- xt$Q
     phia <- xt$phia
     if (is.null(Q)) stop("Must enter a non-null Q matrix for DECOMP penalty")
-    if (is.null(phia)) stop("Must enter a non-null phia for DECOMP penalty")
+    if (is.null(phia)) phia <- 10^3
     else if (!is.numeric(phia)|is.matrix(phia)|is.matrix(phia))
       stop("Invalid entry for phia")
     if (ncol(Q) != K) stop("Width of Q matrix must match width of functions")
@@ -104,3 +104,12 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
   class(object) <- "peer.smooth"
   object
 }
+
+#' mgcv-style constructor for prediction of PEER terms
+#' 
+#' @param object a smooth specification object, see
+#'   \code{\link[mgcv]{smooth.construct}}
+#' @param data  see \code{\link[mgcv]{smooth.construct}}
+#' @return design matrix for PC-based functional random effects
+#' @author Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
+

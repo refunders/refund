@@ -15,12 +15,12 @@
 #' to \code{\link{gam}} if the matrix of functional responses has less than 2e5
 #' data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
 #' and "gamm4" (see \code{\link{gamm4}}) are valid options as well.
+#' @param method The smoothing parameter estimation method. Default is
+#'   \code{"REML"}. For options, see \code{\link{gam}}.
 #' @param ... additional arguments that are valid for \code{\link{gam}} or
 #' \code{\link{bam}}. These include \code{data} and \code{family} to specify
 #' the input data and outcome family, as well as many options to control the
-#' estimation. For example, \code{method="REML"} changes to REML estimation of
-#' smoothing parameters, and \code{gamma} > 1 to increase amount
-#' of smoothing when using GCV to choose smoothing parameters.
+#' estimation.
 #' 
 #' @section Warning:
 #' Binomial responses should be specified as a numeric vector rather than as a
@@ -100,7 +100,7 @@
 #' fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI1)
 #' coef.re <- coef(fit.re)
 #' 
-pfr <- function(formula=NULL, fitter=NA, ...){
+pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   
   if (class(formula) != "formula") {
     warning(paste0("The interface for pfr() has changed to using a formula ",
@@ -113,7 +113,7 @@ pfr <- function(formula=NULL, fitter=NA, ...){
     fit <- eval(call)
     return(fit)
   }
-
+  
   call <- match.call()
   dots <- list(...)
   if (length(dots)) {
@@ -230,6 +230,7 @@ pfr <- function(formula=NULL, fitter=NA, ...){
   newcall$fitter  <- newcall$bs.int <- newcall$bs.yindex <- NULL
   newcall$formula <- newfrml
   newcall$data <- quote(pfrdata)
+  newcall$method <- method
   newcall[[1]] <- fitter
   
   # Evaluate call
