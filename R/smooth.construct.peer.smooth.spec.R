@@ -114,6 +114,6 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
 #' @author Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
 
 Predict.matrix.peer.smooth <- function(object, data) {
-  K <- length(data[[1]])
+  K <- nrow(object$S[[1]])
   diag(K)
 }
