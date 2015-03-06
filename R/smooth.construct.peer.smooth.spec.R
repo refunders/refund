@@ -78,11 +78,13 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
     if (is.na(m)) m <- 2
     L <- diag(K)
     for (i in 1:m) L <- diff(L)
-    #L
-    Left<- cbind(diag(rep(1,K-2)),rep(0,K-2),rep(0,K-2))
-    Middle<- cbind(rep(0,K-2),diag(rep(-2,K-2)),rep(0,K-2))
-    Right<- cbind(rep(0,K-2),rep(0,K-2),diag(rep(1,K-2)))
-    rbind(Left+Middle+Right, c(rep(0, K-2), 1, -2), c(rep(0, K-2), 0, 1))
+    L1 <- L[nrow(L),]
+    for (i in 1:m) {
+      L1 <- c(0, L1[-K])
+      L <- rbind(L, L1)
+    }
+    rownames(L) <- NULL
+    L
   } else if (toupper(pentype)=="USER") {
     L <- xt$L
     if (is.null(L)) stop("Must enter a non-null L matrix for DECOMP penalty")
