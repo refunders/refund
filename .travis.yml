@@ -10,7 +10,7 @@ r_github_packages:
  - jimhester/covr
 
 # remove default --as-cran so testthat tests are run (also avoids two useless check notes)
-r_check_args:
+r_check_args: --no-manual --no-vignettes
 
 notifications:
   email:
@@ -20,4 +20,4 @@ notifications:
     on_failure: always # default: always
 
 after_success:
- - Rscript -e 'library(covr);coveralls()'
+ - Rscript -e 'library(covr);capture.output(coveralls())'
