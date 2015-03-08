@@ -7,6 +7,7 @@ warnings_are_errors: true
 # Use github version of testthat
 r_github_packages:
  - hadley/testthat
+ - jimhester/covr
 
 # remove default --as-cran so testthat tests are run (also avoids to useless check notes)
 r_check_args:
@@ -17,3 +18,6 @@ notifications:
       - mathew.w.mclean@gmail.com
     on_success: change # always|never|change, default: change
     on_failure: always # default: always
+
+after_success:
+ - Rscript -e 'library(covr);coveralls()'
