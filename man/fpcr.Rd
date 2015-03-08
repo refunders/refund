@@ -140,10 +140,7 @@ data(gasoline)
 # Create the requisite functional data objects
 bbasis = create.bspline.basis(c(900, 1700), 40)
 wavelengths = 2*450:850
-nir = matrix(NA, 401, 60)
-for (i in 1:60) nir[, i] = gasoline$NIR[i, ]
-# Why not just take transpose of gasoline$NIR above?
-# Because for some reason it leads to an error in the following statement
+nir <- t(gasoline$NIR)
 gas.fd = smooth.basisPar(wavelengths, nir, bbasis)$fd
 
 # Method 1: Call fpcr with fdobj argument
