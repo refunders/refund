@@ -22,7 +22,8 @@ An object of class \code{"peer.smooth"}. See
   contain.
 }
 \description{
-Implements structured penalties (Randolph et al., 2012) for smooth terms.
+Smooth basis constructor to define structured penalties (Randolph et al.,
+2012) for smooth terms.
 }
 \details{
 The smooth specification object, defined using \code{s()}, should

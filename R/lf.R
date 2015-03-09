@@ -1,15 +1,18 @@
 #' Construct an FLM regression term
 #'
-#' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{\link[mgcv]{gam}}-formula
-#' (or \code{\link{bam}} or \code{\link{gamm}} or \code{\link[gamm4]{gamm4}}) as constructed by
-#' \code{\link{fgam}}, where \eqn{\beta(t)} is an unknown coefficient function and \eqn{X_i(t)}
-#' is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic B-spline with
-#' second-order difference penalties for estimating \eqn{\beta(t)}.  The functional predictor must
-#' be fully observed on a regular grid.
+#' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{mgcv::gam}-formula (or
+#' \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
+#' \code{\link{pfr}}, where \eqn{\beta(t)} is an unknown coefficient
+#' function and \eqn{X_i(t)} is a functional predictor on the closed interval
+#' \eqn{T}. See
+#' \code{\link{smooth.terms}} for a list of basis and penalty options; the
+#' default is thin-plate regression splines, as this is the default option
+#' for \code{\link{mgcv::s}}.
+#' 
 #' @param X an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
 #' \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}
-#' @param argvals matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-#' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}
+#' @param argvals vector (or matrix) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
+#' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}. Default is equally spaced indices from 0 to 1.
 #' @param xind same as argvals. It will not be supported in the next version of refund.
 #' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule
 #' for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
@@ -25,8 +28,9 @@
 #' \code{\link{create.prep.func}}.
 #' @param ... optional arguments for basis and penalization to be passed to the
 #' function indicated by \code{basistype}. These could include, for example,
-#' \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
-#' \code{\link{s}} for details.
+#' \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{s}} for details.
+#' 
+#' @details These details need to be filled in!
 #' 
 #' @return a list with the following entries
 #' \enumerate{
@@ -43,8 +47,8 @@
 #' \code{\link{create.prep.func}}.
 #' }
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
-#' @seealso \code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}},
-#' \code{\link{fgam}} for examples
+#' @seealso \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
+#'  and \code{\link{linear.functional.terms}}, \code{\link{pfr}} for additonal examples
 #' @importFrom fda create.bspline.basis smooth.basisPar eval.fd
 #' @importFrom utils getFromNamesapce modifyList
 lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,

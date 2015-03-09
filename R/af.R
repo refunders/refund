@@ -2,10 +2,10 @@
 #'
 #' Defines a term \eqn{\int_{T}F(X_i(t),t)dt} for inclusion in an \code{mgcv::gam}-formula (or
 #' \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
-#' \code{\link{fgam}}, where \eqn{F(x,t)}$ is an unknown smooth bivariate function and \eqn{X_i(t)}
-#' is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic tensor product
-#' B-spline with marginal second-order difference penalties for estimating \eqn{F(x,t)}.  The
-#' functional predictor must be fully observed on a regular grid
+#' \code{\link{pfr}}, where \eqn{F(x,t)}$ is an unknown smooth bivariate function and \eqn{X_i(t)}
+#' is a functional predictor on the closed interval \eqn{T}. See \code{\link{smooth.terms}}
+#' for a list of bivariate basis and penalty options; the default is a tensor
+#' product basis with marginal second-order difference penalties for estimating \eqn{F(x,t)}.
 #' @param X an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
 #' \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}
 #' @param argvals matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
@@ -36,6 +36,9 @@
 #' \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
 #' \code{\link{s}} for details.
 #' 
+#' @details These details must be filled in! Specifying argvals, presmooth options,
+#'  anything else?
+#' 
 #' @return A list with the following entries:
 #' \enumerate{
 #' \item \code{call} - a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
@@ -57,8 +60,8 @@
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 #' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
 #' pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
-#' @seealso \code{\link{fgam}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
-#' \code{\link{fgam}} for examples
+#' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
+#' \code{\link{pfr}} for examples
 #' @importFrom stats ecdf
 #' @importFrom fda int2Lfd smooth.basisPar eval.fd create.bspline.basis
 #' @importFrom utils modifyList getFromNamespace

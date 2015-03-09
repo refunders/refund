@@ -44,6 +44,8 @@ Binomial responses should be specified as a numeric vector rather than as a
 matrix or a factor.
 }
 \examples{
+# See lf(), af(), and peer() for additional examples
+
 data(DTI)
 DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
 par(mfrow=c(1,2))
@@ -69,9 +71,15 @@ plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="Additive Term",
      rug=FALSE)
 
 # Include random intercept for subject
-DTI <- DTI[complete.cases(DTI),]
-fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI1)
+DTI.re <- DTI[complete.cases(DTI),]
+DTI.re$ID <- factor(DTI.re$ID)
+fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI.re)
 coef.re <- coef(fit.re)
+
+# PEER Model with second order difference penalty
+DTI.use <- DTI[DTI$case==1,]
+DTI.use <- DTI.use[complete.cases(DTI.use$cca),]
+fit.peer <- pfr(pasat ~ peer(cca, integration="riemann", pentype="D"), data=DTI.use)
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Jonathan

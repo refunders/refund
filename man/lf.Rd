@@ -12,8 +12,8 @@ lf(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
 \item{X}{an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
 \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}}
 
-\item{argvals}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}}
+\item{argvals}{vector (or matrix) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
+\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}. Default is equally spaced indices from 0 to 1.}
 
 \item{xind}{same as argvals. It will not be supported in the next version of refund.}
 
@@ -35,8 +35,7 @@ to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \cod
 
 \item{...}{optional arguments for basis and penalization to be passed to the
 function indicated by \code{basistype}. These could include, for example,
-\code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
-\code{\link{s}} for details.}
+\code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{s}} for details.}
 }
 \value{
 a list with the following entries
@@ -55,18 +54,23 @@ used by \code{mgcv}
 }
 }
 \description{
-Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{\link[mgcv]{gam}}-formula
-(or \code{\link{bam}} or \code{\link{gamm}} or \code{\link[gamm4]{gamm4}}) as constructed by
-\code{\link{fgam}}, where \eqn{\beta(t)} is an unknown coefficient function and \eqn{X_i(t)}
-is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic B-spline with
-second-order difference penalties for estimating \eqn{\beta(t)}.  The functional predictor must
-be fully observed on a regular grid.
+Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{mgcv::gam}-formula (or
+\code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
+\code{\link{pfr}}, where \eqn{\beta(t)} is an unknown coefficient
+function and \eqn{X_i(t)} is a functional predictor on the closed interval
+\eqn{T}. See
+\code{\link{smooth.terms}} for a list of basis and penalty options; the
+default is thin-plate regression splines, as this is the default option
+for \code{\link{mgcv::s}}.
+}
+\details{
+These details need to be filled in!
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
 }
 \seealso{
-\code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}},
-\code{\link{fgam}} for examples
+\code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
+ and \code{\link{linear.functional.terms}}, \code{\link{pfr}} for additonal examples
 }
 

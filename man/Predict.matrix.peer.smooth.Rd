@@ -7,18 +7,19 @@
 \method{Predict.matrix}{peer.smooth}(object, data)
 }
 \arguments{
-\item{object}{a smooth specification object, see
+\item{object}{a \code{peer.smooth} object created by
+\code{\link{smooth.construct.peer.smooth.spec}}, see
 \code{\link[mgcv]{smooth.construct}}}
 
 \item{data}{see \code{\link[mgcv]{smooth.construct}}}
 }
 \value{
-design matrix for PC-based functional random effects
+design matrix for PEER terms
 }
 \description{
 mgcv-style constructor for prediction of PEER terms
 }
 \author{
-Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
+Jonathan Gellar
 }
 
