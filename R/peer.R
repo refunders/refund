@@ -48,15 +48,16 @@
 ##' @author Jonathan Gellar
 ##' 
 ##' @references
-##' #' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
-#' functional linear models - partially empirical eigenvectors for regression.
-#' \emph{Electronic Journal of Statistics}, 6, 323-353.
-#' 
-#' Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
-#' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
+##' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
+##' functional linear models - partially empirical eigenvectors for regression.
+##' \emph{Electronic Journal of Statistics}, 6, 323-353.
+##' 
+##' Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
+##' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 ##' 
 ##' @seealso \code{\link{pfr}}, \code{\link{smooth.construct.peer.smooth.spec}}
 ##'
+
 peer <- function(X, argvals=(1:ncol(X)), pentype="RIDGE",
                  Q=NULL, phia=10^3, L=NULL,  ...) {
   

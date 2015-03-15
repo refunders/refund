@@ -65,6 +65,7 @@ function and \eqn{X_i(t)} is a functional predictor on the closed interval
 \eqn{T}. See
 \code{\link{smooth.terms}} for a list of basis and penalty options; the
 default is thin-plate regression splines, as this is the default option
+for \code{\link[mgcv]{s}}.
 }
 \details{
 These details need to be filled in!
