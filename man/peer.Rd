@@ -56,4 +56,18 @@ are four types of penalties available:
     supplied by the \code{L} argument.
 }
 }
+\author{
+Jonathan Gellar
+}
+\references{
+#' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
+functional linear models - partially empirical eigenvectors for regression.
+\emph{Electronic Journal of Statistics}, 6, 323-353.
+
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
+functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
+}
+\seealso{
+\code{\link{pfr}}, \code{\link{smooth.construct.peer.smooth.spec}}
+}
 

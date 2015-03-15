@@ -9,11 +9,15 @@ lf(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   presmooth = NULL, presmooth.opts = NULL, ...)
 }
 \arguments{
-\item{X}{an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
-\eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}}
+\item{X}{functional predictors, expressed as an \code{N} by \code{J} matrix,
+where \code{N} is the number of columns and \code{J} is the number of
+evaluation points. May include missing/sparse functions, which are
+indicated by \code{NA} values.}
 
-\item{argvals}{vector (or matrix) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}. Default is equally spaced indices from 0 to 1.}
+\item{argvals}{indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+as a matrix allows for different observations times for each subject.}
 
 \item{xind}{same as argvals. It will not be supported in the next version of refund.}
 
@@ -68,6 +72,16 @@ These details need to be filled in!
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
+}
+\references{
+Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
+Penalized functional regression. \emph{Journal of Computational and Graphical
+Statistics}, 20(4), 830-851.
+
+Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012). Longitudinal
+penalized functional regression for cognitive outcomes on neuronal tract
+measurements. \emph{Journal of the Royal Statistical Society: Series C},
+61(3), 453-469.
 }
 \seealso{
 \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}

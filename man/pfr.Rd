@@ -9,7 +9,7 @@ pfr(formula = NULL, fitter = NA, method = "REML", ...)
 \arguments{
 \item{formula}{a formula with special terms as for \code{\link{gam}},
 with additional special terms \code{\link{af}}(), \code{\link{lf}}(),
-and \code{\link{re}}().}
+\code{\link{re}}(), \code{\link{peer}}(), and \code{\link{fpc}}().}
 
 \item{fitter}{the name of the function used to estimate the model. Defaults
 to \code{\link{gam}} if the matrix of functional responses has less than 2e5
@@ -119,6 +119,7 @@ Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269.
 Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 }
 \seealso{
-\code{\link{af}}, \code{\link{lf}}, \code{\link{re}}
+\code{\link{af}}, \code{\link{lf}}, \code{\link{re}},
+  \code{\link{peer}}, \code{\link{fpc}}
 }
 

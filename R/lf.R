@@ -9,10 +9,14 @@
 #' default is thin-plate regression splines, as this is the default option
 #' for \code{\link{mgcv::s}}.
 #' 
-#' @param X an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
-#' \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}
-#' @param argvals vector (or matrix) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-#' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}. Default is equally spaced indices from 0 to 1.
+#' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
+#'   where \code{N} is the number of columns and \code{J} is the number of
+#'   evaluation points. May include missing/sparse functions, which are
+#'   indicated by \code{NA} values.
+#' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+#'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+#'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+#'   as a matrix allows for different observations times for each subject.
 #' @param xind same as argvals. It will not be supported in the next version of refund.
 #' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule
 #' for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
@@ -47,6 +51,17 @@
 #' \code{\link{create.prep.func}}.
 #' }
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
+#' 
+#' @references
+#' Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
+#' Penalized functional regression. \emph{Journal of Computational and Graphical
+#' Statistics}, 20(4), 830-851.
+#' 
+#' Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012). Longitudinal
+#' penalized functional regression for cognitive outcomes on neuronal tract
+#' measurements. \emph{Journal of the Royal Statistical Society: Series C},
+#' 61(3), 453-469.
+#' 
 #' @seealso \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
 #'  and \code{\link{linear.functional.terms}}, \code{\link{pfr}} for additonal examples
 #' @importFrom fda create.bspline.basis smooth.basisPar eval.fd

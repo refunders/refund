@@ -10,7 +10,7 @@
 #' 
 #' @param formula a formula with special terms as for \code{\link{gam}},
 #' with additional special terms \code{\link{af}}(), \code{\link{lf}}(),
-#' and \code{\link{re}}().
+#' \code{\link{re}}(), \code{\link{peer}}(), and \code{\link{fpc}}().
 #' @param fitter the name of the function used to estimate the model. Defaults
 #' to \code{\link{gam}} if the matrix of functional responses has less than 2e5
 #' data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
@@ -63,7 +63,8 @@
 #' 
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Jonathan
 #' Gellar, Jeff Goldsmith, and Fabian Scheipl
-#' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{re}}
+#' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{re}},
+#'   \code{\link{peer}}, \code{\link{fpc}}
 #' @importFrom mgcv gam gam.fit gamm4 bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom nlme lme4
