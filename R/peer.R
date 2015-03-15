@@ -43,7 +43,6 @@
 ##' The original stand-alone implementation by Madan Gopal Kundu is available in 
 ##' \code{\link{peer_old}}. 
 ##'
-
 peer <- function(X, argvals=(1:ncol(X)), pentype="RIDGE",
                  Q=NULL, phia=10^3, L=NULL,  ...) {
   

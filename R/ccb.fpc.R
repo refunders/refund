@@ -1,5 +1,6 @@
 ccb.fpc <-
-function(Y, argvals=NULL, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, sim.alpha = .95){
+function(Y, argvals=NULL, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, 
+  sim.alpha = .95){
   
   set.seed(10)
   

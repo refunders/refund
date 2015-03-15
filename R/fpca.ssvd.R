@@ -1,43 +1,56 @@
-#'    Smoothed FPCA via iterative penalized rank one SVDs. 
-#'   
-#'    Implements the algorithm of Huang, Shen, Buja (2008) for finding smooth
-#'    right singular vectors of a matrix \code{X} containing (contaminated) evaluations
-#'    of functional random variables on a regular, equidistant grid. If the number of smooth SVs to 
-#'    extract is not specified, the function hazards a guess for the appropriate number based 
-#'    on the asymptotically optimal truncation threshold under the assumption of a low rank matrix 
-#'    contaminated with i.i.d. Gaussian noise with unknown variance derived in Donoho, Gavish (2013).
-#'  Please note that Donoho, Gavish (2013) should be regarded as experimental for functional PCA, and will typically not work well if you have more observations than grid points.  
-#'   
-#'    @param Y data matrix (rows: observations; columns: grid of eval. points)
-#'    @param argvals the argument values where functions are evaluated. It is implemented yet.
-#'    @param npc how many smooth SVs to try to extract, if \code{NA} (the default) the hard thresholding
-#'     rule of Donoho, Gavish (2013) is used (see Details, References).
-#'    @param center center \code{Y} so that its column-means are 0? Defaults to \code{TRUE} 
-#'    @param maxiter how many iterations of the power algorithm to perform at most (defaults to 15)
-#'    @param tol convergence tolerance for power algorithm (defaults to 1e-4)
-#'    @param diffpen difference penalty order controlling the desired smoothness of the right singular vectors, 
-#'        defaults to 3 (i.e., deviations from local quadratic polynomials).
-#'    @param gridsearch use \code{\link[stats]{optimize}} or a grid search to find GCV-optimal 
-#'        smoothing parameters? defaults to \code{TRUE}.
-#'    @param alphagrid  grid of smoothing parameter values for grid search
-#'    @param lower.alpha lower limit for for smoothing parameter if \code{!gridsearch}
-#'    @param upper.alpha upper limit for smoothing parameter if \code{!gridsearch}
-#'    @param verbose generate graphical summary of progress and diagnostic messages? 
-#'        defaults to \code{FALSE}
-#'    @return a list like the returned object from \code{\link{fpca.sc}},  with entries 
-#'    \code{Yhat}, the smoothed trajectories, \code{scores}, the estimated FPC loadings, \code{mu},
-#'    the column means of \code{Y} (or a vector of zeroes if \code{!center}),  \code{efunctions}, 
-#'    the estimated smooth FPCs (note that these are orthonormal vectors, not evaluations of orthonormal functions...), \code{evalues}, their associated eigenvalues, and \code{npc}, the
-#'     number of smooth components that were extracted.
-#'    @seealso  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for FPCA based on smoothing a covariance estimate; 
-#'      \code{\link{fpca2s}} for a faster SVD-based approach.
-#'    @author Fabian Scheipl
-#'    @references Huang, J. Z., Shen, H., and Buja, A. (2008). 
-#'     Functional principal components analysis via penalized rank one approximation.
-#'     \emph{Electronic Journal of Statistics}, 2, 678-695
-#'     
-#'     Donoho, D.L., and Gavish, M. (2013). The Optimal Hard Threshold for Singular Values is 4/sqrt(3).
-#'     eprint arXiv:1305.5870. Available from \url{http://arxiv.org/abs/1305.5870}.
+#'  Smoothed FPCA via iterative penalized rank one SVDs.
+#'  
+#'  Implements the algorithm of Huang, Shen, Buja (2008) for finding smooth 
+#'  right singular vectors of a matrix \code{X} containing (contaminated) 
+#'  evaluations of functional random variables on a regular, equidistant grid. 
+#'  If the number of smooth SVs to extract is not specified, the function 
+#'  hazards a guess for the appropriate number based on the asymptotically 
+#'  optimal truncation threshold under the assumption of a low rank matrix 
+#'  contaminated with i.i.d. Gaussian noise with unknown variance derived in 
+#'  Donoho, Gavish (2013). Please note that Donoho, Gavish (2013) should be 
+#'  regarded as experimental for functional PCA, and will typically not work 
+#'  well if you have more observations than grid points.
+#'  
+#'  @param Y data matrix (rows: observations; columns: grid of eval. points)
+#'  @param argvals the argument values where functions are evaluated. It is
+#'    implemented yet.
+#'  @param npc how many smooth SVs to try to extract, if \code{NA} (the default)
+#'    the hard thresholding rule of Donoho, Gavish (2013) is used (see Details,
+#'    References).
+#'  @param center center \code{Y} so that its column-means are 0? Defaults to
+#'    \code{TRUE}
+#'  @param maxiter how many iterations of the power algorithm to perform at most
+#'    (defaults to 15)
+#'  @param tol convergence tolerance for power algorithm (defaults to 1e-4)
+#'  @param diffpen difference penalty order controlling the desired smoothness
+#'    of the right singular vectors, defaults to 3 (i.e., deviations from local
+#'    quadratic polynomials).
+#'  @param gridsearch use \code{\link[stats]{optimize}} or a grid search to find
+#'    GCV-optimal smoothing parameters? defaults to \code{TRUE}.
+#'  @param alphagrid  grid of smoothing parameter values for grid search
+#'  @param lower.alpha lower limit for for smoothing parameter if
+#'    \code{!gridsearch}
+#'  @param upper.alpha upper limit for smoothing parameter if \code{!gridsearch}
+#'  @param verbose generate graphical summary of progress and diagnostic
+#'    messages? defaults to \code{FALSE}
+#'  @return a list like the returned object from \code{\link{fpca.sc}},  with
+#'    entries \code{Yhat}, the smoothed trajectories, \code{scores}, the
+#'    estimated FPC loadings, \code{mu}, the column means of \code{Y} (or a
+#'    vector of zeroes if \code{!center}),  \code{efunctions}, the estimated
+#'    smooth FPCs (note that these are orthonormal vectors, not evaluations of
+#'    orthonormal functions...), \code{evalues}, their associated eigenvalues,
+#'    and \code{npc}, the number of smooth components that were extracted.
+#'  @seealso  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for FPCA based
+#'    on smoothing a covariance estimate; \code{\link{fpca2s}} for a faster
+#'    SVD-based approach.
+#'  @author Fabian Scheipl
+#'  @references Huang, J. Z., Shen, H., and Buja, A. (2008). Functional
+#'    principal components analysis via penalized rank one approximation. 
+#'    \emph{Electronic Journal of Statistics}, 2, 678-695
+#'    
+#'    Donoho, D.L., and Gavish, M. (2013). The Optimal Hard Threshold for
+#'    Singular Values is 4/sqrt(3). eprint arXiv:1305.5870. Available from
+#'    \url{http://arxiv.org/abs/1305.5870}.
 #'    @examples 
 #'  ## as in Sec. 6.2 of Huang, Shen, Buja (2008):
 #'  set.seed(2678695)
