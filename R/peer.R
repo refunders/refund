@@ -41,6 +41,10 @@
 ##'     supplied by the \code{L} argument.
 ##' }
 ##' 
+##' The original stand-alone implementation by Madan Gopal Kundu is available in 
+##' \code{\link{peer_old}}. 
+##' 
+##' 
 ##' @author Jonathan Gellar
 ##' 
 ##' @references
@@ -53,7 +57,6 @@
 ##' 
 ##' @seealso \code{\link{pfr}}, \code{\link{smooth.construct.peer.smooth.spec}}
 ##'
-
 peer <- function(X, argvals=(1:ncol(X)), pentype="RIDGE",
                  Q=NULL, phia=10^3, L=NULL,  ...) {
   
@@ -79,11 +82,14 @@ peer <- function(X, argvals=(1:ncol(X)), pentype="RIDGE",
   # Update xt
   xt$pentype <- pentype
   xt$W <- X
+  # FIXME: this evaluates X, leading to ugly model output -- would want to 
+  # hand over the unevaluated symbol to lf instead, but this fails as the call stack
+  # is so complicated in pfr.R#249: eval(newcall)
+  # substitute(X) does not work as inputs get renamed before handing over to fitter (?) 
   xt$Q <- Q
   xt$phia <- phia
   xt$L <- L
   
-  # Call lf()
   lf(X=X, argvals=argvals, bs="peer", xt=xt, ...)
 }
 

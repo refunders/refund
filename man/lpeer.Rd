@@ -5,8 +5,8 @@
 Implements longitudinal functional model with structured penalties (Kundu et al., 2012) with scalar outcome, single functional predictor, one or more scalar covariates and subject-specific random intercepts through mixed model equivalence. 
 }
 \usage{
-lpeer(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE, pentype='Ridge', L.user=NULL, 
-f_t=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
+lpeer(Y, subj, t, funcs, argvals=NULL, covariates=NULL, comm.pen=TRUE, 
+pentype='Ridge', L.user=NULL, f_t=NULL, Q=NULL, phia=10^3, se=FALSE, ...)
 
 }
 \arguments{

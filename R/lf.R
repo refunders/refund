@@ -7,7 +7,7 @@
 #' \eqn{T}. See
 #' \code{\link{smooth.terms}} for a list of basis and penalty options; the
 #' default is thin-plate regression splines, as this is the default option
-#' for \code{\link{mgcv::s}}.
+#' for \code{\link[mgcv]{s}}.
 #' 
 #' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of

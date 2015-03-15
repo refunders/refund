@@ -62,7 +62,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
     phia <- xt$phia
     if (is.null(Q)) stop("Must enter a non-null Q matrix for DECOMP penalty")
     if (is.null(phia)) phia <- 10^3
-    else if (!is.numeric(phia)|is.matrix(phia)|is.matrix(phia))
+    else if (!is.numeric(phia)|is.matrix(phia))
       stop("Invalid entry for phia")
     if (ncol(Q) != K) stop("Width of Q matrix must match width of functions")
     
@@ -114,9 +114,11 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
   # Return object
   object$X <- v
   object$S <- list(D)
-  #object$rank <- K - ifelse(is.na(m), 0, m)
-  object$rank <- k - ifelse(is.na(m), 0, m)
-  object$null.space.dim <- ifelse(is.na(m), 0, m)
+  ## numerically determine null space dim -- seems safer than relying on m, 
+  ## for pentype DECOMP and USER
+  object$null.space.dim <- k - qr(D)$rank
+  object$rank <- k - object$null.space.dim
+  object$df <- k #need this for gamm
   object$argvals <- data[[1]]
   object$v <- v
   class(object) <- "peer.smooth"
