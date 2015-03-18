@@ -17,7 +17,7 @@ Wavelet-based functional regression methods with scalar responses and functional
 
 ### Installation
 
-To install the latest patched version directly from Github, please use `devtools::install_github("refunders/refund/refund")` for `refund` and `devtools::install_github("refunders/refund/refund.wave")` for `refund.wave`.
+To install the latest patched version directly from Github, please use `devtools::install_github("refunders/refund")` for `refund` and `devtools::install_github("refunders/refund.wave")` for `refund.wave`.
 
-To install the developer version `refundDevel` with experimental features directly from Github, please use `devtools::install_github("refunders/refund/refund", ref="devel")`.
+To install the developer version `refundDevel` with experimental features directly from Github, please use `devtools::install_github("refunders/refund", ref="devel")`.
 
