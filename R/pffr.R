@@ -441,7 +441,12 @@ pffr <- function(
         LStacked <- LStacked * use
 
         # find indices for row-wise int-range & maximal occuring width:
-        windows <- t(apply(use, 1, function(x) range(which(x))))
+        windows <- t(apply(use, 1, function(x){
+          use_this <- which(x)
+          # edge case: no integration
+          if(!any(use_this)) return(c(1,1))
+          range(use_this)
+        }))
         windows <- cbind(windows, windows[,2]-windows[,1]+1)
         maxwidth <- max(windows[,3])
         # reduce size of matrix-covariates if possible:
