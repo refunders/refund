@@ -23,6 +23,7 @@
 #' @author Fabian Scheipl
 #' @importFrom boot boot boot.ci
 #' @importFrom parallel makePSOCKcluster clusterSetRNGStream parLapply mclapply stopCluster
+#' @export
 coefboot.pffr <- function(object,
         n1=100, n2=40, n3=20,
         B = 100, ncpus = getOption("boot.ncpus", 1),
