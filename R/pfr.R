@@ -1,13 +1,14 @@
 #' Penalized Functional Regression
 #'
 #' Implements various approaches to penalized scalar-on-function regression.
-#' These techniques include Penalized Functional Regression (Goldsmith et al.,
-#' 2011), Functional Principal Component Regression (Reiss and Ogden, 2007),
-#' Functional Generalized Additive Models (McLean et al., 2013), and Partially
-#' Empirical Eigenvectors for Regression (Randolph et al., 2012).
+#' These techniques include penalized functional regression (Goldsmith et al.,
+#' 2011), functional principal component regression (Reiss and Ogden, 2007),
+#' functional generalized additive models (McLean et al., 2013), and partially
+#' empirical eigenvectors for regression (Randolph et al., 2012).
 #' This function is a wrapper for mgcv's \code{\link{gam}}
 #' and its siblings to fit models with a scalar (but necessarily continuous)
-#' response.
+#' response. For the old version, which implements only the Goldsmith et al.
+#' (2011) approach, see \code{\link{pfr_old}}.
 #'
 #' @param formula a formula with special terms as for \code{\link{gam}},
 #' with additional special terms \code{\link{af}}() and \code{\link{lf}}().

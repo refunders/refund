@@ -3,7 +3,7 @@ pfr_old  <- function (Y, subj=NULL, covariates = NULL, funcs, kz = 10, kb = 30, 
 {
   warning(paste0("The interface for pfr() has changed to using a formula ",
                  "argument, with linear functional terms specified by lf(). ",
-                 "See ?pfr for details. The old interface wil be depricated ",
+                 "See ?pfr for details. The old interface wil be deprecated ",
                  "in the next refund release."))
   
   ## Step 1:
