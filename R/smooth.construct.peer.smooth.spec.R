@@ -73,7 +73,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
     
     P_Q <- t(Q) %*% solve(Q %*% t(Q)) %*% Q
     phia*(diag(K)- P_Q) + 1*P_Q
-  } else if (toupper(pentype)=="RIDGE") {
+  } else if (toupper(pentype) %in% c("RIDGE", "NONE")) {
     diag(K)
   } else if (toupper(pentype)=="D") {
     # Difference Penalty
@@ -89,7 +89,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
     L
   } else if (toupper(pentype)=="USER") {
     L <- xt$L
-    if (is.null(L)) stop("Must enter a non-null L matrix for DECOMP penalty")
+    if (is.null(L)) stop("Must enter a non-null L matrix for USER penalty")
     if (ncol(L) != K) stop("Width of L matrix must match width of functions")
     
     # Check singularity of L matrix
@@ -104,16 +104,20 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
   
   # Default k
   if (k<0) k <- K
+  if (k==K) {
+    v <- diag(K)
+  } else {
+    W <- xt$W
+    v <- svd(data.matrix(W) %*% solve(L))$v[,1:k]
+  }
   
-  W <- xt$W
-  v <- svd(data.matrix(W) %*% solve(L))$v[,1:k]
   D <- L %*% v
   D <- t(D) %*% D
   D <- (D + t(D))/2
   
   # Return object
   object$X <- v
-  object$S <- list(D)
+  object$S <- if (toupper(pentype)=="NONE") list() else list(D)
   ## numerically determine null space dim -- seems safer than relying on m, 
   ## for pentype DECOMP and USER
   object$null.space.dim <- k - qr(D)$rank

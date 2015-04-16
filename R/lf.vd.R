@@ -2,7 +2,9 @@
 #' 
 #' This function defines the a variable-domain functional regression term
 #' for inclusion in an \code{mgcv::gam-formula} (or \code{bam} or
-#' \code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{fgam}}.
+#' \code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{pfr}}.
+#' These are functional predictors for which each function is observed over a
+#' domain of different width.
 #' The default is the ``untransformed" term,\eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
 #' where \eqn{X_i(t)} is a functional predictor of length \eqn{T_i} and \eqn{\beta(t,T_i)}
 #' is an unknown bivariate coefficient function. Lagged-domain and
@@ -96,20 +98,14 @@
 #'    Crainiceanu, Ciprian M (May 2014). Variable-Domain Functional Regression for Modeling
 #'    ICU Data. Johns Hopkins University, Dept. of Biostatistics
 #'    Working Papers. Working Paper 261. http://biostats.bepress.com/jhubiostat/paper261
-#' @seealso \code{\link{fgam}}, \code{\link{lf}}, mgcv's
-#'    \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.
+#' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's
+#'    \code{\link{linear.functional.terms}}, \code{\link{pfr}} for examples.
 
 lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
-	T.trans=identity,
-	domain=c("untransformed", "lagged", "standardized"),
+	T.trans=identity, domain=c("untransformed", "lagged", "standardized"),
 	interaction=c("nonparametric", "none", "linear", "quadratic"),
 	integration = c("simpson", "trapezoidal", "riemann"),
-	# demean=FALSE,
-	# presmooth = TRUE,
-	basistype=c("s","te","t2"),
-	rescale.unit = TRUE,
-	splinepars = NULL) {
-	# splinepars = list(bs = "ps", k = min(ceiling(n/4), 40), m = c(2, 2))){
+	basistype=c("s","te","t2"), rescale.unit = TRUE, splinepars = NULL) {
 	
 	n = nrow(X)
   J = ncol(X)
