@@ -15,8 +15,8 @@
 ##' experimental.
 ##' @param center center \code{Y} so that its column-means are 0? Defaults to
 ##' \code{TRUE}
-##' @param argvals index vector of \eqn{J} entries for data in X; defaults to a
-##' sequence from 0 to 1.
+##' @param argvals index vector of \eqn{J} entries for data in \code{Y}; defaults to a
+##' regular sequence from 0 to 1.
 ##' @param smooth logical; defaults to TRUE, if NULL, no smoothing of
 ##' eigenvectors.
 ##' @return A list with components \item{Yhat}{predicted data matrix}
@@ -89,9 +89,9 @@
 ##'       lines(t[seq],phi[seq,k],lwd = 2, col = "black")
 ##'       }
 fpca2s <-
-function(Y,npc=NA,center = TRUE, argvals = NULL,smooth=TRUE){
+function(Y, npc=NA, center = TRUE, argvals = NULL,smooth=TRUE){
 
-  ## data: X, I by J data matrix
+  ## data: Y, I by J data matrix
   ## argvals: vector of J
   X <- Y
   data_dim <- dim(X)

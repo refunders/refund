@@ -9,7 +9,7 @@
 #'  Please note that Donoho, Gavish (2013) should be regarded as experimental for functional PCA, and will typically not work well if you have more observations than grid points.
 #'
 #'    @param Y data matrix (rows: observations; columns: grid of eval. points)
-#'    @param argvals the argument values where functions are evaluated. It is implemented yet.
+#'    @param argvals the argument values where functions are evaluated. Not implemented.
 #'    @param npc how many smooth SVs to try to extract, if \code{NA} (the default) the hard thresholding
 #'     rule of Donoho, Gavish (2013) is used (see Details, References).
 #'    @param center center \code{Y} so that its column-means are 0? Defaults to \code{TRUE}
@@ -27,7 +27,7 @@
 #'    @return a list like the returned object from \code{\link{fpca.sc}},  with entries
 #'    \code{Yhat}, the smoothed trajectories, \code{scores}, the estimated FPC loadings, \code{mu},
 #'    the column means of \code{Y} (or a vector of zeroes if \code{!center}),  \code{efunctions},
-#'    the estimated smooth FPCs (note that these are orthonormal vectors, not evaluations of orthonormal functions...), \code{evalues}, their associated eigenvalues, and \code{npc}, the
+#'    the estimated smooth FPCs (note that these are orthonormal vectors, not evaluations of orthonormal functions!), \code{evalues}, their associated eigenvalues, and \code{npc}, the
 #'     number of smooth components that were extracted.
 #'    @seealso  \code{\link{fpca.sc}} and \code{\link{fpca.face}} for FPCA based on smoothing a covariance estimate;
 #'      \code{\link{fpca2s}} for a faster SVD-based approach.
@@ -70,152 +70,148 @@
 #'          main="true smooth Y", bty="n")
 #'  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="",
 #'          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
-fpca.ssvd <- function(Y, argvals=NULL, npc=NA, center=TRUE,
-        maxiter=15, tol=1e-4,
-        diffpen=3,
-        gridsearch=TRUE,
-        alphagrid=1.5^(-20:40),
-        lower.alpha=1e-5, upper.alpha=1e7,
-        verbose=FALSE){
+fpca.ssvd <- function(Y, argvals = NULL, npc = NA, center = TRUE, maxiter = 15,
+  tol = 1e-4, diffpen = 3, gridsearch = TRUE, alphagrid = 1.5^(-20:40),
+  lower.alpha = 1e-5, upper.alpha = 1e7, verbose = FALSE){
 
-    if(!is.null(argvals)) stop("argvals is not supported.")
+  if(!is.null(argvals)) warning("<argvals> is not supported and will be ignored.")
 
-    #GCV criterion from eq. (10), App. C:
-    gcv <- function(alpha, w, m, lambda){
-        sqrt(sum( (w * (alpha*lambda)/(1 + alpha*lambda))^2 ))/
-                (1- 1/m * sum( 1/(1 + alpha*lambda) ))
-    }
-    # Recursion for difference operator matrix
-    makeDiffOp <- function(degree, dim){
-        if(degree==0){
-            return(diag(dim))
-        } else {
-            return(diff(makeDiffOp(degree-1, dim)))
-        }
-    }
-
-
-    if(any(is.na(Y))) stop("No missing values in <Y> allowed.")
-    m <- ncol(Y)
-    n <- nrow(Y)
-
-    if(is.na(npc)){
-      npc <- getNPC.DonohoGavish(Y)
-    }
-
-
-    if(!is.numeric(npc)) stop("Invalid <npc>.")
-    if(npc<1 | npc>min(m,n)) stop("Invalid <npc>.")
-    if(verbose){
-      cat("Using ", npc , "smooth components based on Donoho/Gavish (2013).\n")
-    }
-
-    if(!is.numeric(alphagrid)) stop("Invalid <alphagrid>.")
-    if(any(is.na(alphagrid)) | any(alphagrid<.Machine$double.eps)) stop("Invalid <alphagrid>.")
-    uhoh <- numeric(0)
-    if(verbose & interactive()){
-        par(ask=TRUE)
-        on.exit(par(ask=FALSE))
-    }
-    if(verbose){
-       cat("Singular values of smooth and non-smooth ('noise') parts:")
-    }
-
-
-
-    Omega  <- crossprod(makeDiffOp(degree=diffpen, dim=m))
-    eOmega <- eigen(Omega, symmetric=TRUE)
-    lambda <- eOmega$values
-    Gamma  <- eOmega$vectors
-
-    U <- matrix(NA, nrow=n, ncol=npc)
-    V <- matrix(NA, nrow=m, ncol=npc)
-    d <- rep(NA, npc)
-
-    if(center){
-        meanY <- predict(smooth.spline(x=1:m, y=colMeans(Y)), x=1:m)$y
-        Y <- t(t(Y) - meanY)
+  #GCV criterion from eq. (10), App. C:
+  gcv <- function(alpha, w, m, lambda){
+    sqrt(sum( (w * (alpha*lambda)/(1 + alpha*lambda))^2 ))/
+      (1- 1/m * sum( 1/(1 + alpha*lambda) ))
+  }
+  # Recursion for difference operator matrix
+  makeDiffOp <- function(degree, dim){
+    if(degree==0){
+      return(diag(dim))
     } else {
-        meanY <- rep(0, ncol(Y))
+      return(diff(makeDiffOp(degree-1, dim)))
+    }
+  }
+
+
+  if(any(is.na(Y))) stop("No missing values in <Y> allowed.")
+  m <- ncol(Y)
+  n <- nrow(Y)
+
+  if(is.na(npc)){
+    npc <- getNPC.DonohoGavish(Y)
+  }
+
+
+  if(!is.numeric(npc)) stop("Invalid <npc>.")
+  if(npc<1 | npc>min(m,n)) stop("Invalid <npc>.")
+  if(verbose){
+    cat("Using ", npc , "smooth components based on Donoho/Gavish (2013).\n")
+  }
+
+  if(!is.numeric(alphagrid)) stop("Invalid <alphagrid>.")
+  if(any(is.na(alphagrid)) | any(alphagrid<.Machine$double.eps)) stop("Invalid <alphagrid>.")
+  uhoh <- numeric(0)
+  if(verbose & interactive()){
+    par(ask=TRUE)
+    on.exit(par(ask=FALSE))
+  }
+  if(verbose){
+    cat("Singular values of smooth and non-smooth ('noise') parts:")
+  }
+
+
+
+  Omega  <- crossprod(makeDiffOp(degree=diffpen, dim=m))
+  eOmega <- eigen(Omega, symmetric=TRUE)
+  lambda <- eOmega$values
+  Gamma  <- eOmega$vectors
+
+  U <- matrix(NA, nrow=n, ncol=npc)
+  V <- matrix(NA, nrow=m, ncol=npc)
+  d <- rep(NA, npc)
+
+  if(center){
+    meanY <- predict(smooth.spline(x=1:m, y=colMeans(Y)), x=1:m)$y
+    Y <- t(t(Y) - meanY)
+  } else {
+    meanY <- rep(0, ncol(Y))
+  }
+
+  Ynow <- Y
+
+  for(k in 1:npc){
+    ## 'Power algorithm', Section 3 / Appendix C :
+    YnowGamma <- Ynow%*%Gamma
+    vold <- svd(Ynow, nu=0, nv=1)$v[,1]
+    u <- Ynow %*% vold
+    iter <- 1; reldiff <- tol+1
+    while(all(c(reldiff > tol, iter<=maxiter))){
+      w <- t(YnowGamma)%*%u
+      if(gridsearch){
+        gridmin <- which.min(sapply(alphagrid, gcv, w=w, m=m, lambda=lambda))
+        minalpha <- alphagrid[gridmin]
+      } else {
+        minalpha <- optimize(f=gcv, interval=c(lower.alpha, upper.alpha),
+          w=w, m=m, lambda=lambda)$minimum
+      }
+      # v = S(alpha)^-1 Y u = Gamma%*%(I + minalpha*Lambda)^-1 Gamma' Y u)
+      vnew <- Gamma%*%(w/(1+minalpha*lambda))
+
+      vnew <- vnew/sqrt(sum(vnew^2))
+      reldiff <- sum((vold-vnew)^2)/sum(vold^2)
+      iter <- iter +1
+      vold <- vnew
+      u <- Ynow %*% vold
+    } # end while(reldiff)
+    if(reldiff > tol){
+      warning("Not converged for SV ", k,
+        "; relative difference was ", format(reldiff),".")
     }
 
-    Ynow <- Y
+    U[,k] <- u/sqrt(sum(u^2))
+    V[,k] <- vnew
+    d[k]  <- sqrt(sum(u^2))
 
-    for(k in 1:npc){
-        ## 'Power algorithm', Section 3 / Appendix C :
-        YnowGamma <- Ynow%*%Gamma
-        vold <- svd(Ynow, nu=0, nv=1)$v[,1]
-        u <- Ynow %*% vold
-        iter <- 1; reldiff <- tol+1
-        while(all(c(reldiff > tol, iter<=maxiter))){
-            w <- t(YnowGamma)%*%u
-            if(gridsearch){
-                gridmin <- which.min(sapply(alphagrid, gcv, w=w, m=m, lambda=lambda))
-                minalpha <- alphagrid[gridmin]
-            } else {
-                minalpha <- optimize(f=gcv, interval=c(lower.alpha, upper.alpha),
-                        w=w, m=m, lambda=lambda)$minimum
-            }
-            # v = S(alpha)^-1 Y u = Gamma%*%(I + minalpha*Lambda)^-1 Gamma' Y u)
-            vnew <- Gamma%*%(w/(1+minalpha*lambda))
+    if(verbose){
 
-            vnew <- vnew/sqrt(sum(vnew^2))
-            reldiff <- sum((vold-vnew)^2)/sum(vold^2)
-            iter <- iter +1
-            vold <- vnew
-            u <- Ynow %*% vold
-        } # end while(reldiff)
-        if(reldiff > tol){
-            warning("Not converged for SV ", k,
-                    "; relative difference was ", format(reldiff),".")
-        }
+      layout(t(matrix(1:6, ncol=2)))
+      matlplot <- function(...) matplot(..., type="l", lty=1, col=1, lwd=.1)
 
-        U[,k] <- u/sqrt(sum(u^2))
-        V[,k] <- vnew
-        d[k]  <- sqrt(sum(u^2))
+      matlplot(t(Ynow), ylim=range(Ynow), main=bquote(Ynow[.(k)]), xlab="", ylab="", bty="n")
+      matlplot(t(U[,k, drop=FALSE]%*%t(V[,k, drop=FALSE]*d[k])),
+        ylim=range(Ynow), main=bquote((UDV^T)[.(k)]), xlab="", ylab="", bty="n")
+      matlplot(t(Ynow - U[,k, drop=FALSE]%*%t(V[,k, drop=FALSE]*d[k])),
+        ylim=range(Ynow), main=bquote(Ynow[.(k)] - (UDV^T)[.(k)]), xlab="", ylab="", bty="n")
 
-        if(verbose){
+      matlplot(t(Y), ylim=range(Y), main=bquote(Y), xlab="", ylab="", bty="n")
+      matlplot(t(U[,1:k, drop=FALSE]%*%(t(V[,1:k, drop=FALSE])*d[1:k])),
+        ylim=range(Y), main=bquote(Y[.(k)]), xlab="", ylab="", bty="n")
+      matlplot(t(Ynow - U[,k, drop=FALSE]%*%(t(V[,k, drop=FALSE])*d[k])),
+        ylim=range(Y), main=bquote(Y - Y[.(k)]), xlab="", ylab="", bty="n")
+    }
 
-            layout(t(matrix(1:6, ncol=2)))
-            matlplot <- function(...) matplot(..., type="l", lty=1, col=1, lwd=.1)
+    Ynow <- Ynow - U[, k, drop=FALSE] %*% (t(V[, k, drop=FALSE]) * d[k])
+    noisesv <- svd(Ynow, nu=0, nv=0)$d[1]
+    if(verbose){
+      cat("k:",k, "-- smooth:", d[k], "-- 'noise':", noisesv, "-- alpha:", minalpha, "\n")
+    }
+    if(noisesv > 1.1 * d[k]){
+      uhoh <- c(uhoh, k)
+    }
+  }# end for(k)
+  if(length(uhoh)) warning("First SV for remaining un-smooth signal larger than ",
+    "SV found for smooth signal for component(s) ", paste(uhoh, collapse=","))
 
-            matlplot(t(Ynow), ylim=range(Ynow), main=bquote(Ynow[.(k)]), xlab="", ylab="", bty="n")
-            matlplot(t(U[,k, drop=FALSE]%*%t(V[,k, drop=FALSE]*d[k])),
-                    ylim=range(Ynow), main=bquote((UDV^T)[.(k)]), xlab="", ylab="", bty="n")
-            matlplot(t(Ynow - U[,k, drop=FALSE]%*%t(V[,k, drop=FALSE]*d[k])),
-                    ylim=range(Ynow), main=bquote(Ynow[.(k)] - (UDV^T)[.(k)]), xlab="", ylab="", bty="n")
+  #     return(list(smooth=list(d=d, u=U, v=V),
+  #                     noise=svd(Ynow, nu=min(dim(Y))-npc, nv=min(dim(Y))-npc),
+  #                     mean=meanY))
+  scores <- U%*%(d*diag(length(d)))
 
-            matlplot(t(Y), ylim=range(Y), main=bquote(Y), xlab="", ylab="", bty="n")
-            matlplot(t(U[,1:k, drop=FALSE]%*%(t(V[,1:k, drop=FALSE])*d[1:k])),
-                    ylim=range(Y), main=bquote(Y[.(k)]), xlab="", ylab="", bty="n")
-            matlplot(t(Ynow - U[,k, drop=FALSE]%*%(t(V[,k, drop=FALSE])*d[k])),
-                    ylim=range(Y), main=bquote(Y - Y[.(k)]), xlab="", ylab="", bty="n")
-        }
-
-        Ynow <- Ynow - U[, k, drop=FALSE] %*% (t(V[, k, drop=FALSE]) * d[k])
-        noisesv <- svd(Ynow, nu=0, nv=0)$d[1]
-        if(verbose){
-            cat("k:",k, "-- smooth:", d[k], "-- 'noise':", noisesv, "-- alpha:", minalpha, "\n")
-        }
-        if(noisesv > 1.1 * d[k]){
-            uhoh <- c(uhoh, k)
-        }
-    }# end for(k)
-    if(length(uhoh)) warning("First SV for remaining un-smooth signal larger than ",
-                "SV found for smooth signal for component(s) ", paste(uhoh, collapse=","))
-
-#     return(list(smooth=list(d=d, u=U, v=V),
-#                     noise=svd(Ynow, nu=min(dim(Y))-npc, nv=min(dim(Y))-npc),
-#                     mean=meanY))
-    scores <- U%*%(d*diag(length(d)))
-
-    return(list(
-      Yhat= t(meanY + t(scores%*%t(V))),
-      scores=scores,
-      mu=meanY,
-      efunctions=V,
-      evalues=d^2,
-      npc=npc))
+  return(list(
+    Yhat= t(meanY + t(scores%*%t(V))),
+    scores=scores,
+    mu=meanY,
+    efunctions=V,
+    evalues=d^2,
+    npc=npc))
 
 }
 
