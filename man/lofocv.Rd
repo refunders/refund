@@ -4,8 +4,7 @@
 \alias{lofocv}
 \title{Leave-one-function-out cross-validation}
 \usage{
-lofocv(Y, X, S1, argvals = NULL, lamvec = NULL, constr = NULL,
-  maxlam = NULL)
+lofocv(Y, X, S1, argvals, lamvec = NULL, constr = NULL, maxlam = NULL)
 }
 \arguments{
 \item{Y}{matrix of responses, e.g. with columns corresponding to basis
@@ -14,6 +13,8 @@ function coefficients.}
 \item{X}{model matrix.}
 
 \item{S1}{penalty matrix.}
+
+\item{argvals}{values where the functions are evaluated}
 
 \item{lamvec}{vector of candidate smoothing parameter values.  If
 \code{NULL}, smoothing parameter is chosen by \code{\link{optimize}}.}
@@ -36,7 +37,7 @@ performs efficient leave-one-function-out cross-validation using
 Demmler-Reinsch orthogonalization to choose the smoothing parameter.
 }
 \author{
-Philip Reiss \email{phil.reiss@nyumc.org}
+Philip Reiss \email{phil.reiss@nyumc.org} and Lei Huang
 }
 \seealso{
 \code{\link{fosr}}, \code{\link{pwcv}}
