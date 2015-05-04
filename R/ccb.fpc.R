@@ -88,10 +88,6 @@ function(Y, argvals=NULL, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, s
   
   set.seed(10)
   
-  if(!is.null(argvals)) {
-    stop("argvals is not implemented!")
-  }
-  
   D = dim(Y)[2]   # size of grid
   I = dim(Y)[1]   # number of curves
 
@@ -113,7 +109,7 @@ function(Y, argvals=NULL, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, s
     Y.Boot = Y[boot.samp,]
 
     ## do decomposition for this sample; predict curves for full data
-    Fit.Iter = try(fpca.sc(Y = Y.Boot, Y.pred = Y, nbasis = nbasis, pve = pve, var = TRUE, simul = FALSE))
+    Fit.Iter = try(fpca.sc(Y = Y.Boot, Y.pred = Y, argvals = argvals, nbasis = nbasis, pve = pve, var = TRUE, simul = FALSE))
 
     ## save estimates and variances
     if(class(Fit.Iter) != "try-error"){

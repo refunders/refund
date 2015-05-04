@@ -273,7 +273,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     T1.max <- max(which(argvals <= argvals[D] - 0.25*T.len)) # right bound of narrower interval T1
     DIAG = (diag.G0 - diag(cov.hat))[T1.min :T1.max] # function values
     w2 <- quadWeights(argvals[T1.min:T1.max], method = integration) 
-    sigma2 <- max(sum(DIAG*w2) / w2, 0)  # cf. Yao et al. (2005, JASA), eq. (2)
+    sigma2 <- max(sum(DIAG*w2, na.rm = TRUE) / w2, 0)  # cf. Yao et al. (2005, JASA), eq. (2)
     ####  
     D.inv = diag(1/evalues)
     Z = efunctions
