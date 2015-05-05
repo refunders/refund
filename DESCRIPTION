@@ -3,13 +3,13 @@ Type: Package
 Title: developer version of refund: Regression with Functional Data
 Version: 0.3-3
 Date: 2015-03-03
-Authors@R: c(person("Ciprian", "Crainiceanu", role = "aut", email =
+Authors@R: c(person("Lei", "Huang", role = c("aut","cre"),
+    email = "huangracer@gmail.com"), person("Fabian", "Scheipl", role = "aut", email =
+    "fabian.scheipl@stat.uni-muenchen.de"), person("Jeff", "Goldsmith", role = "aut", email =
+    "jeff.goldsmith@columbia.edu"), person("Ciprian", "Crainiceanu", role = "aut", email =
     "ccrainic@jhsph.edu"), person("Philip", "Reiss", role = "aut", email =
-    "phil.reiss@nyumc.org"), person("Jeff", "Goldsmith", role = "aut", email =
-    "jeff.goldsmith@columbia.edu"), person("Lei", "Huang", role = c("aut","cre"),
-    email = "huangracer@gmail.com"), person("Lan", "Huo", role = "aut", email =
-    "lan.huo@nyumc.org"), person("Fabian", "Scheipl", role = "aut", email =
-    "fabian.scheipl@stat.uni-muenchen.de"), person("Bruce", "Swihart", role =
+    "phil.reiss@nyumc.org"), person("Lan", "Huo", role = "ctb", email =
+    "lan.huo@nyumc.org"), person("Bruce", "Swihart", role =
     "ctb", email = "bswihart@jhsph.edu"), person("Sonja", "Greven", role = "ctb"),
     person("Jaroslaw", "Harezlak", role="ctb"), person(c("Madan", "Gopal"), "Kundu",
     role="ctb"), person("Yihong", "Zhao", role="ctb"), person(c("Mathew", "W."), "McLean",

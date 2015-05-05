@@ -214,7 +214,7 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
     cv = NULL
     if (method == "OLS") {
         if (length(lambda) != 1 | cv1) {
-            lofo <- lofocv(respmat, X.sc %x% Bmat, S1 = pen[[1]],
+            lofo <- lofocv(respmat, X.sc %x% Bmat, S1 = pen[[1]], argvals = argvals,
                     lamvec = lambda, constr = constr, maxlam = maxlam)
             cv = if (is.null(lambda))
                         lofo$objective
