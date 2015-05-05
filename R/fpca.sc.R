@@ -55,7 +55,7 @@
 ##' one-step method that applies a bivariate smooth to the \eqn{y(s_1)y(s_2)}
 ##' values. This can be very slow. If set to \code{2} (the default), a two-step
 ##' method that obtains a naive covariance estimate which is then smoothed.
-##' @param integration quadrature method for numerical integration; only 
+##' @param integration quadrature method for numerical integration; only
 ##' \code{"trapezoidal"} is currently supported.
 ##' @return \item{Yhat}{FPC approximation (projection onto leading components)
 ##' of \code{Y.pred} if specified, or else of \code{Y}.} \item{scores}{\eqn{n
@@ -272,9 +272,10 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     T1.min <- min(which(argvals >= argvals[1] + 0.25*T.len)) # left bound of narrower interval T1
     T1.max <- max(which(argvals <= argvals[D] - 0.25*T.len)) # right bound of narrower interval T1
     DIAG = (diag.G0 - diag(cov.hat))[T1.min :T1.max] # function values
-    w2 <- quadWeights(argvals[T1.min:T1.max], method = integration) 
-    sigma2 <- max(sum(DIAG*w2, na.rm = TRUE) / w2, 0)  # cf. Yao et al. (2005, JASA), eq. (2)
-    ####  
+    w2 <- quadWeights(argvals[T1.min:T1.max], method = integration)
+    sigma2 <- max(weighted.mean(DIAG, w=w2, na.rm = TRUE), 0)
+
+    ####
     D.inv = diag(1/evalues)
     Z = efunctions
     Y.tilde = Y.pred - matrix(mu, I.pred, D, byrow = TRUE)
@@ -286,11 +287,11 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     crit.val = rep(0, I.pred)
     for (i.subj in 1:I.pred) {
         obs.points = which(!is.na(Y.pred[i.subj, ]))
-        if (sigma2 == 0 & length(obs.points) < npc) 
+        if (sigma2 == 0 & length(obs.points) < npc)
             stop("Measurement error estimated to be zero and there are fewer observed points than PCs; scores cannot be estimated.")
         Zcur = matrix(Z[obs.points, ], nrow = length(obs.points), ncol = dim(Z)[2])
-        ZtZ_sD.inv = solve(crossprod(Zcur) + sigma2 * D.inv)
-        scores[i.subj, ] = ZtZ_sD.inv %*% t(Zcur) %*% (Y.tilde[i.subj, obs.points])
+        scores[i.subj, ] = solve(crossprod(Zcur) + sigma2 * D.inv,
+          t(Zcur) %*% (Y.tilde[i.subj, obs.points]))
         Yhat[i.subj, ] = t(as.matrix(mu)) + scores[i.subj, ] %*% t(efunctions)
         if (var) {
             VarMats[[i.subj]] = sigma2 * Z %*% ZtZ_sD.inv %*% t(Z)
