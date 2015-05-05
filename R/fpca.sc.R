@@ -287,11 +287,11 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     crit.val = rep(0, I.pred)
     for (i.subj in 1:I.pred) {
         obs.points = which(!is.na(Y.pred[i.subj, ]))
-        if (sigma2 == 0 & length(obs.points) < npc)
+        if (sigma2 == 0 & length(obs.points) < npc) 
             stop("Measurement error estimated to be zero and there are fewer observed points than PCs; scores cannot be estimated.")
         Zcur = matrix(Z[obs.points, ], nrow = length(obs.points), ncol = dim(Z)[2])
-        scores[i.subj, ] = solve(crossprod(Zcur) + sigma2 * D.inv,
-          t(Zcur) %*% (Y.tilde[i.subj, obs.points]))
+        ZtZ_sD.inv = solve(crossprod(Zcur) + sigma2 * D.inv)
+        scores[i.subj, ] = ZtZ_sD.inv %*% t(Zcur) %*% (Y.tilde[i.subj, obs.points])
         Yhat[i.subj, ] = t(as.matrix(mu)) + scores[i.subj, ] %*% t(efunctions)
         if (var) {
             VarMats[[i.subj]] = sigma2 * Z %*% ZtZ_sD.inv %*% t(Z)
