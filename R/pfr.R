@@ -8,9 +8,14 @@
 #' This function is a wrapper for mgcv's \code{\link{gam}} and its siblings
 #' to fit models with a scalar (but not necessarily continuous) response.
 #' 
-#' @param formula a formula with special terms as for \code{\link{gam}},
-#' with additional special terms \code{\link{af}}(), \code{\link{lf}}(),
-#' \code{\link{re}}(), \code{\link{peer}}(), and \code{\link{fpc}}().
+#' @param formula a formula that could contain any of the following special terms: 
+#' \code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
+#' \code{\link{peer}()}, \code{\link{fpc}()}, or \code{\link{re}()};
+#' also \code{mgcv}'s \code{\link{s}()}, \code{\link{te}()}, or \code{\link{t2}()}.
+#' 
+# with special terms as for \code{\link{gam}},
+# with additional special terms \code{\link{af}}(), \code{\link{lf}}(),
+# \code{\link{re}}(), \code{\link{peer}}(), and \code{\link{fpc}}().
 #' @param fitter the name of the function used to estimate the model. Defaults
 #' to \code{\link{gam}} if the matrix of functional responses has less than 2e5
 #' data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})

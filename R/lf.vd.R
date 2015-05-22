@@ -18,10 +18,10 @@
 #'    where \eqn{N} is the number of subjects and \eqn{J} is the maximum number of time
 #'    points per subject. Most rows will have \code{NA} values in the right-most
 #'    columns, corresponding to unobserved time points.
-#' @param tind matrix (or vector) containing the time indices of evaluations of
+#' @param argvals matrix (or vector) containing the time indices of evaluations of
 #'    \eqn{X_i(t)}. If a matrix, it must be the same dimensionality as \code{X}; if a
 #'    vector, must be of length \code{ncol(X)}.
-#' @param Tind vector of values of \eqn{T_i}. Defaults to the \code{tind} value
+#' @param Tind vector of values of \eqn{T_i}. Defaults to the \code{argvals} value
 #'    corresponding to the last observation of \eqn{X_i(t)}.
 #' @param T.trans optional function applied to \code{Tind} to allow the interaction
 #'    to occur on a transformed scale, e.g. the log or quantile scale.
@@ -34,7 +34,7 @@
 #' @param basistype type of bivariate basis used. Corresponds to either \code{mgcv::s}
 #'    or \code{mgcv::te}. ``\code{te}" option is only allowed when
 #'    \code{domain="standardized"} and \code{interaction="nonparametric"}.
-#' @param rescale.unit logical, indicating whether the \code{tind} and {Tind}
+#' @param rescale.unit logical, indicating whether the \code{argvals} and {Tind}
 #'    indices should be rescaled to go from 0 to 1. Rescaling occurs after
 #'    \code{T.trans} is applied.
 #' @param splinepars optional arguments specifying options for representing
@@ -86,7 +86,7 @@
 #'    \item{data}{data used by the \code{call}, which includes the matrices indicated
 #'      by \code{tindname}, \code{Tindname}, and \code{LXname}}
 #'    \item{L}{the matrix of weights used for the integration}
-#'    \item{tindname}{the name used for the \code{tind} variable in the \code{formula}
+#'    \item{tindname}{the name used for the \code{argvals} variable in the \code{formula}
 #'      used by \code{mgcv::gam}}
 #'    \item{Tindname}{the name used for the \code{Tind} variable in the \code{formula}
 #'      used by \code{mgcv::gam}}
@@ -110,6 +110,7 @@ lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
 	n = nrow(X)
   J = ncol(X)
 	J.i <- apply(X, 1, function(x) max(which(!is.na(x))))
+	tind <- argvals
 	domain <- match.arg(domain)
 	interaction <- match.arg(interaction)
 	integration <- match.arg(integration)

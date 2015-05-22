@@ -66,7 +66,9 @@ a list with the following entries
 \description{
 This function defines the a variable-domain functional regression term
 for inclusion in an \code{mgcv::gam-formula} (or \code{bam} or
-\code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{fgam}}.
+\code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{pfr}}.
+These are functional predictors for which each function is observed over a
+domain of different width.
 The default is the ``untransformed" term,\eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
 where \eqn{X_i(t)} is a functional predictor of length \eqn{T_i} and \eqn{\beta(t,T_i)}
 is an unknown bivariate coefficient function. Lagged-domain and
@@ -126,7 +128,7 @@ Gellar, Jonathan E., Colantuoni, Elizabeth, Needham, Dale M., and
    Working Papers. Working Paper 261. http://biostats.bepress.com/jhubiostat/paper261
 }
 \seealso{
-\code{\link{fgam}}, \code{\link{lf}}, mgcv's
-   \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.
+\code{\link{pfr}}, \code{\link{lf}}, mgcv's
+   \code{\link{linear.functional.terms}}, \code{\link{pfr}} for examples.
 }
 

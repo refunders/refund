@@ -4,7 +4,7 @@
 \alias{Predict.matrix.peer.smooth}
 \title{mgcv-style constructor for prediction of PEER terms}
 \usage{
-Predict.matrix.peer.smooth(object, data)
+\method{Predict.matrix}{peer.smooth}(object, data)
 }
 \arguments{
 \item{object}{a \code{peer.smooth} object created by
