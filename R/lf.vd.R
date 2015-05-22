@@ -93,11 +93,11 @@
 #'    \item{LXname}{the name of the \code{by} variable used by \code{s} or \code{te}
 #'      in the \code{formula} for \code{mgcv::gam}}
 #' @export
-#' @author Jonathan E. Gellar <jgellar1@@jhu.edu>
-#' @references Gellar, Jonathan E., Colantuoni, Elizabeth, Needham, Dale M., and
-#'    Crainiceanu, Ciprian M (May 2014). Variable-Domain Functional Regression for Modeling
-#'    ICU Data. Johns Hopkins University, Dept. of Biostatistics
-#'    Working Papers. Working Paper 261. http://biostats.bepress.com/jhubiostat/paper261
+#' @author Jonathan E. Gellar <JGellar@@mathematica-mpr.com>
+#' @references Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
+#'    Ciprian M. Crainiceanu. Variable-Domain Functional Regression for Modeling
+#'    ICU Data. Journal of the American Statistical Association,
+#'    109(508):1425-1439, 2014.
 #' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's
 #'    \code{\link{linear.functional.terms}}, \code{\link{pfr}} for examples.
 
