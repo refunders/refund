@@ -445,10 +445,9 @@ plot.pffr <- function (x, ...)
 #'          \item \code{dim} the dimensionality of the effect
 #'          \item \code{main} the label of the smooth term (a short label, same as the one used in \code{summary.pffr})
 #' }}
-#' @references Chen H., Wang Y., Paik C.M., Choi A. (2012).
-#' A marginal approach to reduced-rank penalized spline smoothing for multilevel data.
-#' \emph{Journal of the American Statistical Association}, under revision.
-#' \url{http://www.columbia.edu/~yw2016/Marginal Spline6.pdf}
+#' @references Chen, H., Wang, Y., Paik, M.C., and Choi, A. (2013).
+#' A marginal approach to reduced-rank penalized spline smoothing with application to multilevel functional data.
+#' \emph{Journal of the American Statistical Association}, 101, 1216--1229.
 #' @method coef pffr
 #' @export
 #' @importFrom mgcv PredictMat get.var

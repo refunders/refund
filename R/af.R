@@ -2,27 +2,27 @@
 #'
 #' Defines a term \eqn{\int_{T}F(X_i(t),t)dt} for inclusion in an \code{mgcv::gam}-formula (or
 #' \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
-#' \code{\link{fgam}}, where \eqn{F(x,t)}$ is an unknown smooth bivariate function and \eqn{X_i(t)}
+#' \code{\link{fgam}}, where \eqn{F(x,t)} is an unknown smooth bivariate function and \eqn{X_i(t)}
 #' is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic tensor product
 #' B-spline with marginal second-order difference penalties for estimating \eqn{F(x,t)}.  The
-#' functional predictor must be fully observed on a regular grid
+#' functional predictor must be fully observed on a regular grid.
 #' @param X an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
 #' \eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}
 #' @param argvals matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
 #' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}
-#' @param xind Same as argvals. It will discard this argument in the next version of refund.
-#' @param basistype defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
-#' use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
-#' parameterization of tensor product splines (see \code{\link{t2}})
+#' @param xind Same as \code{argvals}. This argument will be discarded as of the next version of refund.
+#' @param basistype defaults to \code{\link[mgcv]{te}}, i.e. a tensor product spline to represent \eqn{F(x,t)}. Alternatively,
+#' use \code{\link[mgcv]{s}} for bivariate basis functions, or \code{\link[mgcv]{t2}} for an alternative
+#' parameterization of tensor product splines.
 #' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule for
 #' calculating entries in \code{L}. Alternatively and for non-equidistant grids, \code{"trapezoidal"}
-#' or \code{"riemann"}. \code{"riemann"} integration is always used if \code{L} is specified
+#' or \code{"riemann"}. \code{"riemann"} integration is always used if \code{L} is specified.
 #' @param splinepars optional arguments specifying options for representing and penalizing the
 #' function \eqn{F(x,t)}. Defaults to a cubic tensor product B-spline with marginal second-order
-#' difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 2), c(2, 2))}, see \code{\link{te}} or
-#' \code{\link{s}} for details
+#' difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 2), c(2, 2))}; see \code{\link[mgcv]{te}} or
+#' \code{\link[mgcv]{s}} for details
 #' @param presmooth logical; if true, the functional predictor is pre-smoothed prior to fitting; see
-#' \code{\link{smooth.basisPar}}
+#' \code{\link[fda]{smooth.basisPar}}
 #' @param Xrange numeric; range to use when specifying the marginal basis for the \emph{x}-axis.  It may
 #' be desired to increase this slightly over the default of \code{range(X)} if concerned about predicting
 #' for future observed curves that take values outside of \code{range(X)}
@@ -31,27 +31,24 @@
 #' \code{Xrange=c(0,1)}.  If \code{Qtransform=TRUE} and \code{presmooth=TRUE}, presmoothing is done prior
 #' to transforming the functional predictor
 #' @param L optional weight matrix for the linear functional
-#' @return A list with the following entries:
-#' \enumerate{
-#' \item \code{call} - a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
-#' constructed covariate and weight matrices.
-#' \item \code{argvals} - the \code{argvals} argument supplied to \code{af}
-#' \item \code{L}{ the  matrix of weights used for the integration
-#' \item \code{xindname}{ the name used for the functional predictor variable in the \code{formula} used by \code{mgcv}.}
-#' \item \code{tindname} - the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}
-#' \item \code{Lname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
-#' \item \code{presmooth} - the \code{presmooth} argument supplied to \code{af}
-#' \item \code{Qtranform} - the \code{Qtransform} argument supplied to \code{af}
-#' \item \code{Xrange} - the \code{Xrange} argument supplied to \code{af}
-#' \item \code{ecdflist} - a list containing one empirical cdf function from applying \code{\link{ecdf}}
-#' to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}
-#' \item \code{Xfd} - an \code{fd} object from presmoothing the functional predictors using
-#' \code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}.}
-#' }
+#' @return A list with components \item{call }{a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
+#' constructed covariate and weight matrices}
+#' \item{argvals}{the \code{argvals} argument supplied}
+#' \item{L}{the  matrix of weights used for the integration}
+#' \item{xindname}{the name used for the functional predictor variable in the \code{formula} used by \pkg{mgcv}}
+#' \item{tindname}{the name used for \code{argvals} variable in the \code{formula} used by \pkg{mgcv}}
+#' \item{Lname}{the name used for the \code{L} variable in the \code{formula} used by \pkg{mgcv}}
+#' \item{presmooth}{the \code{presmooth} argument supplied}
+#' \item{Qtranform}{the \code{Qtransform} argument supplied}
+#' \item{Xrange}{the \code{Xrange} argument supplied}
+#' \item{ecdflist}{a list containing one empirical cdf function from applying \code{\link{ecdf}}
+#' to each (possibly presmoothed) column of \code{X}.  Present only if \code{Qtransform=TRUE}}
+#' \item{Xfd}{an \code{fd} object from presmoothing the functional predictors using
+#' \code{\link[fda]{smooth.basisPar}}.  Present only if \code{presmooth=TRUE}.  See \code{\link[fda]{fd}}.}
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
-#' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
-#' pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
+#' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, 23(1),
+#' 249--269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 #' @seealso \code{\link{fgam}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
 #' \code{\link{fgam}} for examples
 #' @importFrom stats ecdf

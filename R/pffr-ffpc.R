@@ -10,7 +10,7 @@
 #' That is, since
 #' \deqn{\int X_i(s)\beta(t,s)ds = \sum^K_{k=1} \xi_{ik} \int \Phi_k(s) \beta(s,t) ds = \sum^K_{k=1} \xi_{ik} \tilde \beta_k(t),}
 #' the function-on-function term can be represented as a sum of \eqn{K} univariate functions \eqn{\tilde \beta_k(t)} in \eqn{t} each multiplied by the FPC
-#' loadings \eqn{\xi_{ik}}. The truncation parameter \eqn{K} is chosen as described in \code{\link{fpca.sc}}.
+#' scores \eqn{\xi_{ik}}. The truncation parameter \eqn{K} is chosen as described in \code{\link{fpca.sc}}.
 #' Using this instead of \code{ff()} can be beneficial if the covariance operator of the \eqn{X_i(s)}
 #' has low effective rank (i.e., if \eqn{K} is small). If the covariance operator of the \eqn{X_i(s)}
 #' is of (very) high rank, i.e., if \eqn{K} is large, \code{ffpc()} will not be very efficient.
@@ -115,10 +115,10 @@ ffpc <- function(X,
 #'
 #' @param object a fitted \code{pffr}-model
 #' @param type one of "fpc+surf", "surf" or "fpc": "surf" shows a perspective plot of the coefficient surface implied
-#'          by the estimated effect functions of the FPC loadings, "fpc" shows three plots:
+#'          by the estimated effect functions of the FPC scores, "fpc" shows three plots:
 #'          1) a scree-type plot of the estimated eigenvalues of the functional covariate, 2) the estimated eigenfunctions,
-#'          and 3) the estimated coefficient functions associated with the FPC loadings. Defaults to showing both.
-#' @param se.mult display estimated coefficient functions associated with the FPC loadings with plus/minus this number time the estimated standard error.
+#'          and 3) the estimated coefficient functions associated with the FPC scores. Defaults to showing both.
+#' @param se.mult display estimated coefficient functions associated with the FPC scores with plus/minus this number time the estimated standard error.
 #' Defaults to 2.
 #' @param pages  the number of pages over which to spread the output. Defaults to 1. (Irrelevant if \code{auto.layout=FALSE}.)
 #' @param ticktype see \code{\link[graphics]{persp}}.
@@ -200,7 +200,7 @@ ffpcplot <- function(object, type=c("fpc+surf", "surf", "fpc"), pages=1,
                         ylab = paste0("Estimated FPCs: ", trm$id), bty="n")
                 matplot(object$pffr$yind, betatilde[,rev(betatildemap[[i]])], type="l", lty=1,
                         ylim = range(betatilde.up[,betatildemap[[i]]], betatilde.lo[,betatildemap[[i]]]), col=npc:1,
-                        xlab = "", ylab = paste0("Effects of FPC loadings"), bty="n")
+                        xlab = "", ylab = paste0("Effects of FPC scores"), bty="n")
                 abline(h=0, col="grey", lwd=.5)
                 secol <- length(betatildemap[[i]])
                 for(j in rev(betatildemap[[i]])){

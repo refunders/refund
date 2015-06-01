@@ -52,13 +52,13 @@
 #'   penalties, i.e. \code{list(bs="ps", m=list(c(2, 1), c(2,1)))}. See
 #'   \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} in \pkg{mgcv} for details
 #' @param check.ident check identifiability of the model spec. See Details and
-#'   References. Defaults to TRUE.
+#'   References. Defaults to \code{TRUE}.
 #'
 #' @seealso \code{mgcv}'s \code{\link[mgcv]{linear.functional.terms}}
-#' @return a list containing \itemize{ \item \code{call} a "call" to
-#'   \code{\link[mgcv]{te}} (or \code{\link[mgcv]{s}}, \code{\link[mgcv]{t2}})
-#'   using the appropriately constructed covariate and weight matrices \item
-#'   \code{data} a list containing the necessary covariate and weight matrices }
+#' @return A list containing \item{call}{a "call" to
+#'   \code{\link[mgcv]{te}} (or \code{\link[mgcv]{s}} or \code{\link[mgcv]{t2}})
+#'   using the appropriately constructed covariate and weight matrices} 
+#'   \item{data}{a list containing the necessary covariate and weight matrices}
 #'
 #' @author Fabian Scheipl, Sonja Greven
 #' @references For background on \code{check.ident}:\cr Scheipl, F., & Greven,
