@@ -5,13 +5,13 @@
 #'    of functional random variables on a regular, equidistant grid. If the number of smooth SVs to
 #'    extract is not specified, the function hazards a guess for the appropriate number based
 #'    on the asymptotically optimal truncation threshold under the assumption of a low rank matrix
-#'    contaminated with i.i.d. Gaussian noise with unknown variance derived in Donoho, Gavish (2013).
-#'  Please note that Donoho, Gavish (2013) should be regarded as experimental for functional PCA, and will typically not work well if you have more observations than grid points.
+#'    contaminated with i.i.d. Gaussian noise with unknown variance derived in Gavish and Donoho (2014).
+#'  Please note that Gavish and Donoho (2014) should be regarded as experimental for functional PCA, and will typically not work well if you have more observations than grid points.
 #'
 #'    @param Y data matrix (rows: observations; columns: grid of eval. points)
 #'    @param argvals the argument values where functions are evaluated. Not implemented.
 #'    @param npc how many smooth SVs to try to extract, if \code{NA} (the default) the hard thresholding
-#'     rule of Donoho, Gavish (2013) is used (see Details, References).
+#'     rule of Gavish and Donoho (2014) is used (see Details, References).
 #'    @param center center \code{Y} so that its column-means are 0? Defaults to \code{TRUE}
 #'    @param maxiter how many iterations of the power algorithm to perform at most (defaults to 15)
 #'    @param tol convergence tolerance for power algorithm (defaults to 1e-4)
@@ -38,8 +38,8 @@
 #'     Functional principal components analysis via penalized rank one approximation.
 #'     \emph{Electronic Journal of Statistics}, 2, 678-695
 #'
-#'     Donoho, D.L., and Gavish, M. (2013). The Optimal Hard Threshold for Singular Values is 4/sqrt(3).
-#'     eprint arXiv:1305.5870. Available from \url{http://arxiv.org/abs/1305.5870}.
+##' Gavish, M., and Donoho, D. L.  (2014). The optimal hard threshold for
+##' singular values is 4/sqrt(3).  \emph{IEEE Transactions on Information Theory}, 60(8), 5040--5053.
 #'    @examples
 #'  ## as in Sec. 6.2 of Huang, Shen, Buja (2008):
 #'  set.seed(2678695)
@@ -103,7 +103,7 @@ fpca.ssvd <- function(Y, argvals = NULL, npc = NA, center = TRUE, maxiter = 15,
   if(!is.numeric(npc)) stop("Invalid <npc>.")
   if(npc<1 | npc>min(m,n)) stop("Invalid <npc>.")
   if(verbose){
-    cat("Using ", npc , "smooth components based on Donoho/Gavish (2013).\n")
+    cat("Using ", npc , "smooth components based on Gavish and Donoho (2014).\n")
   }
 
   if(!is.numeric(alphagrid)) stop("Invalid <alphagrid>.")
@@ -217,7 +217,7 @@ fpca.ssvd <- function(Y, argvals = NULL, npc = NA, center = TRUE, maxiter = 15,
 
 
 getNPC.DonohoGavish <- function(X){
-  # use Donoho, Gavish (2013) for estimating suitable number of sv's to extract:
+  # use Gavish and Donoho (2014) for estimating suitable number of sv's to extract:
 
   n <- nrow(X)
   m <- ncol(X)

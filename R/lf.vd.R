@@ -92,11 +92,10 @@
 #'      in the \code{formula} for \code{mgcv::gam}}
 #' @export
 #' @author Jonathan E. Gellar <jgellar1@@jhu.edu>
-#' @references Gellar, Jonathan E., Colantuoni, Elizabeth, Needham, Dale M., and
-#'    Crainiceanu, Ciprian M (May 2014). Variable-Domain Functional Regression for Modeling
-#'    ICU Data. Johns Hopkins University, Dept. of Biostatistics
-#'    Working Papers. Working Paper 261. http://biostats.bepress.com/jhubiostat/paper261
-#' @seealso \code{\link{fgam}}, \code{\link{lf}}, mgcv's
+#' @references Gellar, J. E., Colantuoni, E., Needham, D. M., and
+#'    Crainiceanu, C. M. (2014). Variable-domain functional regression for modeling
+#'    ICU data. \emph{Journal of the American Statistical Association}, 109, 1425--1439.
+#' @seealso \code{\link{lf}}, mgcv's
 #'    \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.
 
 lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,

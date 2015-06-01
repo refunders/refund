@@ -1,7 +1,7 @@
 #' Functional Generalized Additive Models
 #'
 #' Implements functional generalized additive models for functional and scalar covariates and scalar responses.
-#' Additionally implements functional linear models.  This function is a wrapper for mgcv's \code{\link{gam}}
+#' Additionally implements functional linear models.  This function is a wrapper for mgcv's \code{\link[mgcv]{gam}}
 #' and its siblings to fit models of the general form
 #' \deqn{g(E(Y_i)) = \beta_0 + \int_{T_1} F(X_{i1},t)dt+ \int_{T_2} \beta(t)X_{i2}dt + f(z_{i1}) + f(z_{i2}, z_{i3}) + \ldots}
 #' with a scalar (but not necessarily continuous) response Y, and link function g

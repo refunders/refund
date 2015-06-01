@@ -75,7 +75,7 @@
 ##' @param argvals matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
 ##' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}
 ##' @param comm.pen logical value indicating whether common penalty for all the
-##' components of regression function. Default is TRUE.
+##' components of regression function. Default is \code{TRUE}.
 ##' @param pentype type of penalty: either decomposition based penalty
 ##' (\code{'DECOMP'}) or ridge (\code{'RIDGE'}) or second-order difference
 ##' penalty (\code{'D2'}) or any user defined penalty (\code{'USER'}). For

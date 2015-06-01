@@ -10,7 +10,7 @@
 ##'
 ##' @param Y data matrix (rows: observations; columns: grid of eval. points)
 ##' @param npc how many smooth SVs to try to extract. If \code{NA} (the
-##' default), the hard thresholding rule of Donoho and Gavish (2013) is used.
+##' default), the hard thresholding rule of Gavish and Donoho (2014) is used.
 ##' Application of this rule to functional PCA should be regarded as
 ##' experimental.
 ##' @param center center \code{Y} so that its column-means are 0? Defaults to
@@ -35,9 +35,8 @@
 ##' covariance estimation for high-dimensional functional data. (submitted)
 ##' \url{http://arxiv.org/abs/1306.5718}.
 ##'
-##' Donoho, D.L. and Gavish, M. (2013). The optimal hard threshold for singular
-##' values is 4/sqrt(3).  eprint arXiv:1305.5870. Available from
-##' \url{http://arxiv.org/abs/1305.5870}.
+##' Gavish, M., and Donoho, D. L.  (2014). The optimal hard threshold for
+##' singular values is 4/sqrt(3).  \emph{IEEE Transactions on Information Theory}, 60(8), 5040--5053.
 ##' @examples
 ##'
 ##'   #### settings

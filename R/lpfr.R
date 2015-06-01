@@ -1,7 +1,7 @@
 ##' Longitudinal penalized functional regression
 ##'
 ##' Implements longitudinal penalized functional regression (Goldsmith et al.,
-##' 2010) for generalized linear functional models with scalar outcomes and
+##' 2012) for generalized linear functional models with scalar outcomes and
 ##' subject-specific random intercepts.
 ##'
 ##' Functional predictors are entered as a matrix or, in the case of multiple
