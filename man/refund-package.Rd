@@ -13,11 +13,11 @@ Methods for regression with functional data. Various approaches to regression wi
 
 \author{
 \emph{Authors:}
-Lei Huang \email{huangracer@gmail.com}, Fabian Scheipl \email{fabian.scheipl@stat.uni-muenchen.de}, Jeff Goldsmith \email{jeff.goldsmith@columbia.edu},  Ciprian Crainiceanu \email{ccrainic@jhsph.edu}, Philip Reiss \email{phil.reiss@nyumc.org}.
+Lei Huang \email{huangracer@gmail.com}, Fabian Scheipl \email{fabian.scheipl@stat.uni-muenchen.de}, Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, Jonathan Gellar \email{jgellar1@jhu.edu}, Jaroslaw Harezlak, Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Bruce Swihart \email{bswihart@jhsph.edu}, Luo Xiao \email{lxiao@jhsph.edu}, Ciprian Crainiceanu \email{ccrainic@jhsph.edu}, Philip Reiss \email{phil.reiss@nyumc.org}.
 
 
 \emph{Contributors:}
-Lan Huo, Bruce Swihart, Sonja Greven, Jaroslaw Harezlak, Madan Gopal Kundu, Yihong Zhao, Mathew W. McLean, Luo Xiao, Jonathan Gellar
+Sonja Greven, Lan Huo, Madan Gopal Kundu
 
 \emph{Maintainer:} Lei Huang \email{huangracer@gmail.com}
 }
