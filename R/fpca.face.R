@@ -62,7 +62,7 @@
 ##' @param control see \code{\link[stats]{optim}}
 ##' @return a list like the returned object from \code{\link{fpca.sc}}, with
 ##' entries \code{Yhat}, the smoothed trajectories, \code{scores}, the
-##' estimated FPC loadings, \code{mu}, the column means of \code{Y} (or a
+##' estimated FPC scores, \code{mu}, the column means of \code{Y} (or a
 ##' vector of zeroes if \code{!center}), \code{efunctions}, the estimated
 ##' smooth FPCs (note that these are orthonormal vectors, not evaluations of
 ##' orthonormal functions...), \code{evalues}, their associated eigenvalues,
@@ -136,7 +136,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   I <- data_dim[1] ## number of subjects
   J <- data_dim[2] ## number of obs per function
 
-  if(is.null(argvals))  argvals <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
+  if(is.null(argvals))  argvals <- seq(0, 1, length=J) ## if NULL, assume equally spaced
 
   meanX <- rep(0,J)
   if(center) {##center the functions

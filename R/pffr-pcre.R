@@ -1,6 +1,6 @@
 #' mgcv-style constructor for PC-basis functional random effects
 #'
-#' Sets up design matrix for functional random effects based on the PC loadings
+#' Sets up design matrix for functional random effects based on the PC scores
 #' of the covariance operator of the random effect process.
 #' See \code{\link[mgcv]{smooth.construct.re.smooth.spec}} for more details on \code{mgcv}-style smoother specification
 #' and \code{\link{pcre}} for the corresponding \code{pffr()}-formula wrapper.

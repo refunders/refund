@@ -25,7 +25,7 @@
 #'    @param verbose generate graphical summary of progress and diagnostic messages?
 #'        defaults to \code{FALSE}
 #'    @return a list like the returned object from \code{\link{fpca.sc}},  with entries
-#'    \code{Yhat}, the smoothed trajectories, \code{scores}, the estimated FPC loadings, \code{mu},
+#'    \code{Yhat}, the smoothed trajectories, \code{scores}, the estimated FPC scores, \code{mu},
 #'    the column means of \code{Y} (or a vector of zeroes if \code{!center}),  \code{efunctions},
 #'    the estimated smooth FPCs (note that these are orthonormal vectors, not evaluations of orthonormal functions!), \code{evalues}, their associated eigenvalues, and \code{npc}, the
 #'     number of smooth components that were extracted.

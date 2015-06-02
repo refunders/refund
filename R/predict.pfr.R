@@ -8,7 +8,7 @@ predict.pfr <- function(object, new.data=NULL, levels=NULL, ...){
   }else{
     ## if new.data is not null, then we need to do a few parsing steps and calculate predictions.
     par <- parse.predict.pfr(object, new.data)
-    ## prep new.data for matrix multiplication; calculate subject specific scores and loadings for funcs.new
+    ## prep new.data for matrix multiplication; calculate subject specific scores and scores for funcs.new
     ## pre      <- with(par,preprocess.pfr(subj=subj.new,
     ##                                     covariates=covariates.new, funcs=funcs.old, kz=kz.old, kb=kb.old,
     ##                                     nbasis=nbasis.old,
