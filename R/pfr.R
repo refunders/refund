@@ -258,40 +258,8 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   res.smooth <- if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$smooth
   } else res$smooth
+  names(res.smooth) <- sapply(res.smooth, function(x) x$label)
   
-  trmmap <- newtrmstrings
-  names(trmmap) <- names(terms)
-  labelmap <- as.list(trmmap)
-  names(trmmap) <- names(terms)
-  
-  lbls <- sapply(res.smooth, function(x) x$label)
-  if (length(where.par)) {
-    for (w in where.par) labelmap[[w]] <- {
-      where <- sapply(res.smooth, function(x) x$by) == names(labelmap)[w]
-      sapply(res.smooth[where], function(x) x$label)
-    }
-    labelmap[-c(where.par)] <- lbls[pmatch(sapply(labelmap[-c(where.par)], function(x) {
-      tmp <- eval(parse(text = x))
-      if (is.list(tmp)) {
-        return(tmp$label)
-      } else {
-        return(x)
-      }
-    }), lbls)]
-  } else {
-    labelmap[1:length(labelmap)] <- lbls[pmatch(sapply(labelmap, function(x) {
-      tmp <- eval(parse(text = x))
-      if (is.list(tmp)) {
-        return(tmp$label)
-      } else {
-        return(x)
-      }
-    }), lbls)]
-  }
-  if (any(nalbls <- sapply(labelmap, function(x) any(is.na(x))))) {
-    labelmap[nalbls] <- trmmap[nalbls]
-  }
-  names(res.smooth) <- lbls
   if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$smooth <- res.smooth
   } else {
@@ -302,8 +270,10 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   for (i in 1:length(specials))
     termtype[specials[[i]]-1] <- names(specials)[i]
   
-  ret <- list(formula = formula, termmap = trmmap, labelmap = labelmap, 
+  ret <- list(formula = formula,
+              #termmap = trmmap, labelmap = labelmap, 
               responsename = responsename, nobs = nobs,
+              termnames = names(terms),
               termtype = termtype, datameans=datameans, ft = fterms)
   if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$pfr <- ret
