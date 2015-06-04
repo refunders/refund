@@ -21,9 +21,9 @@
 #' @param argvals matrix (or vector) containing the time indices of evaluations of
 #'    \eqn{X_i(t)}. If a matrix, it must be the same dimensionality as \code{X}; if a
 #'    vector, must be of length \code{ncol(X)}.
-#' @param vd vector of values containing the domain width, \eqn{T_i}. Defaults
-#'    to the \code{argvals} value corresponding to the last observation of \eqn{X_i(t)}.
-#' @param T.trans optional function applied to \code{vd} to allow the interaction
+#' @param Tind vector of values of \eqn{T_i}. Defaults to the \code{argvals} value
+#'    corresponding to the last observation of \eqn{X_i(t)}.
+#' @param T.trans optional function applied to \code{Tind} to allow the interaction
 #'    to occur on a transformed scale, e.g. the log or quantile scale.
 #' @param domain defines the domain for each function \eqn{X_i(t)}; see Details.
 #' @param interaction defines the type of interaction between \eqn{t} and \eqn{T_i};
@@ -34,7 +34,7 @@
 #' @param basistype type of bivariate basis used. Corresponds to either \code{mgcv::s}
 #'    or \code{mgcv::te}. ``\code{te}" option is only allowed when
 #'    \code{domain="standardized"} and \code{interaction="nonparametric"}.
-#' @param rescale.unit logical, indicating whether the \code{argvals} and {vd}
+#' @param rescale.unit logical, indicating whether the \code{argvals} and {Tind}
 #'    indices should be rescaled to go from 0 to 1. Rescaling occurs after
 #'    \code{T.trans} is applied.
 #' @param splinepars optional arguments specifying options for representing
@@ -88,7 +88,7 @@
 #'    \item{L}{the matrix of weights used for the integration}
 #'    \item{tindname}{the name used for the \code{argvals} variable in the \code{formula}
 #'      used by \code{mgcv::gam}}
-#'    \item{Tindname}{the name used for the \code{vd} variable in the \code{formula}
+#'    \item{Tindname}{the name used for the \code{Tind} variable in the \code{formula}
 #'      used by \code{mgcv::gam}}
 #'    \item{LXname}{the name of the \code{by} variable used by \code{s} or \code{te}
 #'      in the \code{formula} for \code{mgcv::gam}}
@@ -99,133 +99,149 @@
 #'    ICU Data. Journal of the American Statistical Association,
 #'    109(508):1425-1439, 2014.
 #' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's
-#'    \code{\link{linear.functional.terms}}, \code{\link{pfr}} for examples.
+#'    \code{\link{linear.functional.terms}}.
+#' @examples
+#'   data(sofa)
+#'   fit.vd1 <- pfr(death ~ lf.vd(SOFA) + age + los, family="binomial",
+#'                  data=sofa)
+#'   fit.vd2 <- pfr(death ~ lf.vd(SOFA, domain="lagged") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd3 <- pfr(death ~ lf.vd(SOFA, domain="standardized") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd4 <- pfr(death ~ lf.vd(SOFA, domain="standardized", basistype="te")
+#'                                + age + los,
+#'                  family="binomial", data=sofa)
+#'   ests <- lapply(1:4, function(i) {
+#'     est.i <- coef(get(paste0("fit.vd", i)))
+#'     est.i[est.i$SOFA.tmat<=est.i$SOFA.Tmat,]
+#'   })
+#'   
+#' 
 
-lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
-	T.trans=identity, domain=c("untransformed", "lagged", "standardized"),
-	interaction=c("nonparametric", "none", "linear", "quadratic"),
-	integration = c("simpson", "trapezoidal", "riemann"),
-	basistype=c("s","te","t2"), rescale.unit = TRUE, splinepars = NULL) {
-	
-	n = nrow(X)
+lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), Tind=NULL,
+                  T.trans=identity, domain=c("untransformed", "lagged", "standardized"),
+                  interaction=c("nonparametric", "none", "linear", "quadratic"),
+                  integration = c("simpson", "trapezoidal", "riemann"),
+                  basistype=c("s","te","t2"), rescale.unit = TRUE, splinepars = NULL) {
+  
+  n = nrow(X)
   J = ncol(X)
-	J.i <- apply(X, 1, function(x) max(which(!is.na(x))))
-	tind <- argvals
-  Tind <- vd
-	domain <- match.arg(domain)
-	interaction <- match.arg(interaction)
-	integration <- match.arg(integration)
-	basistype <- match.arg(basistype)
-	tindname <- paste(deparse(substitute(X)), ".tmat", sep = "")
-	Tindname <- paste(deparse(substitute(X)), ".Tmat", sep = "")
-	LXname <- paste("L.", deparse(substitute(X)), sep = "")
-	splinefun <- as.symbol(basistype)
-	frmls <- if (is.null(splinepars)) {
-		NULL
-	} else {
-		frmls <- formals(getFromNamespace(deparse(splinefun), ns = "mgcv"))
-		modifyList(frmls[names(frmls) %in% names(splinepars)], 
-	        splinepars)
-	}
-	
-	# Check domain/interaction/basis compatability
-	if (domain %in% c("untransformed","lagged")) {
-		if (interaction!="nonparametric") {
-			stop("Untransformed and lagged domains require nonparametric interactions.")
-		} else if (basistype %in% c("te","ti","t2")) {
-			stop("Tensor product smooths are not supported for non-rectangular domains.")
-		} else if (!is.null(splinepars)) {
-			if (!is.null(splinepars$bs)) {
-				if (!(splinepars$bs %in% c("ts","tp"))) {
-					stop("Basis not supported for non-rectangular domains.")
-				}
-			}
-		}
-	} else if (interaction!="nonparametric" & basistype %in% c("te","ti","t2")) {
-		stop("Tensor product smooths are not allowed for parametric interactions.")
-	}
-	
-	# Create index matrices
-	if (is.null(dim(tind))) {
-		tind <- t(tind)
-		stopifnot(ncol(tind) == J)
-		if (nrow(tind) == 1) {
-			tind <- matrix(as.vector(tind), nrow = n, ncol = J, 
-				byrow = T)
-		}
-		stopifnot(nrow(tind) == n)
-	}
-	if (is.null(Tind)) 
-		Tind <- sapply(1:nrow(X), function(i) tind[i,max(which(!is.na(X[i,])))])
-	Tind <- T.trans(Tind)
+  J.i <- apply(X, 1, function(x) max(which(!is.na(x))))
+  domain <- match.arg(domain)
+  interaction <- match.arg(interaction)
+  integration <- match.arg(integration)
+  basistype <- match.arg(basistype)
+  tindname <- paste(deparse(substitute(X)), ".tmat", sep = "")
+  Tindname <- paste(deparse(substitute(X)), ".Tmat", sep = "")
+  LXname <- paste("L.", deparse(substitute(X)), sep = "")
+  splinefun <- as.symbol(basistype)
+  frmls <- if (is.null(splinepars)) {
+    NULL
+  } else {
+    frmls <- formals(getFromNamespace(deparse(splinefun), ns = "mgcv"))
+    modifyList(frmls[names(frmls) %in% names(splinepars)], 
+               splinepars)
+  }
+  
+  # Check domain/interaction/basis compatability
+  if (domain %in% c("untransformed","lagged")) {
+    if (interaction!="nonparametric") {
+      stop("Untransformed and lagged domains require nonparametric interactions.")
+    } else if (basistype %in% c("te","ti","t2")) {
+      stop("Tensor product smooths are not supported for non-rectangular domains.")
+    } else if (!is.null(splinepars)) {
+      if (!is.null(splinepars$bs)) {
+        if (!(splinepars$bs %in% c("ts","tp"))) {
+          stop("Basis not supported for non-rectangular domains.")
+        }
+      }
+    }
+  } else if (interaction!="nonparametric" & basistype %in% c("te","ti","t2")) {
+    stop("Tensor product smooths are not allowed for parametric interactions.")
+  }
+  
+  # Create index matrices
+  if (is.null(dim(argvals))) {
+    argvals <- t(argvals)
+    stopifnot(ncol(argvals) == J)
+    if (nrow(argvals) == 1) {
+      argvals <- matrix(as.vector(argvals), nrow = n, ncol = J, 
+                        byrow = T)
+    }
+    stopifnot(nrow(argvals) == n)
+  }
+  if (is.null(Tind)) 
+    Tind <- sapply(1:nrow(X), function(i) argvals[i,max(which(!is.na(X[i,])))])
+  Tind <- T.trans(Tind)
   if (is.null(dim(Tind))) {
-		Tind <- t(Tind)
-		stopifnot(ncol(Tind) == n)
-		if (nrow(Tind) == 1) {
-			Tind <- matrix(as.vector(Tind), nrow = n, ncol = J)
-		}
-		stopifnot(nrow(tind) == n)
-	}
-	if (rescale.unit) {
-		tind <- (tind-min(tind))/(max(tind)-min(tind))
-		Tind <- (Tind-min(Tind))/(max(Tind)-min(Tind))
-	}
-	
-	# Process functional predictor
-	if (domain=="standardized") {
-		X <- t(apply(X, 1, function(x) {
-			J.i <- sum(!is.na(x))
-			if (J.i==1) {
-				rep(x[1], J)
-			} else {
-				approx(x=seq(0,1,length=J.i), y=x[1:J.i],
-							xout=seq(0,1,length=J))$y
-			}
-		}))
-		L <- getL(tind, integration=integration)
-		LX <- L*X
-	} else {
-		L <- getL(tind, integration=integration, n.int=J.i)
-		LX <- L*X
-		if (domain=="lagged") {
-			LX <- t(apply(LX, 1, function(x) {
-				c(rep(NA,sum(is.na(x))), x[!is.na(x)])
-			}))
-		}
-		LX[is.na(LX)] <- 0
-	}
-	
-	if (interaction=="nonparametric") {
-		data <- list(tind, Tind, LX)
-		names(data) <- c(tindname, Tindname, LXname)
-		call <- as.call(c(list(splinefun),
-						as.symbol(substitute(tindname)),
-						as.symbol(substitute(Tindname)),
-						by=as.symbol(substitute(LXname)), frmls))
-	} else {
-		data <- list(tind, LX)
-		names(data) <- c(tindname, LXname)
-		call <- as.call(c(list(splinefun), as.symbol(substitute(tindname)),
-						by=as.symbol(substitute(LXname)), frmls))		
-		if (interaction %in% c("linear","quadratic")) {
-			LX.lin <- LX * Tind
-			LXname.lin <- paste0(LXname, ".lin")
-			data[[LXname.lin]] <- LX.lin
-			call <- call("+", call, as.call(c(list(splinefun), as.symbol(substitute(tindname)),
-						by=as.symbol(substitute(LXname.lin)), frmls)))
-		}
-		if (interaction == "quadratic") {
-			LX.qud <- LX * Tind^2
-			LXname.qud <- paste0(LXname, ".qud")
-			data[[LXname.qud]] <- LX.qud
-			call <- call("+", call, as.call(c(list(splinefun), as.symbol(substitute(tindname)),
-						by=as.symbol(substitute(LXname.qud)), frmls)))
-		}
-	}
-	
-	res <- list(call = call, data = data, L = L,
+    Tind <- t(Tind)
+    stopifnot(ncol(Tind) == n)
+    if (nrow(Tind) == 1) {
+      Tind <- matrix(as.vector(Tind), nrow = n, ncol = J)
+    }
+    stopifnot(nrow(argvals) == n)
+  }
+  if (rescale.unit) {
+    argvals <- (argvals-min(argvals))/(max(argvals)-min(argvals))
+    Tind <- (Tind-min(Tind))/(max(Tind)-min(Tind))
+  }
+  
+  # Process functional predictor
+  if (domain=="standardized") {
+    X <- t(apply(X, 1, function(x) {
+      J.i <- sum(!is.na(x))
+      if (J.i==1) {
+        rep(x[1], J)
+      } else {
+        approx(x=seq(0,1,length=J.i), y=x[1:J.i],
+               xout=seq(0,1,length=J))$y
+      }
+    }))
+    L <- getL(argvals, integration=integration)
+    LX <- L*X
+  } else {
+    L <- getL(argvals, integration=integration, n.int=J.i)
+    LX <- L*X
+    if (domain=="lagged") {
+      LX <- t(apply(LX, 1, function(x) {
+        c(rep(NA,sum(is.na(x))), x[!is.na(x)])
+      }))
+    }
+    LX[is.na(LX)] <- 0
+  }
+  
+  if (interaction=="nonparametric") {
+    data <- list(argvals, Tind, LX)
+    names(data) <- c(tindname, Tindname, LXname)
+    call <- as.call(c(list(splinefun),
+                      as.symbol(substitute(tindname)),
+                      as.symbol(substitute(Tindname)),
+                      by=as.symbol(substitute(LXname)), frmls))
+  } else {
+    data <- list(argvals, LX)
+    names(data) <- c(tindname, LXname)
+    call <- as.call(c(list(splinefun), as.symbol(substitute(tindname)),
+                      by=as.symbol(substitute(LXname)), frmls))    
+    if (interaction %in% c("linear","quadratic")) {
+      stop("Linear and quadratic interactions are not currently supported... stay tuned")
+      LX.lin <- LX * Tind
+      LXname.lin <- paste0(LXname, ".lin")
+      data[[LXname.lin]] <- LX.lin
+      call <- call("+", call, as.call(c(list(splinefun), as.symbol(substitute(tindname)),
+                                        by=as.symbol(substitute(LXname.lin)), frmls)))
+    }
+    if (interaction == "quadratic") {
+      LX.qud <- LX * Tind^2
+      LXname.qud <- paste0(LXname, ".qud")
+      data[[LXname.qud]] <- LX.qud
+      call <- call("+", call, as.call(c(list(splinefun), as.symbol(substitute(tindname)),
+                                        by=as.symbol(substitute(LXname.qud)), frmls)))
+    }
+  }
+  
+  res <- list(call = call, data = data, L = L,
               tindname = tindname, Tindname=Tindname, LXname = LXname)
-	return(res)
+  return(res)
 }
 
 
@@ -233,33 +249,33 @@ lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
 #' 
 #' @keywords internal
 
-getL <- function(tind, integration, n.int=NULL) {
-	nt <- ncol(tind)
-	if (is.null(n.int)) {n.int=rep(nt,nrow(tind))}
-	L <- t(sapply(1:nrow(tind), function(i) {
-	# L <- t(sapply(1:2, function(i) {
-		nt.i <- n.int[i]
-		if (nt.i==1) {
-			c(1,rep(0,nt-1))
-		} else {
-			tind.i <- tind[i,1:nt.i]
-			L.i <- switch(integration, simpson = {
-					((tind.i[nt.i] - tind.i[1])/nt.i)/3 * c(1, rep(c(4, 
-					2), length = nt.i - 2), 1)
-			}, trapezoidal = {
-				diffs <- diff(tind.i)
-				if (length(diffs)>1) {
-					0.5 * c(diffs[1], filter(diffs, filter=c(1,1))[-(nt.i-1)],
-							diffs[(nt.i-1)])
-				} else {
-					rep(0.5*diffs,2)
-				}
-			}, riemann = {
-				diffs <- diff(tind.i)
-				c(mean(diffs), diffs)
-			})
-			c(L.i, rep(0,nt-nt.i))/sum(L.i)
-		}
-	}))
-	L
+getL <- function(argvals, integration, n.int=NULL) {
+  nt <- ncol(argvals)
+  if (is.null(n.int)) {n.int=rep(nt,nrow(argvals))}
+  L <- t(sapply(1:nrow(argvals), function(i) {
+    # L <- t(sapply(1:2, function(i) {
+    nt.i <- n.int[i]
+    if (nt.i==1) {
+      c(1,rep(0,nt-1))
+    } else {
+      argvals.i <- argvals[i,1:nt.i]
+      L.i <- switch(integration, simpson = {
+        ((argvals.i[nt.i] - argvals.i[1])/nt.i)/3 * c(1, rep(c(4, 
+                                                               2), length = nt.i - 2), 1)
+      }, trapezoidal = {
+        diffs <- diff(argvals.i)
+        if (length(diffs)>1) {
+          0.5 * c(diffs[1], filter(diffs, filter=c(1,1))[-(nt.i-1)],
+                  diffs[(nt.i-1)])
+        } else {
+          rep(0.5*diffs,2)
+        }
+      }, riemann = {
+        diffs <- diff(argvals.i)
+        c(mean(diffs), diffs)
+      })
+      c(L.i, rep(0,nt-nt.i))/sum(L.i)
+    }
+  }))
+  L
 }

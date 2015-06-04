@@ -15,7 +15,7 @@
 #' #TODO: see pfr 
 #' @export
 coefficients.pfr <- function(object, which, n=100, n2=40, se=TRUE, 
-                             seWithMean=TRUE, ...){
+                             seWithMean=TRUE, exclude=FALSE, ...){
   if (missing(which)) {
     which <- seq_along(object$smooth)
   } 
@@ -36,7 +36,8 @@ coefficients.pfr <- function(object, which, n=100, n2=40, se=TRUE,
     coef[[i]]$value <- drop(plotdata$X %*% object$coefficients[first:last])
     
     # ctrl-c-v from plot.mgcv.smooth :
-    if (!is.null(plotdata$exclude)) coef[[i]]$value[plotdata$exclude] <- NA
+    if (exclude & !is.null(plotdata$exclude))
+      coef[[i]]$value[plotdata$exclude] <- NA
     if (se && plotdata$se) { ## get standard errors for fit
       ## test whether mean variability to be added to variability (only for centred terms)
       if (seWithMean && attr(object$smooth[[i]], "nCons") > 0) {
@@ -57,7 +58,7 @@ coefficients.pfr <- function(object, which, n=100, n2=40, se=TRUE,
                                object$Vp[first:last, first:last, drop=FALSE]) * 
                               plotdata$X)))
       }
-      if (!is.null(plotdata$exclude)) {
+      if (exclude & !is.null(plotdata$exclude)) {
         coef[[i]]$se[plotdata$exclude] <- NA
       }
     }
