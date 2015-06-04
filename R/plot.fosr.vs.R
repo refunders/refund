@@ -2,10 +2,7 @@
 #' 
 #' Given a "\code{\link{fosr.vs}}" object, produces a figure of estimated coefficient functions.
 #'
-#' @name plot.fosr.vs
-#' @usage ## S3 method for class 'fosr.vs' 
-#' plot(object, ...)
-#' @param object an object of class "\code{\link{fosr.vs}}".
+#' @param x an object of class "\code{\link{fosr.vs}}".
 #' @param ... additional arguments.
 #' 
 #' @return a figure of estimated coefficient functions.
@@ -16,7 +13,7 @@
 #' @export
 #'
 #' @examples
-#' ## Not run:
+#' \dontrun{
 #' I = 100
 #' p = 20
 #' D = 50
@@ -49,14 +46,14 @@
 #' data$Y = Yi.obs
 #' fit.mcp = fosr.vs(Y~., data = data[1:80,], method="grMCP")
 #' plot(fit.mcp)
+#' }
 #' 
-#' End(Not run)
 #'
 
 
-plot.fosr.vs <- function(object, ...){
-  p <- dim(coef(object))[1]
-  D <- dim(coef(object))[2]
-  df = as.data.frame(cbind(as.vector(sapply(1:p, function(x) seq(1,D)/D)), as.vector(t(coef(object))), as.vector(sapply(1:p, function(x) rep(x,D)))))
-  ggplot(df, aes(x=V1, y=V2, group=V3, colour = factor(V3))) + geom_path() + xlab("") + ylab("") + theme(legend.title = element_blank()) + scale_color_manual(values=1:p,labels=rownames(coef(object)))
+plot.fosr.vs <- function(x, ...){
+  p <- dim(coef(x))[1]
+  D <- dim(coef(x))[2]
+  df = as.data.frame(cbind(as.vector(sapply(1:p, function(x) seq(1,D)/D)), as.vector(t(coef(x))), as.vector(sapply(1:p, function(x) rep(x,D)))))
+  ggplot(df, aes(x=V1, y=V2, group=V3, colour = factor(V3))) + geom_path() + xlab("") + ylab("") + theme(legend.title = element_blank()) + scale_color_manual(values=1:p,labels=rownames(coef(x)))
 }

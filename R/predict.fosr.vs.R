@@ -2,9 +2,6 @@
 #' 
 #' Given a "\code{\link{fosr.vs}}" object and new data, produces fitted values.
 #'
-#' @name predict.fosr.vs
-#' @usage ## S3 method for class 'fosr.vs' 
-#' predict(object, newdata=NULL, ...)
 #' @param object an object of class "\code{\link{fosr.vs}}".
 #' @param newdata a data frame that contains the values of the model covariates at which predictors are required.
 #' @param ... additional arguments.
@@ -16,7 +13,7 @@
 #' @export
 #'
 #' @examples
-#' ## Not run:
+#' \dontrun{
 #' I = 100
 #' p = 20
 #' D = 50
@@ -50,10 +47,8 @@
 #' fit.mcp = fosr.vs(Y~., data = data[1:80,], method="grMCP")
 #' predicted.value = predict(fit.mcp, data[81:100,])
 #'
-#' End(Not run)
+#' }
 #'
-
-
 
 predict.fosr.vs <- function(object, newdata=NULL, ...){
   x <- model.matrix(object$formula, newdata)

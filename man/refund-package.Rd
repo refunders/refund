@@ -17,7 +17,7 @@ Lei Huang \email{huangracer@gmail.com}, Fabian Scheipl \email{fabian.scheipl@sta
 
 
 \emph{Contributors:}
-Sonja Greven, Lan Huo, Madan Gopal Kundu
+Yakuan Chen, Sonja Greven, Lan Huo, Madan Gopal Kundu
 
 \emph{Maintainer:} Lei Huang \email{huangracer@gmail.com}
 }

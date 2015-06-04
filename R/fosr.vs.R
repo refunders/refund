@@ -3,8 +3,6 @@
 #' Implements an iterative algorithm for function-on-scalar regression with variable selection
 #' by alternatively updating the coefficients and covariance structure.
 #'
-#' @name fosr.vs
-#' @usage fosr.vs(formula, data, nbasis=10, method=c("ls", "grLasso", "grMCP", "grSCAD"), epsilon=1e-5, max.iter_num = 100)
 #' @param formula an object of class "\code{\link{formula}}": an expression of the model to be fitted.
 #' @param data a data frame that contains the variables in the model.
 #' @param nbasis number of B-spline basis functions used.
@@ -26,13 +24,12 @@
 #' @author Yakuan Chen \email{yc2641@@cumc.columbia.edu}
 #' @seealso \code{\link{grpreg}}
 #' @importFrom grpreg grpreg cv.grpreg
-#' @importFrom refund fpca.sc
 #' @importFrom splines bs
 #' @importFrom stats terms.formula
 #' @export
 #' 
 #' @examples
-#' ## Not run:
+#' \dontrun{
 #' set.seed(100)
 #' 
 #' I = 100
@@ -67,8 +64,8 @@
 #' data$Y = Yi.obs
 #' fit.fosr.vs = fosr.vs(Y~., data = data, method="grMCP")
 #' plot(fit.fosr.vs)
+#' }
 #' 
-#' End(Not run)
 #' 
 fosr.vs <- function(formula, data, nbasis=10, method=c("ls", "grLasso", "grMCP", "grSCAD"), epsilon=1e-5, max.iter_num = 100){
 	cl = match.call()
