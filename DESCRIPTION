@@ -30,7 +30,8 @@ Imports:
     gamm4,
     lme4,
     RLRsim,
-    splines
+    splines,
+    grpreg
 Suggests:
     ggplot2,
     reshape2,
@@ -53,6 +54,7 @@ Collate:
     'fosr.perm.R'
     'fosr.perm.fit.R'
     'fosr.perm.test.R'
+    'fosr.vs.R'
     'fosr2s.R'
     'fpca.sc.R'
     'fpca.face.R'
@@ -80,6 +82,7 @@ Collate:
     'pfr_old.R'
     'plot.fosr.R'
     'plot.fosr.perm.R'
+    'plot.fosr.vs.R'
     'plot.fpcr.R'
     'plot.lpeer.R'
     'plot.peer.R'
@@ -94,6 +97,7 @@ Collate:
     'parse.predict.pfr.R'
     'postprocess.pfr.R'
     'predict.pfr.R'
+    'predict.fosr.vs.R'
     'preprocess.pfr.R'
     'irreg2mat.R'
     'CD4-data.R'
