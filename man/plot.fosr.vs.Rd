@@ -19,6 +19,7 @@ a figure of estimated coefficient functions.
 Given a "\code{\link{fosr.vs}}" object, produces a figure of estimated coefficient functions.
 }
 \examples{
+## Not run:
 I = 100
 p = 20
 D = 50
@@ -51,6 +52,8 @@ data = as.data.frame(X)
 data$Y = Yi.obs
 fit.mcp = fosr.vs(Y~., data = data[1:80,], method="grMCP")
 plot(fit.mcp)
+
+End(Not run)
 }
 \author{
 Yakuan Chen \email{yc2641@cumc.columbia.edu}

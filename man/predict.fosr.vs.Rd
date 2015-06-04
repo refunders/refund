@@ -21,6 +21,7 @@ fitted values.
 Given a "\code{\link{fosr.vs}}" object and new data, produces fitted values.
 }
 \examples{
+## Not run:
 I = 100
 p = 20
 D = 50
@@ -53,6 +54,8 @@ data = as.data.frame(X)
 data$Y = Yi.obs
 fit.mcp = fosr.vs(Y~., data = data[1:80,], method="grMCP")
 predicted.value = predict(fit.mcp, data[81:100,])
+
+End(Not run)
 }
 \author{
 Yakuan Chen \email{yc2641@cumc.columbia.edu}

@@ -16,6 +16,7 @@
 #' @export
 #'
 #' @examples
+#' ## Not run:
 #' I = 100
 #' p = 20
 #' D = 50
@@ -49,7 +50,8 @@
 #' fit.mcp = fosr.vs(Y~., data = data[1:80,], method="grMCP")
 #' predicted.value = predict(fit.mcp, data[81:100,])
 #'
-
+#' End(Not run)
+#'
 
 
 
