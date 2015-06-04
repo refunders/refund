@@ -5,14 +5,20 @@
 #'
 #' @name fosr.vs
 #' @usage fosr.vs(formula, data, nbasis=10, method=c("ls", "grLasso", "grMCP", "grSCAD"), epsilon=1e-5, max.iter_num = 100)
-#' @param formula an object of class "\code{\link{formula}}": a expression of the model to be fitted.
+#' @param formula an object of class "\code{\link{formula}}": an expression of the model to be fitted.
 #' @param data a data frame that contains the variables in the model.
 #' @param nbasis number of B-spline basis functions used.
-#' @param method group variable selection method to be used or "\code{ls}" for least squares estimation.
+#' @param method group variable selection method to be used ("grLasso", "grMCP", "grSCAD" refer to group Lasso, group MCP and group SCAD, respectively) or "\code{ls}" for least squares estimation.
 #' @param epsilon the convergence criterion.
 #' @param max.iter_num maximum number of iterations.
 #' 
-#' @return A fitted fosr.vs-object.
+#' @return A fitted fosr.vs-object, which is a list with the following elements:
+#' \item{formula}{an object of class "\code{\link{formula}}": an expression of the model to be fitted.}
+#' \item{coefficients}{the estimated coefficient functions.}
+#' \item{fitted.values}{the fitted curves.}
+#' \item{residuals}{the residual curves.}
+#' \item{vcov}{the estimated variance-covariance matrix when convergence is achieved.}
+#' \item{method}{group variable selection method to be used or "\code{ls}" for least squares estimation.}
 #' @references
 #' Chen, Y., Goldsmith, J., and Ogden, T. (\emph{under review}).
 #' Variable selection in function-on-scalar regression.
@@ -26,7 +32,7 @@
 #' @export
 #' 
 #' @examples
-#' 
+#' ## Not run:
 #' set.seed(100)
 #' 
 #' I = 100
@@ -61,6 +67,8 @@
 #' data$Y = Yi.obs
 #' fit.fosr.vs = fosr.vs(Y~., data = data, method="grMCP")
 #' plot(fit.fosr.vs)
+#' 
+#' End(Not run)
 #' 
 fosr.vs <- function(formula, data, nbasis=10, method=c("ls", "grLasso", "grMCP", "grSCAD"), epsilon=1e-5, max.iter_num = 100){
 	cl = match.call()

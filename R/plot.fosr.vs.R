@@ -4,7 +4,7 @@
 #'
 #' @name plot.fosr.vs
 #' @usage ## S3 method for class 'fosr.vs' 
-#' plot.fosr.vs(object, ...)
+#' plot(object, ...)
 #' @param object an object of class "\code{\link{fosr.vs}}".
 #' @param ... additional arguments.
 #' 

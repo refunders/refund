@@ -5,7 +5,7 @@
 \title{Plot for Function-on Scalar Regression with variable selection}
 \usage{
 ## S3 method for class 'fosr.vs'
-plot.fosr.vs(object, ...)
+plot(object, ...)
 }
 \arguments{
 \item{object}{an object of class "\code{\link{fosr.vs}}".}

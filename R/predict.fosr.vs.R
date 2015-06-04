@@ -4,7 +4,7 @@
 #'
 #' @name predict.fosr.vs
 #' @usage ## S3 method for class 'fosr.vs' 
-#' predict.fosr.vs(object, newdata=NULL, ...)
+#' predict(object, newdata=NULL, ...)
 #' @param object an object of class "\code{\link{fosr.vs}}".
 #' @param newdata a data frame that contains the values of the model covariates at which predictors are required.
 #' @param ... additional arguments.

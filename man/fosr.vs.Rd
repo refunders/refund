@@ -7,26 +7,33 @@
 fosr.vs(formula, data, nbasis=10, method=c("ls", "grLasso", "grMCP", "grSCAD"), epsilon=1e-5, max.iter_num = 100)
 }
 \arguments{
-\item{formula}{an object of class "\code{\link{formula}}": a expression of the model to be fitted.}
+\item{formula}{an object of class "\code{\link{formula}}": an expression of the model to be fitted.}
 
 \item{data}{a data frame that contains the variables in the model.}
 
 \item{nbasis}{number of B-spline basis functions used.}
 
-\item{method}{group variable selection method to be used or "\code{ls}" for least squares estimation.}
+\item{method}{group variable selection method to be used ("grLasso", "grMCP", "grSCAD" refer to group Lasso, group MCP and group SCAD, respectively) or "\code{ls}" for least squares estimation.}
 
 \item{epsilon}{the convergence criterion.}
 
 \item{max.iter_num}{maximum number of iterations.}
 }
 \value{
-A fitted fosr.vs-object.
+A fitted fosr.vs-object, which is a list with the following elements:
+\item{formula}{an object of class "\code{\link{formula}}": an expression of the model to be fitted.}
+\item{coefficients}{the estimated coefficient functions.}
+\item{fitted.values}{the fitted curves.}
+\item{residuals}{the residual curves.}
+\item{vcov}{the estimated variance-covariance matrix when convergence is achieved.}
+\item{method}{group variable selection method to be used or "\code{ls}" for least squares estimation.}
 }
 \description{
 Implements an iterative algorithm for function-on-scalar regression with variable selection
 by alternatively updating the coefficients and covariance structure.
 }
 \examples{
+## Not run:
 set.seed(100)
 
 I = 100
@@ -61,6 +68,8 @@ data = as.data.frame(X)
 data$Y = Yi.obs
 fit.fosr.vs = fosr.vs(Y~., data = data, method="grMCP")
 plot(fit.fosr.vs)
+
+End(Not run)
 }
 \author{
 Yakuan Chen \email{yc2641@cumc.columbia.edu}
