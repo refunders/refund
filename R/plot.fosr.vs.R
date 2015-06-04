@@ -54,7 +54,6 @@
 plot.fosr.vs <- function(x, ...){
   p <- dim(coef(x))[1]
   D <- dim(coef(x))[2]
-  df = as.data.frame(cbind(as.vector(sapply(1:p, function(x) seq(1,D)/D)), as.vector(t(coef(x))), as.vector(sapply(1:p, function(x) rep(x,D)))))
-  names(df) = c("grid", "value", "curve")
-  ggplot(df, aes(x=grid, y=value, group=curve, colour = factor(curve))) + geom_path() + xlab("") + ylab("") + theme(legend.title = element_blank()) + scale_color_manual(values=1:p,labels=rownames(coef(object)))
+  df = as.data.frame(cbind(as.vector(sapply(1:p, function(y) seq(1,D)/D)), as.vector(t(coef(x))), as.vector(sapply(1:p, function(y) rep(y,D)))))
+  ggplot(df, aes_string(x='V1', y='V2', group='V3', colour = 'factor(V3)')) + geom_path() + xlab("") + ylab("") + theme(legend.title = element_blank()) + scale_color_manual(values=1:p,labels=rownames(coef(x)))
 }
