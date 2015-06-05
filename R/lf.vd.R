@@ -1,18 +1,17 @@
 #' Construct a VDFR regression term
 #' 
 #' This function defines the a variable-domain functional regression term
-#' for inclusion in an \code{mgcv::gam-formula} (or \code{bam} or
-#' \code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{pfr}}.
-#' These are functional predictors for which each function is observed over a
-#' domain of different width.
-#' The default is the ``untransformed" term,\eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
+#' for inclusion in an \code{\link[mgcv]{gam}}-formula (or \code{\link[mgcv]{bam}} or
+#' \code{\link[mgcv]{gamm}} or \code{\link[gamm4]{gamm}} as constructed by
+#' \code{\link{pfr}}. These are functional predictors for which each function is
+#' observed over a domain of different width.
+#' The default is the term \eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
 #' where \eqn{X_i(t)} is a functional predictor of length \eqn{T_i} and \eqn{\beta(t,T_i)}
-#' is an unknown bivariate coefficient function. Lagged-domain and
-#' standardized-domain models are also allowed. For the standardized-domain
-#' model, the interaction between \eqn{t} and \eqn{T_i} could be nonparametric, linear,
-#' quadratic, or not present at all. Basis choice is fully custiomizable using
-#' the options of \code{mgcv::s} and \code{mgcv::te}, though tensor-product
-#' bases are not allowed except in the standardized-domain case.
+#' is an unknown bivariate coefficient function. Various domain transformations
+#' are available, such as lagging or domain-standardizing the coordinates, or
+#' parameterizing the interactions; these often result in improved model fit.
+#' Basis choice is fully custiomizable using the options of
+#' \code{\link[mgcv]{s}} and \code{\link[mgcv]{te}}.
 #' 
 #' @param X matrix containing variable-domain functions. Should be \eqn{N x J},
 #'    where \eqn{N} is the number of subjects and \eqn{J} is the maximum number of time
@@ -27,9 +26,9 @@
 #' @param integration method used for numerical integration. Defaults to
 #'    ``\code{simpson}"'s rule. Alternatively and for non-equidistant grids,
 #'    ``\code{trapezoidal}" or ``\code{riemann}".
-#' @param basistype type of bivariate basis used. Corresponds to either \code{mgcv::s}
-#'    or \code{mgcv::te}. ``\code{te}" option is only allowed when
-#'    \code{domain="standardized"} and \code{interaction="nonparametric"}.
+#' @param basistype character string indicating type of bivariate basis used.
+#'    Options include \code{"s"} (the default), \code{"te"}, and \code{"t2"},
+#'    which correspond to \code{mgcv::s}, \code{mgcv::te}, and \code{mgcv::t2}.
 #' @param transform character string indicating an optional basis transformation;
 #'    see Details for options.
 #' @param ... optional arguments for basis and penalization to be passed to the
@@ -62,42 +61,27 @@
 #'        \code{"vd"} to be quadratic
 #'      \item \code{"noInteraction"}: first transforms the domain as in
 #'        \code{"standardized"}, then reduces the bivariate basis to univariate
-#'        with no effect of \code{vd}
+#'        with no effect of \code{vd}. This would be equivalent to using
+#'        \code{\link{lf}} on the domain-standardized predictor functions.
 #'    }
 #'    
-#'    These basis transformations rely on the basis constructors available in
-#'    the \code{mgcvTrans} package. For more specific control over the
-#'    transformations, you can use 
+#'    The practical effect of using the \code{"lagged"} basis is to increase
+#'    smoothness along the right (diagonal) edge of the resultant estimate.
+#'    The practical effect of using a \code{"standardized"} basis is to allow
+#'    for greater smoothness at high values of \eqn{T_i} compared to lower
+#'    values.
 #'    
+#'    These basis transformations rely on the basis constructors
+#'    available in the \code{mgcvTrans} package. For more specific control over
+#'    the transformations, you can use 
 #'    
-#'    The ``lagged" VDFR model is similar to the ``untransformed" model, but
-#'    each function is aligned according to their final measurement of
-#'    \eqn{X_i(t)} as opposed to their first. This model is equivalent to
-#'    the untransformed model, up to the assumptions imposed by the basis
-#'    choice and smoothness.
+#'    Note that tensor product bases are only recommended when a standardized
+#'    transformation is used. Without this transformation, just under half of
+#'    the "knots" used to define the basis will fall outside the range of the
+#'    data and have no data available to estimate them. The penalty allows
+#'    the corresponding coefficients to be estiamted, but results may be
+#'    unstable.
 #'    
-#'    The ``standardized" models apply the subject-specific domain transformation
-#'    \eqn{s = t/T_i}, which linearly stretches (or compresses) each function to
-#'    the domain \eqn{[0,1]}. For nonparametric interactions, the functional
-#'    predictor is incorporated into the model by the term
-#'    \eqn{\int_0^1 X*_i(s)\beta*(s,T_i) dt}, where \eqn{X*_i(s) = X_i(sT_i)}
-#'    are the rescaled functional predictors. Because we still allow the coefficient
-#'    function \eqn{\beta*(s,T_i)} to change with \eqn{T_i}, this model is
-#'    equivalent to the untransformed model, up to the assumptions imposed by the
-#'    numerical integration, basis choice, and smoothness. Practically, results differ
-#'    primarily due to the smoothness assumptions. Because smoothness is imposed on the
-#'    rescaled domain \eqn{{s,T_i: 0\le s\le 1, 0\le T_i\le max_i(T_i)}}, when transformed
-#'    back to the original time domain \eqn{t}, the resulting coefficient function can be
-#'    less smooth (across \eqn{t}) for smaller values of \eqn{T_i} than for larger values.
-#'    
-#'    Since the domain of the standardized coefficient function is rectangular, tensor product
-#'    bases are allowed. This form also allows us to easily parameterize the interaction
-#'    between \eqn{t} and \eqn{T_i}. The software supports three different parameterizations
-#'    of this interaction: ``linear" implies \eqn{\beta*(s,T_i) = \beta_1(s) + T_i\beta_2(s)},
-#'    ``quadratic" implies \eqn{\beta*(s,T_i) = \beta_1(s) + T_i\beta_2(s) + T_i^2\beta_3(s)},
-#'    and ``none" implies \eqn{\beta*(s,T_i) = \beta(s)}. Note that this last parameterization
-#'    implies no interaction at all, and is equivalent to \code{lf()} using the standardized
-#'    functional predictors.
 #' @return a list with the following entries
 #'    \item{call}{a \code{call} to \code{s} or \code{te}, using the appropriately constructed
 #'      weight matrices}
@@ -111,7 +95,7 @@
 #'    \item{LXname}{the name of the \code{by} variable used by \code{s} or \code{te}
 #'      in the \code{formula} for \code{mgcv::gam}}
 #' @export
-#' @author Jonathan E. Gellar <jgellar1@@jhu.edu>
+#' @author Jonathan E. Gellar <JGellar@@mathematica-mpr.com>
 #' @references Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
 #'    Ciprian M. Crainiceanu. Variable-Domain Functional Regression for Modeling
 #'    ICU Data. Journal of the American Statistical Association,
@@ -184,14 +168,13 @@ lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
   argname <- paste(deparse(substitute(X)), ".arg", sep = "")
   vdname  <- paste(deparse(substitute(X)), ".vd",  sep = "")
   LXname <- paste("L.", deparse(substitute(X)), sep = "")
-  splinefun <- as.symbol(basistype)
   
   # Set up transformations
-  # TRANSFORMS
   dots <- list(...)
   bs0 <- dots$bs
   xt0 <- dots$xt
   if (!is.null(transform)) {
+    # Set up dt basis call
     if (transform=="lagged") {
       dots$bs <- "dt"
       dots$xt <- list(tf=list("s-t"), bs=bs0, xt=xt0)
@@ -208,12 +191,19 @@ lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
       dots$bs <- "dt"
       dots$xt <- list(tf="s/t", bs="pi", xt=list(g="quadratic", bs=bs0, xt=xt0))
     }
+    if (basistype!="s") {
+      # dt basis call must go through s to allow bivariate transformations
+      # (te would split the coordinates up)
+      dots$xt$basistype <- basistype
+      basistype <- "s"
+    }
   }
   
   # Set up basis
   data <- list(argvals, vd, LX)
   names(data) <- c(argname, vdname, LXname)
-  call <- as.call(c(list(splinefun),
+  #splinefun <- as.symbol(basistype)
+  call <- as.call(c(list(as.symbol(basistype)),
                     as.symbol(substitute(argname)),
                     as.symbol(substitute(vdname)),
                     by=as.symbol(substitute(LXname)), 
