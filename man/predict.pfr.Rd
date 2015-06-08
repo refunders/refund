@@ -54,7 +54,7 @@ nir = matrix(NA, 60,401)
 test <- sample(60,20)
 for (i in 1:60) nir[i,] = gasoline$NIR[i, ] # changes class from AsIs to matrix
 y <- gasoline$octane
-fit <- pfr(y~af(nir,xind=wavelengths,splinepars=list(k=c(6,6),m=list(c(2,2),c(2,2)))),
+fit <- pfr(y~af(nir,argvals=wavelengths,k=c(6,6), m=list(c(2,2),c(2,2))),
               subset=(1:N)[-test])
 preds <- predict(fit,newdata=list(nir=nir[test,]),type='response')
 plot(preds,y[test])

@@ -31,6 +31,10 @@
 #'    which correspond to \code{mgcv::s}, \code{mgcv::te}, and \code{mgcv::t2}.
 #' @param transform character string indicating an optional basis transformation;
 #'    see Details for options.
+#' @param multipen for \code{transform=="linear"} or \code{transform=="quadratic"},
+#'    should different penalties be used for each marginal basis (main effect and
+#'    interaction terms)? If not, penalties are combined into a single
+#'    block-diagonal penalty matrix, with one smoothing parameter.
 #' @param ... optional arguments for basis and penalization to be passed to the
 #'    function indicated by \code{basistype}. These could include, for example,
 #'    \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{s}} or
@@ -120,7 +124,7 @@
 lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
                   integration = c("simpson", "trapezoidal", "riemann"),
                   basistype=c("s","te","t2"),
-                  transform=NULL, ...
+                  transform=NULL, multipen=FALSE, ...
 ) {
   
   integration <- match.arg(integration)
@@ -186,10 +190,10 @@ lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
       dots$xt <- list(tf="s/t", bs="pi", xt=list(g="none", bs=bs0, xt=xt0))
     } else if (transform=="linear") {
       dots$bs <- "dt"
-      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="linear", bs=bs0, xt=xt0))
+      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="linear", bs=bs0, msp=multipen, xt=xt0))
     } else if (transform=="quadratic") {
       dots$bs <- "dt"
-      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="quadratic", bs=bs0, xt=xt0))
+      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="quadratic", bs=bs0, msp=multipen, xt=xt0))
     }
     if (basistype!="s") {
       # dt basis call must go through s to allow bivariate transformations

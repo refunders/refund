@@ -6,10 +6,10 @@
 \title{Extract coefficient functions from a fitted pfr-object}
 \usage{
 \method{coefficients}{pfr}(object, which, n = 100, n2 = 40, se = TRUE,
-  seWithMean = TRUE, ...)
+  seWithMean = TRUE, exclude = FALSE, ...)
 
 \method{coef}{pfr}(object, which, n = 100, n2 = 40, se = TRUE,
-  seWithMean = TRUE, ...)
+  seWithMean = TRUE, exclude = FALSE, ...)
 }
 \arguments{
 \item{object}{return object from \code{\link{pfr}}}
