@@ -213,7 +213,7 @@ getTF <- function(fname, nterm) {
     function(x) (x - max(x0))/(max(x0) - min(x0))
   } else if (fname=="s-t") {
     if (nterm >= 2) function(s,t) s-t
-    else stop(paste0("Not enough terms for ", fterm, " transformation"))
+    else stop(paste0("Not enough terms for ", fname, " transformation"))
   } else if (fname=="s/t") {
     if (nterm >= 2) function(s,t) ifelse(t==0, 0.5, s/t)
     else stop(paste0("Not enough terms for ", fterm, " transformation"))

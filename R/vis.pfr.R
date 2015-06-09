@@ -1,4 +1,4 @@
-#' Visualization of pfr objects
+#' Visualization of PFR objects
 #'
 #' Produces perspective or contour plot views of an estimated surface corresponding to \code{\link{af}}
 #' terms fit using \code{\link{pfr}} or plots \dQuote{slices} of the estimated surface or estimated
@@ -62,8 +62,8 @@
 #' ## third order marginal difference penalties
 #' ## specifying gamma>1 enforces more smoothing when using GCV
 #' ## to choose smoothing parameters
-#' fit <- pfr(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
-#' fit <- pfr(y ~ af(X, basistype="te", k=c(8,8), m=list(c(2,3),c(2,3))))
+#' fit <- pfr(y ~ af(X, basistype="te", k=c(8,8), m=list(c(2,3),c(2,3)), bs="ps"),
+#'            method="GCV.Cp", gamma=1.2)
 #'
 #' ## contour plot of the fitted surface
 #' vis.pfr(fit, plot.type='contour')
@@ -72,7 +72,7 @@
 #' ## Bands seem too conservative in some cases
 #' xval <- runif(1, min(fit$pfr$ft[[1]]$Xrange), max(fit$pfr$ft[[1]]$Xrange))
 #' tval <- runif(1, min(fit$pfr$ft[[1]]$xind), max(fit$pfr$ft[[1]]$xind))
-#' par(mfrow=c(4, 1))
+#' par(mfrow=c(2, 2))
 #' vis.pfr(fit, af.term='X', deriv2=FALSE, xval=xval)
 #' vis.pfr(fit, af.term='X', deriv2=FALSE, tval=tval)
 #' vis.pfr(fit, af.term='X', deriv2=TRUE, xval=xval)
@@ -102,7 +102,7 @@ vis.pfr=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, thet
     stop('The specified af.term is not valid')
   tname <- tnames[afind]
   basistype <- strsplit(tname,'[(]')[[1]][1]
-  sstring <- paste(basistype,'[(]',af.term,'\\.omat,',af.term,'\\.tmat','[)]:L\\.',af.term,sep='')
+  sstring <- paste(basistype,'[(]',af.term,'\\.tmat,',af.term,'\\.omat','[)]:L\\.',af.term,sep='')
   tind <- grepl(sstring,names(object$coef))
   
   if(!(length(tval)+length(xval))){

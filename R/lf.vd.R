@@ -2,7 +2,7 @@
 #' 
 #' This function defines the a variable-domain functional regression term
 #' for inclusion in an \code{\link[mgcv]{gam}}-formula (or \code{\link[mgcv]{bam}} or
-#' \code{\link[mgcv]{gamm}} or \code{\link[gamm4]{gamm}} as constructed by
+#' \code{\link[mgcv]{gamm}} or \code{gamm4::gamm} as constructed by
 #' \code{\link{pfr}}. These are functional predictors for which each function is
 #' observed over a domain of different width.
 #' The default is the term \eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
