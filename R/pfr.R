@@ -102,25 +102,34 @@
 #' 
 #' # Fit model with additive functional term for CCA, using tensor product basis
 #' fit.af <- pfr(pasat ~ af(cca, Qtransform=TRUE, k=c(7,7)), data=DTI1)
-#' plot(fit.af, scheme=2, xlab="cca(t)", ylab="t", main="Additive Term", rug=FALSE)
+#' plot(fit.af, scheme=2, xlab="cca(t)", ylab="t", main="Tensor Product", rug=FALSE)
 #' 
 #' # Change basistype to thin-plate regression splines
 #' fit.af.s <- pfr(pasat ~ af(cca, basistype="s", Qtransform=TRUE, k=50),
 #'                 data=DTI1)
-#' plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="Additive Term",
+#' plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="TPRS",
 #'      rug=FALSE)
+#' 
+#' par(mfrow=c(2,2))
+#' vis.pfr(fit.af, xval=.2)
+#' vis.pfr(fit.af, xval=.4)
+#' vis.pfr(fit.af, xval=.6)
+#' vis.pfr(fit.af, xval=.8)
 #' 
 #' # Include random intercept for subject
 #' DTI.re <- DTI[complete.cases(DTI),]
 #' DTI.re$ID <- factor(DTI.re$ID)
 #' fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI.re)
 #' coef.re <- coef(fit.re)
+#' par(mfrow=c(1,2))
+#' plot(fit.re)
 #' 
 #' # PEER Model with second order difference penalty
 #' DTI.use <- DTI[DTI$case==1,]
 #' DTI.use <- DTI.use[complete.cases(DTI.use$cca),]
-#' fit.peer <- pfr(pasat ~ peer(cca, integration="riemann", pentype="D"), data=DTI.use)
-#' 
+#' fit.peer <- pfr(pasat ~ peer(cca, argvals=seq(0,1,length=93),
+#'                              integration="riemann", pentype="D"), data=DTI.use)
+#' plot(fit.peer)
 #' 
 #' 
 #' 
