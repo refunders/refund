@@ -144,7 +144,7 @@ data(sofa)
     c.i[(c.i$SOFA.arg <= c.i$SOFA.vd),]
   })
 
-  # Try different values of i (and lims, if desired)
+  # Try plotting for each i
   i <- 1
   lims <- c(-2,8)
   if (requireNamespace("ggplot2", quietly = TRUE) &

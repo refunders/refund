@@ -216,7 +216,7 @@ getTF <- function(fname, nterm) {
     else stop(paste0("Not enough terms for ", fname, " transformation"))
   } else if (fname=="s/t") {
     if (nterm >= 2) function(s,t) ifelse(t==0, 0.5, s/t)
-    else stop(paste0("Not enough terms for ", fterm, " transformation"))
+    else stop(paste0("Not enough terms for ", fname, " transformation"))
   } else stop("Unrecognized character string for 'dt' transformation function")
 }
 
