@@ -35,6 +35,7 @@ Imports:
     splines
 Suggests:
     ggplot2,
+    RColorBrewer,
     reshape2,
     testthat
 Description: Developer version of refund. Methods for regression for functional

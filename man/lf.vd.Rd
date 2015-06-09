@@ -6,7 +6,7 @@
 \usage{
 lf.vd(X, argvals = seq(0, 1, l = ncol(X)), vd = NULL,
   integration = c("simpson", "trapezoidal", "riemann"), basistype = c("s",
-  "te", "t2"), transform = NULL, cpen = FALSE, ...)
+  "te", "t2"), transform = NULL, mp = TRUE, ...)
 }
 \arguments{
 \item{X}{matrix containing variable-domain functions. Should be \eqn{N x J},
@@ -33,10 +33,10 @@ which correspond to \code{mgcv::s}, \code{mgcv::te}, and \code{mgcv::t2}.}
 \item{transform}{character string indicating an optional basis transformation;
 see Details for options.}
 
-\item{cpen}{for \code{transform=="linear"} or \code{transform=="quadratic"},
-should the penalties for each marginal basis be concatonated into a single
-block-diagonal penalty matrix (with one smoothing parameter)? If not, each
-penalty will have its one smoothing parameter.}
+\item{mp}{for \code{transform=="linear"} or \code{transform=="quadratic"},
+\code{TRUE} to use multiple penalties for the smooth (one for each marginal
+basis). If \code{FALSE}, penalties are concatonated into a single
+block-diagonal penalty matrix (with one smoothing parameter).}
 
 \item{...}{optional arguments for basis and penalization to be passed to the
    function indicated by \code{basistype}. These could include, for example,
@@ -143,6 +143,25 @@ data(sofa)
     c.i <- coef(get(paste0("fit.vd", i)), n=173, n2=173)
     c.i[(c.i$SOFA.arg <= c.i$SOFA.vd),]
   })
+
+  # Try different values of i (and lims, if desired)
+  i <- 1
+  lims <- c(-2,8)
+  if (requireNamespace("ggplot2", quietly = TRUE) &
+      requireNamespace("RColorBrewer", quietly = TRUE)) {
+        est <- ests[[i]]
+        est$value[est$value<lims[1]] <- lims[1]
+        est$value[est$value>lims[2]] <- lims[2]
+        ggplot2::ggplot(est, ggplot2::aes(SOFA.arg, SOFA.vd)) +
+          ggplot2::geom_tile(ggplot2::aes(colour=value, fill=value)) +
+          ggplot2::scale_fill_gradientn(  name="", limits=lims,
+                    colours=rev(RColorBrewer::brewer.pal(11,"Spectral"))) +
+          ggplot2::scale_colour_gradientn(name="", limits=lims,
+                    colours=rev(RColorBrewer::brewer.pal(11,"Spectral"))) +
+          ggplot2::scale_y_continuous(expand = c(0,0)) +
+          ggplot2::scale_x_continuous(expand = c(0,0)) +
+          ggplot2::theme_bw()
+  }
 }
 \author{
 Jonathan E. Gellar <JGellar@mathematica-mpr.com>

@@ -50,10 +50,10 @@ elements:
   \item \code{idx}: an integer index indicating which variable from
     \code{object$term} is to be parameterized, i.e., the \eqn{t} variable;
     defaults to \code{length(object$term)}
-  \item \code{msp}: flag to indicate whether multiple smoothing parameters should
-    be estimated, one for each \eqn{f_k()}. Defaults to \code{FALSE}, in
-    which case the penalties for each \eqn{k} are combined (using a
-    kronecker product) into a single penalty.
+  \item \code{mp}: flag to indicate whether multiple penalties should
+    be estimated, one for each \eqn{f_k()}. Defaults to \code{TRUE}. If
+    \code{FALSE}, the penalties for each \eqn{k} are combined into a single
+    block-diagonal penalty matrix (with one smoothing parameter).
   \item \code{...}: further \code{xt} options to be passed onto the basis for
     \eqn{f_k()}.
 }
@@ -69,7 +69,7 @@ elements:
   \eqn{f(x,t)=f_1(x)}.
 }
 The only one of the above elements that is required is \code{xt}.
-If default values for \code{bs}, \code{idx}, and \code{msp} are desired,
+If default values for \code{bs}, \code{idx}, and \code{mp} are desired,
 \code{xt} may also be entered as the \code{g} element itself; i.e.
 \code{xt=g}, where \code{g} is either the list of functions or an acceptable
 character string.

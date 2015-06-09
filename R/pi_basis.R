@@ -40,10 +40,10 @@
 #'   \item \code{idx}: an integer index indicating which variable from
 #'     \code{object$term} is to be parameterized, i.e., the \eqn{t} variable;
 #'     defaults to \code{length(object$term)}
-#'   \item \code{msp}: flag to indicate whether multiple smoothing parameters should
-#'     be estimated, one for each \eqn{f_k()}. Defaults to \code{FALSE}, in
-#'     which case the penalties for each \eqn{k} are combined (using a
-#'     kronecker product) into a single penalty.
+#'   \item \code{mp}: flag to indicate whether multiple penalties should
+#'     be estimated, one for each \eqn{f_k()}. Defaults to \code{TRUE}. If
+#'     \code{FALSE}, the penalties for each \eqn{k} are combined into a single
+#'     block-diagonal penalty matrix (with one smoothing parameter).
 #'   \item \code{...}: further \code{xt} options to be passed onto the basis for
 #'     \eqn{f_k()}.
 #' }
@@ -59,7 +59,7 @@
 #'   \eqn{f(x,t)=f_1(x)}.
 #' }
 #' The only one of the above elements that is required is \code{xt}.
-#' If default values for \code{bs}, \code{idx}, and \code{msp} are desired,
+#' If default values for \code{bs}, \code{idx}, and \code{mp} are desired,
 #' \code{xt} may also be entered as the \code{g} element itself; i.e.
 #' \code{xt=g}, where \code{g} is either the list of functions or an acceptable
 #' character string.
@@ -85,7 +85,7 @@ smooth.construct.pi.smooth.spec <- function(object, data, knots) {
   
   xt <- object$xt
   bs = newxt <- NULL
-  msp <- FALSE
+  mp <- FALSE
   idx <- length(object$term)
   if (is.null(xt)) {
     warning("No interaction functions are entered (using xt$g), defaulting to \"none\".")
@@ -100,13 +100,13 @@ smooth.construct.pi.smooth.spec <- function(object, data, knots) {
       # xt is the g list itself
       g <- xt
     } else {
-      if (!all(names(xt) %in% c("g", "bs", "xt", "idx", "msp")))
+      if (!all(names(xt) %in% c("g", "bs", "xt", "idx", "mp")))
         warning("Ignoring unrecognized elements of \"xt\"")
       g  <- xt$g
       bs <- xt$bs
       newxt <- xt$xt
       if (!is.null(xt$idx)) idx <- xt$idx
-      if (!is.null(xt$msp)) msp <- xt$msp
+      if (!is.null(xt$mp)) mp <- xt$mp
     }
   } else stop("xt must be a character string or list")
   
@@ -159,7 +159,7 @@ smooth.construct.pi.smooth.spec <- function(object, data, knots) {
   sm$label <- paste0("g(", object$term[idx], ")*", sm$label)
   sm$xt <- object$xt
   sm$X <- mgcv::tensor.prod.model.matrix(list(g_X, sm$X))
-  if (msp) {
+  if (mp) {
     sm$S <- lapply(1:n_transform, function(k) {
       diag(as.numeric((1:n_transform) == k)) %x% sm$S[[1]]
     })
