@@ -71,9 +71,10 @@ X <- X[!ind,]
 ## specifying gamma>1 enforces more smoothing when using GCV
 ## to choose smoothing parameters
 fit <- pfr(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
+fit <- pfr(y ~ af(X, basistype="te", k=c(8,8), m=list(c(2,3),c(2,3))))
 
 ## contour plot of the fitted surface
-vis.pfr(fit,plot.type='contour')
+vis.pfr(fit, plot.type='contour')
 
 ## similar to Figure 5 from McLean et al.
 ## Bands seem too conservative in some cases

@@ -15,7 +15,7 @@ Authors@R: c(person("Ciprian", "Crainiceanu", role = "aut", email =
     role="ctb"), person("Yihong", "Zhao", role="ctb"), person(c("Mathew", "W."), "McLean",
     role="ctb", email = "mathew.w.mclean@gmail.com"), person("Luo", "Xiao", role="ctb",
     email = "lxiao@jhsph.edu"), person("Jonathan", "Gellar", role="ctb",
-    email="jgellar1@jhu.edu"))
+    email="JGellar@mathematica-mpr.com"))
 Depends:
     R (>= 2.14.0),
     fda
@@ -52,6 +52,7 @@ Collate:
     'ccb.fpc.R'
     'create.prep.func.R'
     'coefficients.pfr.R'
+    'dt_basis.R'
     'irreg2mat.R'
     'fbps.R'
     'fgam.R'
@@ -67,7 +68,6 @@ Collate:
     'fpca.ssvd.R'
     'fpcr.R'
     'fpcr.setup.R'
-    'getEst.R'
     'lf.R'
     'lf_old.R'
     'lf.vd.R'
@@ -89,6 +89,7 @@ Collate:
     'pffr.R'
     'pfr.R'
     'pfr_old.R'
+    'pi_basis.R'
     'plot.fosr.R'
     'plot.fosr.perm.R'
     'plot.fpcr.R'

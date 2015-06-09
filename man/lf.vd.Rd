@@ -6,7 +6,7 @@
 \usage{
 lf.vd(X, argvals = seq(0, 1, l = ncol(X)), vd = NULL,
   integration = c("simpson", "trapezoidal", "riemann"), basistype = c("s",
-  "te", "t2"), transform = NULL, multipen = FALSE, ...)
+  "te", "t2"), transform = NULL, cpen = FALSE, ...)
 }
 \arguments{
 \item{X}{matrix containing variable-domain functions. Should be \eqn{N x J},
@@ -33,10 +33,10 @@ which correspond to \code{mgcv::s}, \code{mgcv::te}, and \code{mgcv::t2}.}
 \item{transform}{character string indicating an optional basis transformation;
 see Details for options.}
 
-\item{multipen}{for \code{transform=="linear"} or \code{transform=="quadratic"},
-should different penalties be used for each marginal basis (main effect and
-interaction terms)? If not, penalties are combined into a single
-block-diagonal penalty matrix, with one smoothing parameter.}
+\item{cpen}{for \code{transform=="linear"} or \code{transform=="quadratic"},
+should the penalties for each marginal basis be concatonated into a single
+block-diagonal penalty matrix (with one smoothing parameter)? If not, each
+penalty will have its one smoothing parameter.}
 
 \item{...}{optional arguments for basis and penalization to be passed to the
    function indicated by \code{basistype}. These could include, for example,
@@ -109,7 +109,10 @@ The variable-domain functional regression model uses the term
 
    These basis transformations rely on the basis constructors
    available in the \code{mgcvTrans} package. For more specific control over
-   the transformations, you can use
+   the transformations, you can use \code{bs="dt"} and/or \code{bs="pi"};
+   see \code{\link{smooth.construct.dt.smooth.spec}} or
+   \code{\link{smooth.construct.pi.smooth.spec}} for an explanation of the
+   options (entered through the \code{xt} argument of \code{lf.vd}/\code{s}).
 
    Note that tensor product bases are only recommended when a standardized
    transformation is used. Without this transformation, just under half of
@@ -122,15 +125,23 @@ The variable-domain functional regression model uses the term
 data(sofa)
   fit.vd1 <- pfr(death ~ lf.vd(SOFA) + age + los, family="binomial",
                  data=sofa)
-  fit.vd2 <- pfr(death ~ lf.vd(SOFA, domain="lagged") + age + los,
+  fit.vd2 <- pfr(death ~ lf.vd(SOFA, transform="lagged") + age + los,
                  family="binomial", data=sofa)
-  fit.vd3 <- pfr(death ~ lf.vd(SOFA, domain="standardized") + age + los,
+  fit.vd3 <- pfr(death ~ lf.vd(SOFA, transform="standardized") + age + los,
                  family="binomial", data=sofa)
-  fit.vd4 <- pfr(death ~ lf.vd(SOFA, domain="standardized", basistype="te")
-                               + age + los,
+  fit.vd4 <- pfr(death ~ lf.vd(SOFA, transform="standardized",
+                               basistype="te") + age + los,
                  family="binomial", data=sofa)
-  ests <- lapply(1:4, function(i) {
-    coef(get(paste0("fit.vd", i)))
+  fit.vd5 <- pfr(death ~ lf.vd(SOFA, transform="linear", bs="ps") + age + los,
+                 family="binomial", data=sofa)
+  fit.vd6 <- pfr(death ~ lf.vd(SOFA, transform="quadratic", bs="ps") + age + los,
+                 family="binomial", data=sofa)
+  fit.vd7 <- pfr(death ~ lf.vd(SOFA, transform="noInteraction", bs="ps") + age + los,
+                 family="binomial", data=sofa)
+
+  ests <- lapply(1:7, function(i) {
+    c.i <- coef(get(paste0("fit.vd", i)), n=173, n2=173)
+    c.i[(c.i$SOFA.arg <= c.i$SOFA.vd),]
   })
 }
 \author{

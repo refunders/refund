@@ -63,9 +63,10 @@
 #' ## specifying gamma>1 enforces more smoothing when using GCV
 #' ## to choose smoothing parameters
 #' fit <- pfr(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
+#' fit <- pfr(y ~ af(X, basistype="te", k=c(8,8), m=list(c(2,3),c(2,3))))
 #'
 #' ## contour plot of the fitted surface
-#' vis.pfr(fit,plot.type='contour')
+#' vis.pfr(fit, plot.type='contour')
 #'
 #' ## similar to Figure 5 from McLean et al.
 #' ## Bands seem too conservative in some cases
@@ -91,14 +92,15 @@ vis.pfr=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, thet
     af.term <- strsplit(af.term,'.omat')
   }
   
-  tnames <- object$pfr$labelmap
+  #tnames <- object$pfr$labelmap
+  tnames <- sapply(object$smooth, function(x) x$label)
   ## index of desired af among all predictors
   afind <- grep(paste('te[(]',af.term,sep = ""), tnames)
   ## index of desired af among all func. predictors
   af.ind <- grep(paste('af[(]',af.term,sep = ""), names(object$pfr$ft))
   if(!length(afind))
     stop('The specified af.term is not valid')
-  tname <- tnames[[afind]]
+  tname <- tnames[afind]
   basistype <- strsplit(tname,'[(]')[[1]][1]
   sstring <- paste(basistype,'[(]',af.term,'\\.omat,',af.term,'\\.tmat','[)]:L\\.',af.term,sep='')
   tind <- grepl(sstring,names(object$coef))

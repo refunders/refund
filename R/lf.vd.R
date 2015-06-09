@@ -31,10 +31,10 @@
 #'    which correspond to \code{mgcv::s}, \code{mgcv::te}, and \code{mgcv::t2}.
 #' @param transform character string indicating an optional basis transformation;
 #'    see Details for options.
-#' @param multipen for \code{transform=="linear"} or \code{transform=="quadratic"},
-#'    should different penalties be used for each marginal basis (main effect and
-#'    interaction terms)? If not, penalties are combined into a single
-#'    block-diagonal penalty matrix, with one smoothing parameter.
+#' @param cpen for \code{transform=="linear"} or \code{transform=="quadratic"},
+#'    should the penalties for each marginal basis be concatonated into a single
+#'    block-diagonal penalty matrix (with one smoothing parameter)? If not, each
+#'    penalty will have its one smoothing parameter.
 #' @param ... optional arguments for basis and penalization to be passed to the
 #'    function indicated by \code{basistype}. These could include, for example,
 #'    \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{s}} or
@@ -77,7 +77,10 @@
 #'    
 #'    These basis transformations rely on the basis constructors
 #'    available in the \code{mgcvTrans} package. For more specific control over
-#'    the transformations, you can use 
+#'    the transformations, you can use \code{bs="dt"} and/or \code{bs="pi"};
+#'    see \code{\link{smooth.construct.dt.smooth.spec}} or
+#'    \code{\link{smooth.construct.pi.smooth.spec}} for an explanation of the
+#'    options (entered through the \code{xt} argument of \code{lf.vd}/\code{s}).
 #'    
 #'    Note that tensor product bases are only recommended when a standardized
 #'    transformation is used. Without this transformation, just under half of
@@ -108,15 +111,23 @@
 #'   data(sofa)
 #'   fit.vd1 <- pfr(death ~ lf.vd(SOFA) + age + los, family="binomial",
 #'                  data=sofa)
-#'   fit.vd2 <- pfr(death ~ lf.vd(SOFA, domain="lagged") + age + los,
+#'   fit.vd2 <- pfr(death ~ lf.vd(SOFA, transform="lagged") + age + los,
 #'                  family="binomial", data=sofa)
-#'   fit.vd3 <- pfr(death ~ lf.vd(SOFA, domain="standardized") + age + los,
+#'   fit.vd3 <- pfr(death ~ lf.vd(SOFA, transform="standardized") + age + los,
 #'                  family="binomial", data=sofa)
-#'   fit.vd4 <- pfr(death ~ lf.vd(SOFA, domain="standardized", basistype="te")
-#'                                + age + los,
+#'   fit.vd4 <- pfr(death ~ lf.vd(SOFA, transform="standardized",
+#'                                basistype="te") + age + los,
 #'                  family="binomial", data=sofa)
-#'   ests <- lapply(1:4, function(i) {
-#'     coef(get(paste0("fit.vd", i)))
+#'   fit.vd5 <- pfr(death ~ lf.vd(SOFA, transform="linear", bs="ps") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd6 <- pfr(death ~ lf.vd(SOFA, transform="quadratic", bs="ps") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd7 <- pfr(death ~ lf.vd(SOFA, transform="noInteraction", bs="ps") + age + los,
+#'                  family="binomial", data=sofa)
+#'   
+#'   ests <- lapply(1:7, function(i) {
+#'     c.i <- coef(get(paste0("fit.vd", i)), n=173, n2=173) 
+#'     c.i[(c.i$SOFA.arg <= c.i$SOFA.vd),]
 #'   })
 #' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's
 #'    \code{\link{linear.functional.terms}}.
@@ -124,7 +135,7 @@
 lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
                   integration = c("simpson", "trapezoidal", "riemann"),
                   basistype=c("s","te","t2"),
-                  transform=NULL, multipen=FALSE, ...
+                  transform=NULL, cpen=FALSE, ...
 ) {
   
   integration <- match.arg(integration)
@@ -179,21 +190,27 @@ lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
   xt0 <- dots$xt
   if (!is.null(transform)) {
     # Set up dt basis call
+    dots$bs <- "dt"
     if (transform=="lagged") {
-      dots$bs <- "dt"
-      dots$xt <- list(tf=list("s-t"), bs=bs0, xt=xt0)
+      dots$xt <- list(tf=list("s-t"))
+      if (!is.null(bs0)) dots$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt=xt0
     } else if (transform=="standardized") {
-      dots$bs <- "dt"
-      dots$xt <- list(tf=list("s/t", "linear01"), bs=bs0, xt=xt0)
+      dots$xt <- list(tf=list("s/t", "linear01"))
+      if (!is.null(bs0)) dots$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt=xt0
     } else if (transform=="noInteraction") {
-      dots$bs <- "dt"
-      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="none", bs=bs0, xt=xt0))
+      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="none"))
+      if (!is.null(bs0)) dots$xt$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt$xt=xt0
     } else if (transform=="linear") {
-      dots$bs <- "dt"
-      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="linear", bs=bs0, msp=multipen, xt=xt0))
+      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="linear", msp=!cpen))
+      if (!is.null(bs0)) dots$xt$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt$xt=xt0
     } else if (transform=="quadratic") {
-      dots$bs <- "dt"
-      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="quadratic", bs=bs0, msp=multipen, xt=xt0))
+      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="quadratic", msp=!cpen))
+      if (!is.null(bs0)) dots$xt$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt$xt=xt0
     }
     if (basistype!="s") {
       # dt basis call must go through s to allow bivariate transformations
@@ -254,3 +271,54 @@ getL <- function(tind, integration, n.int=NULL) {
   }))
   L
 }
+
+#' SOFA (Sequential Organ Failure Assessment) Data
+#' 
+#' A dataset containing the SOFA scores (Vincent et al, 1996). for 520 patients,
+#' hospitalized in the intensive care unit (ICU) with Acute Lung Inury. Daily
+#' measurements are available for as long as each one remains in the ICU. This is an
+#' example of variable-domain functional data, as described by Gellar et al. (2014).
+#' 
+#' The data was collected as part of the Improving Care of ALI Patients (ICAP)
+#' study (Needham et al., 2006). If you use this dataset as an example in
+#' written work, please cite the study protocol.
+#' 
+#' @format A data frame with 520 rows (subjects) and 7 variables:
+#' \describe{
+#'   \item{death}{binary indicator that the subject died in the ICU}
+#'   \item{SOFA}{520 x 173 matrix in variable-domain format (a ragged array). 
+#'     Each column represents an ICU day. Each row contains the SOFA scores for
+#'     a subject, one per day, for as long as the subject remained in the ICU.
+#'     The remaining cells of each row are padded with \code{NA}s. SOFA scores
+#'     range from 0 to 24, increasing with severity of organ failure. Missing
+#'     values during one's ICU stay have been imputed using LOCF.}
+#'   \item{SOFA_raw}{Identical to the \code{SOFA} element, except that it contains
+#'     some missing values during one's hospitalization. These missing values
+#'     arise when a subject leaves the ICU temporarily, only to be re-admitted.
+#'     SOFA scores are not monitored outside the ICU.}
+#'   \item{los}{ICU length of stay, i.e., the number of days the patient remained
+#'     in the ICU prior to death or final discharge.}
+#'   \item{age}{Patient age}
+#'   \item{male}{Binay indicator for male gender}
+#'   \item{Charlson}{Charlson co-morbidity index, a measure of baseline health
+#'     status (before hospitalization and ALI).}
+#' }
+#' 
+#' @references 
+#'    Vincent, JL, Moreno, R, Takala, J, Willatts, S, De Mendonca, A,
+#'    Bruining, H, Reinhart, CK, Suter, PM, Thijs, LG (1996). The SOFA ( Sepsis
+#'    related Organ Failure Assessment) score to describe organ
+#'    dysfunction/failure. Intensive Care Medicine, 22(7): 707-710.
+#'    
+#'    Needham, D. M., Dennison, C. R., Dowdy, D. W., Mendez-Tellez, P. A.,
+#'    Ciesla, N., Desai, S. V., Sevransky, J., Shanholtz, C., Scharfstein, D.,
+#'    Herridge, M. S., and Pronovost, P. J. (2006). Study protocol: The
+#'    Improving Care of Acute Lung Injury Patients (ICAP) study. Critical Care
+#'    (London, England), 10(1), R9.
+#'    
+#'    Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
+#'    Ciprian M. Crainiceanu. Variable-Domain Functional Regression for Modeling
+#'    ICU Data. Journal of the American Statistical Association,
+#'    109(508):1425-1439, 2014.
+#'    
+"sofa"

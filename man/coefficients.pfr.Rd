@@ -25,6 +25,10 @@ to all terms}
 
 \item{seWithMean}{see \code{\link[mgcv]{plot.gam}}}
 
+\item{exclude}{if \code{TRUE}, excludes reporting of the estimate at coordinates that are
+"too far" from data used to fit the model, as determined by
+\code{mgcv::plot.mgcv.smooth}, by setting the estimate to \code{NA}.}
+
 \item{...}{further arguments passed on to \pkg{mgcv}'s \code{plot.mgcv.smooth}}
 }
 \value{

@@ -2,20 +2,21 @@
 #' 
 #' Implements various approaches to penalized scalar-on-function regression.
 #' These techniques include Penalized Functional Regression (Goldsmith et al.,
-#' 2011), Functional Principal Component Regression (Reiss and Ogden, 2007),
-#' Functional Generalized Additive Models (McLean et al., 2013), and Partially
-#' Empirical Eigenvectors for Regression (Randolph et al., 2012).
+#' 2011),
+# Functional Principal Component Regression (Reiss and Ogden, 2007),
+#' Functional Generalized Additive Models (McLean et al., 2013), Partially
+#' Empirical Eigenvectors for Regression (Randolph et al., 2012), and
+#' Variable-Domain Functional Regression (Gellar et al., 2014).
 #' This function is a wrapper for mgcv's \code{\link{gam}} and its siblings
 #' to fit models with a scalar (but not necessarily continuous) response.
 #' 
 #' @param formula a formula that could contain any of the following special terms: 
 #' \code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
-#' \code{\link{peer}()}, \code{\link{fpc}()}, or \code{\link{re}()};
-#' also \code{mgcv}'s \code{\link{s}()}, \code{\link{te}()}, or \code{\link{t2}()}.
+#' \code{\link{peer}()},
+# \code{\link{fpc}()},
+#' or \code{\link{re}()}; also \code{mgcv}'s \code{\link{s}()},
+#' \code{\link{te}()}, or \code{\link{t2}()}.
 #' 
-# with special terms as for \code{\link{gam}},
-# with additional special terms \code{\link{af}}(), \code{\link{lf}}(),
-# \code{\link{re}}(), \code{\link{peer}}(), and \code{\link{fpc}}().
 #' @param fitter the name of the function used to estimate the model. Defaults
 #' to \code{\link{gam}} if the matrix of functional responses has less than 2e5
 #' data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
@@ -50,26 +51,32 @@
 #' Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
 #' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 #' 
-#' Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
-#' dissertation, Department of Biostatistics, Columbia University. Available
-#' at http://works.bepress.com/phil_reiss/11/.
-#' 
-#' Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
-#' regression and functional partial least squares. \emph{Journal of the
-#' American Statistical Association}, 102, 984-996.
-#' 
-#' Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
-#' with images as predictors. \emph{Biometrics}, 66, 61-69.
-#' 
+# Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
+# dissertation, Department of Biostatistics, Columbia University. Available
+# at http://works.bepress.com/phil_reiss/11/.
+# 
+# Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
+# regression and functional partial least squares. \emph{Journal of the
+# American Statistical Association}, 102, 984-996.
+# 
+# Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
+# with images as predictors. \emph{Biometrics}, 66, 61-69.
+# 
 #' McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 #' Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of
 #' Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269. 
 #' Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 #' 
-#' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Jonathan
-#' Gellar, Jeff Goldsmith, and Fabian Scheipl
-#' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{re}},
-#'   \code{\link{peer}}, \code{\link{fpc}}
+#' Gellar, J. E., Colantuoni, E., Needham, D. M., and Crainiceanu, C. M. (2014).
+#' Variable-Domain Functional Regression for Modeling ICU Data. Journal of the
+#' American Statistical Association, 109(508): 1425-1439.
+#' 
+#' 
+#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Mathew W. McLean, 
+#' Jeff Goldsmith, and Fabian Scheipl
+#' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}}, \code{\link{re}},
+#   \code{\link{fpc}},
+#'   \code{\link{peer}}. 
 #' @importFrom mgcv gam gam.fit gamm4 bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom nlme lme4
@@ -77,7 +84,7 @@
 #' @export
 #' 
 #' @examples
-#' # See lf(), af(), and peer() for additional examples
+#' # See lf(), lf.vd(), af(), and peer() for additional examples
 #' 
 #' data(DTI)
 #' DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]

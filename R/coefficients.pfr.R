@@ -7,6 +7,9 @@
 #' @param n2 see \code{\link[mgcv]{plot.gam}}
 #' @param se compute standard errors? defaults to TRUE. See \code{\link[mgcv]{plot.gam}}
 #' @param seWithMean see \code{\link[mgcv]{plot.gam}}
+#' @param exclude if \code{TRUE}, excludes reporting of the estimate at coordinates that are
+#'   "too far" from data used to fit the model, as determined by
+#'   \code{mgcv::plot.mgcv.smooth}, by setting the estimate to \code{NA}.
 #' @param ... further arguments passed on to \pkg{mgcv}'s \code{plot.mgcv.smooth}
 #' @return a list of data.frames containing the evaluation points, 
 #'    coefficient function values and optionally their se's for each term in \code{which}

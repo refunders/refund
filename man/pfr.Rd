@@ -9,8 +9,9 @@ pfr(formula = NULL, fitter = NA, method = "REML", ...)
 \arguments{
 \item{formula}{a formula that could contain any of the following special terms:
 \code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
-\code{\link{peer}()}, \code{\link{fpc}()}, or \code{\link{re}()};
-also \code{mgcv}'s \code{\link{s}()}, \code{\link{te}()}, or \code{\link{t2}()}.}
+\code{\link{peer}()},
+or \code{\link{re}()}; also \code{mgcv}'s \code{\link{s}()},
+\code{\link{te}()}, or \code{\link{t2}()}.}
 
 \item{fitter}{the name of the function used to estimate the model. Defaults
 to \code{\link{gam}} if the matrix of functional responses has less than 2e5
@@ -33,9 +34,10 @@ the $gam part of the returned list is modified in this way.
 \description{
 Implements various approaches to penalized scalar-on-function regression.
 These techniques include Penalized Functional Regression (Goldsmith et al.,
-2011), Functional Principal Component Regression (Reiss and Ogden, 2007),
-Functional Generalized Additive Models (McLean et al., 2013), and Partially
-Empirical Eigenvectors for Regression (Randolph et al., 2012).
+2011),
+Functional Generalized Additive Models (McLean et al., 2013), Partially
+Empirical Eigenvectors for Regression (Randolph et al., 2012), and
+Variable-Domain Functional Regression (Gellar et al., 2014).
 This function is a wrapper for mgcv's \code{\link{gam}} and its siblings
 to fit models with a scalar (but not necessarily continuous) response.
 }
@@ -45,7 +47,7 @@ Binomial responses should be specified as a numeric vector rather than as a
 matrix or a factor.
 }
 \examples{
-# See lf(), af(), and peer() for additional examples
+# See lf(), lf.vd(), af(), and peer() for additional examples
 
 data(DTI)
 DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
@@ -83,8 +85,8 @@ DTI.use <- DTI.use[complete.cases(DTI.use$cca),]
 fit.peer <- pfr(pasat ~ peer(cca, integration="riemann", pentype="D"), data=DTI.use)
 }
 \author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Jonathan
-Gellar, Jeff Goldsmith, and Fabian Scheipl
+Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Mathew W. McLean,
+Jeff Goldsmith, and Fabian Scheipl
 }
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
@@ -103,24 +105,17 @@ functional linear models - partially empirical eigenvectors for regression.
 Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
 functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 
-Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
-dissertation, Department of Biostatistics, Columbia University. Available
-at http://works.bepress.com/phil_reiss/11/.
-
-Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
-regression and functional partial least squares. \emph{Journal of the
-American Statistical Association}, 102, 984-996.
-
-Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
-with images as predictors. \emph{Biometrics}, 66, 61-69.
-
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of
 Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269.
 Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
+
+Gellar, J. E., Colantuoni, E., Needham, D. M., and Crainiceanu, C. M. (2014).
+Variable-Domain Functional Regression for Modeling ICU Data. Journal of the
+American Statistical Association, 109(508): 1425-1439.
 }
 \seealso{
-\code{\link{af}}, \code{\link{lf}}, \code{\link{re}},
-  \code{\link{peer}}, \code{\link{fpc}}
+\code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}}, \code{\link{re}},
+  \code{\link{peer}}.
 }
 
