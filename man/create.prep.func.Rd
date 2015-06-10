@@ -4,7 +4,9 @@
 \alias{create.prep.func}
 \title{Construct a function for preprocessing functional predictors}
 \usage{
-create.prep.func(X, argvals = NULL, method = "fpca.sc", options = NULL)
+create.prep.func(X, argvals = seq(0, 1, length = ncol(X)),
+  method = c("fpca.sc", "fpca.face", "fpca.ssvd", "bspline", "interpolate"),
+  options = NULL)
 }
 \arguments{
 \item{X}{an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
@@ -15,21 +17,20 @@ used to define the eigen decomposition used to preprocess current and future dat
 \item{argvals}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
 \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}}
 
-\item{method}{approach used to preprocess curves. Options are \code{fpca.sc}, \code{fpca.face},
-\code{fpca.ssvd}, \code{fpca.bspline}, and \code{fpca.interpolate}. The first three are use existing
-functions; \code{fpca.bspline} uses an (unpenalized) cubic bspline smoother with \code{nbasis} basis
-funcitons; \code{fpca.interpolate} uses linear interpolation.}
+\item{method}{character string indicating the preprocessing method. Options
+are \code{"fpca.sc"}, \code{"fpca.face"}, \code{"fpca.ssvd"}, \code{"bspline"},
+and \code{"interpolate"}. The first three use the corresponding existing function;
+\code{"bspline"} uses an (unpenalized) cubic bspline smoother with \code{nbasis} basis
+functions; \code{"interpolate"} uses linear interpolation.}
 
 \item{options}{list of options passed to the preprocessing method; as an example, options for \code{fpca.sc}
-include \code{pve}, \code{nbasis}, and \code{npc}.}
+  include \code{pve}, \code{nbasis}, and \code{npc}.}
 }
 \value{
-a list with the following entries
-\enumerate{
-\item \code{prep.func} - a function that will preprocess functional predictors using on the method and options
-specified and, where appropriate, the original data. This function can be used for current and future
-functional predictors.
-}
+a function that returns the preprocessed functional predictors, with arguments
+  \item{newX}{The functional predictors to process}
+  \item{argvals.}{Indices of evaluation of \code{newX}}
+  \item{options.}{Any options needed to preprocess the predictor functions}
 }
 \description{
 Prior to using functions \code{X} as predictors in a scalar-on-function regression, it is often

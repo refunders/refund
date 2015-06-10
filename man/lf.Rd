@@ -64,6 +64,27 @@ function and \eqn{X_i(t)} is a functional predictor on the closed interval
 default is thin-plate regression splines, as this is the default option
 for \code{\link[mgcv]{s}}.
 }
+\examples{
+data(DTI)
+DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
+
+# We can apply various preprocessing options to the DTI data
+fit1 <- pfr(pasat ~ lf(cca, k=30), data=DTI1)
+fit2 <- pfr(pasat ~ lf(cca, k=30, presmooth="fpca.sc",
+                       presmooth.opts=list(nbasis=8, pve=.975)), data=DTI1)
+fit3 <- pfr(pasat ~ lf(cca, k=30, presmooth="fpca.face",
+                       presmooth.opts=list(m=3, npc=9)), data=DTI1)
+fit4 <- pfr(pasat ~ lf(cca, k=30, presmooth="fpca.ssvd"), data=DTI1)
+fit5 <- pfr(pasat ~ lf(cca, k=30, presmooth="bspline",
+                       presmooth.opts=list(nbasis=8)), data=DTI1)
+fit6 <- pfr(pasat ~ lf(cca, k=30, presmooth="interpolate"), data=DTI1)
+
+# All models should result in similar fits
+fits <- as.data.frame(lapply(1:6, function(i)
+  get(paste0("fit",i))$fitted.values))
+names(fits) <- c("none", "fpca.sc", "fpca.face", "fpca.ssvd", "bspline", "interpolate")
+pairs(fits)
+}
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,
   and Jonathan Gellar
@@ -80,6 +101,6 @@ measurements. \emph{Journal of the Royal Statistical Society: Series C},
 }
 \seealso{
 \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
- and \code{\link{linear.functional.terms}}, \code{\link{pfr}} for additonal examples
+ and \code{\link{linear.functional.terms}}; \code{\link{pfr}} for additonal examples
 }
 

@@ -127,8 +127,8 @@ The variable-domain functional regression model uses the term
 }
 \examples{
 data(sofa)
-  fit.vd1 <- pfr(death ~ lf.vd(SOFA) + age + los, family="binomial",
-                 data=sofa)
+  fit.vd1 <- pfr(death ~ lf.vd(SOFA) + age + los,
+                 family="binomial", data=sofa)
   fit.vd2 <- pfr(death ~ lf.vd(SOFA, transform="lagged") + age + los,
                  family="binomial", data=sofa)
   fit.vd3 <- pfr(death ~ lf.vd(SOFA, transform="standardized") + age + los,

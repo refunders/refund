@@ -80,6 +80,47 @@ is a functional predictor on the closed interval \eqn{T}. See \code{\link{smooth
 for a list of bivariate basis and penalty options; the default is a tensor
 product basis with marginal cubic regression splines for estimating \eqn{F(x,t)}.
 }
+\examples{
+data(DTI)
+## only consider first visit and cases (no PASAT scores for controls)
+DTI1 <- DTI[DTI$visit==1 & DTI$case==1,]
+DTI2 <- DTI1[complete.cases(DTI),]
+
+## fit FGAM using FA measurements along corpus callosum
+## as functional predictor with PASAT as response
+## using 8 cubic B-splines for marginal bases with third
+## order marginal difference penalties
+## specifying gamma > 1 enforces more smoothing when using
+## GCV to choose smoothing parameters
+fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))),
+            method="GCV.Cp", gamma=1.2, data=DTI1)
+vis.pfr(fit)
+
+
+## fgam term for the cca measurements plus an flm term for the rcst measurements
+## leave out 10 samples for prediction
+test <- sample(nrow(DTI2), 10)
+fit2 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))) +
+                    lf(rcst, k=7, m=c(2,2), bs="ps"),
+            method="GCV.Cp", gamma=1.2, data=DTI2[-test,])
+par(mfrow=c(1,2))
+plot(fit2, scheme=2, rug=F)
+vis.pfr(fit2, af.term="cca", xval=.6)
+pred <- predict(fit, newdata = DTI2[test,], type='response', PredOutOfRange = TRUE)
+sqrt(mean((DTI2$pasat[test] - pred)^2))
+
+## Try to predict the binary response disease status (case or control)
+##   using the quantile transformed measurements from the rcst tract
+##   with a smooth component for a scalar covariate that is pure noise
+DTI3 <- DTI[DTI$visit==1,]
+DTI3 <- DTI3[complete.cases(DTI3$rcst),]
+z1 <- rnorm(nrow(DTI3))
+fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), Qtransform=TRUE) +
+                    s(z1, k = 10), family="binomial", select=TRUE, data=DTI3)
+plot(fit3, scheme=2, rug=F)
+abline(h=0, col="green")
+vis.pfr(fit3, af.term="rcst", plot.type="contour")
+}
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,
   and Jonathan Gellar

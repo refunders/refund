@@ -57,6 +57,50 @@
 #'     to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}}
 #'   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
 #'     \code{\link{create.prep.func}}}
+#' 
+#' @examples
+#' 
+#' data(DTI)
+#' ## only consider first visit and cases (no PASAT scores for controls)
+#' DTI1 <- DTI[DTI$visit==1 & DTI$case==1,]
+#' DTI2 <- DTI1[complete.cases(DTI),]
+#'
+#' ## fit FGAM using FA measurements along corpus callosum
+#' ## as functional predictor with PASAT as response
+#' ## using 8 cubic B-splines for marginal bases with third
+#' ## order marginal difference penalties
+#' ## specifying gamma > 1 enforces more smoothing when using
+#' ## GCV to choose smoothing parameters
+#' fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))),
+#'             method="GCV.Cp", gamma=1.2, data=DTI1)
+#' vis.pfr(fit)
+#'
+#'
+#' ## fgam term for the cca measurements plus an flm term for the rcst measurements
+#' ## leave out 10 samples for prediction
+#' test <- sample(nrow(DTI2), 10)
+#' fit2 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))) +
+#'                     lf(rcst, k=7, m=c(2,2), bs="ps"),
+#'             method="GCV.Cp", gamma=1.2, data=DTI2[-test,])
+#' par(mfrow=c(1,2))
+#' plot(fit2, scheme=2, rug=F)
+#' vis.pfr(fit2, af.term="cca", xval=.6)
+#' pred <- predict(fit, newdata = DTI2[test,], type='response', PredOutOfRange = TRUE)
+#' sqrt(mean((DTI2$pasat[test] - pred)^2))
+#' 
+#' ## Try to predict the binary response disease status (case or control)
+#' ##   using the quantile transformed measurements from the rcst tract
+#' ##   with a smooth component for a scalar covariate that is pure noise
+#' DTI3 <- DTI[DTI$visit==1,]
+#' DTI3 <- DTI3[complete.cases(DTI3$rcst),]
+#' z1 <- rnorm(nrow(DTI3))
+#' fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), Qtransform=TRUE) +
+#'                     s(z1, k = 10), family="binomial", select=TRUE, data=DTI3)
+#' plot(fit3, scheme=2, rug=F)
+#' abline(h=0, col="green")
+#' vis.pfr(fit3, af.term="rcst", plot.type="contour")
+#' 
+#' 
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Fabian Scheipl,
 #'   and Jonathan Gellar
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
@@ -117,11 +161,10 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   }
 
   if(!is.null(presmooth)){
-    # create preprocessing function
-    prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth, options = presmooth.opts)
-    
-    # preprocess data
-    X <- prep.func(newX = X)$processed
+    # create and executepreprocessing function
+    prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth,
+                                 options = presmooth.opts)
+    X <- prep.func(newX = X)
 
     # need to check that smoothing didn't change range of data
     if(!Qtransform){
@@ -144,7 +187,7 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
 
   if (!is.null(L)) {
     stopifnot(nrow(L) == n, ncol(L) == nt)
-  }else {
+  } else {
     L <- switch(integration, simpson = {
       ((xind[, nt] - xind[, 1])/nt)/3 * matrix(c(1,rep(c(4, 2), length = nt - 2), 1), nrow = n,
                                                        ncol = nt, byrow = T)

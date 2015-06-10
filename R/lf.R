@@ -58,10 +58,32 @@
 #' measurements. \emph{Journal of the Royal Statistical Society: Series C},
 #' 61(3), 453-469.
 #' 
+#' @examples
+#' data(DTI)
+#' DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
+#' 
+#' # We can apply various preprocessing options to the DTI data
+#' fit1 <- pfr(pasat ~ lf(cca, k=30), data=DTI1)
+#' fit2 <- pfr(pasat ~ lf(cca, k=30, presmooth="fpca.sc",
+#'                        presmooth.opts=list(nbasis=8, pve=.975)), data=DTI1)
+#' fit3 <- pfr(pasat ~ lf(cca, k=30, presmooth="fpca.face",
+#'                        presmooth.opts=list(m=3, npc=9)), data=DTI1)
+#' fit4 <- pfr(pasat ~ lf(cca, k=30, presmooth="fpca.ssvd"), data=DTI1)
+#' fit5 <- pfr(pasat ~ lf(cca, k=30, presmooth="bspline",
+#'                        presmooth.opts=list(nbasis=8)), data=DTI1)
+#' fit6 <- pfr(pasat ~ lf(cca, k=30, presmooth="interpolate"), data=DTI1)
+#' 
+#' # All models should result in similar fits
+#' fits <- as.data.frame(lapply(1:6, function(i)
+#'   get(paste0("fit",i))$fitted.values))
+#' names(fits) <- c("none", "fpca.sc", "fpca.face", "fpca.ssvd", "bspline", "interpolate")
+#' pairs(fits)
+#' 
 #' @seealso \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
-#'  and \code{\link{linear.functional.terms}}, \code{\link{pfr}} for additonal examples
+#'  and \code{\link{linear.functional.terms}}; \code{\link{pfr}} for additonal examples
 #' @importFrom fda create.bspline.basis smooth.basisPar eval.fd
 #' @importFrom utils getFromNamesapce modifyList
+
 lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
                integration = c("simpson", "trapezoidal", "riemann"),
                L = NULL, presmooth = NULL, presmooth.opts = NULL, ...) {
@@ -106,11 +128,10 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   }
 
   if(!is.null(presmooth)){
-    # create preprocessing function
-    prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth, options = presmooth.opts)
-    
-    # preprocess data
-    X <- prep.func(newX = X)$processed
+    # create and execute preprocessing function
+    prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth,
+                                 options = presmooth.opts)
+    X <- prep.func(newX = X)
   }
 
   if (!is.null(L)) {

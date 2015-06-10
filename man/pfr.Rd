@@ -70,8 +70,7 @@ plot(fit.af, scheme=2, xlab="cca(t)", ylab="t", main="Tensor Product", rug=FALSE
 # Change basistype to thin-plate regression splines
 fit.af.s <- pfr(pasat ~ af(cca, basistype="s", Qtransform=TRUE, k=50),
                 data=DTI1)
-plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="TPRS",
-     rug=FALSE)
+plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="TPRS", rug=FALSE)
 
 par(mfrow=c(2,2))
 vis.pfr(fit.af, xval=.2)
