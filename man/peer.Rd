@@ -4,21 +4,21 @@
 \alias{peer}
 \title{Construct a PEER regression term in a \code{pfr} formula}
 \usage{
-peer(X, argvals = (1:ncol(X)), pentype = "RIDGE", Q = NULL, phia = 10^3,
-  L = NULL, ...)
+peer(X, argvals = seq(0, 1, l = ncol(X)), pentype = "RIDGE", Q = NULL,
+  phia = 10^3, L = NULL, ...)
 }
 \arguments{
 \item{X}{the functional predictors, expressed as an \code{N} by \code{J}
 matrix}
 
 \item{argvals}{vector (or matrix) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}. Default is \code{1:ncol(X)}.}
+\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}.}
 
 \item{pentype}{the type of penalty to apply; see Details.}
 
-\item{Q}{\eqn{Q} matrix used for \code{pentype="DECOMP"}; see Details.}
+\item{Q}{matrix \eqn{Q} used for \code{pentype="DECOMP"}; see Details.}
 
-\item{phia}{\eqn{a} scalar used for \code{pentype="DECOMP"}; see Details.}
+\item{phia}{scalar \eqn{a} used for \code{pentype="DECOMP"}; see Details.}
 
 \item{L}{user-supplied penalty matrix for \code{pentype="USER"}; see
 Details.}
@@ -59,8 +59,50 @@ are four types of penalties available:
 The original stand-alone implementation by Madan Gopal Kundu is available in
 \code{\link{peer_old}}.
 }
+\examples{
+\dontrun{
+#------------------------------------------------------------------------
+# Example 1: Estimation with D2 penalty
+#------------------------------------------------------------------------
+
+## Load Data
+data(DTI)
+
+## Extract values for arguments for peer() from given data
+cca = DTI$cca[which(DTI$case == 1),]
+DTI = DTI[which(DTI$case == 1),]
+Y = DTI$pasat
+
+##1.1 Fit the model
+fit.D2 = pfr(Y ~ peer(cca, pentype="D"))
+plot(fit.D2)
+
+#------------------------------------------------------------------------
+# Example 2: Estimation with structured penalty (need structural
+#            information about regression function or predictor function)
+#------------------------------------------------------------------------
+
+## Load Data
+data(PEER.Sim)
+
+## Extract values for arguments for peer() from given data
+PEER.Sim1<- subset(PEER.Sim, t==0)
+K<- 100
+W<- as.matrix(PEER.Sim1[,c(3:(K+2))])
+Y<- PEER.Sim1[,K+3]
+
+##Load Q matrix containing structural information
+data(Q)
+
+##2.1 Fit the model
+# Setting k to max possible value
+fit.decomp <- pfr(Y ~ peer(W, pentype="Decomp", Q=Q, k=99))
+plot(fit.decomp)
+}
+}
 \author{
-Jonathan Gellar
+Jonathan Gellar \email{JGellar@mathematica-mpr.com} and
+        Madan Gopal Kundu \email{mgkundu@iupui.edu}
 }
 \references{
 Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for

@@ -44,6 +44,7 @@ Description: Developer version of refund. Methods for regression for functional
     image data.
 License: GPL (>= 2)
 LazyLoad: yes
+LazyData: true
 Repository: CRAN
 Collate:
     'Omegas.R'
