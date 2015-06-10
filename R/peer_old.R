@@ -117,9 +117,8 @@
 ##'
 ##' ## Extract values for arguments for peer() from given data
 ##' PEER.Sim1<- subset(PEER.Sim, t==0)
-##' K<- 100
-##' W<- PEER.Sim1[,c(3:(K+2))]
-##' Y<- PEER.Sim1[,K+3]
+##' W<- PEER.Sim1$W
+##' Y<- PEER.Sim1$Y
 ##'
 ##' ##Load Q matrix containing structural information
 ##' data(Q)

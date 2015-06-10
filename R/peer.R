@@ -65,16 +65,9 @@
 ##' # Example 1: Estimation with D2 penalty
 ##' #------------------------------------------------------------------------
 ##'
-##' ## Load Data
 ##' data(DTI)
-##'
-##' ## Extract values for arguments for peer() from given data
-##' cca = DTI$cca[which(DTI$case == 1),]
 ##' DTI = DTI[which(DTI$case == 1),]
-##' Y = DTI$pasat
-##'
-##' ##1.1 Fit the model
-##' fit.D2 = pfr(Y ~ peer(cca, pentype="D"))
+##' fit.D2 = pfr(pasat ~ peer(cca, pentype="D"), data=DTI)
 ##' plot(fit.D2)
 ##'
 ##' #------------------------------------------------------------------------
@@ -82,21 +75,12 @@
 ##' #            information about regression function or predictor function)
 ##' #------------------------------------------------------------------------
 ##'
-##' ## Load Data
 ##' data(PEER.Sim)
-##'
-##' ## Extract values for arguments for peer() from given data
-##' PEER.Sim1<- subset(PEER.Sim, t==0)
-##' K<- 100
-##' W<- as.matrix(PEER.Sim1[,c(3:(K+2))])
-##' Y<- PEER.Sim1[,K+3]
-##'
-##' ##Load Q matrix containing structural information
 ##' data(Q)
-##'
-##' ##2.1 Fit the model
+##' PEER.Sim1<- subset(PEER.Sim, t==0)
+##' 
 ##' # Setting k to max possible value
-##' fit.decomp <- pfr(Y ~ peer(W, pentype="Decomp", Q=Q, k=99))
+##' fit.decomp <- pfr(Y ~ peer(W, pentype="Decomp", Q=Q, k=99), data=PEER.Sim1)
 ##' plot(fit.decomp)
 ##' }
 ##'

@@ -16,7 +16,17 @@ data(PEER.Sim)
 data(Q)
 }
 
-\format{The data frame \code{PEER.Sim} is made up of subject ID number(\code{id}), subject-specific time of measurement (\code{t}), functional predictor profile (\code{W.1-W.100}) and scalar response  (\code{Y})}
+\format{\code{PEER.Sim} is a data frame with 400 observations (100 subjects,
+    4 time points per subject) and 4 variables:
+\describe{
+  \item{id}{Subject ID number}
+  \item{t}{Time of measurement}
+  \item{Y}{Scalar response}
+  \item{W}{A \code{400 x 100} matrix containing the functional predictor profile}
+}
+\code{Q} is a \code{7 x 100} matrix containing structural information about
+  \code{PEER.Sim$W}.
+}
 
 \references{
 Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal functional models with structured penalties. (please contact J. Harezlak at harezlak@iupui.edu)
