@@ -10,23 +10,28 @@ af(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("te",
   Qtransform = FALSE, ...)
 }
 \arguments{
-\item{X}{an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations
-\eqn{X_i(t_{i1}),., X_i(t_{iJ}); i=1,.,N.}}
+\item{X}{functional predictors, expressed as an \code{N} by \code{J} matrix,
+where \code{N} is the number of columns and \code{J} is the number of
+evaluation points. May include missing/sparse functions, which are
+indicated by \code{NA} values.}
 
-\item{argvals}{matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-\emph{i}th row \eqn{(t_{i1},.,t_{iJ})}}
+\item{argvals}{indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+as a matrix allows for different observations times for each subject.}
 
-\item{xind}{Same as argvals. It will discard this argument in the next version of refund.}
+\item{xind}{same as argvals. It will not be supported in the next version of refund.}
 
 \item{basistype}{defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
 use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
 parameterization of tensor product splines (see \code{\link{t2}})}
 
-\item{integration}{method used for numerical integration. Defaults to \code{"simpson"}'s rule for
-calculating entries in \code{L}. Alternatively and for non-equidistant grids, \code{"trapezoidal"}
-or \code{"riemann"}. \code{"riemann"} integration is always used if \code{L} is specified}
+\item{integration}{method used for numerical integration. Defaults to \code{"simpson"}'s rule
+for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
+\code{"trapezoidal"} or \code{"riemann"}.}
 
-\item{L}{optional weight matrix for the linear functional}
+\item{L}{an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
+integration over \code{t}. If present, overrides \code{integration}.}
 
 \item{presmooth}{string indicating the method to be used for preprocessing functional predictor prior
 to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
@@ -46,43 +51,38 @@ applying a quantile transformation on each column of \code{X} prior to fitting? 
 to transforming the functional predictor}
 
 \item{...}{optional arguments for basis and penalization to be passed to the
-function indicated by \code{basistype}. These could include, for example,
-\code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
-\code{\link{s}} for details.}
+  function indicated by \code{basistype}. These could include, for example,
+  \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
+  \code{\link{s}} for details.}
 }
 \value{
 A list with the following entries:
-\enumerate{
-\item \code{call} - a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
-constructed covariate and weight matrices.
-\item \code{argvals} - the \code{argvals} argument supplied to \code{af}
-\item \code{L} the  matrix of weights used for the integration
-\item \code{xindname}{ the name used for the functional predictor variable in the \code{formula} used by \code{mgcv}.}
-\item \code{tindname} - the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}
-\item \code{Lname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
-\item \code{presmooth} - the \code{presmooth} argument supplied to \code{af}
-\item \code{Qtranform} - the \code{Qtransform} argument supplied to \code{af}
-\item \code{Xrange} - the \code{Xrange} argument supplied to \code{af}
-\item \code{ecdflist} - a list containing one empirical cdf function from applying \code{\link{ecdf}}
-to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}
-\item \code{prep.func} - a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
-\code{\link{create.prep.func}}.
-}
+  \item{\code{call}}{a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
+    constructed covariate and weight matrices.}
+  \item{\code{argvals}}{the \code{argvals} argument supplied to \code{af}}
+  \item{\code{L}}{the  matrix of weights used for the integration}
+  \item{\code{xindname}}{the name used for the functional predictor variable in the \code{formula} used by \code{mgcv}}
+  \item{\code{tindname}}{the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}}
+  \item{\code{Lname}}{the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}}
+  \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{af}}
+  \item{\code{Qtranform}}{the \code{Qtransform} argument supplied to \code{af}}
+  \item{\code{Xrange}}{the \code{Xrange} argument supplied to \code{af}}
+  \item{\code{ecdflist}}{a list containing one empirical cdf function from applying \code{\link{ecdf}}
+    to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}}
+  \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
+    \code{\link{create.prep.func}}}
 }
 \description{
 Defines a term \eqn{\int_{T}F(X_i(t),t)dt} for inclusion in an \code{mgcv::gam}-formula (or
 \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
-\code{\link{pfr}}, where \eqn{F(x,t)}$ is an unknown smooth bivariate function and \eqn{X_i(t)}
+\code{\link{pfr}}, where \eqn{F(x,t)} is an unknown smooth bivariate function and \eqn{X_i(t)}
 is a functional predictor on the closed interval \eqn{T}. See \code{\link{smooth.terms}}
 for a list of bivariate basis and penalty options; the default is a tensor
-product basis with marginal second-order difference penalties for estimating \eqn{F(x,t)}.
-}
-\details{
-These details must be filled in! Specifying argvals, presmooth options,
- anything else?
+product basis with marginal cubic regression splines for estimating \eqn{F(x,t)}.
 }
 \author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
+Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,
+  and Jonathan Gellar
 }
 \references{
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional

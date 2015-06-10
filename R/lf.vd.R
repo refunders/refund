@@ -17,15 +17,18 @@
 #'    where \eqn{N} is the number of subjects and \eqn{J} is the maximum number of time
 #'    points per subject. Most rows will have \code{NA} values in the right-most
 #'    columns, corresponding to unobserved time points.
-#' @param argvals matrix (or vector) containing the time indices of evaluations of
-#'    \eqn{X_i(t)}. If a matrix, it must be the same dimensionality as \code{X}; if a
-#'    vector, must be of length \code{ncol(X)}.
+#' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+#'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+#'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+#'   as a matrix allows for different observations times for each subject.
 #' @param vd vector of values of containing the variable-domain width (\eqn{T_i}
 #'    above). Defaults to the \code{argvals} value corresponding to the last
 #'    non-\code{NA} element of \eqn{X_i(t)}.
-#' @param integration method used for numerical integration. Defaults to
-#'    ``\code{simpson}"'s rule. Alternatively and for non-equidistant grids,
-#'    ``\code{trapezoidal}" or ``\code{riemann}".
+#' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule
+#'   for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
+#'   \code{"trapezoidal"} or \code{"riemann"}.
+#' @param L an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
+#'   integration over \code{t}. If present, overrides \code{integration}.
 #' @param basistype character string indicating type of bivariate basis used.
 #'    Options include \code{"s"} (the default), \code{"te"}, and \code{"t2"},
 #'    which correspond to \code{mgcv::s}, \code{mgcv::te}, and \code{mgcv::t2}.
@@ -36,9 +39,9 @@
 #'    basis). If \code{FALSE}, penalties are concatonated into a single
 #'    block-diagonal penalty matrix (with one smoothing parameter).
 #' @param ... optional arguments for basis and penalization to be passed to the
-#'    function indicated by \code{basistype}. These could include, for example,
-#'    \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{s}} or
-#'    \code{\link{te}} for details.
+#'   function indicated by \code{basistype}. These could include, for example,
+#'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
+#'   \code{\link{s}} for details.
 #'    
 #' @details The variable-domain functional regression model uses the term
 #'    \eqn{\frac1{T_i}\int_0^{T_i}X_i(t)\beta(t,T_i)dt} to incorporate a
@@ -153,7 +156,7 @@
 #'    \code{\link{linear.functional.terms}}.
 
 lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
-                  integration = c("simpson", "trapezoidal", "riemann"),
+                  integration = c("simpson", "trapezoidal", "riemann"), L=NULL,
                   basistype=c("s","te","t2"),
                   transform=NULL, mp=TRUE, ...
 ) {
@@ -188,7 +191,11 @@ lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
   }
   
   # Process Functional Predictor
-  L <- getL(argvals, integration=integration, n.int=J.i)
+  if (!is.null(L)) {
+    stopifnot(nrow(L) == n, ncol(L) == J)
+  } else {
+    L <- getL(argvals, integration=integration, n.int=J.i)
+  }
   LX <- L*X
   
   # Zero-out unused coordinates. For argvals and vd, this means we set them to

@@ -23,11 +23,10 @@ as a matrix allows for different observations times for each subject.}
 
 \item{integration}{method used for numerical integration. Defaults to \code{"simpson"}'s rule
 for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
-\dQuote{\code{trapezoidal}} or \code{"riemann"}. \code{"riemann"} integration is always used if
-\code{L} is specified}
+\code{"trapezoidal"} or \code{"riemann"}.}
 
 \item{L}{an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
-integration over \code{t}}
+integration over \code{t}. If present, overrides \code{integration}.}
 
 \item{presmooth}{string indicating the method to be used for preprocessing functional predictor prior
 to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
@@ -37,25 +36,23 @@ to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \cod
 \item{presmooth.opts}{list including options passed to preprocessing method
 \code{\link{create.prep.func}}.}
 
-\item{...}{optional arguments for basis and penalization to be passed to the
-function indicated by \code{basistype}. These could include, for example,
-\code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{s}} for details.}
+\item{...}{optional arguments for basis and penalization to be passed to
+  \code{mgcv::s}. These could include, for example,
+  \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link[mgcv]{s}} for details.}
 }
 \value{
 a list with the following entries
-\enumerate{
-\item \code{call} - a \code{call} to \code{te} (or \code{s}, \code{t2}) using the appropriately
-constructed covariate and weight matrices
-\item \code{argvals} - the \code{argvals} argument supplied to \code{lf}
-\item \code{L} - the  matrix of weights used for the integration
-\item{xindname} - the name used for the functional predictor variable in the \code{formula}
-used by \code{mgcv}
-\item \code{tindname} - the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}
-\item \code{LXname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
-\item \code{presmooth} - the \code{presmooth} argument supplied to \code{lf}
-\item \code{prep.func} - a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
-\code{\link{create.prep.func}}.
-}
+  \item{\code{call}}{a \code{call} to \code{te} (or \code{s}, \code{t2}) using the appropriately
+    constructed covariate and weight matrices}
+  \item{\code{argvals}}{the \code{argvals} argument supplied to \code{lf}}
+  \item{\code{L}}{the  matrix of weights used for the integration}
+  \item{\code{xindname}}{the name used for the functional predictor variable in the \code{formula}
+    used by \code{mgcv}}
+  \item{\code{tindname}}{the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}}
+  \item{\code{LXname}}{the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}}
+  \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{lf}}
+  \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
+    \code{\link{create.prep.func}}}
 }
 \description{
 Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{mgcv::gam}-formula (or
@@ -67,11 +64,9 @@ function and \eqn{X_i(t)} is a functional predictor on the closed interval
 default is thin-plate regression splines, as this is the default option
 for \code{\link[mgcv]{s}}.
 }
-\details{
-These details need to be filled in!
-}
 \author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
+Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,
+  and Jonathan Gellar
 }
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).

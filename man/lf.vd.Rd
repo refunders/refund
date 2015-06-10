@@ -5,8 +5,8 @@
 \title{Construct a VDFR regression term}
 \usage{
 lf.vd(X, argvals = seq(0, 1, l = ncol(X)), vd = NULL,
-  integration = c("simpson", "trapezoidal", "riemann"), basistype = c("s",
-  "te", "t2"), transform = NULL, mp = TRUE, ...)
+  integration = c("simpson", "trapezoidal", "riemann"), L = NULL,
+  basistype = c("s", "te", "t2"), transform = NULL, mp = TRUE, ...)
 }
 \arguments{
 \item{X}{matrix containing variable-domain functions. Should be \eqn{N x J},
@@ -14,17 +14,21 @@ where \eqn{N} is the number of subjects and \eqn{J} is the maximum number of tim
 points per subject. Most rows will have \code{NA} values in the right-most
 columns, corresponding to unobserved time points.}
 
-\item{argvals}{matrix (or vector) containing the time indices of evaluations of
-\eqn{X_i(t)}. If a matrix, it must be the same dimensionality as \code{X}; if a
-vector, must be of length \code{ncol(X)}.}
+\item{argvals}{indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+as a matrix allows for different observations times for each subject.}
 
 \item{vd}{vector of values of containing the variable-domain width (\eqn{T_i}
 above). Defaults to the \code{argvals} value corresponding to the last
 non-\code{NA} element of \eqn{X_i(t)}.}
 
-\item{integration}{method used for numerical integration. Defaults to
-``\code{simpson}"'s rule. Alternatively and for non-equidistant grids,
-``\code{trapezoidal}" or ``\code{riemann}".}
+\item{integration}{method used for numerical integration. Defaults to \code{"simpson"}'s rule
+for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
+\code{"trapezoidal"} or \code{"riemann"}.}
+
+\item{L}{an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
+integration over \code{t}. If present, overrides \code{integration}.}
 
 \item{basistype}{character string indicating type of bivariate basis used.
 Options include \code{"s"} (the default), \code{"te"}, and \code{"t2"},
@@ -39,9 +43,9 @@ basis). If \code{FALSE}, penalties are concatonated into a single
 block-diagonal penalty matrix (with one smoothing parameter).}
 
 \item{...}{optional arguments for basis and penalization to be passed to the
-   function indicated by \code{basistype}. These could include, for example,
-   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{s}} or
-   \code{\link{te}} for details.}
+  function indicated by \code{basistype}. These could include, for example,
+  \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
+  \code{\link{s}} for details.}
 }
 \value{
 a list with the following entries

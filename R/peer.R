@@ -4,26 +4,31 @@
 ##' \code{\link{pfr}} formula, where \eqn{\beta(t)} is estimated with
 ##' structured penalties (Randloph et al., 2012).
 ##' 
-##' @param X the functional predictors, expressed as an \code{N} by \code{J}
-##'   matrix
-#' @param argvals vector (or matrix) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-#' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}.
-##' @param pentype the type of penalty to apply; see Details.
+#' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
+#'   where \code{N} is the number of columns and \code{J} is the number of
+#'   evaluation points. May include missing/sparse functions, which are
+#'   indicated by \code{NA} values.
+#' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+#'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+#'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+#'   as a matrix allows for different observations times for each subject.
+##' @param pentype the type of penalty to apply, one of \code{"RIDGE"}, \code{"D"},
+##'  \code{"DECOMP"}, or \code{"USER"}; see Details.
 ##' @param Q matrix \eqn{Q} used for \code{pentype="DECOMP"}; see Details.
 ##' @param phia scalar \eqn{a} used for \code{pentype="DECOMP"}; see Details.
 ##' @param L user-supplied penalty matrix for \code{pentype="USER"}; see
 ##'   Details.
 ##' @param ... additional arguments to be passed to \code{lf} (and then
 ##'   possibly \code{s}). Arguments processed by \code{lf} include, for example,
-##'   \code{argvals} and \code{integration} for specifying the functional
-##'   argument and numerical integration. Arguments processed by \code{s}
+##'   \code{integration} for specifying the method of numerical integration.
+##'   Arguments processed by \code{s}
 ##'   include information related to basis and penalization, such as \code{m}
 ##'   for specifying the order of the difference penalty; See Details.
 ##' 
 ##' @details
 ##' \code{peer} is a wrapper for \code{\link{lf}}, which defines linear
 ##' functional predictors for any type of basis. It simply calls \code{lf}
-##' with the appropriate options for basis and penalty construction.
+##' with the appropriate options for the \code{peer} basis and penalty construction.
 ##' The type of penalty is determined by the \code{pentype} argument. There
 ##' are four types of penalties available:
 ##' \enumerate{
