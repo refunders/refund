@@ -1,5 +1,5 @@
 # `refund`
-![](https://travis-ci.org/refunders/refund.svg?branch=master)
+[![](https://travis-ci.org/refunders/refund.svg?branch=master)](https://travis-ci.org/refunders/refund)
 
 ## Methods for regression with functional data
 
