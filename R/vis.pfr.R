@@ -4,30 +4,37 @@
 #' terms fit using \code{\link{pfr}} or plots \dQuote{slices} of the estimated surface or estimated
 #' second derivative surface with one of its arguments fixed and corresponding twice-standard error
 #' \dQuote{Bayesian} confidence bands constructed using the method in Marra and Wood (2012).  See the details.
+
 #' @param object an \code{pfr} object, produced by \code{\link{pfr}}
-#' @param af.term character; the name of the functional predictor to be plotted.  Only important
-#' if multiple \code{af} terms are fit.  Defaults to the first \code{af} term in \code{object$call}
+#' @param af.term identifier for the af term to be plotted. This is only important
+#'   if multiple \code{af} terms are present. Can either be a character string
+#'   containing the name of the functional predictor to be plotted, or an integer
+#'   indexing the appropriate term, from the list of af terms in the order they
+#'   appear in the model formula.
 #' @param xval a number in the range of functional predictor to be plotted.  The surface will be plotted
-#' with the first argument of the estimated surface fixed at this value
+#'   with the first argument of the estimated surface fixed at this value
 #' @param tval a number in the domain of the functional predictor to be plotted.  The surface will be
-#' plotted with the second argument of the estimated surface fixed at this value. Ignored if \code{xval}
-#' is specified
+#'   plotted with the second argument of the estimated surface fixed at this value. Ignored if \code{xval}
+#'   is specified
 #' @param deriv2 logical; if \code{TRUE}, plot the estimated second derivative surface along with
-#' Bayesian confidence bands.  Only implemented for the "slices" plot from either \code{xval} or
-#' \code{tval} being specified
+#'   Bayesian confidence bands.  Only implemented for the "slices" plot from either \code{xval} or
+#'   \code{tval} being specified
 #' @param theta numeric; viewing angle; see \code{\link{persp}}
 #' @param plot.type one of \code{"contour"} (to use \code{\link{levelplot}}) or \code{"persp"}
-#' (to use \code{\link{persp}}).  Ignored if either \code{xval} or \code{tval} is specified
+#'   (to use \code{\link{persp}}).  Ignored if either \code{xval} or \code{tval} is specified
 #' @param ticktype how to draw the tick marks if \code{plot.type="persp"}.  Defaults to \code{"detailed"}
 #' @param ... other options to be passed to \code{\link{persp}}, \code{\link{levelplot}}, or
-#' \code{\link{plot}}
+#'   \code{\link{plot}}
+#' 
 #' @details The confidence bands used when plotting slices of the estimated surface or second derivative
 #' surface are the ones proposed in Marra and Wood (2012).  These are a generalization of the "Bayesian"
 #' intevals of Wahba (1983) with an adjustment for the uncertainty about the model intercept. The
 #' estimated covariance matrix of the model parameters is obtained from assuming a particular Bayesian
 #' model on the parameters.
+#' 
 #' @return Simply produces a plot
-#' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
+#' @references
+#' McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 #' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23(1)},
 #' pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 #'
@@ -36,12 +43,14 @@
 #'
 #' Wabha, G. (1983) "Confidence intervals" for the cross-validated smoothing spline. \emph{Journal of the
 #' Royal Statistical Society, Series B}, \bold{45(1)}, pp. 133--150.
+#' 
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}
 #' @seealso \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{pfr}}, \code{\link{persp}},
-#' \code{\link{levelplot}}
+#'   \code{\link{levelplot}}
 #' @importFrom gam vis.gam predict.gam
 #' @importFrom lattice levelplot
 #' @importFrom graphics persp
+#' 
 #' @examples
 #' ################# DTI Example #####################
 #' data(DTI)
@@ -71,38 +80,43 @@
 #' vis.pfr(fit, af.term='cca', deriv2=FALSE, tval=tval)
 #' vis.pfr(fit, af.term='cca', deriv2=TRUE, xval=xval)
 #' vis.pfr(fit, af.term='cca', deriv2=TRUE, tval=tval)
-#' 
 
-
-vis.pfr=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50,
+vis.pfr=function(object, af.term=1, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50,
                   plot.type = "persp", ticktype = "detailed", ...){
   
   if(!length(object$pfr) | !any(object$pfr$termtype == "af"))
     stop('Model contains no af terms for plotting')
   
-  if(missing(af.term)){
-    tnames <- names(object$model)
-    af.term <- tnames[grep(paste('','.omat',sep=''),tnames)[1]]
-    af.term <- strsplit(af.term,'.omat')
+  # ttypes are the term types for object$smooth; fttypes for object$pfr$ft
+  ftlist  <- c("lf", "af", "lf.vd", "peer") # This vector identifies term types that end up in ft
+  ttypes  <- object$pfr$termtype[object$pfr$termtype != "par"]
+  fttypes <- ttypes[ttypes %in% ftlist]
+  ftnames <- sapply(strsplit(sapply(object$pfr$ft, function(x) x$tindname),
+                             ".", fixed=TRUE), function(x) x[1])
+  stopifnot(length(ttypes)  == length(object$smooth))
+  stopifnot(length(fttypes) == length(object$pfr$ft))
+  
+  if (is.character(af.term)) {
+    af.ind <- which(ftnames == af.term & fttypes=="af")
+    if (!length(af.ind))  stop("Unrecognized af.term")
+    if (length(af.ind)>1) stop("Multiple af.terms matched?")
+  } else if (is.numeric(af.term)) {
+    af.ind <- which(fttypes=="af")[af.term]
+    af.term <- ftnames[af.ind]
+    if (is.na(af.ind)) stop("af.term entry exceeds the number of af terms")
+  } else {
+    stop("Uncrecognized af.term type")
   }
   
-  #tnames <- object$pfr$labelmap
-  tnames <- sapply(object$smooth, function(x) x$label)
-  ## index of desired af among all predictors
-  afind <- grep(paste('te[(]',af.term,sep = ""), tnames)
-  ## index of desired af among all func. predictors
-  af.ind <- grep(paste('af[(]',af.term,sep = ""), names(object$pfr$ft))
-  if(!length(afind))
-    stop('The specified af.term is not valid')
-  tname <- tnames[afind]
-  basistype <- strsplit(tname,'[(]')[[1]][1]
-  sstring <- paste(basistype,'[(]',af.term,'\\.tmat,',af.term,'\\.omat','[)]:L\\.',af.term,sep='')
-  tind <- grepl(sstring,names(object$coef))
-  
-  if(!(length(tval)+length(xval))){
+  # Corresponding coefficient indices
+  sind <- which(ttypes %in% ftlist)[af.ind]
+  tind <- 1:length(object$coefficients) %in% c(object$smooth[[sind]]$first.para:
+                                               object$smooth[[sind]]$last.para)
+  if(!(length(tval)+length(xval))) {
+    # Plot entire surface (not slices)
     temp <- list()
     temp[[paste('L.',af.term,sep='')]] <- 1
-    if(plot.type=='persp' ){
+    if(plot.type=='persp' ) {
       
       tvar <- tolower(af.term)
       
@@ -112,11 +126,11 @@ vis.pfr=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, thet
         mtitle <- bquote(paste(hat(F),'(',.(tvar),',t)',sep=''))
       }
       tvar <- paste('\n',tvar,sep='')
-      vis.gam(object,view=c(paste(af.term,'.omat',sep=''),paste(af.term,'.tmat',sep='')),cond=temp,
-              ticktype=ticktype,theta=theta,contour.col=rev(heat.colors(100)),
-              xlab=tvar,ylab='\nt',zlab='',main=mtitle,...)
+      vis.gam(object, view=paste0(af.term, c(".omat", ".tmat")), cond=temp,
+              ticktype=ticktype, theta=theta, contour.col=rev(heat.colors(100)),
+              xlab=tvar, ylab='\nt', zlab='', main=mtitle, ...)
       
-    }else if(plot.type=='contour'){
+    } else if(plot.type=='contour'){
       # not making use of vis.gam because want colour key/legend
       nfine <- 51
       trange <- range(object$pfr$ft[[af.ind]]$xind)
@@ -125,7 +139,7 @@ vis.pfr=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, thet
       xvals <- seq(Xrange[1],Xrange[2],l=nfine)
       newdata <- expand.grid(tvals,xvals)
       newot <- newdata[[1]]
-      newX <- newdata[[2]]
+      newX  <- newdata[[2]]
       newdata <- list()
       newdata[[paste(af.term,'.omat',sep='')]] <- matrix(newX,ncol=1)
       newdata[[paste(af.term,'.tmat',sep='')]] <- matrix(newot,ncol=1)
@@ -134,7 +148,9 @@ vis.pfr=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, thet
       #attr(newdata[[paste(af.term,sep='')]],'tmat') <- matrix(newot,nr=1)
       
       varnames <- all.vars(terms(object))
-      varnames <- varnames[!(varnames %in% c(paste('L.',af.term,sep=''),paste(af.term,'.tmat',sep=''),paste(af.term,'.omat',sep='')))]
+      varnames <- varnames[!(varnames %in% c(paste('L.',af.term,sep=''),
+                                             paste(af.term,'.tmat',sep=''),
+                                             paste(af.term,'.omat',sep='')))]
       varnames <- varnames[-1]
       if(length(varnames)){
         for(i in 1:length(varnames)){
@@ -142,7 +158,8 @@ vis.pfr=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, thet
         }
       }
       #newdata <- list2df(newdata)
-      dmat <- predict.gam(object,newdata=newdata,type='lpmatrix',terms=af.term,na.action=na.exclude)[,tind]
+      dmat <- predict.gam(object, newdata=newdata, type='lpmatrix',
+                          terms=af.term, na.action=na.exclude)[,tind]
       
       preds <- dmat%*%object$coef[tind]
       tvar <- tolower(af.term)
@@ -157,47 +174,52 @@ vis.pfr=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, thet
                          col.regions=rev(heat.colors(100)),main=as.expression(mtitle),...)
       
     }
-  }else{
+  } else {
+    # Plot slice of surface
+    
     if(length(xval)+length(tval)>1){
       warning('Specify only one value for either xval or tval.  Only first specified value will be used')
       if(length(xval)){
         xval=xval[1]
         tval=NULL
-      }else{
+      } else{
         tval=tval[1]
       }
     }
     nfine <- 200
-    parnames <- names(object$pfr$labelmap[sapply(object$pfr$labelmap,length)==0])
-    parind=names(object$coef) %in% c('(Intercept)',parnames)
-    ind=as.logical(parind+tind)
-    afterm <- tolower(af.term)
     
-    if(length(xval)){
+    parnames <- object$pfr$termnames[object$pfr$termtype=="par"]
+    parind   <- names(object$coef) %in% c('(Intercept)', parnames)
+    ind      <- as.logical(parind+tind)
+    afterm   <- tolower(af.term)
+    
+    if (length(xval)) {
+      # x fixed
       trange <- range(object$pfr$ft[[af.ind]]$xind)
       tvals <- seq(trange[1],trange[2],l=nfine)
       xvals <- rep(xval,l=nfine)
       xlab='t'
       x=tvals
-      if(!deriv2){
+      if(!deriv2) {
         main=bquote(paste(hat(F)(.(round(xval,3)),t),' by t',sep=''))
         ylab=bquote(paste(hat(F)(.(round(xval,3)),t),sep=''))
-      }else{
+      } else {
         main=bquote(paste(frac(partialdiff^2,partialdiff*.(afterm)^2)*hat('F')(.(afterm),t),
                           '|',phantom()[.(afterm)==.(round(xval,3))],' by t',sep=''))
         ylab=bquote(paste(frac(partialdiff^2,partialdiff*.(afterm)^2)*hat('F')(.(afterm),t),
                           '|',phantom()[.(afterm)==.(round(xval,3))],sep=''))
       }
-    }else{ #t fixed
+    } else{
+      # t fixed
       Xrange <- object$pfr$ft[[af.ind]]$Xrange
       tvals <- rep(tval,nfine)
       xvals <- seq(Xrange[1],Xrange[2],l=nfine)
       xlab='x'
       x=xvals
-      if(!deriv2){
+      if (!deriv2) {
         main=bquote(paste(hat(F)(.(afterm),.(round(tval,3))),' by ',.(afterm),sep=''))
         ylab=bquote(paste(hat(F)(.(afterm),.(round(tval,3))),sep=''))
-      }else{
+      } else {
         main=bquote(paste(frac(partialdiff^2,partialdiff*.(afterm)^2)*hat('F')(.(afterm),.(round(tval,3))),' by ',.(afterm),sep=''))
         ylab=bquote(paste(frac(partialdiff^2,partialdiff*.(afterm)^2)*hat('F')(.(afterm),.(round(tval,3))),sep=''))
       }

@@ -4,14 +4,17 @@
 \alias{vis.pfr}
 \title{Visualization of PFR objects}
 \usage{
-vis.pfr(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE,
+vis.pfr(object, af.term = 1, xval = NULL, tval = NULL, deriv2 = FALSE,
   theta = 50, plot.type = "persp", ticktype = "detailed", ...)
 }
 \arguments{
 \item{object}{an \code{pfr} object, produced by \code{\link{pfr}}}
 
-\item{af.term}{character; the name of the functional predictor to be plotted.  Only important
-if multiple \code{af} terms are fit.  Defaults to the first \code{af} term in \code{object$call}}
+\item{af.term}{identifier for the af term to be plotted. This is only important
+if multiple \code{af} terms are present. Can either be a character string
+containing the name of the functional predictor to be plotted, or an integer
+indexing the appropriate term, from the list of af terms in the order they
+appear in the model formula.}
 
 \item{xval}{a number in the range of functional predictor to be plotted.  The surface will be plotted
 with the first argument of the estimated surface fixed at this value}
@@ -32,7 +35,7 @@ Bayesian confidence bands.  Only implemented for the "slices" plot from either \
 \item{ticktype}{how to draw the tick marks if \code{plot.type="persp"}.  Defaults to \code{"detailed"}}
 
 \item{...}{other options to be passed to \code{\link{persp}}, \code{\link{levelplot}}, or
-\code{\link{plot}}}
+  \code{\link{plot}}}
 }
 \value{
 Simply produces a plot
@@ -96,6 +99,6 @@ Royal Statistical Society, Series B}, \bold{45(1)}, pp. 133--150.
 }
 \seealso{
 \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{pfr}}, \code{\link{persp}},
-\code{\link{levelplot}}
+  \code{\link{levelplot}}
 }
 
