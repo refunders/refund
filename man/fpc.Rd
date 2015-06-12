@@ -49,6 +49,8 @@ The method is the FPCR-R method of Reiss and Ogden (2007). This
 \examples{
 data(gasoline)
 gasmod <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
+plot(gasmod, rug=FALSE)
+est <- coef(gasmod)
 }
 \author{
 Jonathan Gellar \email{JGellar@mathematica-mpr.com}

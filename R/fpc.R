@@ -94,8 +94,9 @@ smooth.construct.fpc.smooth.spec <- function(object, data, knots) {
   # Create mini-basis
   obj <- object
   obj$by <- "NA"
-  class(obj) <- sub("fpcr", xt$bs, class(obj))
+  class(obj) <- sub("fpc", xt$bs, class(obj))
   obj$xt <- obj$xt[!(names(obj$xt) %in% c("bs", "X", "A", "pve"))]
+  obj$sp <- 0
   sm <- mgcv::smooth.construct(obj, data=data[obj$term], knots=NULL)
   
   # Create PC Basis: need X, B, and V.A
