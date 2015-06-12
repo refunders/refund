@@ -1,9 +1,9 @@
 #' Construct a PEER regression term in a \code{pfr} formula
-#' 
+#'
 #' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in a
 #' \code{\link{pfr}} formula, where \eqn{\beta(t)} is estimated with
 #' structured penalties (Randloph et al., 2012).
-#' 
+#'
 #' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
@@ -24,7 +24,9 @@
 #'   Arguments processed by \code{s}
 #'   include information related to basis and penalization, such as \code{m}
 #'   for specifying the order of the difference penalty; See Details.
-#' 
+#'   \code{xt}-argument is not allowed for \code{peer}-terms and will cause
+#'   an error.
+#'
 #' @details
 #' \code{peer} is a wrapper for \code{\link{lf}}, which defines linear
 #' functional predictors for any type of basis. It simply calls \code{lf}
@@ -45,22 +47,22 @@
 #'   \item \code{pentype=="USER"} for a user-specified penalty matrix,
 #'     supplied by the \code{L} argument.
 #' }
-#' 
-#' The original stand-alone implementation by Madan Gopal Kundu is available in 
-#' \code{\link{peer_old}}. 
-#' 
-#' 
+#'
+#' The original stand-alone implementation by Madan Gopal Kundu is available in
+#' \code{\link{peer_old}}.
+#'
+#'
 #' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com} and
 #'         Madan Gopal Kundu \email{mgkundu@@iupui.edu}
-#' 
+#'
 #' @references
 #' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
 #' functional linear models - partially empirical eigenvectors for regression.
 #' \emph{Electronic Journal of Statistics}, 6, 323-353.
-#' 
+#'
 #' Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
 #' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
-#' 
+#'
 #' @seealso \code{\link{pfr}}, \code{\link{smooth.construct.peer.smooth.spec}}
 #'
 #' @examples
@@ -83,7 +85,7 @@
 #' data(PEER.Sim)
 #' data(Q)
 #' PEER.Sim1<- subset(PEER.Sim, t==0)
-#' 
+#'
 #' # Setting k to max possible value
 #' fit.decomp <- pfr(Y ~ peer(W, pentype="Decomp", Q=Q, k=99), data=PEER.Sim1)
 #' plot(fit.decomp)
@@ -93,7 +95,7 @@
 
 peer <- function(X, argvals=seq(0, 1, l=ncol(X)), pentype="RIDGE",
                  Q=NULL, phia=10^3, L=NULL,  ...) {
-  
+
   # Catch if peer_old syntax is used
   dots <- list(...)
   dots.unmatched <- names(dots)[!(names(dots) %in% c(names(formals(lf)),
@@ -108,22 +110,9 @@ peer <- function(X, argvals=seq(0, 1, l=ncol(X)), pentype="RIDGE",
     ret <- eval(call, envir=parent.frame())
     return(ret)
   }
-  
-  # Extract xt if in ...
-  xt <- if ("xt" %in% names(dots)) dots$xt else list()
-  dots$xt <- NULL
-  
-  # Update xt
-  xt$pentype <- pentype
-  xt$W <- X
-  # FIXME: this evaluates X, leading to ugly model output -- would want to 
-  # hand over the unevaluated symbol to lf instead, but this fails as the call stack
-  # is so complicated in pfr.R#249: eval(newcall)
-  # substitute(X) does not work as inputs get renamed before handing over to fitter (?) 
-  xt$Q <- Q
-  xt$phia <- phia
-  xt$L <- L
-  
-  lf(X=X, argvals=argvals, bs="peer", xt=xt, ...)
+  if("xt" %in% names(dots)) stop("peer() does not accept an xt-argument.")
+  xt <- call("list", pentype=pentype, W=substitute(X), phia=phia, L=L,
+    Q=substitute(Q))
+  lf(X=X, argvals=argvals, bs="peer", xt=xt)
 }
 
