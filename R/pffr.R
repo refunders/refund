@@ -168,13 +168,12 @@
 #' \dontrun{
 #' ###############################################################################
 #' # multivariate model:
-#' # Y(t) = f0(t)  + \int X1(s)\beta1(s,t)ds + \int X2(s)\beta2(s,t)ds +
-#' #  	xlin \beta3(t) + f1(xte1, xte2) + f2(xsmoo, t) + beta4 xconst + eps
+#' # E(Y(t)) = \beta_0(t)  + \int X1(s)\beta_1(s,t)ds + xlin \beta_3(t) +
+#' #        f_1(xte1, xte2) + f_2(xsmoo, t) + \beta_4 xconst
 #' data2 <- pffrSim(scenario="all", n=200)
 #' t <- attr(data2, "yindex")
 #' s <- attr(data2, "xindex")
 #' m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
-#'                 ff(X2, xind=s) + #linear function-on-function
 #'                 xlin  +  #varying coefficient term
 #'                 c(te(xte1, xte2)) + #bivariate smooth term in xte1 & xte2, const. over Y-index
 #'                 s(xsmoo) + #smooth effect of xsmoo varying over Y-index
@@ -427,7 +426,7 @@ pffr <- function(
       tmat <- matrix(yindvec, nrow=length(yindvec), ncol=length(x$xind))
       smat <- matrix(x$xind, nrow=length(yindvec), ncol=length(x$xind),
                      byrow=TRUE)
-      if(!is.null(x$LX)){
+      if(!is.null(x[["LX"]])){
         # for ff: stack weights * covariate
         LStacked <- x$LX[stackpattern,]
       } else {
@@ -486,7 +485,7 @@ pffr <- function(
       assign(x=x$LXname,
              value=LStacked,
              envir=newfrmlenv)
-      if(is.null(x$LX)){ # sff
+      if(is.null(x[["LX"]])){ # sff
         assign(x=x$xname,
                value=XStacked,
                envir=newfrmlenv)

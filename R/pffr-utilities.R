@@ -54,6 +54,7 @@ getShrtlbls <- function(object){
 
     ret <- sapply(names(unlist(labelmap)),
             function(x){
+                browser()
                 #make a parseable expression for ffpc terms
                 if(grepl("^ffpc", x)){
                     ffpcnumber <- gsub("(^.+))([0-9]+$)","\\2", x)
@@ -74,7 +75,7 @@ getShrtlbls <- function(object){
 
                 #remove everything after last variable:
                 lstvrbl <- tail(all.vars(exprx),1)
-                x <- gsub(paste("(^.*?(?=",lstvrbl,")",lstvrbl,")(.*$)",sep=""), "\\1", x, perl=TRUE)
+                x <- gsub(paste("\\(.*(^.*?(?=",lstvrbl,")",lstvrbl,")(.*$)",sep=""), "\\1", x, perl=TRUE)
 
                 #match braces
                 openbr <- sum(grepl("\\(", strsplit(x, "")[[1]]))

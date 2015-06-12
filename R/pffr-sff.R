@@ -17,8 +17,8 @@
 #' @param yind \emph{DEPRECATED} matrix (or vector) of indices of evaluations of
 #'   \eqn{Y_i(t)}; i.e. matrix with rows \eqn{(t_{i1},\dots,t_{iT})}; no longer
 #'   used.
-#' @param xind matrix (or vector) of indices of evaluations of \eqn{X_i(s)};
-#'   i.e. matrix with rows \eqn{(s_{i1},\dots,s_{iS})}
+#' @param xind vector of indices of evaluations of \eqn{X_i(s)},
+#'   i.e, \eqn{(s_{1},\dots,s_{S})}
 #' @param basistype defaults to "\code{\link[mgcv]{te}}", i.e. a tensor product
 #'   spline to represent \eqn{f(X_i(s), t)}. Alternatively, use \code{"s"} for
 #'   bivariate basis functions (see \code{\link[mgcv]{s}}) or \code{"t2"} for an
@@ -70,13 +70,15 @@ sff <- function(X,
 
   # check & format index for X
   if(is.null(dim(xind))){
-    xind <- t(xind)
-    stopifnot(ncol(xind) == nxgrid)
-    if(nrow(xind)== 1){
-      xind <- matrix(as.vector(xind), nrow=n, ncol=nxgrid, byrow=T)
-    }
-    stopifnot(nrow(xind) == n)
+    xind <- t(as.matrix(xind))
   }
+  stopifnot(ncol(xind) == nxgrid)
+  if(nrow(xind)== 1){
+    xind <- matrix(as.vector(xind), nrow=n, ncol=nxgrid, byrow=T)
+  } else {
+    stop("<xind> has to be supplied as a vector or matrix with a single row.")
+  }
+  stopifnot(nrow(xind) == n)
   stopifnot(all.equal(order(xind[1,]), 1:nxgrid))
 
   basistype <- match.arg(basistype)
@@ -150,7 +152,7 @@ sff <- function(X,
          by =as.symbol(substitute(LXname))),
     frmls))
 
-  return(list(call=call, xind=xind, L=L, X=X,
+  return(list(call=call, xind=xind[1,], L=L, X=X,
               xname=xname, xindname=xindname, yindname=yindname, LXname=LXname))
 }#end sff()
 

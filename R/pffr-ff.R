@@ -26,8 +26,8 @@
 #'   \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
 #' @param yind \emph{DEPRECATED} used to supply matrix (or vector) of indices of
 #'   evaluations of \eqn{Y_i(t)}, no longer used.
-#' @param xind matrix (or vector) of indices of evaluations of \eqn{X_i(s)};
-#'   i.e. matrix with rows \eqn{(s_{i1},\dots,s_{iS})}
+#' @param xind vector of indices of evaluations of \eqn{X_i(s)},
+#'   i.e, \eqn{(s_{1},\dots,s_{S})}
 #' @param basistype defaults to "\code{\link[mgcv]{te}}", i.e. a tensor product
 #'   spline to represent \eqn{\beta(t,s)}. Alternatively, use \code{"s"} for
 #'   bivariate basis functions (see \code{mgcv}'s \code{\link[mgcv]{s}}) or
@@ -57,7 +57,7 @@
 #' @seealso \code{mgcv}'s \code{\link[mgcv]{linear.functional.terms}}
 #' @return A list containing \item{call}{a "call" to
 #'   \code{\link[mgcv]{te}} (or \code{\link[mgcv]{s}} or \code{\link[mgcv]{t2}})
-#'   using the appropriately constructed covariate and weight matrices} 
+#'   using the appropriately constructed covariate and weight matrices}
 #'   \item{data}{a list containing the necessary covariate and weight matrices}
 #'
 #' @author Fabian Scheipl, Sonja Greven
@@ -90,23 +90,18 @@ ff <- function(X,
   stopifnot(all(!is.na(X)))
 
 
-#   # check & format index for Y
-#   if(!missing(yind))
-#     if(is.null(dim(yind))){
-#       yind <- t(t(yind))
-#     }
-#   nygrid <- nrow(yind)
-
   # check & format index for X
   if(is.null(dim(xind))){
     xind <- t(as.matrix(xind))
-    stopifnot(ncol(xind) == nxgrid)
-    if(nrow(xind)== 1){
-      xind <- matrix(as.vector(xind), nrow=n, ncol=nxgrid, byrow=T)
-    }
-    stopifnot(nrow(xind) == n)
   }
-  stopifnot(all.equal(order(xind[1,]), 1:nxgrid))#, all.equal(order(yind), 1:nygrid))
+  stopifnot(ncol(xind) == nxgrid)
+  if(nrow(xind)== 1){
+    xind <- matrix(as.vector(xind), nrow=n, ncol=nxgrid, byrow=T)
+  } else {
+    stop("<xind> has to be supplied as a vector or matrix with a single row.")
+  }
+  stopifnot(nrow(xind) == n)
+  stopifnot(all.equal(order(xind[1,]), 1:nxgrid))
 
   basistype <- match.arg(basistype)
   integration <- match.arg(integration)
@@ -245,7 +240,7 @@ ff <- function(X,
     }
   }
 
-  return(list(call=call, xind=xind[1, ], LX=LX, L=L,
+  return(list(call=call, xind=xind[1,], LX=LX, L=L,
               xindname=xindname, yindname=yindname,
               LXname=LXname, limits=limits))
 }#end ff()
