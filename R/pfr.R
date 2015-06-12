@@ -1,5 +1,5 @@
 #' Penalized Functional Regression
-#' 
+#'
 #' Implements various approaches to penalized scalar-on-function regression.
 #' These techniques include Penalized Functional Regression (Goldsmith et al.,
 #' 2011),
@@ -9,14 +9,14 @@
 #' Variable-Domain Functional Regression (Gellar et al., 2014).
 #' This function is a wrapper for mgcv's \code{\link{gam}} and its siblings
 #' to fit models with a scalar (but not necessarily continuous) response.
-#' 
-#' @param formula a formula that could contain any of the following special terms: 
+#'
+#' @param formula a formula that could contain any of the following special terms:
 #' \code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
 #' \code{\link{peer}()},
 # \code{\link{fpc}()},
 #' or \code{\link{re}()}; also \code{mgcv}'s \code{\link{s}()},
 #' \code{\link{te}()}, or \code{\link{t2}()}.
-#' 
+#'
 #' @param fitter the name of the function used to estimate the model. Defaults
 #' to \code{\link{gam}} if the matrix of functional responses has less than 2e5
 #' data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
@@ -27,7 +27,7 @@
 #' \code{\link{bam}}. These include \code{data} and \code{family} to specify
 #' the input data and outcome family, as well as many options to control the
 #' estimation.
-#' 
+#'
 #' @section Warning:
 #' Binomial responses should be specified as a numeric vector rather than as a
 #' matrix or a factor.
@@ -38,58 +38,58 @@
 #' Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 #' Penalized functional regression. \emph{Journal of Computational and Graphical
 #' Statistics}, 20(4), 830-851.
-#' 
+#'
 #' Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012). Longitudinal
 #' penalized functional regression for cognitive outcomes on neuronal tract
 #' measurements. \emph{Journal of the Royal Statistical Society: Series C},
 #' 61(3), 453-469.
-#' 
+#'
 #' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
 #' functional linear models - partially empirical eigenvectors for regression.
 #' \emph{Electronic Journal of Statistics}, 6, 323-353.
-#' 
+#'
 #' Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
 #' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
-#' 
+#'
 # Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
 # dissertation, Department of Biostatistics, Columbia University. Available
 # at http://works.bepress.com/phil_reiss/11/.
-# 
+#
 # Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
 # regression and functional partial least squares. \emph{Journal of the
 # American Statistical Association}, 102, 984-996.
-# 
+#
 # Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
 # with images as predictors. \emph{Biometrics}, 66, 61-69.
-# 
+#
 #' McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 #' Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of
-#' Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269. 
+#' Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269.
 #' Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
-#' 
+#'
 #' Gellar, J. E., Colantuoni, E., Needham, D. M., and Crainiceanu, C. M. (2014).
 #' Variable-Domain Functional Regression for Modeling ICU Data. Journal of the
 #' American Statistical Association, 109(508): 1425-1439.
-#' 
-#' 
-#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Mathew W. McLean, 
+#'
+#'
+#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Mathew W. McLean,
 #' Jeff Goldsmith, and Fabian Scheipl
 #' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}}, \code{\link{re}},
 #   \code{\link{fpc}},
-#'   \code{\link{peer}}. 
+#'   \code{\link{peer}}.
 #' @importFrom mgcv gam gam.fit gamm4 bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom nlme lme4
 #' @importFrom stats terms.formula
 #' @export
-#' 
+#'
 #' @examples
 #' # See lf(), lf.vd(), af(), and peer() for additional examples
-#' 
+#'
 #' data(DTI)
 #' DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
 #' par(mfrow=c(1,2))
-#' 
+#'
 #' # Fit model with linear functional term for CCA
 #' fit.lf <- pfr(pasat ~ lf(cca, k=30), data=DTI1)
 #' plot(fit.lf, ylab=expression(paste(beta(t))), xlab="t")
@@ -99,22 +99,22 @@
 #' matplot(bhat.lf$cca.argvals, bhat.lf[,c("value", "upper", "lower")],
 #'         type="l", lty=c(1,2,2), col=1,
 #'         ylab=expression(paste(beta(t))), xlab="t")
-#' 
+#'
 #' # Fit model with additive functional term for CCA, using tensor product basis
 #' fit.af <- pfr(pasat ~ af(cca, Qtransform=TRUE, k=c(7,7)), data=DTI1)
 #' plot(fit.af, scheme=2, xlab="cca(t)", ylab="t", main="Tensor Product", rug=FALSE)
-#' 
+#'
 #' # Change basistype to thin-plate regression splines
 #' fit.af.s <- pfr(pasat ~ af(cca, basistype="s", Qtransform=TRUE, k=50),
 #'                 data=DTI1)
 #' plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="TPRS", rug=FALSE)
-#' 
+#'
 #' par(mfrow=c(2,2))
 #' vis.pfr(fit.af, xval=.2)
 #' vis.pfr(fit.af, xval=.4)
 #' vis.pfr(fit.af, xval=.6)
 #' vis.pfr(fit.af, xval=.8)
-#' 
+#'
 #' # Include random intercept for subject
 #' DTI.re <- DTI[complete.cases(DTI$cca),]
 #' DTI.re$ID <- factor(DTI.re$ID)
@@ -122,18 +122,18 @@
 #' coef.re <- coef(fit.re)
 #' par(mfrow=c(1,2))
 #' plot(fit.re)
-#' 
+#'
 #' # PEER Model with second order difference penalty
 #' DTI.use <- DTI[DTI$case==1,]
 #' DTI.use <- DTI.use[complete.cases(DTI.use$cca),]
 #' fit.peer <- pfr(pasat ~ peer(cca, argvals=seq(0,1,length=93),
 #'                              integration="riemann", pentype="D"), data=DTI.use)
 #' plot(fit.peer)
-#' 
-#' 
-#' 
+#'
+#'
+#'
 pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
-  
+
   if (class(formula) != "formula") {
     warning(paste0("The interface for pfr() has changed to using a formula ",
                    "argument, with linear functional terms specified by lf(). ",
@@ -145,7 +145,7 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
     fit <- eval(call)
     return(fit)
   }
-  
+
   call <- match.call()
   dots <- list(...)
   if (length(dots)) {
@@ -156,16 +156,16 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
       c(names(formals(gam)), names(formals(gam.fit)))
     }
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
-    if (length(notUsed)) 
-      warning("Arguments <", paste(notUsed, collapse = ", "), 
+    if (length(notUsed))
+      warning("Arguments <", paste(notUsed, collapse = ", "),
               "> supplied but not used.")
   }
-  
+
   # Set up terms
   tf <- terms.formula(formula, specials = c("s", "te", "t2", "lf", "af",
                                             "lf.vd", "re", "peer"))
   trmstrings <- attr(tf, "term.labels")
-  terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]], 
+  terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]],
                   simplify = FALSE)
   frmlenv <- environment(formula)
   specials <- attr(tf, "specials")
@@ -179,42 +179,42 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   where.lf.vd <- specials$lf.vd - 1
   where.all <- c(where.af, where.lf, where.s, where.te, where.t2, where.re,
                  where.lf.vd, where.pr)
-  
+
   if (length(trmstrings)) {
     where.par <- which(!(1:length(trmstrings) %in% where.all))
   } else where.par <- numeric(0)
-  
+
   # Set up new formula and response
   responsename <- attr(tf, "variables")[2][[1]]
   newfrml <- paste(responsename, "~", sep = "")
   newfrmlenv <- new.env()
-  evalenv <- if ("data" %in% names(call)) 
+  evalenv <- if ("data" %in% names(call))
     eval(call$data)
   else NULL
   nobs <- length(eval(responsename, envir = evalenv, enclos = frmlenv))
-  
+
   if (missing(fitter) || is.na(fitter)) {
     fitter <- ifelse(nobs > 1e+05, "bam", "gam")
   }
-  
+
   fitter <- as.symbol(fitter)
-  if (as.character(fitter) == "bam" && !("chunk.size" %in% 
+  if (as.character(fitter) == "bam" && !("chunk.size" %in%
                                            names(call))) {
     call$chunk.size <- max(nobs/5, 10000)
   }
-  if (as.character(fitter) == "gamm4") 
+  if (as.character(fitter) == "gamm4")
     stopifnot(length(where.te) < 1)
-  
+
   assign(x = deparse(responsename),
          value = as.vector(t(eval(responsename, envir = evalenv,
                                   enclos = frmlenv))),
          envir = newfrmlenv)
-  
+
   newtrmstrings <- attr(tf, "term.labels")
   if (!attr(tf, "intercept")) {
     newfrml <- paste(newfrml, "0", sep = "")
   }
-  
+
   # Process refund-type terms
   where.refund <- c(where.af, where.lf, where.lf.vd, where.pr, where.re)
   if (length(where.refund)) {
@@ -229,16 +229,29 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
         assign(x = nm, value = x$data[[nm]], envir = newfrmlenv)
         invisible(NULL)
       })
+      # allow for unevaluated variable names in xt arguments:
+      if ("xt" %in% names(x$call)) {
+        xtvars <- all.vars(x$call$xt)
+        if (length(xtvars)) {
+          sapply(xtvars, function(xtvar) {
+            xtvarval <- eval(as.name(xtvar), envir = evalenv, enclos = frmlenv)
+            #assign into parent of newfrmlenv because these are not
+            #necessarily covariates so list2df(newfrmlenv) below would fail
+            assign(x = xtvar, value = xtvarval, envir = parent.env(newfrmlenv))
+            invisible(NULL)
+          })
+        }
+      }
       invisible(NULL)
     })
     fterms <- lapply(fterms, function(x) x[names(x) != "data"])
   }
   else fterms <- NULL
-  
+
   # Process mgcv-type terms
   where.mgcv <- c(where.par, where.s, where.te, where.t2)
   if (length(where.mgcv)) {
-    if ("data" %in% names(call)) 
+    if ("data" %in% names(call))
       frmlenv <- list2env(eval(call$data), frmlenv)
     lapply(terms[where.mgcv], function(x) {
       nms <- if (!is.null(names(x))) {
@@ -253,40 +266,44 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
       invisible(NULL)
     })
   }
-  
+
   # Finalize call to fitter
   newfrml <- formula(paste(newfrml, paste(newtrmstrings, collapse="+")))
   environment(newfrml) <- newfrmlenv
   pfrdata <- list2df(as.list(newfrmlenv))
-  datameans <- sapply(as.list(newfrmlenv),mean)
+  datameans <- sapply(as.list(newfrmlenv), function(x){
+    if (is.numeric(x) | is.logical(x)) {
+      mean(x)
+    } else NA
+  })
   newcall <- expand.call(pfr, call)
   newcall$fitter  <- newcall$bs.int <- newcall$bs.yindex <- NULL
   newcall$formula <- newfrml
   newcall$data <- quote(pfrdata)
   newcall$method <- method
   newcall[[1]] <- fitter
-  
+
   # Evaluate call
   res <- eval(newcall)
-  
+
   # Post-process fit
   res.smooth <- if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$smooth
   } else res$smooth
   names(res.smooth) <- sapply(res.smooth, function(x) x$label)
-  
+
   if (as.character(fitter) %in% c("gamm4", "gamm")) {
     res$gam$smooth <- res.smooth
   } else {
     res$smooth <- res.smooth
   }
-  
+
   termtype <- rep("par", length(terms))
   for (i in 1:length(specials))
     termtype[specials[[i]]-1] <- names(specials)[i]
-  
+
   ret <- list(formula = formula,
-              #termmap = trmmap, labelmap = labelmap, 
+              #termmap = trmmap, labelmap = labelmap,
               responsename = responsename, nobs = nobs,
               termnames = names(terms),
               termtype = termtype, datameans=datameans, ft = fterms)
@@ -298,6 +315,6 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
     res$pfr <- ret
     class(res) <- c("pfr", class(res))
   }
-  
+
   return(res)
 }
