@@ -10,9 +10,16 @@
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
 #'   indicated by \code{NA} values.
+#' @param method the method used for finding principal components. The default
+#'   is an unconstrained SVD of the \eqn{XB} matrix. Alternatives include
+#'   constrained (functional) principal components approaches
 #' @param ncomp number of principal components. if \code{NULL}, chosen by \code{pve}
 #' @param pve proportion of variance explained; used to choose the number of
 #'   principal components
+#' @param penalize if \code{TRUE}, a roughness penalty is applied to the
+#'   functional estimate. Deafults to \code{FALSE} if \code{method=="svd"}
+#'   (corresponding to the FPCR_R method of Reiss and Ogden (2007)), and
+#'   \code{TRUE} if \code{method!="svd"} (corresponding to FPCR_C).
 #' @param bs two letter character string indicating the \code{mgcv}-style basis
 #'   to use for pre-smoothing \code{X}
 #' @param k the dimension of the pre-smoothing basis
@@ -32,21 +39,36 @@
 #' 
 #' @return The result of a call to \code{\link{lf}}.
 #' 
+#' @references
+#' Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
+#' regression and functional partial least squares. \emph{Journal of the
+#' American Statistical Association}, 102, 984-996.
+#' 
+#' 
 #' @examples
 #' data(gasoline)
-#' gasmod <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
-#' plot(gasmod, rug=FALSE)
+#' 
+#' # Fit PFCR_R
+#' gasmod1 <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
+#' plot(gasmod1, rug=FALSE)
 #' est <- coef(gasmod)
+#' 
+#' # Fit FPCR_C with fpca.sc
+#' gasmod2 <- pfr(octane ~ fpc(NIR, method="fpca.sc", ncomp=4), data=gasoline)
 #' 
 #' 
 #' @seealso \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
 #' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}
 #' 
 
-fpc <- function(X, ncomp=NULL, pve=0.99, bs="ps", k=40, ...) {
+fpc <- function(X, method=c("svd", "fpca.sc", "fpca.face", "fpca.ssvd"),
+                ncomp=NULL, pve=0.99, penalize=(method=="svd"),
+                bs="ps", k=40, ...) {
+  method <- match.arg(method)
   if("xt" %in% names(list(...)))
     stop("fpc() does not accept an xt-argument.")
-  xt <- call("list", X=substitute(X), A=ncomp, pve=pve, bs=bs)
+  xt <- call("list", X=substitute(X), method=method, npc=ncomp, pve=pve,
+             penalize=penalize, bs=bs)
   lf (X=X, bs="fpc", k=k, xt=xt, ...)
 }
 
@@ -66,9 +88,14 @@ fpc <- function(X, ncomp=NULL, pve=0.99, bs="ps", k=40, ...) {
 #'   contain the following elements:
 #' \describe{
 #'   \item{X}{(required) matrix of functional predictors}
-#'   \item{A}{(optional) the number of PC's to retain}
-#'   \item{pve}{(only needed if \code{A} not supplied) the percent variance
-#'     explained used to determine \code{A}}
+#'   \item{method}{(required) the method of finding principal components;
+#'     options include \code{"svd"} (unconstrained), \code{"fpca.sc"},
+#'     \code{"fpca.face"}, or \code{"fpca.ssvd"}}
+#'   \item{npc}{(optional) the number of PC's to retain}
+#'   \item{pve}{(only needed if \code{npc} not supplied) the percent variance
+#'     explained used to determine \code{npc}}
+#'   \item{penalize}{(required) if \code{FALSE}, the smoothing parameter is
+#'     set to 0}
 #'   \item{bs}{the basis class used to pre-smooth \code{X}; default is \code{"ps"}}
 #' }
 #'   
@@ -81,12 +108,18 @@ fpc <- function(X, ncomp=NULL, pve=0.99, bs="ps", k=40, ...) {
 #'   \item{sm}{the smooth that is fit in order to generate the basis matrix
 #'     over \code{object$term}}
 #'   \item{V.A}{the matrix of principal components}
+#'   
+#' @references
+#' Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
+#' regression and functional partial least squares. \emph{Journal of the
+#' American Statistical Association}, 102, 984-996.
+#'   
 #' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}
 #' @seealso \code{\link{fpcr}}
 
 smooth.construct.fpc.smooth.spec <- function(object, data, knots) {
   xt <- object$xt
-  if (is.null(xt$A) & is.null(xt$pve))
+  if (is.null(xt$npc) & is.null(xt$pve))
     stop("Need either the number of PC's or the PVE used to determine this number")
   if (is.null(xt$X)) stop("X matrix must be supplied as part of xt")
   if (is.null(xt$bs)) xt$bs <- "ps"
@@ -95,27 +128,42 @@ smooth.construct.fpc.smooth.spec <- function(object, data, knots) {
   obj <- object
   obj$by <- "NA"
   class(obj) <- sub("fpc", xt$bs, class(obj))
-  obj$xt <- obj$xt[!(names(obj$xt) %in% c("bs", "X", "A", "pve"))]
+  obj$xt <- obj$xt[!(names(obj$xt) %in% c("bs", "X", "npc", "pve"))]
   obj$sp <- 0
   sm <- mgcv::smooth.construct(obj, data=data[obj$term], knots=NULL)
   
   # Create PC Basis: need X, B, and V.A
   XB <- xt$X %*% sm$X
-  XB.svd <- svd(XB)
+  V.A <- switch(xt$method,
+                svd = {
+                  XB.svd <- svd(XB)
+                  npc <- ifelse(is.null(xt$npc),
+                                min(which(cumsum(XB.svd$d) > xt$pve * sum(XB.svd$d))),
+                                xt$npc)
+                  XB.svd$v[,1:npc]
+                },
+                fpca.sc = fpca.sc(XB, npc=xt$npc, pve=xt$pve)$efunctions,
+                fpca.face = fpca.face(XB, npc=xt$npc, pve=xt$pve)$efunctions,
+                fpca.ssvd = fpca.ssvd(XB, npc=ifelse(is.null(xt$npc), NA, xt$npc)
+                                      )$efunctions
+                )
+  npc <- ncol(V.A)
+  #XB.svd <- svd(XB)
   
-  # Limit to the first A PC's
-  A <- ifelse(is.null(xt$A),
-              min(which(cumsum(XB.svd$d) > xt$pve * sum(XB.svd$d))), xt$A)
-  V.A <- XB.svd$v[,1:A]
+  ## Limit to the first npc PC's
+  #npc <- ifelse(is.null(xt$npc),
+  #            min(which(cumsum(XB.svd$d) > xt$pve * sum(XB.svd$d))), xt$npc)
+  #V.A <- XB.svd$v[,1:npc]
   
   # Return Object
   object$X <- sm$X %*% V.A
   object$S <- lapply(sm$S, function(smat) crossprod(V.A, smat) %*% V.A)
+  if (!xt$penalize) object$sp <- 0
   
   # Other stuff... need to check these
-  object$null.space.dim <- A - qr(object$S[[1]])$rank
-  object$rank <- A - object$null.space.dim
-  object$df   <- A #need this for gamm
+  object$null.space.dim <- npc - qr(object$S[[1]])$rank
+  object$rank <- npc - object$null.space.dim
+  object$df   <- npc #need this for gamm
   object$sm   <- sm
   object$V.A  <- V.A
   class(object) <- "fpc.smooth"
