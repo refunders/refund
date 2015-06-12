@@ -79,7 +79,7 @@ vis.pfr(fit.af, xval=.6)
 vis.pfr(fit.af, xval=.8)
 
 # Include random intercept for subject
-DTI.re <- DTI[complete.cases(DTI),]
+DTI.re <- DTI[complete.cases(DTI$cca),]
 DTI.re$ID <- factor(DTI.re$ID)
 fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI.re)
 coef.re <- coef(fit.re)
