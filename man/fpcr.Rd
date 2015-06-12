@@ -131,18 +131,16 @@ data(gasoline)
 # Create the requisite functional data objects
 bbasis = create.bspline.basis(c(900, 1700), 40)
 wavelengths = 2*450:850
-nir = matrix(NA, 401, 60)
-for (i in 1:60) nir[, i] = gasoline$NIR[i, ]
-# Why not just take transpose of gasoline$NIR above?  
-# Because for some reason it leads to an error in the following statement
-gas.fd = smooth.basisPar(wavelengths, nir, bbasis)$fd
+gas.fd = smooth.basisPar(wavelengths, t(gasoline$NIR), bbasis)$fd
 
 # Method 1: Call fpcr with fdobj argument
 gasmod1 = fpcr(gasoline$octane, fdobj = gas.fd, ncomp = 30)
 plot(gasmod1, xlab="Wavelength")
+
 \dontrun{
 # Method 2: Call fpcr with explicit signal matrix
 gasmod2 = fpcr(gasoline$octane, xfuncs = gasoline$NIR, ncomp = 30)
+
 # Method 3: Call fpcr with explicit signal, basis, and penalty matrices
 gasmod3 = fpcr(gasoline$octane, xfuncs = gasoline$NIR, 
                basismat = eval.basis(wavelengths, bbasis), 
