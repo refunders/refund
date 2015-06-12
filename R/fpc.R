@@ -1,51 +1,139 @@
-##' Construct a FPC regression term
-##' 
-##' Constructs a functional principal component regression (Reiss and Ogden, 
-##' 2007, 2010) term for inclusion in an \code{mgcv::gam}-formula (or
-##' \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as
-##' constructed by \code{\link{pfr}}. The predictor \code{X} can either be a
-##' one-dimensional function, or a two-dimensional image.
-##' 
-##' @param X functional predictors. For 1D predictors, this is expressed as an
-##'   \code{N} by \code{J} matrix, where \code{N} is the number of subjects
-##'   and \code{J} is the number of evaluation points. For 2D predictors, this
-##'   is expressed as an \code{N} by {J1} by {J2} array, representing \code{N}
-##'   images of dimension \code{J1} by \code{J2}.
-##' @param argvals indices of evaluation of \code{X}. 
-##' @param integration method used for numerical integration
-##' @param ncomp number of principal components. if \code{NULL}, chosen by \code{pve}
-##' @param pve proportion of variance explained; used to choose the number of
-##'   principal components
-##' @param basistype for 2D smooths, selects the function for defining the
-##'   two-dimensional basis.
-##' @param ... additional options to be passed to \code{mgcv}'s \code{\link{s}}
-##'   function for defining the pre-smoothing basis
-##' 
-##' @details We implement the FPCR-R method of Reiss and Ogden (2007). This
-##'   method first performs a penalized basis expansion of the functional
-##'   predictors, and then calculates the principal components of the resulting
-##'   smooth functions. The loadings for each predictor function are used as the
-##'   covariates in a linear model.
-##' 
-##' 
+#' Construct a FPC regression term
+#' 
+#' Constructs a functional principal component regression (Reiss and Ogden, 
+#' 2007, 2010) term for inclusion in an \code{mgcv::gam}-formula (or
+#' \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as
+#' constructed by \code{\link{pfr}}. Currently only one-dimensional functions
+#' are allowed.
+#' 
+#' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
+#'   where \code{N} is the number of columns and \code{J} is the number of
+#'   evaluation points. May include missing/sparse functions, which are
+#'   indicated by \code{NA} values.
+#' @param ncomp number of principal components. if \code{NULL}, chosen by \code{pve}
+#' @param pve proportion of variance explained; used to choose the number of
+#'   principal components
+#' @param bs two letter character string indicating the \code{mgcv}-style basis
+#'   to use for pre-smoothing \code{X}
+#' @param k the dimension of the pre-smoothing basis
+#' @param ... additional options to be passed to \code{\link{lf}}. These include
+#'   \code{argvals}, \code{integration}, and any additional options for the
+#'   pre-smoothing basis (as constructed by \code{mgcv::s}), such as \code{m}.
+#' 
+#' @details
+#' \code{fpc} is a wrapper for \code{\link{lf}}, which defines linear
+#' functional predictors for any type of basis for inclusion in a \code{pfr}
+#' formula. \code{fpc} simply calls \code{lf} with the appropriate options for
+#' the \code{fpc} basis and penalty construction.
+#' 
+#' The method is the FPCR-R method of Reiss and Ogden (2007). This
+#'   method is also implemented in \code{\link{fpcr}}; here we implement the
+#'   method for inclusion in a \code{pfr} formula.
+#' 
+#' @return The result of a call to \code{\link{lf}}.
+#' 
+#' @examples
+#' data(gasoline)
+#' gasmod <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
+#' plot(gasmod, rug=FALSE)
+#' est <- coef(gasmod)
+#' 
+#' 
+#' @seealso \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
+#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}
+#' 
 
-fpc <- function(X, argvals=seq(0, 1, l=ncol(X)),
-                integration = c("simpson", "trapezoidal", "riemann"),
-                ncomp=NULL, pve=0.99, basistype=c("te", "s", "t2"),
-                ...) {
-  
-  
-  
+fpc <- function(X, ncomp=NULL, pve=0.99, bs="ps", k=40, ...) {
+  if("xt" %in% names(list(...)))
+    stop("fpc() does not accept an xt-argument.")
+  xt <- call("list", X=substitute(X), A=ncomp, pve=pve, bs=bs)
+  lf (X=X, bs="fpc", k=k, xt=xt, ...)
 }
 
-# fpcr <- function(y, xfuncs = NULL, fdobj = NULL, ncomp=NULL, pve = 0.99, nbasis = NULL, basismat = NULL, 
-#                  penmat = NULL, argvals = NULL, covt = NULL, mean.signal.term = FALSE, 
-#                  spline.order = NULL, family = "gaussian", method = "REML", sp = NULL, 
-#                  pen.order = 2, cv1 = FALSE, nfold = 5, store.cv = FALSE, store.gam = TRUE, ...){
-#   # Error handling
-# 
-# lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
-#                integration = c("simpson", "trapezoidal", "riemann"),
-#                L = NULL, presmooth = NULL, presmooth.opts = NULL, ...)
-#   
-#   
+
+
+#' Basis constructor for FPC terms
+#' 
+#' @param object a \code{fpc.smooth.spec} object, usually generated by a 
+#'   term \code{s(x, bs="fpc")}; see Details.
+#' @param data a list containing the data (including any \code{by} variable)
+#'   required by this term, with names corresponding to \code{object$term}
+#'   (and \code{object$by}). Only the first element of this list is used.
+#' @param knots not used, but required by the generic \code{smooth.construct}.
+#' 
+#' @details
+#' \code{object} must contain an \code{xt} element. This is a list that can
+#'   contain the following elements:
+#' \describe{
+#'   \item{X}{(required) matrix of functional predictors}
+#'   \item{A}{(optional) the number of PC's to retain}
+#'   \item{pve}{(only needed if \code{A} not supplied) the percent variance
+#'     explained used to determine \code{A}}
+#'   \item{bs}{the basis class used to pre-smooth \code{X}; default is \code{"ps"}}
+#' }
+#'   
+#' Any additional options for the pre-smoothing basis (e.g. \code{k}, \code{m},
+#'   etc.) can be supplied in the corresponding elements of \code{object}.
+#'   See \code{\link[mgcv]{s}} for a full list of options.
+#' 
+#' @return An object of class \code{"fpc.smooth"}. In addtional to the elements
+#'   listed in \code{\link{smooth.construct}}, the object will contain
+#'   \item{sm}{the smooth that is fit in order to generate the basis matrix
+#'     over \code{object$term}}
+#'   \item{V.A}{the matrix of principal components}
+#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}
+#' @seealso \code{\link{fpcr}}
+
+smooth.construct.fpc.smooth.spec <- function(object, data, knots) {
+  xt <- object$xt
+  if (is.null(xt$A) & is.null(xt$pve))
+    stop("Need either the number of PC's or the PVE used to determine this number")
+  if (is.null(xt$X)) stop("X matrix must be supplied as part of xt")
+  if (is.null(xt$bs)) xt$bs <- "ps"
+  
+  # Create mini-basis
+  obj <- object
+  obj$by <- "NA"
+  class(obj) <- sub("fpc", xt$bs, class(obj))
+  obj$xt <- obj$xt[!(names(obj$xt) %in% c("bs", "X", "A", "pve"))]
+  sm <- mgcv::smooth.construct(obj, data=data[obj$term], knots=NULL)
+  
+  # Create PC Basis: need X, B, and V.A
+  XB <- xt$X %*% sm$X
+  XB.svd <- svd(XB)
+  
+  # Limit to the first A PC's
+  A <- ifelse(is.null(xt$A),
+              min(which(cumsum(XB.svd$d) > xt$pve * sum(XB.svd$d))), xt$A)
+  V.A <- XB.svd$v[,1:A]
+  
+  # Return Object
+  object$X <- sm$X %*% V.A
+  object$S <- lapply(sm$S, function(smat) crossprod(V.A, smat) %*% V.A)
+  
+  # Other stuff... need to check these
+  object$null.space.dim <- A - qr(object$S[[1]])$rank
+  object$rank <- A - object$null.space.dim
+  object$df   <- A #need this for gamm
+  object$sm   <- sm
+  object$V.A  <- V.A
+  class(object) <- "fpc.smooth"
+  object
+}
+
+
+#' mgcv-style constructor for prediction of FPC terms
+#' 
+#' @param object a \code{fpc.smooth} object created by
+#'   \code{\link{smooth.construct.fpc.smooth.spec}}, see
+#'   \code{\link[mgcv]{smooth.construct}}
+#' @param data  see \code{\link[mgcv]{smooth.construct}}
+#' @return design matrix for FPC terms
+#' @author Jonathan Gellar
+
+Predict.matrix.fpc.smooth <- function(object, data) {
+  mgcv::Predict.matrix(object$sm, data) %*% object$V.A
+}
+
+
+
