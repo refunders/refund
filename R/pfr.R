@@ -3,7 +3,7 @@
 #' Implements various approaches to penalized scalar-on-function regression.
 #' These techniques include Penalized Functional Regression (Goldsmith et al.,
 #' 2011),
-# Functional Principal Component Regression (Reiss and Ogden, 2007),
+#' Functional Principal Component Regression (Reiss and Ogden, 2007),
 #' Functional Generalized Additive Models (McLean et al., 2013), Partially
 #' Empirical Eigenvectors for Regression (Randolph et al., 2012), and
 #' Variable-Domain Functional Regression (Gellar et al., 2014).
@@ -11,16 +11,14 @@
 #' to fit models with a scalar (but not necessarily continuous) response.
 #'
 #' @param formula a formula that could contain any of the following special terms:
-#' \code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
-#' \code{\link{peer}()},
-# \code{\link{fpc}()},
-#' or \code{\link{re}()}; also \code{mgcv}'s \code{\link{s}()},
-#' \code{\link{te}()}, or \code{\link{t2}()}.
-#'
+#'   \code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
+#'   \code{\link{peer}()},  \code{\link{fpc}()},
+#'   or \code{\link{re}()}; also \code{mgcv}'s \code{\link{s}()},
+#'   \code{\link{te}()}, or \code{\link{t2}()}.
 #' @param fitter the name of the function used to estimate the model. Defaults
-#' to \code{\link{gam}} if the matrix of functional responses has less than 2e5
-#' data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
-#' and "gamm4" (see \code{\link{gamm4}}) are valid options as well.
+#'   to \code{\link{gam}} if the matrix of functional responses has less than 2e5
+#'   data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
+#'   and "gamm4" (see \code{\link{gamm4}}) are valid options as well.
 #' @param method The smoothing parameter estimation method. Default is
 #'   \code{"REML"}. For options, see \code{\link{gam}}.
 #' @param ... additional arguments that are valid for \code{\link{gam}} or
@@ -29,11 +27,12 @@
 #' estimation.
 #'
 #' @section Warning:
-#' Binomial responses should be specified as a numeric vector rather than as a
-#' matrix or a factor.
-#' @return A fitted pfr-object, which is a \code{\link{gam}}-object with some
-#' additional information in a pfr-element. If fitter is "gamm" or "gamm4", only
-#' the $gam part of the returned list is modified in this way.
+#'   Binomial responses should be specified as a numeric vector rather than as a
+#'   matrix or a factor.
+#' @return
+#'   A fitted pfr-object, which is a \code{\link{gam}}-object with some
+#'   additional information in a pfr-element. If fitter is "gamm" or "gamm4", only
+#'   the $gam part of the returned list is modified in this way.
 #' @references
 #' Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 #' Penalized functional regression. \emph{Journal of Computational and Graphical
@@ -51,17 +50,17 @@
 #' Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
 #' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 #'
-# Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
-# dissertation, Department of Biostatistics, Columbia University. Available
-# at http://works.bepress.com/phil_reiss/11/.
-#
-# Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
-# regression and functional partial least squares. \emph{Journal of the
-# American Statistical Association}, 102, 984-996.
-#
-# Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
-# with images as predictors. \emph{Biometrics}, 66, 61-69.
-#
+#' Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
+#' dissertation, Department of Biostatistics, Columbia University. Available
+#' at http://works.bepress.com/phil_reiss/11/.
+#'
+#' Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
+#' regression and functional partial least squares. \emph{Journal of the
+#' American Statistical Association}, 102, 984-996.
+#'
+#' Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
+#' with images as predictors. \emph{Biometrics}, 66, 61-69.
+#'
 #' McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 #' Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of
 #' Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269.
@@ -74,9 +73,8 @@
 #'
 #' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Mathew W. McLean,
 #' Jeff Goldsmith, and Fabian Scheipl
-#' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}}, \code{\link{re}},
-#   \code{\link{fpc}},
-#'   \code{\link{peer}}.
+#' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}},
+#'   \code{\link{fpc}}, \code{\link{peer}}, \code{\link{re}}.
 #' @importFrom mgcv gam gam.fit gamm4 bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom nlme lme4

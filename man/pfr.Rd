@@ -9,7 +9,7 @@ pfr(formula = NULL, fitter = NA, method = "REML", ...)
 \arguments{
 \item{formula}{a formula that could contain any of the following special terms:
 \code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
-\code{\link{peer}()},
+\code{\link{peer}()},  \code{\link{fpc}()},
 or \code{\link{re}()}; also \code{mgcv}'s \code{\link{s}()},
 \code{\link{te}()}, or \code{\link{t2}()}.}
 
@@ -28,13 +28,14 @@ estimation.}
 }
 \value{
 A fitted pfr-object, which is a \code{\link{gam}}-object with some
-additional information in a pfr-element. If fitter is "gamm" or "gamm4", only
-the $gam part of the returned list is modified in this way.
+  additional information in a pfr-element. If fitter is "gamm" or "gamm4", only
+  the $gam part of the returned list is modified in this way.
 }
 \description{
 Implements various approaches to penalized scalar-on-function regression.
 These techniques include Penalized Functional Regression (Goldsmith et al.,
 2011),
+Functional Principal Component Regression (Reiss and Ogden, 2007),
 Functional Generalized Additive Models (McLean et al., 2013), Partially
 Empirical Eigenvectors for Regression (Randolph et al., 2012), and
 Variable-Domain Functional Regression (Gellar et al., 2014).
@@ -43,8 +44,8 @@ to fit models with a scalar (but not necessarily continuous) response.
 }
 \section{Warning}{
 
-Binomial responses should be specified as a numeric vector rather than as a
-matrix or a factor.
+  Binomial responses should be specified as a numeric vector rather than as a
+  matrix or a factor.
 }
 \examples{
 # See lf(), lf.vd(), af(), and peer() for additional examples
@@ -114,6 +115,17 @@ functional linear models - partially empirical eigenvectors for regression.
 Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
 functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 
+Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
+dissertation, Department of Biostatistics, Columbia University. Available
+at http://works.bepress.com/phil_reiss/11/.
+
+Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
+regression and functional partial least squares. \emph{Journal of the
+American Statistical Association}, 102, 984-996.
+
+Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
+with images as predictors. \emph{Biometrics}, 66, 61-69.
+
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of
 Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269.
@@ -124,7 +136,7 @@ Variable-Domain Functional Regression for Modeling ICU Data. Journal of the
 American Statistical Association, 109(508): 1425-1439.
 }
 \seealso{
-\code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}}, \code{\link{re}},
-  \code{\link{peer}}.
+\code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}},
+  \code{\link{fpc}}, \code{\link{peer}}, \code{\link{re}}.
 }
 
