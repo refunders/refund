@@ -129,9 +129,7 @@
 #' fit.peer <- pfr(pasat ~ peer(cca, argvals=seq(0,1,length=93),
 #'                              integration="riemann", pentype="D"), data=DTI.use)
 #' plot(fit.peer)
-#'
-#'
-#'
+
 pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
 
   if (class(formula) != "formula") {
@@ -163,7 +161,7 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
 
   # Set up terms
   tf <- terms.formula(formula, specials = c("s", "te", "t2", "lf", "af",
-                                            "lf.vd", "re", "peer"))
+                                            "lf.vd", "re", "peer", "fpc"))
   trmstrings <- attr(tf, "term.labels")
   terms <- sapply(trmstrings, function(trm) as.call(parse(text = trm))[[1]],
                   simplify = FALSE)
@@ -172,13 +170,14 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   where.af <- specials$af - 1
   where.lf <- specials$lf - 1
   where.pr <- specials$peer - 1
+  where.fp <- specials$fpc  - 1
   where.s  <- specials$s  - 1
   where.te <- specials$te - 1
   where.t2 <- specials$t2 - 1
   where.re <- specials$re - 1
   where.lf.vd <- specials$lf.vd - 1
   where.all <- c(where.af, where.lf, where.s, where.te, where.t2, where.re,
-                 where.lf.vd, where.pr)
+                 where.lf.vd, where.pr, where.fp)
 
   if (length(trmstrings)) {
     where.par <- which(!(1:length(trmstrings) %in% where.all))
@@ -216,7 +215,7 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   }
 
   # Process refund-type terms
-  where.refund <- c(where.af, where.lf, where.lf.vd, where.pr, where.re)
+  where.refund <- c(where.af, where.lf, where.lf.vd, where.pr, where.fp, where.re)
   if (length(where.refund)) {
     fterms <- lapply(terms[where.refund], function(x) {
       eval(x, envir = evalenv, enclos = frmlenv)
