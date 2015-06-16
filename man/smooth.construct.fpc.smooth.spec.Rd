@@ -31,9 +31,14 @@ Basis constructor for FPC terms
   contain the following elements:
 \describe{
   \item{X}{(required) matrix of functional predictors}
-  \item{A}{(optional) the number of PC's to retain}
-  \item{pve}{(only needed if \code{A} not supplied) the percent variance
-    explained used to determine \code{A}}
+  \item{method}{(required) the method of finding principal components;
+    options include \code{"svd"} (unconstrained), \code{"fpca.sc"},
+    \code{"fpca.face"}, or \code{"fpca.ssvd"}}
+  \item{npc}{(optional) the number of PC's to retain}
+  \item{pve}{(only needed if \code{npc} not supplied) the percent variance
+    explained used to determine \code{npc}}
+  \item{penalize}{(required) if \code{FALSE}, the smoothing parameter is
+    set to 0}
   \item{bs}{the basis class used to pre-smooth \code{X}; default is \code{"ps"}}
 }
 
@@ -43,6 +48,11 @@ Any additional options for the pre-smoothing basis (e.g. \code{k}, \code{m},
 }
 \author{
 Jonathan Gellar \email{JGellar@mathematica-mpr.com}
+}
+\references{
+Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
+regression and functional partial least squares. \emph{Journal of the
+American Statistical Association}, 102, 984-996.
 }
 \seealso{
 \code{\link{fpcr}}

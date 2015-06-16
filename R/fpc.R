@@ -44,9 +44,12 @@
 #' regression and functional partial least squares. \emph{Journal of the
 #' American Statistical Association}, 102, 984-996.
 #' 
-#' 
+#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Phil Reiss
+#'   \email{phil.reiss@@nyumc.org}, Lan Huo \email{lan.huo@@nyumc.org}, and
+#'   Lei Huang \email{huangracer@@gmail.com}
 #' @examples
 #' data(gasoline)
+#' par(mfrow=c(3,1))
 #' 
 #' # Fit PFCR_R
 #' gasmod1 <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
@@ -54,7 +57,12 @@
 #' est <- coef(gasmod)
 #' 
 #' # Fit FPCR_C with fpca.sc
-#' gasmod2 <- pfr(octane ~ fpc(NIR, method="fpca.sc", ncomp=4), data=gasoline)
+#' gasmod2 <- pfr(octane ~ fpc(NIR, method="fpca.sc", ncomp=6), data=gasoline)
+#' plot(gasmod2, rug=FALSE, se=FALSE)
+#' 
+#' # Fit penalized model with fpca.face
+#' gasmod3 <- pfr(octane ~ fpc(NIR, method="fpca.face", penalize=TRUE), data=gasoline)
+#' plot(gasmod3, rug=FALSE)
 #' 
 #' 
 #' @seealso \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
@@ -134,21 +142,27 @@ smooth.construct.fpc.smooth.spec <- function(object, data, knots) {
   
   # Create PC Basis: need X, B, and V.A
   XB <- xt$X %*% sm$X
-  V.A <- switch(xt$method,
+  res <- switch(xt$method,
                 svd = {
                   XB.svd <- svd(XB)
+                  pve <- XB.svd$d/sum(XB.svd$d)
                   npc <- ifelse(is.null(xt$npc),
-                                min(which(cumsum(XB.svd$d) > xt$pve * sum(XB.svd$d))),
+                                min(which(cumsum(pve) > xt$pve)),
+                                #min(which(cumsum(XB.svd$d) > xt$pve * sum(XB.svd$d))),
                                 xt$npc)
-                  XB.svd$v[,1:npc]
-                },
-                fpca.sc = fpca.sc(XB, npc=xt$npc, pve=xt$pve)$efunctions,
-                fpca.face = fpca.face(XB, npc=xt$npc, pve=xt$pve)$efunctions,
-                fpca.ssvd = fpca.ssvd(XB, npc=ifelse(is.null(xt$npc), NA, xt$npc)
-                                      )$efunctions
-                )
+                  list(V.A = XB.svd$v[,1:npc], pve=pve[1:npc])
+                }, fpca.sc = {
+                  fp <- fpca.sc(XB, npc=xt$npc, pve=xt$pve)
+                  list(V.A=fp$efunctions, pve=cumsum(fp$evalues)/sum(fp$evalues))
+                }, fpca.face = {
+                  fp <- fpca.face(XB, npc=xt$npc, pve=xt$pve)
+                  list(V.A=fp$efunctions, pve=cumsum(fp$evalues)/sum(fp$evalues))
+                }, fpca.ssvd = {
+                  fp <- fpca.ssvd(XB, npc=ifelse(is.null(xt$npc), NA, xt$npc))
+                  list(V.A=fp$efunctions, pve=cumsum(fp$evalues)/sum(fp$evalues))
+                })
+  V.A <- res$V.A
   npc <- ncol(V.A)
-  #XB.svd <- svd(XB)
   
   ## Limit to the first npc PC's
   #npc <- ifelse(is.null(xt$npc),
@@ -166,6 +180,7 @@ smooth.construct.fpc.smooth.spec <- function(object, data, knots) {
   object$df   <- npc #need this for gamm
   object$sm   <- sm
   object$V.A  <- V.A
+  object$pve  <- res$pve
   class(object) <- "fpc.smooth"
   object
 }

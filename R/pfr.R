@@ -22,17 +22,19 @@
 #' @param method The smoothing parameter estimation method. Default is
 #'   \code{"REML"}. For options, see \code{\link{gam}}.
 #' @param ... additional arguments that are valid for \code{\link{gam}} or
-#' \code{\link{bam}}. These include \code{data} and \code{family} to specify
-#' the input data and outcome family, as well as many options to control the
-#' estimation.
+#'   \code{\link{bam}}. These include \code{data} and \code{family} to specify
+#'   the input data and outcome family, as well as many options to control the
+#'   estimation.
 #'
 #' @section Warning:
 #'   Binomial responses should be specified as a numeric vector rather than as a
 #'   matrix or a factor.
 #' @return
 #'   A fitted pfr-object, which is a \code{\link{gam}}-object with some
-#'   additional information in a pfr-element. If fitter is "gamm" or "gamm4", only
-#'   the $gam part of the returned list is modified in this way.
+#'   additional information in a \code{$pfr}-element. If fitter is \code{"gamm"}
+#'   or \code{"gamm4"}, only the \code{$gam} part of the returned list is
+#'   modified in this way.
+#' 
 #' @references
 #' Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 #' Penalized functional regression. \emph{Journal of Computational and Graphical
@@ -82,15 +84,17 @@
 #' @export
 #'
 #' @examples
-#' # See lf(), lf.vd(), af(), and peer() for additional examples
+#' # See lf(), lf.vd(), af(), fpc(), and peer() for additional examples
 #'
 #' data(DTI)
 #' DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
 #' par(mfrow=c(1,2))
 #'
 #' # Fit model with linear functional term for CCA
-#' fit.lf <- pfr(pasat ~ lf(cca, k=30), data=DTI1)
+#' fit.lf <- pfr(pasat ~ lf(cca, k=30, bs="ps"), data=DTI1)
 #' plot(fit.lf, ylab=expression(paste(beta(t))), xlab="t")
+#' 
+#' # Alternative way to plot
 #' bhat.lf <- coef(fit.lf, n=101)
 #' bhat.lf$upper <- bhat.lf$value + 1.96*bhat.lf$se
 #' bhat.lf$lower <- bhat.lf$value - 1.96*bhat.lf$se
@@ -120,6 +124,10 @@
 #' coef.re <- coef(fit.re)
 #' par(mfrow=c(1,2))
 #' plot(fit.re)
+#' 
+#' # FPCR_R Model
+#' fit.fpc <- pfr(pasat ~ fpc(cca), data=DTI.re)
+#' plot(fit.fpc)
 #'
 #' # PEER Model with second order difference penalty
 #' DTI.use <- DTI[DTI$case==1,]

@@ -22,14 +22,15 @@ and "gamm4" (see \code{\link{gamm4}}) are valid options as well.}
 \code{"REML"}. For options, see \code{\link{gam}}.}
 
 \item{...}{additional arguments that are valid for \code{\link{gam}} or
-\code{\link{bam}}. These include \code{data} and \code{family} to specify
-the input data and outcome family, as well as many options to control the
-estimation.}
+  \code{\link{bam}}. These include \code{data} and \code{family} to specify
+  the input data and outcome family, as well as many options to control the
+  estimation.}
 }
 \value{
 A fitted pfr-object, which is a \code{\link{gam}}-object with some
-  additional information in a pfr-element. If fitter is "gamm" or "gamm4", only
-  the $gam part of the returned list is modified in this way.
+  additional information in a \code{$pfr}-element. If fitter is \code{"gamm"}
+  or \code{"gamm4"}, only the \code{$gam} part of the returned list is
+  modified in this way.
 }
 \description{
 Implements various approaches to penalized scalar-on-function regression.
@@ -48,15 +49,17 @@ to fit models with a scalar (but not necessarily continuous) response.
   matrix or a factor.
 }
 \examples{
-# See lf(), lf.vd(), af(), and peer() for additional examples
+# See lf(), lf.vd(), af(), fpc(), and peer() for additional examples
 
 data(DTI)
 DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
 par(mfrow=c(1,2))
 
 # Fit model with linear functional term for CCA
-fit.lf <- pfr(pasat ~ lf(cca, k=30), data=DTI1)
+fit.lf <- pfr(pasat ~ lf(cca, k=30, bs="ps"), data=DTI1)
 plot(fit.lf, ylab=expression(paste(beta(t))), xlab="t")
+
+# Alternative way to plot
 bhat.lf <- coef(fit.lf, n=101)
 bhat.lf$upper <- bhat.lf$value + 1.96*bhat.lf$se
 bhat.lf$lower <- bhat.lf$value - 1.96*bhat.lf$se
@@ -86,6 +89,10 @@ fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI.re)
 coef.re <- coef(fit.re)
 par(mfrow=c(1,2))
 plot(fit.re)
+
+# FPCR_R Model
+fit.fpc <- pfr(pasat ~ fpc(cca), data=DTI.re)
+plot(fit.fpc)
 
 # PEER Model with second order difference penalty
 DTI.use <- DTI[DTI$case==1,]

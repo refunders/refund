@@ -4,7 +4,8 @@
 \alias{fpc}
 \title{Construct a FPC regression term}
 \usage{
-fpc(X, ncomp = NULL, pve = 0.99, bs = "ps", k = 40, ...)
+fpc(X, method = c("svd", "fpca.sc", "fpca.face", "fpca.ssvd"), ncomp = NULL,
+  pve = 0.99, penalize = (method == "svd"), bs = "ps", k = 40, ...)
 }
 \arguments{
 \item{X}{functional predictors, expressed as an \code{N} by \code{J} matrix,
@@ -12,10 +13,19 @@ where \code{N} is the number of columns and \code{J} is the number of
 evaluation points. May include missing/sparse functions, which are
 indicated by \code{NA} values.}
 
+\item{method}{the method used for finding principal components. The default
+is an unconstrained SVD of the \eqn{XB} matrix. Alternatives include
+constrained (functional) principal components approaches}
+
 \item{ncomp}{number of principal components. if \code{NULL}, chosen by \code{pve}}
 
 \item{pve}{proportion of variance explained; used to choose the number of
 principal components}
+
+\item{penalize}{if \code{TRUE}, a roughness penalty is applied to the
+functional estimate. Deafults to \code{FALSE} if \code{method=="svd"}
+(corresponding to the FPCR_R method of Reiss and Ogden (2007)), and
+\code{TRUE} if \code{method!="svd"} (corresponding to FPCR_C).}
 
 \item{bs}{two letter character string indicating the \code{mgcv}-style basis
 to use for pre-smoothing \code{X}}
@@ -48,12 +58,26 @@ The method is the FPCR-R method of Reiss and Ogden (2007). This
 }
 \examples{
 data(gasoline)
-gasmod <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
-plot(gasmod, rug=FALSE)
+
+# Fit PFCR_R
+gasmod1 <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
+plot(gasmod1, rug=FALSE)
 est <- coef(gasmod)
+
+# Fit FPCR_C with fpca.sc
+gasmod2 <- pfr(octane ~ fpc(NIR, method="fpca.sc", ncomp=2), data=gasoline)
 }
 \author{
+Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Phil Reiss
+  \email{phil.reiss@nyumc.org}, Lan Huo \email{lan.huo@nyumc.org}, and
+  Lei Huang \email{huangracer@gmail.com}
+
 Jonathan Gellar \email{JGellar@mathematica-mpr.com}
+}
+\references{
+Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
+regression and functional partial least squares. \emph{Journal of the
+American Statistical Association}, 102, 984-996.
 }
 \seealso{
 \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
