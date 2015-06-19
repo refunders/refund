@@ -181,7 +181,11 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     id = rep(1:I, rep(D, I))
 
     if (center) {
-        if (random.int) gam0 = gamm4(as.vector(Y) ~ s(d.vec, k = nbasis), random=~(1|id))$gam
+        if (random.int){
+          ri_data <- data.frame(y = as.vector(Y), d.vec=d.vec, id=factor(id))
+          gam0 = gamm4(y ~ s(d.vec, k = nbasis), random=~(1|id), data = ri_data)$gam
+          rm(ri_data)
+        }
         else gam0 = gam(as.vector(Y) ~ s(d.vec, k = nbasis))
         mu = predict(gam0, newdata = data.frame(d.vec = argvals))
         Y.tilde = Y - matrix(mu, I, D, byrow = TRUE)
@@ -287,7 +291,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     crit.val = rep(0, I.pred)
     for (i.subj in 1:I.pred) {
         obs.points = which(!is.na(Y.pred[i.subj, ]))
-        if (sigma2 == 0 & length(obs.points) < npc) 
+        if (sigma2 == 0 & length(obs.points) < npc)
             stop("Measurement error estimated to be zero and there are fewer observed points than PCs; scores cannot be estimated.")
         Zcur = matrix(Z[obs.points, ], nrow = length(obs.points), ncol = dim(Z)[2])
         ZtZ_sD.inv = solve(crossprod(Zcur) + sigma2 * D.inv)
