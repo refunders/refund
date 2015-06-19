@@ -102,6 +102,30 @@ test_that("ff limits arg works", {
     max(abs((fitted(m.l) - fitted(m.leq))/fitted(m.l))) < .05)
 })
 
+test_that("weights and offset args work", {
+  skip_on_cran()
+  set.seed(112)
+  n <- 20
+  nygrid <- 50
+  data <- pffrSim(scenario="lin", n=n, nygrid=nygrid, SNR=100)
+  t <- attr(data, "yindex")
+  m0 <- pffr(Y ~ xlin, yind=t, data=data)
+
+  vecoffset <- 1:n
+  data$Y_vecoffset <- data$Y + vecoffset
+  m_vecoffset <- pffr(Y_vecoffset ~ xlin, yind=t, data=data, offset=vecoffset)
+  expect_equal(fitted(m0), fitted(m_vecoffset)-vecoffset)
+
+  matoffset <- matrix(rnorm(n*nygrid), n, nygrid)
+  data$Y_matoffset <- data$Y + matoffset
+  m_matoffset <- pffr(Y_matoffset ~ xlin, yind=t, data=data, offset=matoffset)
+  expect_equal(fitted(m0), fitted(m_matoffset) - matoffset)
+
+  expect_error(pffr(Y ~ xlin, yind=t, data=data, offset=vecoffset[-1]))
+  expect_error(pffr(Y ~ xlin, yind=t, data=data, offset=matoffset[-1, ]))
+})
+
+
 
 test_that("sff terms are working", {
   skip_on_cran()
