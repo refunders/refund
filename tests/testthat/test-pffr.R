@@ -88,3 +88,17 @@ test_that("another ff term example", {
    # fits are very similar:
    # expect_equal(fitted(m.pc), fitted(m.ff))  # NOT TRUE
 })
+
+test_that("sff terms are working", {
+  skip_on_cran()
+
+  set.seed(2121)
+  data <- pffrSim(scenario="ff", n=20, SNR=100)
+  t <- attr(data, "yindex")
+  s <- attr(data, "xindex")
+  m.s <- pffr(Y ~ sff(X1, xind=s), yind=t, data=data)
+  m.lin <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data)
+  expect_is(summary(m.s), "summary.pffr")
+  expect_that(
+    max(abs((fitted(m.lin) - fitted(m.s))/fitted(m.lin))) < .05 )
+}

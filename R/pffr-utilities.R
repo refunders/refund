@@ -54,7 +54,6 @@ getShrtlbls <- function(object){
 
     ret <- sapply(names(unlist(labelmap)),
             function(x){
-                browser()
                 #make a parseable expression for ffpc terms
                 if(grepl("^ffpc", x)){
                     ffpcnumber <- gsub("(^.+))([0-9]+$)","\\2", x)
