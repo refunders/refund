@@ -14,7 +14,7 @@ m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
        yind=argvals,
           data=data2)
 
-test_that("all pffr terms are working", {
+test_that("all major pffr terms are working", {
    ## expect_equal_to_reference(m.pc$coefficients, "pffr.all.coef.rds")
    expect_is(m2, "pffr")
 })
@@ -35,7 +35,7 @@ test_that("convenience functions are working", {
 })
  #############################################################################
                                         # sparse data (80% missing on a regular grid):
-test_that("example with sparse data works", {
+test_that("pffr with sparse data works", {
    set.seed(88182004)
    data3 <- pffrSim(scenario=c("int", "smoo"), n=100, propmissing=0.8)
    t <- attr(data3, "yindex")
@@ -125,8 +125,6 @@ test_that("weights and offset args work", {
   expect_error(pffr(Y ~ xlin, yind=t, data=data, offset=matoffset[-1, ]))
 })
 
-
-
 test_that("sff terms are working", {
   skip_on_cran()
 
@@ -140,3 +138,24 @@ test_that("sff terms are working", {
   expect_that(
     max(abs((fitted(m.lin) - fitted(m.s))/fitted(m.lin))) < .05 )
 }
+
+
+  test_that("ff identifiability stuff works", {
+    skip_on_cran()
+
+    set.seed(112)
+    n <- 20
+    ngrid <- 50
+    s <- t <- seq(0, 1, l=ngrid)
+    Xefcts <- t(poly(t, 2))
+    X <- matrix(rnorm(n*2), n, 2) %*% Xefcts
+    L <- matrix(1/ngrid, ncol=ngrid, nrow=n)
+    LX <- L*X
+    beta.st <- outer(s, t, function(s, t) cos(3*pi*t)*s)
+    Y <- LX%*%beta.st
+    data <- data.frame(Y=I(Y), X=I(X))
+
+    expect_warning(m <- pffr(Y ~ ff(X, xind=s), yind=t, data=data))
+    expect_equal(class(m$smooth[[2]]$margin[[1]]), "pss.smooth")
+
+})
