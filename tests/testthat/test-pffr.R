@@ -89,6 +89,20 @@ test_that("another ff term example", {
    # expect_equal(fitted(m.pc), fitted(m.ff))  # NOT TRUE
 })
 
+test_that("ff limits arg works", {
+  set.seed(2121)
+  data <- pffrSim(scenario="ff", n=20, SNR=100, limits=function(s, t) s < t)
+  t <- attr(data, "yindex")
+  s <- attr(data, "xindex")
+  m.l <- pffr(Y ~ ff(X1, xind=s, limits="s<t"), yind=t, data=data)
+  m.leq <- pffr(Y ~ ff(X1, xind=s, limits="s<=t"), yind=t, data=data)
+  m.fun <- pffr(Y ~ ff(X1, xind=s, limits=function(s, t) s < t), yind=t, data=data)
+  expect_equal(fitted(m.l), fitted(m.fun))
+  expect_that(
+    max(abs((fitted(m.l) - fitted(m.leq))/fitted(m.l))) < .05)
+})
+
+
 test_that("sff terms are working", {
   skip_on_cran()
 
