@@ -292,6 +292,7 @@ pffrSim <- function(
 #' @references Marra, G., & Wood, S. N. (2011). Practical variable selection for generalized additive models.
 #' \emph{Computational Statistics & Data Analysis}, 55(7), 2372-2387.
 #' @method smooth.construct pss.smooth.spec
+#' @export
 #' @importFrom mgcv smooth.construct.ps.smooth.spec
 smooth.construct.pss.smooth.spec<-function(object,data,knots)
 {
@@ -317,6 +318,7 @@ smooth.construct.pss.smooth.spec<-function(object,data,knots)
 }
 
 #' @importFrom mgcv Predict.matrix.pspline.smooth
+#' @export
 Predict.matrix.pss.smooth<-function(object,data)
 {
   Predict.matrix.pspline.smooth(object,data)
