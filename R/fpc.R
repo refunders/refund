@@ -72,8 +72,9 @@
 #' lines(value ~ X.argvals, col=3, data=est3)
 #' 
 #' @seealso \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
-#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}
-#' 
+#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Philip Reiss
+#'   \email{phil.reiss@@nyumc.org}, Lan Huo \email{lan.huo@@nyumc.org},
+#'   and Lei Huang \email{huangracer@@gmail.com}
 
 fpc <- function(X, method=c("svd", "fpca.sc", "fpca.face", "fpca.ssvd"),
                 ncomp=NULL, pve=0.99, penalize=(method=="svd"),
