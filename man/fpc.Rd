@@ -84,10 +84,6 @@ lines(value ~ X.argvals, col=3, data=est3)
 Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Phil Reiss
   \email{phil.reiss@nyumc.org}, Lan Huo \email{lan.huo@nyumc.org}, and
   Lei Huang \email{huangracer@gmail.com}
-
-Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Philip Reiss
-  \email{phil.reiss@nyumc.org}, Lan Huo \email{lan.huo@nyumc.org},
-  and Lei Huang \email{huangracer@gmail.com}
 }
 \references{
 Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
