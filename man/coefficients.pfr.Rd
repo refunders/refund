@@ -5,43 +5,45 @@
 \alias{coefficients.pfr}
 \title{Extract coefficient functions from a fitted pfr-object}
 \usage{
-\method{coefficients}{pfr}(object, which, n = 100, n2 = 40, se = TRUE,
-  seWithMean = TRUE, exclude = FALSE, ...)
+\method{coefficients}{pfr}(object, which = NULL, se = TRUE,
+  exclude = FALSE, plotMe = FALSE, ...)
 
-\method{coef}{pfr}(object, which, n = 100, n2 = 40, se = TRUE,
-  seWithMean = TRUE, exclude = FALSE, ...)
+\method{coef}{pfr}(object, which = NULL, se = TRUE, exclude = FALSE,
+  plotMe = FALSE, ...)
 }
 \arguments{
 \item{object}{return object from \code{\link{pfr}}}
 
-\item{which}{which terms to extract coefficients from (integer vector), defaults
-to all terms}
-
-\item{n}{see \code{\link[mgcv]{plot.gam}}}
-
-\item{n2}{see \code{\link[mgcv]{plot.gam}}}
+\item{which}{which of the smooth terms to extract coefficients from
+(integer vector). If \code{NULL}, returns all smooth terms.}
 
 \item{se}{compute standard errors? defaults to TRUE. See \code{\link[mgcv]{plot.gam}}}
-
-\item{seWithMean}{see \code{\link[mgcv]{plot.gam}}}
 
 \item{exclude}{if \code{TRUE}, excludes reporting of the estimate at coordinates that are
 "too far" from data used to fit the model, as determined by
 \code{mgcv::plot.mgcv.smooth}, by setting the estimate to \code{NA}.}
 
-\item{...}{further arguments passed on to \pkg{mgcv}'s \code{plot.mgcv.smooth}}
+\item{plotMe}{if \code{TRUE}, also plots the coefficient(s)}
+
+\item{...}{further arguments passed on to \pkg{mgcv}'s \code{plot.gam}. Common
+arguments include \code{n} and \code{n2} to set the number of coordinates
+to estimate for 1-D and 2-D coefficient functions, and \code{seWithMean}
+if the standard error should include uncertainty about the overall mean.
+See \code{\link[mgcv]{plot.gam}}.}
 }
 \value{
 a list of data.frames containing the evaluation points,
-   coefficient function values and optionally their se's for each term in \code{which}
+   coefficient function values and optionally their se's for each term in \code{which}.
+   If only one term is selected, the one data frame is unlisted.
 }
 \description{
 Extract coefficient functions from a fitted pfr-object
 }
 \examples{
-#TODO: see pfr
+#TODO: see ?pfr
 }
 \author{
-Fabian Scheipl, se-computation parts adapted from Simon Wood's \code{plot.gam}.
+Fabian Scheipl and Jonathan Gellar, se-computation parts adapted from
+   Simon Wood's \code{plot.gam}.
 }
 
