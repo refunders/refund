@@ -7,6 +7,7 @@
 #' @param exclude if \code{TRUE}, excludes reporting of the estimate at coordinates that are
 #'   "too far" from data used to fit the model, as determined by
 #'   \code{mgcv::plot.mgcv.smooth}, by setting the estimate to \code{NA}.
+#' @param plotMe if \code{TRUE}, also plots the coefficient(s)
 #' @param ... further arguments passed on to \pkg{mgcv}'s \code{plot.gam}. Common
 #'   arguments include \code{n} and \code{n2} to set the number of coordinates
 #'   to estimate for 1-D and 2-D coefficient functions, and \code{seWithMean}
@@ -21,23 +22,29 @@
 #' #TODO: see ?pfr
 #' @export
 
-coefficients.pfr <- function(object, which=NULL, se=TRUE, exclude=FALSE, ...) {
+coefficients.pfr <- function(object, which=NULL, se=TRUE, exclude=FALSE,
+                             plotMe=FALSE, ...) {
 
   # If (se==TRUE), replace with 1 (indicating we want 1 SE returned by plot.gam)
   if (is.logical(se)) if (se) se <- 1
 
-  # exclude sets the too.far value appropriately
-  too.far <- list(...)$too.far
-  too.far <- ifelse(is.null(too.far), ifelse(exclude, 0.1, 0), too.far)
+  # Function to strip too.far out of dots (...), and then call plot.gam
+  localplot <- function(..., too.far=0.1) {
+    if (!exclude) too.far <- 0
+    mgcv::plot.gam(object, select=which, se=se, too.far=too.far, ...)
+  }
 
-  ## dump plots to file since can't pass type = "n" to plot.gam
-  tfile <- tempfile()
-  pdf(tfile)
-  plotdata <- mgcv::plot.gam(object, select=which, se=se, too.far=too.far, ...)
-  dev.off()
-  if (file.exists(tfile))
+  if (!plotMe) {
+    ## dump plots to file since can't pass type = "n" to plot.gam
+    tfile <- tempfile()
+    pdf(tfile)
+    plotdata <- localplot(...)
+    dev.off()
+    if (file.exists(tfile))
       file.remove(tfile)
-
+  } else
+    plotdata <- localplot(...)
+  
   coef <- lapply(1:length(plotdata), function(i) {
     pd <- plotdata[[i]]
 
