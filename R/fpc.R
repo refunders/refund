@@ -159,6 +159,7 @@ smooth.construct.fpc.smooth.spec <- function(object, data, knots) {
                   fp <- fpca.sc(XB, npc=xt$npc, pve=xt$pve)
                   list(V.A=fp$efunctions, pve=cumsum(fp$evalues)/sum(fp$evalues))
                 }, fpca.face = {
+                  if (!is.null(xt$npc)) xt$pve <- 1
                   fp <- fpca.face(XB, npc=xt$npc, pve=xt$pve)
                   list(V.A=fp$efunctions, pve=cumsum(fp$evalues)/sum(fp$evalues))
                 }, fpca.ssvd = {

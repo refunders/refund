@@ -207,7 +207,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   
   if(!is.null(npc)) {
     if(npc>N){
-      cat("Warnig! The number of PCs is ", N,"s maller than ", npc,"\n");
+      cat("Warning! The number of PCs is ", N,", which is smaller than", npc,"\n");
       cat("Will use",N,"PCs\n");
       npc = N
     }
