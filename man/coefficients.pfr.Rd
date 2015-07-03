@@ -5,16 +5,16 @@
 \alias{coefficients.pfr}
 \title{Extract coefficient functions from a fitted pfr-object}
 \usage{
-\method{coefficients}{pfr}(object, which = NULL, se = TRUE,
-  exclude = FALSE, plotMe = FALSE, ...)
+\method{coefficients}{pfr}(object, select = NULL, se = TRUE,
+  exclude = FALSE, plot = FALSE, ...)
 
-\method{coef}{pfr}(object, which = NULL, se = TRUE, exclude = FALSE,
-  plotMe = FALSE, ...)
+\method{coef}{pfr}(object, select = NULL, se = TRUE, exclude = FALSE,
+  plot = FALSE, ...)
 }
 \arguments{
 \item{object}{return object from \code{\link{pfr}}}
 
-\item{which}{which of the smooth terms to extract coefficients from
+\item{select}{which of the smooth terms to extract coefficients from
 (integer vector). If \code{NULL}, returns all smooth terms.}
 
 \item{se}{compute standard errors? defaults to TRUE. See \code{\link[mgcv]{plot.gam}}}
@@ -23,7 +23,7 @@
 "too far" from data used to fit the model, as determined by
 \code{mgcv::plot.mgcv.smooth}, by setting the estimate to \code{NA}.}
 
-\item{plotMe}{if \code{TRUE}, also plots the coefficient(s)}
+\item{plot}{if \code{TRUE}, also plots the coefficient(s)}
 
 \item{...}{further arguments passed on to \pkg{mgcv}'s \code{plot.gam}. Common
 arguments include \code{n} and \code{n2} to set the number of coordinates
@@ -33,7 +33,7 @@ See \code{\link[mgcv]{plot.gam}}.}
 }
 \value{
 a list of data.frames containing the evaluation points,
-   coefficient function values and optionally their se's for each term in \code{which}.
+   coefficient function values and optionally their se's for each term in \code{select}.
    If only one term is selected, the one data frame is unlisted.
 }
 \description{

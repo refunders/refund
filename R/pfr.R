@@ -111,6 +111,7 @@
 #'                 data=DTI1)
 #' plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="TPRS", rug=FALSE)
 #'
+#' # Visualize bivariate function at various values of x
 #' par(mfrow=c(2,2))
 #' vis.pfr(fit.af, xval=.2)
 #' vis.pfr(fit.af, xval=.4)

@@ -1,20 +1,20 @@
 #' Extract coefficient functions from a fitted pfr-object
 #'
 #' @param object return object from \code{\link{pfr}}
-#' @param which which of the smooth terms to extract coefficients from
+#' @param select which of the smooth terms to extract coefficients from
 #'    (integer vector). If \code{NULL}, returns all smooth terms.
 #' @param se compute standard errors? defaults to TRUE. See \code{\link[mgcv]{plot.gam}}
 #' @param exclude if \code{TRUE}, excludes reporting of the estimate at coordinates that are
 #'   "too far" from data used to fit the model, as determined by
 #'   \code{mgcv::plot.mgcv.smooth}, by setting the estimate to \code{NA}.
-#' @param plotMe if \code{TRUE}, also plots the coefficient(s)
+#' @param plot if \code{TRUE}, also plots the coefficient(s)
 #' @param ... further arguments passed on to \pkg{mgcv}'s \code{plot.gam}. Common
 #'   arguments include \code{n} and \code{n2} to set the number of coordinates
 #'   to estimate for 1-D and 2-D coefficient functions, and \code{seWithMean}
 #'   if the standard error should include uncertainty about the overall mean.
 #'   See \code{\link[mgcv]{plot.gam}}.
 #' @return a list of data.frames containing the evaluation points,
-#'    coefficient function values and optionally their se's for each term in \code{which}.
+#'    coefficient function values and optionally their se's for each term in \code{select}.
 #'    If only one term is selected, the one data frame is unlisted.
 #' @author Fabian Scheipl and Jonathan Gellar, se-computation parts adapted from
 #'    Simon Wood's \code{plot.gam}.
@@ -22,8 +22,8 @@
 #' #TODO: see ?pfr
 #' @export
 
-coefficients.pfr <- function(object, which=NULL, se=TRUE, exclude=FALSE,
-                             plotMe=FALSE, ...) {
+coefficients.pfr <- function(object, select=NULL, se=TRUE, exclude=FALSE,
+                             plot=FALSE, ...) {
 
   # If (se==TRUE), replace with 1 (indicating we want 1 SE returned by plot.gam)
   if (is.logical(se)) if (se) se <- 1
@@ -31,10 +31,10 @@ coefficients.pfr <- function(object, which=NULL, se=TRUE, exclude=FALSE,
   # Function to strip too.far out of dots (...), and then call plot.gam
   localplot <- function(..., too.far=0.1) {
     if (!exclude) too.far <- 0
-    mgcv::plot.gam(object, select=which, se=se, too.far=too.far, ...)
+    mgcv::plot.gam(object, select=select, se=se, too.far=too.far, ...)
   }
 
-  if (!plotMe) {
+  if (!plot) {
     ## dump plots to file since can't pass type = "n" to plot.gam
     tfile <- tempfile()
     pdf(tfile)
