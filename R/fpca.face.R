@@ -117,7 +117,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
          center=TRUE,knots=35,p=3,m=2,lambda=NULL,alpha = 1,
          search.grid=TRUE,search.length=100,
          method="L-BFGS-B", lower=-20,upper=20, control=NULL){
-
+  
   ## data: Y, I by J data matrix, functions on rows
   ## argvals:  vector of J
   ## knots: to specify either the number of knots or the vectors of knots;
@@ -125,33 +125,32 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   ## p: the degree of B-splines;
   ## m: the order of difference penalty
   ## lambda: user-selected smoothing parameter
-  ## method: see R function "optim"
+  ## method: see R function "optim" 
   ## lower, upper, control: see R function "optim"
   #require(Matrix)
   #source("pspline.setting.R")
-
   stopifnot(!is.null(Y))
   stopifnot(is.matrix(Y))
   data_dim <- dim(Y)
   I <- data_dim[1] ## number of subjects
   J <- data_dim[2] ## number of obs per function
-
-  if(is.null(argvals))  argvals <- seq(0, 1, length=J) ## if NULL, assume equally spaced
-
+  
+  if(is.null(argvals))  argvals <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
+  
   meanX <- rep(0,J)
   if(center) {##center the functions
     meanX <- apply(Y,2,function(x) mean(x,na.rm=TRUE))
     meanX <- smooth.spline(argvals,meanX,all.knots =TRUE)$y
     Y <- t(t(Y)- meanX)
   }
-
+  
   ## specify the B-spline basis: knots
   p.p <- p
   m.p <- m
   if(length(knots)==1){
     if(knots+p.p>=J) cat("Too many knots!\n")
     stopifnot(knots+p.p<J)
-
+    
     K.p <- knots
     knots <- seq(-p.p,K.p+p.p,length=K.p+1+2*p.p)/K.p
     knots <- knots*(max(argvals)-min(argvals)) + min(argvals)
@@ -177,7 +176,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   ######## precalculation for missing data ########
   imputation <- FALSE
   Niter.miss <- 1
-
+  
   Index.miss <- is.na(Y)
   if(sum(Index.miss)>0){
     num.miss <- apply(Y,2,function(x){sum(is.na(x))})
@@ -195,7 +194,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
         Y[i,seq2] <- temp
       }
     }
-
+    
   Y0 <- matrix(NA,c.p,I)
   imputation <- TRUE
   Niter.miss <- 100
@@ -216,7 +215,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   ###################################################
   Y_square <- sum(Y^2)
   Ytilde_square <- sum(Ytilde^2)
-
+  
   face_gcv <- function(x){
     lambda <- exp(x)
     lambda_s <- (lambda*s)^2/(1 + lambda*s)^2
@@ -225,24 +224,24 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
     gcv <- gcv/(1-alpha*trace/J/(1-totalmiss))^2
     return(gcv)
   }
-
+  
   if(is.null(lambda)){
-
+    
     if(!search.grid){
       fit <- optim(0,face_gcv,method=method,lower=lower,upper=upper,control=control)
       if(fit$convergence>0) {
         expression <- paste("Smoothing failed! The code is:",fit$convergence)
         print(expression)
       }
-
+      
       lambda <- exp(fit$par)
     }
-
+    
     if(search.grid){
       Lambda <- seq(lower,upper,length=search.length)
       Length <- length(Lambda)
       Gcv <- rep(0,Length)
-      for(i in 1:Length)
+      for(i in 1:Length) 
         Gcv[i] <- face_gcv(Lambda[i])
       i0 <- which.min(Gcv)
       lambda <- exp(Lambda[i0])
@@ -269,7 +268,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
     }
   if(iter.miss>1&&iter.miss< Niter.miss) {
     diff <- norm(YS-YS.temp,"F")/norm(YS,"F");
-    if(diff <= 0.02)
+    if(diff <= 0.02) 
       convergence.vector[iter.miss+1] <- 1
   }
   YS.temp <- YS
@@ -287,21 +286,21 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   #######     Principal  Scores   #########
   ########   data imputation      #########
   #########################################
-
+ 
   if(imputation==T){
     A.N <- A[,1:N]
     d <- Sigma[1:N]
     sigmahat2  <-  max(mean(Y[!Index.miss]^2) -sum(Sigma),0)
-
+    
     Xi <- t(A.N)%*%Ytilde
     Xi <- t(as.matrix(B%*%(A0%*%((A.N%*%diag(d/(d+sigmahat2/J)))%*%Xi))))
     Y <- Y*(1-Index.miss) + Xi*Index.miss
     if(sum(is.na(Y))>0) print("error")
-
+ 
   }
   #if(iter.miss%%10==0) print(iter.miss)
-
-  }## end of while loop
+   
+  }## end of while loop         
   ### now calculate scores
   if(is.null(Y.pred)) Y.pred = Y
   else {Y.pred = t(t(as.matrix(Y.pred))-meanX)}
@@ -314,26 +313,26 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
 
   eigenvectors = as.matrix(B%*%(A0%*%A[,1:N]))
   eigenvalues = Sigma[1:N] #- sigmahat2/J
-
+  
   Yhat <- t(A[,1:N])%*%Ytilde
   Yhat <- as.matrix(B%*%(A0%*%A[,1:N]%*%diag(eigenvalues/(eigenvalues+sigmahat2/J))%*%Yhat))
   Yhat <- t(Yhat + meanX)
-
+  
   if(!is.null(npc)) {
     if(npc>N){
-      cat("Warnig! The number of PCs is ", N,"s maller than ", npc,"\n");
+      cat("Warning! The number of PCs is ", N,", which is smaller than", npc,"\n");
       cat("Will use",N,"PCs\n");
       npc = N
     }
   }
   if(is.null(npc)) npc = N
-
+  
   scores <- sqrt(J)*Xi[,1:npc]
   mu <- meanX
   efunctions <- eigenvectors[,1:npc]
   evalues <- J*eigenvalues[1:npc]
-
-
+  
+  
   ret.objects <- c("Yhat", "scores", "mu", "efunctions", "evalues", "npc")
   if(var){
     sigma2 = sigmahat2
@@ -345,7 +344,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
       VarMats[[i.subj]] = temp
       diag.var[i.subj,] = diag(temp)
       if (simul & sigma2 != 0) {
-        norm.samp = mvrnorm(2500, mu = rep(0, J), Sigma = VarMats[[i.subj]])/matrix(sqrt(diag(VarMats[[i.subj]])),
+        norm.samp = mvrnorm(2500, mu = rep(0, J), Sigma = VarMats[[i.subj]])/matrix(sqrt(diag(VarMats[[i.subj]])), 
                                                   nrow = 2500, ncol = J, byrow = TRUE)
         crit.val[i.subj] = quantile(apply(abs(norm.samp), 1, max), sim.alpha)
       }
@@ -358,5 +357,5 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   }
   ret = lapply(1:length(ret.objects), function(u) get(ret.objects[u]))
   names(ret) = ret.objects
-  return(ret)
+  return(ret)      	                	
 }

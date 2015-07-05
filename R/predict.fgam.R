@@ -28,7 +28,6 @@
 #' same dimension as the response for newdata containing the linear predictor and its se for each term
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @seealso \code{\link{fgam}}, \code{\link[mgcv]{predict.gam}}
-#' @export
 #' @examples
 #' ######### Octane data example #########
 #' data(gasoline)
@@ -45,6 +44,7 @@
 #' abline(a=0,b=1)
 #' @importFrom mgcv predict.gam
 #' @importFrom splines spline.des
+#' @export
 predict.fgam <- function (object, newdata, type = "response", se.fit = FALSE,
           terms = NULL, PredOutOfRange = FALSE, ...)
 {
@@ -104,14 +104,19 @@ predict.fgam <- function (object, newdata, type = "response", se.fit = FALSE,
                 newdata[[cov]][newdata[[cov]]>af$Xrange[2]]  <- af$Xrange[2]
                 newdata[[cov]][newdata[[cov]]<af$Xrange[1]]  <- af$Xrange[1]
               }
-              if (af$presmooth) {
+              if (!is.null(af$presmooth)) {
                 if(type=='lpmatrix' & J!=length(af$xind)){
                   warning('Presmoothing of new functional covariates is only implemented for when new covariates observed at same time points as original data. No presmoothing of new covariates done.')
-                }else{
-                  newXfd <- fd(tcrossprod(af$Xfd$y2cMap,
-                                          newdata[[cov]]), af$Xfd$basis)
-                  newdata[[cov]] <- t(eval.fd(af$xind,
-                                              newXfd))
+                } else if (is.logical(af$presmooth)) {
+                  # af_old term
+                  if (af$presmooth) {
+                    newXfd <- fd(tcrossprod(af$Xfd$y2cMap,
+                                            newdata[[cov]]), af$Xfd$basis)
+                    newdata[[cov]] <- t(eval.fd(af$xind, newXfd))
+                  }
+                } else {
+                  # af term
+                  newdata[[cov]] <- af$prep.func(newX = newdata[[cov]])$processed
                 }
               }
               if (af$Qtransform) {
@@ -165,14 +170,19 @@ predict.fgam <- function (object, newdata, type = "response", se.fit = FALSE,
                   }
                 }
               }
-              if (lf$presmooth) {
+              if (!is.null(lf$presmooth)) {
                 if(type=='lpmatrix' & J!=length(lf$xind)){
                   warning('Presmoothing of new functional covariates is only implemented for when new covariates observed at same time points as original data. No presmoothing of new covariates done.')
-                }else{
-                  newXfd <- fd(tcrossprod(lf$Xfd$y2cMap,
-                                          newdata[[cov]]), lf$Xfd$basis)
-                  newdata[[cov]] <- t(eval.fd(lf$xind,
-                                              newXfd))
+                } else if (is.logical(lf$presmooth)) {
+                  # lf_old term
+                  if (lf$presmooth) {
+                    newXfd <- fd(tcrossprod(lf$Xfd$y2cMap,
+                                            newdata[[cov]]), lf$Xfd$basis)
+                    newdata[[cov]] <- t(eval.fd(lf$xind, newXfd))
+                  }
+                } else {
+                  # lf() term
+                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])$processed  
                 }
               }
               if(type=='lpmatrix') newdata[[cov]] <- as.vector(newdata[[cov]])
