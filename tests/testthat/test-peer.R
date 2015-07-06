@@ -5,12 +5,7 @@ test_that("peer with D2 penalty", {
   skip_on_cran()
 
   data(DTI)
-
-  ## Extract values for arguments for peer() from given data
-  cca = DTI$cca[which(DTI$case == 1),]
   DTI = DTI[which(DTI$case == 1),]
-
-  ##1.1 Fit the model
   fit.D2 <- pfr(pasat ~ peer(cca, pentype="D"), data=DTI)
   expect_is(fit.D2, "pfr")
 })

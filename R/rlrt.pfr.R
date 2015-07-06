@@ -198,8 +198,7 @@ rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
     BetaHat.ma <- list()
     if(fit$method!="REML"){
 
-      print("warning: test 'constancy' is a RLRT for bsplines and a refit of the full (alternative) model")
-      print("was completed with method = 'REML'")
+      warning("warning: test 'constancy' is a RLRT for bsplines and a refit of the full (alternative) model was completed with method = 'REML'")
 
       ## (re)fit alternative under method="ML"
       ma = gam(Y ~ X - 1, paraPen = list(X = D), method = "REML", family = family)#, ...)
@@ -275,8 +274,7 @@ rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
     ## inclusion is a LRT.  Refit full model under method=ML if necessary
     if(fit$method=="REML"){
 
-      print("warning: test 'confounding' is a LRT and a refit of the full (alternative) model")
-      print("was completed with method = 'ML'")
+      warning("test 'confounding' is a LRT and a refit of the full (alternative) model was completed with method = 'ML'")
 
       ## (re)fit alternative under method="ML"
       ma = gam(Y ~ X - 1, paraPen = list(X = D), method = "ML", family = family)#, ...)

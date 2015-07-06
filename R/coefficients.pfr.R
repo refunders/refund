@@ -13,9 +13,11 @@
 #'   to estimate for 1-D and 2-D coefficient functions, and \code{seWithMean}
 #'   if the standard error should include uncertainty about the overall mean.
 #'   See \code{\link[mgcv]{plot.gam}}.
+#' 
 #' @return a list of data.frames containing the evaluation points,
 #'    coefficient function values and optionally their se's for each term in \code{select}.
 #'    If only one term is selected, the one data frame is unlisted.
+#' 
 #' @author Fabian Scheipl and Jonathan Gellar, se-computation parts adapted from
 #'    Simon Wood's \code{plot.gam}.
 #' @importFrom stats coefficients

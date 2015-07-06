@@ -27,7 +27,9 @@ test_that("basis rlrt tests are working", {
  ## do some testing
  t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
  t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
- t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
+ suppressWarnings({
+   t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
+ })
 
   expect_is(t1, "list")
   expect_is(t2, "list")
