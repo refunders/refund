@@ -34,7 +34,7 @@ Imports:
     splines,
     grpreg,
     ggplot2,
-	gam
+    stats
 Suggests:
     RColorBrewer,
     reshape2,

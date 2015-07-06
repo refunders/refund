@@ -18,6 +18,7 @@
 #'    If only one term is selected, the one data frame is unlisted.
 #' @author Fabian Scheipl and Jonathan Gellar, se-computation parts adapted from
 #'    Simon Wood's \code{plot.gam}.
+#' @importFrom stats coefficients
 #' @examples
 #' #TODO: see ?pfr
 #' @export
@@ -79,5 +80,6 @@ coefficients.pfr <- function(object, select=NULL, se=TRUE, exclude=FALSE,
     coef
   }
 }
+
 #' @rdname coefficients.pfr
 coef.pfr <- coefficients.pfr

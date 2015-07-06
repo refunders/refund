@@ -67,7 +67,8 @@
 #' est3 <- coef(gasmod3)
 #' 
 #' par(mfrow=c(1,1))
-#' plot(value ~ X.argvals, type="l", data=est1, ylim=(range(est1$value)*1.35))
+#' ylm <- range(est1$value)*1.35
+#' plot(value ~ X.argvals, type="l", data=est1, ylim=ylm)
 #' lines(value ~ X.argvals, col=2, data=est2)
 #' lines(value ~ X.argvals, col=3, data=est3)
 #' 
