@@ -11,25 +11,18 @@ test_that("peer with D2 penalty", {
   DTI = DTI[which(DTI$case == 1),]
 
   ##1.1 Fit the model
-  expect_message(peer(Y=DTI$pasat, funcs = cca, pentype='D2', se=TRUE), "The fit is successful.")
+  fit.D2 <- pfr(pasat ~ peer(cca, pentype="D"), data=DTI)
+  expect_is(fit.D2, "pfr")
 })
 
 test_that("peer with structured penalty works", {
  skip_on_cran()
-
+ 
  data(PEER.Sim)
-
- ## Extract values for arguments for peer() from given data
- PEER.Sim1<- subset(PEER.Sim, t==0)
- K<- 100
- W<- PEER.Sim1[,c(3:(K+2))]
- Y<- PEER.Sim1[,K+3]
-
- ##Load Q matrix containing structural information
  data(Q)
-
- ##2.1 Fit the model
- Fit1<- peer(Y=Y, funcs=W, pentype='Decomp', Q=Q, se=TRUE)
- expect_is(Fit1, "peer")
- plot(Fit1)
+ PEER.Sim1<- subset(PEER.Sim, t==0)
+ 
+ # Setting k to max possible value
+ fit.decomp <- pfr(Y ~ peer(W, pentype="Decomp", Q=Q, k=99), data=PEER.Sim1)
+ expect_is(fit.decomp, "pfr")
 })

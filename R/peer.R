@@ -113,5 +113,5 @@ peer <- function(X, argvals=seq(0, 1, l=ncol(X)), pentype="RIDGE",
   if("xt" %in% names(dots)) stop("peer() does not accept an xt-argument.")
   xt <- call("list", pentype=pentype, W=substitute(X), phia=phia, L=L,
     Q=substitute(Q))
-  lf(X=X, argvals=argvals, bs="peer", xt=xt)
+  lf(X=X, argvals=argvals, bs="peer", xt=xt, ...)
 }
