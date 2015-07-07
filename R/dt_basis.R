@@ -103,7 +103,7 @@
 #'   }
 #' @author Jonathan Gellar
 #' @seealso \code{\link[mgcv]{smooth.construct}}
-#' 
+#' @export
 #' 
 
 smooth.construct.dt.smooth.spec <- function(object, data, knots) {
@@ -251,6 +251,7 @@ getTF <- function(fname, nterm) {
 #' @param data  see \code{\link[mgcv]{smooth.construct}}
 #' @return design matrix for PEER terms
 #' @author Jonathan Gellar
+#' @export
 Predict.matrix.dt.smooth <- function(object, data) {
   # Prediction method for parameteric bivariate basis
   

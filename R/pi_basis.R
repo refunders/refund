@@ -74,6 +74,7 @@
 #' @author Fabian Scheipl and Jonathan Gellar
 #' @return An object of class "pi.smooth". See
 #'    \code{\link[mgcv]{smooth.construct}} for the elements it will contain.
+#' @export
 
 smooth.construct.pi.smooth.spec <- function(object, data, knots) {
   # Constructor method for parametric bivariate basis
@@ -207,6 +208,7 @@ smooth.construct.pi.smooth.spec <- function(object, data, knots) {
 #' @param data  see \code{\link[mgcv]{smooth.construct}}
 #' @return design matrix for PEER terms
 #' @author Jonathan Gellar
+#' @export
 
 Predict.matrix.pi.smooth <- function(object, data) {
   # Prediction method for parameteric bivariate basis

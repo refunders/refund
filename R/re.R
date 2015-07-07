@@ -9,6 +9,7 @@
 #' @param ... further arguments handed over to \code{\link[mgcv]{s}}, 
 #' see \code{\link[mgcv]{random.effects}}
 #' @seealso \code{\link[mgcv]{random.effects}}
+#' @export
 re <- function(x, ...) {
 # TODO: add `cov`-arg, then call bs="mrf" to allow for correlated effects.
     data <- list(x)
