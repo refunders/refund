@@ -83,5 +83,6 @@ coefficients.pfr <- function(object, select=NULL, se=TRUE, exclude=FALSE,
   }
 }
 
+#' @export
 #' @rdname coefficients.pfr
 coef.pfr <- coefficients.pfr
