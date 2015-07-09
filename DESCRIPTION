@@ -19,8 +19,7 @@ Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@g
     person(c("Madan", "Gopal"), "Kundu", role="ctb"))
 Depends:
     R (>= 2.14.0),
-    fda,
-    stats
+    fda
 Imports:
     Matrix,
     lattice,
@@ -34,7 +33,8 @@ Imports:
     RLRsim,
     splines,
     grpreg,
-    ggplot2
+    ggplot2,
+    stats
 Suggests:
     RColorBrewer,
     reshape2,
