@@ -24,7 +24,6 @@
 #' @examples
 #' #TODO: see ?pfr
 #' @export
-#' @method coefficients pfr
 #' 
 
 coefficients.pfr <- function(object, select=NULL, se=TRUE, exclude=FALSE,
