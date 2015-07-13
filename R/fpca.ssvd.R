@@ -44,6 +44,7 @@
 #'    on smoothing a covariance estimate; \code{\link{fpca2s}} for a faster
 #'    SVD-based approach.
 #'  @author Fabian Scheipl
+#'  @export
 #'  @references Huang, J. Z., Shen, H., and Buja, A. (2008). Functional
 #'    principal components analysis via penalized rank one approximation. 
 #'    \emph{Electronic Journal of Statistics}, 2, 678-695

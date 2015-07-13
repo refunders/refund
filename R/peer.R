@@ -64,7 +64,7 @@
 #' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 #'
 #' @seealso \code{\link{pfr}}, \code{\link{smooth.construct.peer.smooth.spec}}
-#'
+#' @export
 #' @examples
 #'
 #' \dontrun{
@@ -160,7 +160,7 @@ peer <- function(X, argvals=seq(0, 1, l=ncol(X)), pentype="RIDGE",
 #' functional linear models - partially empirical eigenvectors for regression.
 #' \emph{Electronic Journal of Statistics}, 6, 323-353.
 #' 
-#' 
+#' @export
 
 smooth.construct.peer.smooth.spec <- function(object, data, knots) {
   # Constuctor Method for PEER basis and penalization
@@ -257,6 +257,7 @@ smooth.construct.peer.smooth.spec <- function(object, data, knots) {
 #' @param data  see \code{\link[mgcv]{smooth.construct}}
 #' @return design matrix for PEER terms
 #' @author Jonathan Gellar
+#' @export
 
 Predict.matrix.peer.smooth <- function(object, data) {
   apply(object$v, 2, function(x)

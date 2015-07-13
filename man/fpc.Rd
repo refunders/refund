@@ -60,6 +60,12 @@ The method is the FPCR-R method of Reiss and Ogden (2007). This
 data(gasoline)
 par(mfrow=c(3,1))
 
+exists("coefficients")
+exists("coefficients.pfr")
+exists("coef")
+exists("coef.pfr")
+exists("coef.pffr")
+
 # Fit PFCR_R
 gasmod1 <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
 plot(gasmod1, rug=FALSE)
@@ -76,12 +82,10 @@ plot(gasmod3, rug=FALSE)
 est3 <- coef(gasmod3)
 
 par(mfrow=c(1,1))
-str(est1)
-class(gasmod1)
-exists("coefficients")
-exists("coefficients.pfr")
-exists("coef")
-exists("coef.pfr")
+ylm <- range(est1$value)*1.35
+plot(value ~ X.argvals, type="l", data=est1, ylim=ylm)
+lines(value ~ X.argvals, col=2, data=est2)
+lines(value ~ X.argvals, col=3, data=est3)
 }
 \author{
 Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Phil Reiss

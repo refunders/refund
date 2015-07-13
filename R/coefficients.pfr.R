@@ -24,6 +24,7 @@
 #' @examples
 #' #TODO: see ?pfr
 #' @export
+#' 
 
 coefficients.pfr <- function(object, select=NULL, se=TRUE, exclude=FALSE,
                              plot=FALSE, ...) {
@@ -83,5 +84,6 @@ coefficients.pfr <- function(object, select=NULL, se=TRUE, exclude=FALSE,
   }
 }
 
+#' @export
 #' @rdname coefficients.pfr
 coef.pfr <- coefficients.pfr

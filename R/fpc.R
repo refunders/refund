@@ -52,6 +52,12 @@
 #' data(gasoline)
 #' par(mfrow=c(3,1))
 #' 
+#' exists("coefficients")
+#' exists("coefficients.pfr")
+#' exists("coef")
+#' exists("coef.pfr")
+#' exists("coef.pffr")
+#' 
 #' # Fit PFCR_R
 #' gasmod1 <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)
 #' plot(gasmod1, rug=FALSE)
@@ -70,10 +76,6 @@
 #' par(mfrow=c(1,1))
 #' str(est1)
 #' class(gasmod1)
-#' exists("coefficients")
-#' exists("coefficients.pfr")
-#' exists("coef")
-#' exists("coef.pfr")
 #' 
 # ylm <- range(est1$value)*1.35
 # plot(value ~ X.argvals, type="l", data=est1, ylim=ylm)
