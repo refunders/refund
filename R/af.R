@@ -34,9 +34,7 @@
 #'   be desired to increase this slightly over the default of \code{range(X)} if concerned about predicting
 #'   for future observed curves that take values outside of \code{range(X)}
 #' @param Qtransform logical; should the functional be transformed using the empirical cdf and
-#'   applying a quantile transformation on each column of \code{X} prior to fitting?  This ensures
-#'   \code{Xrange=c(0,1)}.  If \code{Qtransform=TRUE} and \code{presmooth=TRUE}, presmoothing is done prior
-#'   to transforming the functional predictor
+#'   applying a quantile transformation on each column of \code{X} prior to fitting?
 #' @param ... optional arguments for basis and penalization to be passed to the
 #'   function indicated by \code{basistype}. These could include, for example,
 #'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
@@ -51,10 +49,7 @@
 #'   \item{\code{tindname}}{the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}}
 #'   \item{\code{Lname}}{the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}}
 #'   \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{af}}
-#'   \item{\code{Qtranform}}{the \code{Qtransform} argument supplied to \code{af}}
 #'   \item{\code{Xrange}}{the \code{Xrange} argument supplied to \code{af}}
-#'   \item{\code{ecdflist}}{a list containing one empirical cdf function from applying \code{\link{ecdf}}
-#'     to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}}
 #'   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
 #'     \code{\link{create.prep.func}}}
 #' 
@@ -114,9 +109,9 @@
 #' @export
 
 af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
-               basistype = c("te","t2", "s"),
+               basistype = c("te", "t2", "s"),
                integration = c("simpson", "trapezoidal", "riemann"),
-               L = NULL, presmooth = NULL, presmooth.opts = NULL, 
+               L = NULL, presmooth = NULL, presmooth.opts = NULL,
                Xrange=range(X), Qtransform=FALSE, ...) {
   
   # Catch if af_old syntax is used
@@ -166,7 +161,6 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
     prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth,
                                  options = presmooth.opts)
     X <- prep.func(newX = X)
-
     # need to check that smoothing didn't change range of data
     if(!Qtransform){
       if(max(X)>Xrange[2]){
@@ -177,15 +171,7 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
       }
     }
   }
-
-  ecdf=NULL
-  if(Qtransform){
-    Xrange <- c(0,1)
-    X <- apply(X, 2, function(x){ (rank(x)-1)/(length(x)-1)} )
-    # need to keep ecdf's for prediction later
-    ecdflist <- apply(X, 2, ecdf)
-  }
-
+  
   if (!is.null(L)) {
     stopifnot(nrow(L) == n, ncol(L) == nt)
   } else {
@@ -201,16 +187,33 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
       cbind(rep(mean(diffs), n), diffs)
     })
   }
-
+  
+  # Set up dots to make a "dt" basis call
+  if (Qtransform) {
+    bs0 <- dots$bs
+    xt0 <- dots$xt
+    dots$bs <- "dt"
+    tf <- list("ecdf")
+    names(tf) <- xindname
+    dots$xt <- list(tf=tf)
+    dots$xt$basistype <- basistype
+    basistype <- "s"
+    if (!is.null(bs0)) dots$xt$bs <- bs0
+    if (!is.null(xt0)) dots$xt$xt <- xt0
+  }
+  
+  # Set up data and call
   data <- list(X, xind, L)
   names(data) <- c(xindname, tindname, Lname)
   splinefun <- as.symbol(basistype)
-  call <- as.call(c(list(splinefun, z = as.symbol(substitute(tindname)),
-                         x = as.symbol(substitute(xindname)),
+  call <- as.call(c(list(splinefun, as.symbol(substitute(tindname)),
+                         as.symbol(substitute(xindname)),
                          by = as.symbol(substitute(Lname))), dots))
-  res <-list(call = call, data = data, xind = xind[1,], L = L, xindname = xindname, tindname=tindname,
-             Lname=Lname,Qtransform=Qtransform,presmooth=presmooth,Xrange=Xrange)
-  if(Qtransform) res$ecdflist <- ecdflist
+  
+  # Return list
+  res <- list(call = call, data = data, xind = xind[1,], L = L,
+              xindname = xindname, tindname=tindname, Lname=Lname,
+              presmooth=presmooth, Xrange=Xrange)
   if(!is.null(presmooth)) {res$prep.func <- prep.func} 
   return(res)
 }

@@ -130,18 +130,19 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                 }
                 
               }
-              if (af$Qtransform) {
-                if(type=='lpmatrix' & J!=length(af$xind)){
-                  stop('Prediction with quantile transformation only implemented for when new data observation times match original data observation times')
-                }
-                for (i in 1:nobs) {
-                  newdata[[cov]][i, ] <- mapply(function(tecdf,
-                                                         x) {
-                    tecdf(x)
-                  }, tecdf = af$ecdflist, x = newdata[[cov]][i,
-                                                             ])
-                }
-              }
+              
+              #if (af$Qtransform) {
+              #  if(type=='lpmatrix' & J!=length(af$xind)){
+              #    stop('Prediction with quantile transformation only implemented for when new data observation times match original data observation times')
+              #  }
+              #  for (i in 1:nobs) {
+              #    newdata[[cov]][i, ] <- mapply(function(tecdf,
+              #                                           x) {
+              #      tecdf(x)
+              #    }, tecdf = af$ecdflist, x = newdata[[cov]][i,
+              #                                               ])
+              #  }
+              #}
               if(type=='lpmatrix') newdata[[cov]] <- as.vector(newdata[[cov]])
               gamdata[[paste(cov, ".omat", sep = "")]] <- newdata[[cov]]
               gamdata[[paste(cov, ".tmat", sep = "")]] <- tmat

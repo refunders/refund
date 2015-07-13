@@ -179,8 +179,9 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
   } else {
     # tensor product smooth: need to create new smooth.spec object
     args <- xt[!(names(xt) %in% c("tf", "basistype"))]
-    if (is.null(args$k) & object$bs.dim>0) args$k <- object$bs.dim
-    if (is.null(args$m) & !is.na(object$p.order)) args$m <- object$p.order
+    if (!is.null(xt$bs)) args$bs <- xt$bs
+    if (is.null(args$k) & any(object$bs.dim>0)) args$k <- object$bs.dim
+    if (is.null(args$m) & !any(is.na(object$p.order))) args$m <- object$p.order
     if (is.null(args$id) & !is.null(object$id)) args$id <- object$id
     if (is.null(args$sp) & !is.null(object$sp)) args$sp <- object$sp
     if ((xt$basistype %in% c("te", "ti")) & is.null(args$fx))
