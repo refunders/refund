@@ -82,11 +82,6 @@ exists("coefficients")
 exists("coefficients.pfr")
 exists("coef")
 exists("coef.pfr")
-
-ylm <- range(est1$value)*1.35
-plot(value ~ X.argvals, type="l", data=est1, ylim=ylm)
-lines(value ~ X.argvals, col=2, data=est2)
-lines(value ~ X.argvals, col=3, data=est3)
 }
 \author{
 Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Phil Reiss

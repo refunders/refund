@@ -26,10 +26,10 @@
 \item{plot}{if \code{TRUE}, also plots the coefficient(s)}
 
 \item{...}{further arguments passed on to \pkg{mgcv}'s \code{plot.gam}. Common
-arguments include \code{n} and \code{n2} to set the number of coordinates
-to estimate for 1-D and 2-D coefficient functions, and \code{seWithMean}
-if the standard error should include uncertainty about the overall mean.
-See \code{\link[mgcv]{plot.gam}}.}
+  arguments include \code{n} and \code{n2} to set the number of coordinates
+  to estimate for 1-D and 2-D coefficient functions, and \code{seWithMean}
+  if the standard error should include uncertainty about the overall mean.
+  See \code{\link[mgcv]{plot.gam}}.}
 }
 \value{
 a list of data.frames containing the evaluation points,

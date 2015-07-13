@@ -47,6 +47,7 @@
 #' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Phil Reiss
 #'   \email{phil.reiss@@nyumc.org}, Lan Huo \email{lan.huo@@nyumc.org}, and
 #'   Lei Huang \email{huangracer@@gmail.com}
+#' 
 #' @examples
 #' data(gasoline)
 #' par(mfrow=c(3,1))
@@ -74,10 +75,10 @@
 #' exists("coef")
 #' exists("coef.pfr")
 #' 
-#' ylm <- range(est1$value)*1.35
-#' plot(value ~ X.argvals, type="l", data=est1, ylim=ylm)
-#' lines(value ~ X.argvals, col=2, data=est2)
-#' lines(value ~ X.argvals, col=3, data=est3)
+# ylm <- range(est1$value)*1.35
+# plot(value ~ X.argvals, type="l", data=est1, ylim=ylm)
+# lines(value ~ X.argvals, col=2, data=est2)
+# lines(value ~ X.argvals, col=3, data=est3)
 #' 
 #' @seealso \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
 #' @export
