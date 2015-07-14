@@ -119,15 +119,29 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
     warning("No transformation function supplied... using identity")
   }
   if (!is.list(tf)) tf <- list(tf)
-  tf <- lapply(tf, function(f) {
+  for (i in 1:length(tf)) {
+    f <- tf[[i]]
     if (is.character(f)) {
       # Create transformation functions for recognized character strings
-      getTF(f, length(object$term))
-    } else if (is.function(f)) {
-      # Already a function - just return it
-      f
-    } else stop("Unrecognized type for 'dt' transformation function")
-  })
+      if (f=="QTransform")
+        object$QTransform <- TRUE
+      tf[[i]] <- getTF(f, length(object$term))
+    } else if (!is.function(f))
+      stop("Unrecognized type for 'dt' transformation function")
+  }
+  
+  #tf <- lapply(tf, function(f) {
+  #  if (is.character(f)) {
+  #    # Create transformation functions for recognized character strings
+  #    if (f=="QTransform")
+  #      assign("QTransform", TRUE, pos=object)
+  #      #object$QTransform <- TRUE
+  #    getTF(f, length(object$term))
+  #  } else if (is.function(f)) {
+  #    # Already a function - just return it
+  #    f
+  #  } else stop("Unrecognized type for 'dt' transformation function")
+  #})
     
   # Names of tf are the names of the variables to transform
   if (is.null(names(tf)))
@@ -188,9 +202,11 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
       args$fx <- object$fixed
     if (!(object$by == "NA"))
       args$by <- as.symbol(object$by)
-    eval(as.call(c(list(quote(eval(parse(text=paste0("mgcv::", xt$basistype))))),
+    newobj <- eval(as.call(c(list(quote(eval(parse(text=paste0("mgcv::", xt$basistype))))),
                    lapply(object$term, as.symbol),
-                   args)))    
+                   args)))
+    if (!is.null(object$QTransform)) newobj$QTransform <- object$QTransform
+    newobj
   }
   
   # Create smooth and modify return object
@@ -213,7 +229,9 @@ getTF <- function(fname, nterm) {
     function(x) ecdf(x0)(x)
   } else if (fname=="QTransform") {
     if (nterm >= 2) {
-      QTFunc
+      f <- QTFunc
+      environment(f)$retNA <- FALSE
+      f
     }
     else stop(paste0("Not enough terms for ", fname, " transformation"))
   } else if (fname=="linear01") {
@@ -313,8 +331,11 @@ QTFunc <- function(t,x) {
     newidx <- factor(t)
     for (lev in levels(newidx)) {
       x[newidx == lev] <- if (lev %in% levels(idx)) {
-        approx(x0[idx==lev], tmp[[which(levels(idx)==lev)]], 
-               xout = x[newidx == lev], rule=2)$y
+        newx <- approx(x0[idx==lev], tmp[[which(levels(idx)==lev)]], 
+                       xout = x[newidx == lev],
+                       rule=ifelse(retNA, 1, 2))$y
+        #newx[x[newidx == lev] < min(x0[idx==lev])] <- -1
+        #newx[x[newidx == lev] > max(x0[idx==lev])] <- 2
       } else {
         # Need to interpolate between neighbors
         u1 <- as.numeric(levels(idx))

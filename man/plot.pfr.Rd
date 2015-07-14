@@ -29,6 +29,6 @@ function simply dispatches to \code{plot.gam}.
 Jonathan Gellar
 }
 \seealso{
-\code{\link{af}}, \code{\link{\pfr}}
+\code{\link{af}}, \code{\link{pfr}}
 }
 

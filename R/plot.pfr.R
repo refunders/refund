@@ -16,22 +16,18 @@
 #' 
 #' @author Jonathan Gellar
 #' @seealso \code{\link{af}}, \code{\link{pfr}}
+#' @importFrom mgcv plot.gam
 #' @export
 
 plot.pfr <- function(x, Qscale=FALSE, ...) {
   class(x) <- class(x)[-1]
-  
   if (Qscale) {
-    
-    
+    stop("Qscale not yet implemented")
     # Inject code into plot.gam to rescale
     suppressMessages(
       trace(plot.gam,
             at=which(sapply(as.list(body(plot.gam)), function(x)
-              
-              
-              
-              any(grepl(x, pattern="mf[[timetrans$var[i]]]", fixed=TRUE)))) + 1,
+              any(grepl(x, pattern="is.null(P)", fixed=TRUE)))) + 1,
             print=FALSE,
             tracer = quote({
               # Inserted Code
@@ -44,11 +40,46 @@ plot.pfr <- function(x, Qscale=FALSE, ...) {
     })
     
     
+  } else {
+    # Inject code into plot.gam to exclude coordinates outside range
+    bod <- as.list(body(plot.gam))
+    locvec <- which(sapply(bod, function(x)
+      any(grepl(x, pattern="is.null(P)", fixed=TRUE)))) + 1
+    #locvec <- locfcn(bod)
+    
+    suppressMessages(
+      trace(plot.gam,
+            at=list(locvec), print=FALSE, tracer = quote({
+              # Inserted Code
+              for (i in 1:m) if (!is.null(x$smooth[[i]]$QTransform)) {
+                tf <- x$smooth[[i]]$tf[[1]]
+                if (!is.null(tf)) {
+                  rna <- environment(tf)$retNA
+                  environment(tf)$retNA <- TRUE
+                  cgrid <- expand.grid(pd[[i]]$x, pd[[i]]$y)
+                  new.exclude <- is.na(tf(cgrid[,1], cgrid[,2]))
+                  environment(tf)$retNA <- rna
+                  if (!is.null(pd[[i]]$exclude))
+                    pd[[i]]$exclude[new.exclude] <- TRUE
+                  pd[[i]]$fit[new.exclude] <- NA
+                  if (se && pd[[i]]$se)
+                    pd[[i]]$se.fit[new.exclude] <- NA
+                }}})))
+    on.exit({
+      suppressMessages(try(untrace(plot.gam), silent = TRUE))
+    })
     
   }
   
-  
   plot(x, ...)
-  
-  
 }
+
+#locfcn <- function(bod) {
+#  loc <- which(sapply(bod, function(x)
+#    any(grepl(x, pattern="is.null(P)", fixed=TRUE))))
+#  ret <- if (length(loc)) {
+#    newbod <- bod[[loc]]
+#    c(loc, locfcn(newbod))
+#  } else c()
+#  ret
+#}
