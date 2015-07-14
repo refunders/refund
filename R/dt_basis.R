@@ -213,15 +213,7 @@ getTF <- function(fname, nterm) {
     function(x) ecdf(x0)(x)
   } else if (fname=="QTransform") {
     if (nterm >= 2) {
-      function(t,x) {
-        tmp <- tapply(x, t, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
-        nms <- as.numeric(names(tmp))
-        idx <- as.numeric(factor(t))
-        for (i in 1:length(tmp)) {
-          x[idx==i] <- tmp[[i]]
-        }
-        x
-      }
+      QTFunc
     }
     else stop(paste0("Not enough terms for ", fname, " transformation"))
   } else if (fname=="linear01") {
@@ -295,4 +287,49 @@ Predict.matrix.dt.smooth <- function(object, data) {
   object$tf <- NULL
   class(object) <- object$class
   mgcv::Predict.matrix(object, tdata)
+}
+
+# Original QTFunc: whatever data comes in, it scales it according to itself
+# QTFunc <- function(t,x) {
+#   tmp <- tapply(x, t, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
+#   nms <- as.numeric(names(tmp))
+#   idx <- as.numeric(factor(t))
+#   for (i in 1:length(tmp)) {
+#     x[idx==i] <- tmp[[i]]
+#   }
+#   x
+# }
+
+QTFunc <- function(t,x) {
+  tmp <- tapply(x0, t0, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
+  idx <- factor(t0)
+  if (!is.character(all.equal(x,x0)) & !is.character(all.equal(t,t0))) {
+    idx <- as.numeric(idx)
+    for (i in 1:length(tmp)) {
+      x[idx==i] <- tmp[[i]]
+    }
+  } else {
+    # We are predicting on new data: Interpolate
+    newidx <- factor(t)
+    for (lev in levels(newidx)) {
+      x[newidx == lev] <- if (lev %in% levels(idx)) {
+        approx(x0[idx==lev], tmp[[which(levels(idx)==lev)]], 
+               xout = x[newidx == lev], rule=2)$y
+      } else {
+        # Need to interpolate between neighbors
+        u1 <- as.numeric(levels(idx))
+        idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
+        idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
+        bounds <- sapply(c(idx1, idx2), function(i) {
+          approx(x0[idx == levels(idx)[i]], tmp[[i]],
+                 xout = x[newidx == lev], rule=2)$y
+        })
+        apply(bounds, 1, function(y) {
+          approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
+                 xout = as.numeric(lev), rule=2)$y
+        })
+      }
+    }
+  }
+  x
 }
