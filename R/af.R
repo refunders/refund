@@ -193,7 +193,7 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
     bs0 <- dots$bs
     xt0 <- dots$xt
     dots$bs <- "dt"
-    tf <- list("ecdf")
+    tf <- list("QTransform")
     names(tf) <- xindname
     dots$xt <- list(tf=tf)
     dots$xt$basistype <- basistype
@@ -203,8 +203,8 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   }
   
   # Set up data and call
-  data <- list(X, xind, L)
-  names(data) <- c(xindname, tindname, Lname)
+  data <- list(xind, X, L)
+  names(data) <- c(tindname, xindname, Lname)
   splinefun <- as.symbol(basistype)
   call <- as.call(c(list(splinefun, as.symbol(substitute(tindname)),
                          as.symbol(substitute(xindname)),

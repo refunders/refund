@@ -46,9 +46,7 @@ be desired to increase this slightly over the default of \code{range(X)} if conc
 for future observed curves that take values outside of \code{range(X)}}
 
 \item{Qtransform}{logical; should the functional be transformed using the empirical cdf and
-applying a quantile transformation on each column of \code{X} prior to fitting?  This ensures
-\code{Xrange=c(0,1)}.  If \code{Qtransform=TRUE} and \code{presmooth=TRUE}, presmoothing is done prior
-to transforming the functional predictor}
+applying a quantile transformation on each column of \code{X} prior to fitting?}
 
 \item{...}{optional arguments for basis and penalization to be passed to the
   function indicated by \code{basistype}. These could include, for example,
@@ -65,10 +63,7 @@ A list with the following entries:
   \item{\code{tindname}}{the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}}
   \item{\code{Lname}}{the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}}
   \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{af}}
-  \item{\code{Qtranform}}{the \code{Qtransform} argument supplied to \code{af}}
   \item{\code{Xrange}}{the \code{Xrange} argument supplied to \code{af}}
-  \item{\code{ecdflist}}{a list containing one empirical cdf function from applying \code{\link{ecdf}}
-    to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}}
   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
     \code{\link{create.prep.func}}}
 }

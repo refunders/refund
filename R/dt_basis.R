@@ -211,6 +211,19 @@ getTF <- function(fname, nterm) {
     function(x) log(x)
   } else if (fname=="ecdf") {
     function(x) ecdf(x0)(x)
+  } else if (fname=="QTransform") {
+    if (nterm >= 2) {
+      function(t,x) {
+        tmp <- tapply(x, t, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
+        nms <- as.numeric(names(tmp))
+        idx <- as.numeric(factor(t))
+        for (i in 1:length(tmp)) {
+          x[idx==i] <- tmp[[i]]
+        }
+        x
+      }
+    }
+    else stop(paste0("Not enough terms for ", fname, " transformation"))
   } else if (fname=="linear01") {
     function(x) (x - max(x0))/(max(x0) - min(x0))
   } else if (fname=="s-t") {
