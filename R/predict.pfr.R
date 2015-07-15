@@ -197,7 +197,7 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                   }
                 } else {
                   # lf() term
-                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])$processed  
+                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])  
                 }
                 
               }
