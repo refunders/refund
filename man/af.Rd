@@ -87,8 +87,9 @@ DTI2 <- DTI1[complete.cases(DTI1),]
 ## order marginal difference penalties
 ## specifying gamma > 1 enforces more smoothing when using
 ## GCV to choose smoothing parameters
-fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))),
-            method="GCV.Cp", gamma=1.2, data=DTI1)
+fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3)),
+                       presmooth="fpca.face", bs="ps"),
+            method="GCV.Cp", gamma=1.2, data=DTI2)
 plot(fit1, scheme=2)
 vis.pfr(fit1)
 
@@ -96,7 +97,8 @@ vis.pfr(fit1)
 ## af term for the cca measurements plus an lf term for the rcst measurements
 ## leave out 10 samples for prediction
 test <- sample(nrow(DTI2), 10)
-fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,3), c(2,3))) +
+fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,2), c(2,2)), bs="ps",
+                       presmooth="fpca.face") +
                     lf(rcst, k=7, m=c(2,2), bs="ps"),
             method="GCV.Cp", gamma=1.2, data=DTI2[-test,])
 par(mfrow=c(1,2))
@@ -111,12 +113,16 @@ sqrt(mean((DTI2$pasat[test] - pred)^2))
 DTI3 <- DTI[DTI$visit==1,]
 DTI3 <- DTI3[complete.cases(DTI3$rcst),]
 z1 <- rnorm(nrow(DTI3))
-fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), Qtransform=TRUE) +
+fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), bs="ps",
+                      presmooth="fpca.face", Qtransform=TRUE) +
                     s(z1, k = 10), family="binomial", select=TRUE, data=DTI3)
 par(mfrow=c(1,2))
 plot(fit3, scheme=2, rug=FALSE)
 abline(h=0, col="green")
 
+# Plot on untransformed and quantile-transformed scales side-by-side
+plot(fit3, select=1, scheme=2)
+plot(fit3, select=1, scheme=2, Qtransform=TRUE)
 
 vis.pfr(fit3, select=1, plot.type="contour")
 }
