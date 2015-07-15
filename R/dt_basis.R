@@ -192,7 +192,7 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
     newobj <- eval(as.call(c(list(quote(eval(parse(text=paste0("mgcv::", xt$basistype))))),
                    lapply(object$term, as.symbol),
                    args)))
-    if (!is.null(object$QTransform)) newobj$QTransform <- object$QTransform
+    if (!is.null(object$QT)) newobj$QT <- object$QT
     newobj
   }
   
@@ -216,7 +216,42 @@ getTF <- function(fname, nterm) {
     function(x) ecdf(x0)(x)
   } else if (fname=="QTransform") {
     if (nterm >= 2) {
-      f <- QTFunc
+      f <- function(t,x) {
+        tmp <- tapply(x0, t0, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
+        idx <- factor(t0)
+        if (!is.character(all.equal(x,x0)) & !is.character(all.equal(t,t0))) {
+          idx <- as.numeric(idx)
+          for (i in 1:length(tmp)) {
+            x[idx==i] <- tmp[[i]]
+          }
+        } else {
+          # We are predicting on new data: Interpolate
+          newidx <- factor(t)
+          for (lev in levels(newidx)) {
+            x[newidx == lev] <- if (lev %in% levels(idx)) {
+              newx <- approx(x0[idx==lev], tmp[[which(levels(idx)==lev)]], 
+                             xout = x[newidx == lev],
+                             rule=ifelse(retNA, 1, 2))$y
+              #newx[x[newidx == lev] < min(x0[idx==lev])] <- -1
+              #newx[x[newidx == lev] > max(x0[idx==lev])] <- 2
+            } else {
+              # Need to interpolate between neighbors
+              u1 <- as.numeric(levels(idx))
+              idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
+              idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
+              bounds <- sapply(c(idx1, idx2), function(i) {
+                approx(x0[idx == levels(idx)[i]], tmp[[i]],
+                       xout = x[newidx == lev], rule=2)$y
+              })
+              apply(bounds, 1, function(y) {
+                approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
+                       xout = as.numeric(lev), rule=2)$y
+              })
+            }
+          }
+        }
+        x
+      }
       environment(f)$retNA <- FALSE
       f
     }
@@ -305,39 +340,41 @@ Predict.matrix.dt.smooth <- function(object, data) {
 #   x
 # }
 
-QTFunc <- function(t,x) {
-  tmp <- tapply(x0, t0, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
-  idx <- factor(t0)
-  if (!is.character(all.equal(x,x0)) & !is.character(all.equal(t,t0))) {
-    idx <- as.numeric(idx)
-    for (i in 1:length(tmp)) {
-      x[idx==i] <- tmp[[i]]
-    }
-  } else {
-    # We are predicting on new data: Interpolate
-    newidx <- factor(t)
-    for (lev in levels(newidx)) {
-      x[newidx == lev] <- if (lev %in% levels(idx)) {
-        newx <- approx(x0[idx==lev], tmp[[which(levels(idx)==lev)]], 
-                       xout = x[newidx == lev],
-                       rule=ifelse(retNA, 1, 2))$y
-        #newx[x[newidx == lev] < min(x0[idx==lev])] <- -1
-        #newx[x[newidx == lev] > max(x0[idx==lev])] <- 2
-      } else {
-        # Need to interpolate between neighbors
-        u1 <- as.numeric(levels(idx))
-        idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
-        idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
-        bounds <- sapply(c(idx1, idx2), function(i) {
-          approx(x0[idx == levels(idx)[i]], tmp[[i]],
-                 xout = x[newidx == lev], rule=2)$y
-        })
-        apply(bounds, 1, function(y) {
-          approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
-                 xout = as.numeric(lev), rule=2)$y
-        })
-      }
-    }
-  }
-  x
-}
+if(getRversion() >= "2.15.1")  utils::globalVariables("t0")
+if(getRversion() >= "2.15.1")  utils::globalVariables("retNA")
+# QTFunc <- function(t,x,retNA) {
+#   tmp <- tapply(x0, t0, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
+#   idx <- factor(t0)
+#   if (!is.character(all.equal(x,x0)) & !is.character(all.equal(t,t0))) {
+#     idx <- as.numeric(idx)
+#     for (i in 1:length(tmp)) {
+#       x[idx==i] <- tmp[[i]]
+#     }
+#   } else {
+#     # We are predicting on new data: Interpolate
+#     newidx <- factor(t)
+#     for (lev in levels(newidx)) {
+#       x[newidx == lev] <- if (lev %in% levels(idx)) {
+#         newx <- approx(x0[idx==lev], tmp[[which(levels(idx)==lev)]], 
+#                        xout = x[newidx == lev],
+#                        rule=ifelse(retNA, 1, 2))$y
+#         #newx[x[newidx == lev] < min(x0[idx==lev])] <- -1
+#         #newx[x[newidx == lev] > max(x0[idx==lev])] <- 2
+#       } else {
+#         # Need to interpolate between neighbors
+#         u1 <- as.numeric(levels(idx))
+#         idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
+#         idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
+#         bounds <- sapply(c(idx1, idx2), function(i) {
+#           approx(x0[idx == levels(idx)[i]], tmp[[i]],
+#                  xout = x[newidx == lev], rule=2)$y
+#         })
+#         apply(bounds, 1, function(y) {
+#           approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
+#                  xout = as.numeric(lev), rule=2)$y
+#         })
+#       }
+#     }
+#   }
+#   x
+# }

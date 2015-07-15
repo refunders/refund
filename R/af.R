@@ -72,7 +72,7 @@
 #' vis.pfr(fit1)
 #'
 #'
-#' ## fgam term for the cca measurements plus an flm term for the rcst measurements
+#' ## af term for the cca measurements plus an lf term for the rcst measurements
 #' ## leave out 10 samples for prediction
 #' test <- sample(nrow(DTI2), 10)
 #' fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,3), c(2,3))) +
@@ -80,7 +80,6 @@
 #'             method="GCV.Cp", gamma=1.2, data=DTI2[-test,])
 #' par(mfrow=c(1,2))
 #' plot(fit2, scheme=2, rug=FALSE)
-# vis.pfr(fit2, select="cca", xval=.6)
 #' vis.pfr(fit2, select=1, xval=.6)
 #' pred <- predict(fit2, newdata = DTI2[test,], type='response', PredOutOfRange = TRUE)
 #' sqrt(mean((DTI2$pasat[test] - pred)^2))
@@ -96,7 +95,12 @@
 #' par(mfrow=c(1,2))
 #' plot(fit3, scheme=2, rug=FALSE)
 #' abline(h=0, col="green")
-#' vis.pfr(fit3, select="rcst", plot.type="contour")
+#' 
+# # Plot on untransformed and quantile-transformed scales side-by-side
+# plot(fit3, select=1, scheme=2)
+# plot(fit3, select=1, scheme=2, Qtransform=TRUE)
+#' 
+#' vis.pfr(fit3, select=1, plot.type="contour")
 #' 
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Fabian Scheipl,
 #'   and Jonathan Gellar
@@ -114,7 +118,7 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
                basistype = c("te", "t2", "s"),
                integration = c("simpson", "trapezoidal", "riemann"),
                L = NULL, presmooth = NULL, presmooth.opts = NULL,
-               Xrange=range(X), Qtransform=FALSE, ...) {
+               Xrange=range(X, na.rm=T), Qtransform=FALSE, ...) {
   
   # Catch if af_old syntax is used
   dots <- list(...)
@@ -208,8 +212,8 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
   data <- list(xind, X, L)
   names(data) <- c(tindname, xindname, Lname)
   splinefun <- as.symbol(basistype)
-  call <- as.call(c(list(splinefun, as.symbol(substitute(tindname)),
-                         as.symbol(substitute(xindname)),
+  call <- as.call(c(list(splinefun, z=as.symbol(substitute(tindname)),
+                         x=as.symbol(substitute(xindname)),
                          by = as.symbol(substitute(Lname))), dots))
   
   # Return list

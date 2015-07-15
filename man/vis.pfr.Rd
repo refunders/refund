@@ -77,10 +77,10 @@ vis.pfr(fit, plot.type='contour')
 xval <- runif(1, min(fit$pfr$ft[[1]]$Xrange), max(fit$pfr$ft[[1]]$Xrange))
 tval <- runif(1, min(fit$pfr$ft[[1]]$xind), max(fit$pfr$ft[[1]]$xind))
 par(mfrow=c(2, 2))
-vis.pfr(fit, select='cca', deriv2=FALSE, xval=xval)
-vis.pfr(fit, select='cca', deriv2=FALSE, tval=tval)
-vis.pfr(fit, select='cca', deriv2=TRUE, xval=xval)
-vis.pfr(fit, select='cca', deriv2=TRUE, tval=tval)
+vis.pfr(fit, deriv2=FALSE, xval=xval)
+vis.pfr(fit, deriv2=FALSE, tval=tval)
+vis.pfr(fit, deriv2=TRUE, xval=xval)
+vis.pfr(fit, deriv2=TRUE, tval=tval)
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}

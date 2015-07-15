@@ -6,8 +6,8 @@
 \usage{
 af(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("te",
   "t2", "s"), integration = c("simpson", "trapezoidal", "riemann"),
-  L = NULL, presmooth = NULL, presmooth.opts = NULL, Xrange = range(X),
-  Qtransform = FALSE, ...)
+  L = NULL, presmooth = NULL, presmooth.opts = NULL, Xrange = range(X,
+  na.rm = T), Qtransform = FALSE, ...)
 }
 \arguments{
 \item{X}{functional predictors, expressed as an \code{N} by \code{J} matrix,
@@ -93,7 +93,7 @@ plot(fit1, scheme=2)
 vis.pfr(fit1)
 
 
-## fgam term for the cca measurements plus an flm term for the rcst measurements
+## af term for the cca measurements plus an lf term for the rcst measurements
 ## leave out 10 samples for prediction
 test <- sample(nrow(DTI2), 10)
 fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,3), c(2,3))) +
@@ -101,7 +101,7 @@ fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,3), c(2,3))) +
             method="GCV.Cp", gamma=1.2, data=DTI2[-test,])
 par(mfrow=c(1,2))
 plot(fit2, scheme=2, rug=FALSE)
-vis.pfr(fit2, af.term="cca", xval=.6)
+vis.pfr(fit2, select=1, xval=.6)
 pred <- predict(fit2, newdata = DTI2[test,], type='response', PredOutOfRange = TRUE)
 sqrt(mean((DTI2$pasat[test] - pred)^2))
 
@@ -116,7 +116,9 @@ fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), Qtransform=TRU
 par(mfrow=c(1,2))
 plot(fit3, scheme=2, rug=FALSE)
 abline(h=0, col="green")
-vis.pfr(fit3, af.term="rcst", plot.type="contour")
+
+
+vis.pfr(fit3, select=1, plot.type="contour")
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,

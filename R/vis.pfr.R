@@ -78,10 +78,10 @@
 #' xval <- runif(1, min(fit$pfr$ft[[1]]$Xrange), max(fit$pfr$ft[[1]]$Xrange))
 #' tval <- runif(1, min(fit$pfr$ft[[1]]$xind), max(fit$pfr$ft[[1]]$xind))
 #' par(mfrow=c(2, 2))
-#' vis.pfr(fit, select='cca', deriv2=FALSE, xval=xval)
-#' vis.pfr(fit, select='cca', deriv2=FALSE, tval=tval)
-#' vis.pfr(fit, select='cca', deriv2=TRUE, xval=xval)
-#' vis.pfr(fit, select='cca', deriv2=TRUE, tval=tval)
+#' vis.pfr(fit, deriv2=FALSE, xval=xval)
+#' vis.pfr(fit, deriv2=FALSE, tval=tval)
+#' vis.pfr(fit, deriv2=TRUE, xval=xval)
+#' vis.pfr(fit, deriv2=TRUE, tval=tval)
 
 vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50,
                   plot.type = "persp", ticktype = "detailed", ...){
@@ -123,7 +123,6 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
   
   # Corresponding coefficient indices
   smooth.i <- object$smooth[[select]]
-  #sind <- which(ttypes %in% ftlist)[af.ind]
   tind <- 1:length(object$coefficients) %in%
     c(smooth.i$first.para:smooth.i$last.para)
   tvar <- modify_nm(smooth.i$term[2])
@@ -167,9 +166,10 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
     
     if (length(xval)) {
       # x fixed
-      trange <- range(object$pfr$ft[[select]]$xind)
-      tvals <- seq(trange[1],trange[2],l=101)
-      xvals <- rep(xval,l=101)
+      nfine <- ndefault(object$pfr$ft[[af.ind]]$xind)
+      trange <- range(object$pfr$ft[[af.ind]]$xind)
+      tvals <- seq(trange[1],trange[2],l=nfine)
+      xvals <- rep(xval,l=nfine)
       xlab='t'
       x=tvals
       if(!deriv2) {
@@ -183,17 +183,18 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
       }
     } else{
       # t fixed
+      nfine <- ndefault(object$model[[smooth.i$term[2]]])
       Xrange <- object$pfr$ft[[af.ind]]$Xrange
       tvals <- rep(tval,nfine)
       xvals <- seq(Xrange[1],Xrange[2],l=nfine)
       xlab='x'
       x=xvals
       if (!deriv2) {
-        main=bquote(paste(hat(F)(.(afterm),.(round(tval,3))),' by ',.(afterm),sep=''))
-        ylab=bquote(paste(hat(F)(.(afterm),.(round(tval,3))),sep=''))
+        main=bquote(paste(hat(F)(.(tvar),.(round(tval,3))),' by ',.(tvar),sep=''))
+        ylab=bquote(paste(hat(F)(.(tvar),.(round(tval,3))),sep=''))
       } else {
-        main=bquote(paste(frac(partialdiff^2,partialdiff*.(afterm)^2)*hat('F')(.(afterm),.(round(tval,3))),' by ',.(afterm),sep=''))
-        ylab=bquote(paste(frac(partialdiff^2,partialdiff*.(afterm)^2)*hat('F')(.(afterm),.(round(tval,3))),sep=''))
+        main=bquote(paste(frac(partialdiff^2,partialdiff*.(tvar)^2)*hat('F')(.(tvar),.(round(tval,3))),' by ',.(tvar),sep=''))
+        ylab=bquote(paste(frac(partialdiff^2,partialdiff*.(tvar)^2)*hat('F')(.(tvar),.(round(tval,3))),sep=''))
       }
       
     }
