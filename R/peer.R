@@ -1,306 +1,265 @@
-##' Functional Models with Structured Penalties
-##'
-##' Implements functional model with structured penalties (Randloph et al.,
-##' 2012) with scalar outcome and single functional predictor through mixed
-##' model equivalence.
-##'
-##' If there are any missing or infinite values in \code{Y}, and \code{funcs},
-##' the corresponding row (or observation) will be dropped. Neither \code{Q}
-##' nor \code{L} may contain missing or infinite values.
-##'
-##' \code{peer()} fits the following model:
-##'
-##' \eqn{y_i=\int {W_i(s)\gamma(s) ds} + \epsilon_i}
-##'
-##' where \eqn{\epsilon_i ~ N(0,\sigma^2)}.  For all the observations,
-##' predictor function \eqn{W_i(s)} is evaluated at K sampling points. Here,
-##' \eqn{\gamma (s)} denotes the regression function.
-##'
-##' Values of \eqn{y_i} and \eqn{W_i(s)}are passed through argument Y and
-##' funcs, respectively. Number of elements or rows in \code{Y} and
-##' \code{funcs} need to be equal.
-##'
-##' The estimate of regression functions \eqn{\gamma(s)} is obtained as
-##' penalized estimated. Following 3 types of penalties can be used:
-##'
-##' i.  Ridge: \eqn{I_K}
-##'
-##' ii.  Second-order difference: [\eqn{d_{i,j}}] with \eqn{d_{i,i} = d_{i,i+2}
-##' = 1, d_{i,i+1} = -2}, otherwise \eqn{d_{i,i} =0}
-##'
-##' iii. Decomposition based penalty: \eqn{bP_Q+a(I-P_Q)} where \eqn{P_Q=
-##' Q^T(QQ^T)^{-1}Q}
-##'
-##' For Decomposition based penalty user need to specify
-##' \code{pentype='DECOMP'} and associated Q matrix need to be passed through
-##' \code{Q} argument.
-##'
-##' Alternatively, user can pass directly penalty matrix through argument L.
-##' For this user need to specify \code{pentype='USER'} and associated L matrix
-##' need to be passed through \code{L} argument.
-##'
-##' Default penalty is Ridge penalty and user needs to specify \code{RIDGE}.
-##' For second-order difference penalty, user needs to specify \code{D2}.
-##'
-##' @param Y vector of all outcomes
-##' @param funcs matrix containing observed functional predictors as rows. Rows
-##' with \code{NA} and \code{Inf} values will be deleted.
-##' @param argvals matrix (or vector) of indices of evaluations of \eqn{X_i(t)}; i.e. a matrix with
-##' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}
-##' @param pentype type of penalty. It can be either decomposition based
-##' penalty (\code{DECOMP}) or ridge (\code{RIDGE}) or second-order difference
-##' penalty (\code{D2}) or any user defined penalty (\code{USER}). For
-##' decomposition based penalty user need to specify Q matrix in Q argument
-##' (see details). For user defined penalty user need to specify L matrix in L
-##' argument (see details). For Ridge and second-order difference penalty,
-##' specification for arguments L and Q will be ignored. Default is
-##' \code{RIDGE}.
-##' @param L.user penalty matrix. Need to be specified with
-##' \code{pentype='USER'}. Number of columns need to be equal with number of
-##' columns of matrix specified to \code{funcs}. Each row represents a
-##' constraint on functional predictor. This argument will be ignored when
-##' value of \code{pentype} is other than \code{USER}.
-##' @param Q Q matrix to derive decomposition based penalty. Need to be
-##' specified with \code{pentype='DECOMP'}. Number of columns need to be equal
-##' with number of columns of matrix specified to \code{funcs}. Each row
-##' represents a basis function where functional predictor is expected lie
-##' according to prior belief. This argument will be ignored when value of
-##' \code{pentype} is other than \code{DECOMP}.
-##' @param phia Scalar value of a in decomposition based penalty. Need to be
-##' specified with \code{pentype='DECOMP'}.
-##' @param se logical; calculate standard error when \code{TRUE}.
-##' @param ... additional arguments passed to the \code{\link{lme}} function.
-##' @return a list containing: \item{fit}{result of the call to \code{lme}}
-##' \item{fitted.vals }{predicted outcomes} \item{Gamma}{estimates with
-##' standard error for regression function} \item{GammaHat}{estimates of
-##' regression function} \item{se.Gamma}{standard error associated with
-##' \code{GammaHat}} \item{AIC }{AIC value of fit (smaller is better)}
-##' \item{BIC }{BIC value of fit (smaller is better)}
-##' \item{logLik}{(restricted) log-likelihood at convergence}
-##' \item{lambda}{estimates of smoothing parameter} \item{N}{number of
-##' subjects} \item{K}{number of Sampling points in functional predictor}
-##' \item{sigma}{estimated within-group error standard deviation.}
-##' @author Madan Gopal Kundu \email{mgkundu@@iupui.edu}
-##' @seealso \code{lpeer}, \code{plot.peer}
-##' @references Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012).
-##' Longitudinal functional models with structured penalties (arXiv:1211.4763
-##' [stat.AP]).
-##'
-##' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
-##' functional linear models - partially empirical eigenvectors for regression.
-##' \emph{Electronic Journal of Statistics}, 6, 323--353.
-##' @examples
-##'
-##' \dontrun{
-##' #------------------------------------------------------------------------
-##' # Example 1: Estimation with D2 penalty
-##' #------------------------------------------------------------------------
-##'
-##' ## Load Data
-##' data(DTI)
-##'
-##' ## Extract values for arguments for peer() from given data
-##' cca = DTI$cca[which(DTI$case == 1),]
-##' DTI = DTI[which(DTI$case == 1),]
-##'
-##' ##1.1 Fit the model
-##' fit.cca.peer1 = peer(Y=DTI$pasat, funcs = cca, pentype='D2', se=TRUE)
-##' plot(fit.cca.peer1)
-##'
-##' #------------------------------------------------------------------------
-##' # Example 2: Estimation with structured penalty (need structural
-##' #            information about regression function or predictor function)
-##' #------------------------------------------------------------------------
-##'
-##' ## Load Data
-##' data(PEER.Sim)
-##'
-##' ## Extract values for arguments for peer() from given data
-##' PEER.Sim1<- subset(PEER.Sim, t==0)
-##' K<- 100
-##' W<- PEER.Sim1[,c(3:(K+2))]
-##' Y<- PEER.Sim1[,K+3]
-##'
-##' ##Load Q matrix containing structural information
-##' data(Q)
-##'
-##' ##2.1 Fit the model
-##' Fit1<- peer(Y=Y, funcs=W, pentype='Decomp', Q=Q, se=TRUE)
-##' plot(Fit1)
-##' }
-##'
-##' @export
-##' @importFrom nlme VarCorr lme pdIdent
-peer<- function(Y, funcs, argvals=NULL, pentype='Ridge', L.user=NULL, Q=NULL, 
-                phia=10^3, se=FALSE, ...)
-{
-  if(!is.null(argvals))
-    stop("argvals is not supported in the current version of refund.")
+#' Construct a PEER regression term in a \code{pfr} formula
+#'
+#' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in a
+#' \code{\link{pfr}} formula, where \eqn{\beta(t)} is estimated with
+#' structured penalties (Randloph et al., 2012).
+#'
+#' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
+#'   where \code{N} is the number of columns and \code{J} is the number of
+#'   evaluation points. May include missing/sparse functions, which are
+#'   indicated by \code{NA} values.
+#' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+#'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+#'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+#'   as a matrix allows for different observations times for each subject.
+#' @param pentype the type of penalty to apply, one of \code{"RIDGE"}, \code{"D"},
+#'  \code{"DECOMP"}, or \code{"USER"}; see Details.
+#' @param Q matrix \eqn{Q} used for \code{pentype="DECOMP"}; see Details.
+#' @param phia scalar \eqn{a} used for \code{pentype="DECOMP"}; see Details.
+#' @param L user-supplied penalty matrix for \code{pentype="USER"}; see
+#'   Details.
+#' @param ... additional arguments to be passed to \code{lf} (and then
+#'   possibly \code{s}). Arguments processed by \code{lf} include, for example,
+#'   \code{integration} for specifying the method of numerical integration.
+#'   Arguments processed by \code{s}
+#'   include information related to basis and penalization, such as \code{m}
+#'   for specifying the order of the difference penalty; See Details.
+#'   \code{xt}-argument is not allowed for \code{peer}-terms and will cause
+#'   an error.
+#'
+#' @details
+#' \code{peer} is a wrapper for \code{\link{lf}}, which defines linear
+#' functional predictors for any type of basis. It simply calls \code{lf}
+#' with the appropriate options for the \code{peer} basis and penalty construction.
+#' The type of penalty is determined by the \code{pentype} argument. There
+#' are four types of penalties available:
+#' \enumerate{
+#'   \item \code{pentype=="RIDGE"} for a ridge penalty, the default
+#'   \item \code{pentype=="D"} for a difference penalty. The order of the
+#'     difference penalty may be specified by supplying an \code{m} argument
+#'     (default is 2).
+#'   \item \code{pentype=="DECOMP"} for a decomposition-based penalty,
+#'     \eqn{bP_Q + a(I-P_Q)}, where \eqn{P_Q = Q^t(QQ^t)^{-1}Q}. The \eqn{Q}
+#'     matrix must be specified by \code{Q}, and the scalar \eqn{a} by
+#'     \code{phia}. The number of columns of \code{Q} must be equal to the
+#'     length of the data. Each row represents a basis function where the
+#'     functional predictor is expected to lie, according to prior belief.
+#'   \item \code{pentype=="USER"} for a user-specified penalty matrix,
+#'     supplied by the \code{L} argument.
+#' }
+#'
+#' The original stand-alone implementation by Madan Gopal Kundu is available in
+#' \code{\link{peer_old}}.
+#'
+#'
+#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com} and
+#'         Madan Gopal Kundu \email{mgkundu@@iupui.edu}
+#'
+#' @references
+#' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
+#' functional linear models - partially empirical eigenvectors for regression.
+#' \emph{Electronic Journal of Statistics}, 6, 323-353.
+#'
+#' Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
+#' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
+#'
+#' @seealso \code{\link{pfr}}, \code{\link{smooth.construct.peer.smooth.spec}}
+#' @export
+#' @examples
+#'
+#' \dontrun{
+#' #------------------------------------------------------------------------
+#' # Example 1: Estimation with D2 penalty
+#' #------------------------------------------------------------------------
+#'
+#' data(DTI)
+#' DTI = DTI[which(DTI$case == 1),]
+#' fit.D2 = pfr(pasat ~ peer(cca, pentype="D"), data=DTI)
+#' plot(fit.D2)
+#'
+#' #------------------------------------------------------------------------
+#' # Example 2: Estimation with structured penalty (need structural
+#' #            information about regression function or predictor function)
+#' #------------------------------------------------------------------------
+#'
+#' data(PEER.Sim)
+#' data(Q)
+#' PEER.Sim1<- subset(PEER.Sim, t==0)
+#'
+#' # Setting k to max possible value
+#' fit.decomp <- pfr(Y ~ peer(W, pentype="Decomp", Q=Q, k=99), data=PEER.Sim1)
+#' plot(fit.decomp)
+#' }
+#'
+#'
 
-  #Determining K, converting W and Y to matrix
-  W<- as.matrix(funcs)
-  K<- ncol(W)
-  Y<- as.matrix(Y)
+peer <- function(X, argvals=seq(0, 1, l=ncol(X)), pentype="RIDGE",
+                 Q=NULL, phia=10^3, L=NULL,  ...) {
 
-  #Check 1:Making sure Y has only 1 column
-  if(dim(Y)[2]>1) stop("No. of column for Y cannot be greater than 1. \nThe peer() will not proceed further.")
-
-  #Check 2: Check the dimension of Y, id, t, W and X
-  Yl<- dim(Y)[1]
-  chk.eq<- ifelse(Yl==nrow(W), 0 ,1)
-  if(chk.eq==1) stop("Length of Y and number of rows of funcs are not equal.\n The peer() will not proceed further.\n")
-
-  #Removal of missing and infinite observations
-  tdata<- data.frame(Y, W)
-  tdata<- tdata[which(apply(is.na(tdata), 1, sum)==0),]
-  tdata<- tdata[which(apply(is.infinite(as.matrix(tdata)), 1, sum)==0),]
-  tdata<- tdata[!is.na(tdata$Y),]
-  Y<- tdata$Y
-  W.e<- dim(W)[2]+1; W<- as.matrix(tdata[,c(2:W.e)])
-
-  #Determine N
-  N<- length(Y)
-
-  #Check 3: Checking entry for pentype
-  pentypecheck<- toupper(pentype) %in% c('DECOMP', 'DECOMPOSITION', 'RIDGE', 'D2', 'USER')
-  if(!pentypecheck)  stop("Error: Specify valid object for argument PENTYPE.")
-
-  #Check 4: Some checking/processing for decomposition type of penalty
-  if(toupper(pentype)=='DECOMP' | toupper(pentype)=='DECOMPOSITION'){
-
-    #4.1: Removing rows containing missing and infinite values
-    Q<- Q[which(apply(is.na(Q), 1, sum)==0),]
-    Q<- Q[which(apply(is.infinite(Q), 1, sum)==0),]
-    Q<- matrix(Q, ncol=K)
-
-    #4.2: Compatibility of Q and W matrix
-    if(ncol(Q)!=ncol(W)) stop('number of columns of Q need to be equal with number of columns of funcs.\nThe peer() will not proceed further.')
-
-    #4.3: Singularity of Q matrix
-    Q.eig<- abs(eigen(Q %*% t(Q))$values)
-    if(any(Q.eig<1e-12)) stop('Q matrix is singular or near singular.\nThe peer() will not proceed further.\n')
-
-    #4.4: Checking for phia
-    if(!exists("phia")) stop("Error: Specify valid object for argument PHIA.")
-    if(!is.numeric(phia)|is.matrix(phia)|is.matrix(phia)) stop("Specify valid object for argument PHIA.")
-  }
-
-  #Check 5: Some checking/processing for user type of penalty
-  if(toupper(pentype)=='USER'){
-    L<- L.user
-
-    #Check 5.1: Removing rows containing missing and infinite values
-    L<- L[which(apply(is.na(L), 1, sum)==0),]
-    L<- L[which(apply(is.infinite(L), 1, sum)==0),]
-    L<- matrix(L, ncol=K)
-
-    #Check 5.2: Dimension of L matrix
-    if(ncol(L)!=ncol(W)) stop('number of columns of L need to be equal with number of columns of funcs.\nThe peer() will not proceed further.')
-
-    #Check 5.3: Singularity of L'L matrix
-    LL<- t(L)%*%L
-    LL.eig<- abs(eigen(LL %*% t(LL))$values)
-    if(any(LL.eig<1e-12)) stop("Error: L'L matrix is singular or near singular.\nThe peer() will not proceed further.")
-  }
-
-  #Generate L matrix for D2 penalty
-  if(toupper(pentype)=='D2'){
-    Left<- cbind(diag(rep(1,K-2)),rep(0,K-2),rep(0,K-2))
-    Middle<- cbind(rep(0,K-2),diag(rep(-2,K-2)),rep(0,K-2))
-    Right<- cbind(rep(0,K-2),rep(0,K-2),diag(rep(1,K-2)))
-    D.2<- rbind(Left+Middle+Right, c(rep(0, K-2), 1, -2), c(rep(0, K-2), 0, 1))
-  }
-
-  #Generate W* matrix
-  if(toupper(pentype)=='DECOMP' | toupper(pentype)=='DECOMPOSITION'){
-    P_Q <- t(Q) %*% solve(Q %*% t(Q)) %*% Q
-    L_PEER<- phia*(diag(K)- P_Q) + 1*P_Q
-  } else
-    if(toupper(pentype)=='RIDGE'){
-      L_PEER<- diag(K)
-    } else
-      if(toupper(pentype)=='D2'){
-        L_PEER<- D.2
-      } else
-        if(toupper(pentype)=='USER'){
-          L_PEER<- L
-        }
-
-  v<- diag(K)
-  if(K>N) v<-  svd((data.matrix(W))%*% solve(L_PEER))$v
-  W1_PEER<- (data.matrix(W))%*% solve(L_PEER) %*% v
-
-  #Fitting the model
-  id.bd1<- factor(rep(1, length(Y)))
-  out_PEER<- nlme::lme(fixed=Y~1,
-                 random=list(id.bd1=nlme::pdIdent(~W1_PEER-1)),
-                 ...
-  )
-  message('The fit is successful.\n')
-
-  #Extracting estimates
-  Gamma.PEER.hat<-matrix(out_PEER$coeff$random$id.bd1, ncol=1)
-  GammaHat <- solve(L_PEER) %*% v %*%Gamma.PEER.hat
-  colnames(GammaHat)<- c('Gamma')
-  fitted.vals<- summary(out_PEER)$fitted[,2]
-
-  #Extracting model diagnostics
-  logLik<- summary(out_PEER)$logLik
-  AIC<- summary(out_PEER)$AIC
-  BIC<- summary(out_PEER)$BIC
-
-  #Extracting lambda and variances
-  tVarCorr<- nlme::VarCorr(out_PEER, rdig=4)[,2]
-  r<- ncol(v)
-  lambda<- 1/ as.numeric(unique(tVarCorr[1:r]))
-   message(paste(lambda, sep = " = ", collapse = ", "))
-  sigma<- out_PEER$sigma
-  sigma.e<- sigma
-
-  #Returning output when se=F
-  if(!se){
-    status<- 0
-    ret <- list(out_PEER, fitted.vals, GammaHat,
-                AIC, BIC, logLik, Y, W, L_PEER,
-                lambda, N, K, sigma.e, status)
-    names(ret)<- c("fit", "fitted.vals", "GammaHat",
-                   "AIC", "BIC", "logLik", "Y", "W", "L",
-                   "lambda", "N", "K", "sigma", "status")
-
-    class(ret) <- "peer"
+  # Catch if peer_old syntax is used
+  dots <- list(...)
+  dots.unmatched <- names(dots)[!(names(dots) %in% c(names(formals(lf)),
+                                                     names(formals(s))))]
+  if (any(dots.unmatched %in% names(formals(peer_old)))) {
+    warning(paste0("The interface for peer() has changed, see ?peer and ?pfr ",
+                   "for details. This interface will not be supported in the ",
+                   "next refund release."))
+    # Call peer_old()
+    call <- sys.call()
+    call[[1]] <- as.symbol("peer_old")
+    ret <- eval(call, envir=parent.frame())
     return(ret)
   }
+  if("xt" %in% names(dots)) stop("peer() does not accept an xt-argument.")
+  xt <- call("list", pentype=pentype, W=substitute(X), phia=phia, L=L,
+    Q=substitute(Q))
+  lf(X=X, argvals=argvals, bs="peer", xt=xt, ...)
+}
 
-  ###---- Standard Error
-  tsigma<- as.numeric(unique(tVarCorr[1:K]))
-  LL.inv<- lambda^(-2)*solve(t(L_PEER)%*%L_PEER)
 
-  V.1<- W%*%LL.inv%*%t(W)+sigma.e^2*diag(rep(1, N))
-  V<- sigma.e^2*diag(rep(1, N))
 
-  X<- as.matrix(rep(1,N))
-  X.Vinv.X.inv<- solve(t(X)%*%solve(V.1)%*%X)
-  X.Vinv.Y<- t(X)%*%solve(V.1)%*%Y
+#' Basis constructor for PEER terms
+#' 
+#' Smooth basis constructor to define structured penalties (Randolph et al.,
+#' 2012) for smooth terms.
+#' 
+#' @param object a \code{peer.smooth.spec} object, usually generated by a 
+#'   term \code{s(x, bs="peer")}; see Details.
+#' @param data a list containing the data (including any \code{by} variable)
+#'   required by this term, with names corresponding to \code{object$term}
+#'   (and \code{object$by}). Only the first element of this list is used.
+#' @param knots not used, but required by the generic \code{smooth.construct}.
+#' 
+#' @details The smooth specification object, defined using \code{s()}, should
+#'   contain an \code{xt} element. \code{xt} will be a list that contains
+#'   additional information needed to specify the penalty. The type of penalty
+#'   is indicated by \code{xt$pentype}. There are four types of penalties
+#'   available:
+#' \enumerate{
+#'   \item \code{xt$pentype=="RIDGE"} for a ridge penalty, the default
+#'   \item \code{xt$pentype=="D"} for a difference penalty. The order of the
+#'     difference penalty is specified by the \code{m} argument of
+#'     \code{s()}.
+#'   \item \code{xt$pentype=="DECOMP"} for a decomposition-based penalty,
+#'     \eqn{bP_Q + a(I-P_Q)}, where \eqn{P_Q = Q^t(QQ^t)^{-1}Q}. The \eqn{Q}
+#'     matrix must be specified by \code{xt$Q}, and the scalar \eqn{a} by
+#'     \code{xt$phia}. The number of columns of \code{Q} must be equal to the
+#'     length of the data. Each row represents a basis function where the
+#'     functional predictor is expected to lie, according to prior belief.
+#'   \item \code{xt$pentype=="USER"} for a user-specified penalty matrix
+#'     \eqn{L}, supplied by \code{xt$L}.
+#' }
+#' 
+#' @return An object of class \code{"peer.smooth"}. See
+#'   \code{\link{smooth.construct}} for the elements that this object will
+#'   contain.
+#' @author Madan Gopal Kundu \email{mgkundu@@iupui.edu} and Jonathan Gellar
+#' @seealso \code{\link{peer}}
+#' @references
+#' Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
+#' functional linear models - partially empirical eigenvectors for regression.
+#' \emph{Electronic Journal of Statistics}, 6, 323-353.
+#' 
+#' @export
 
-  p1<- LL.inv%*%t(W)%*%solve(V.1)
-  p2<- V.1 - X%*%X.Vinv.X.inv%*%t(X)
-  p3<- solve(V.1)
-  p<- p1%*%p2%*%p3
-  vcov.gamma<- p%*%V%*%t(p)
+smooth.construct.peer.smooth.spec <- function(object, data, knots) {
+  # Constuctor Method for PEER basis and penalization
+  
+  #if(!is.null(argvals))
+  #  stop("argvals is not supported in the current version of refund.")
+  
+  K <- length(data[[1]])
+  k <- object$bs.dim
+  m <- object$p.order
+  xt <- object$xt
+  pentype <- xt$pentype
+  if (is.null(pentype)) pentype="RIDGE"
+  
+  L <- if (toupper(pentype)=='DECOMP' | toupper(pentype)=='DECOMPOSITION') {
+    # Decomposition Penalty
+    
+    Q <- xt$Q
+    phia <- xt$phia
+    if (is.null(Q)) stop("Must enter a non-null Q matrix for DECOMP penalty")
+    if (is.null(phia)) phia <- 10^3
+    else if (!is.numeric(phia)|is.matrix(phia))
+      stop("Invalid entry for phia")
+    if (ncol(Q) != K) stop("Width of Q matrix must match width of functions")
+    
+    # Check singularity of Q matrix
+    Q <- Q[complete.cases(Q),]    
+    Q.eig<- abs(eigen(Q %*% t(Q))$values)
+    if(any(Q.eig<1e-12)) stop("Q matrix is singular or near singular")
+    
+    P_Q <- t(Q) %*% solve(Q %*% t(Q)) %*% Q
+    phia*(diag(K)- P_Q) + 1*P_Q
+  } else if (toupper(pentype) %in% c("RIDGE", "NONE")) {
+    diag(K)
+  } else if (toupper(pentype)=="D") {
+    # Difference Penalty
+    if (is.na(m)) m <- 2
+    L <- diag(K)
+    for (i in 1:m) L <- diff(L)
+    L1 <- L[nrow(L),]
+    for (i in 1:m) {
+      L1 <- c(0, L1[-K])
+      L <- rbind(L, L1)
+    }
+    rownames(L) <- NULL
+    L
+  } else if (toupper(pentype)=="USER") {
+    L <- xt$L
+    if (is.null(L)) stop("Must enter a non-null L matrix for USER penalty")
+    if (ncol(L) != K) stop("Width of L matrix must match width of functions")
+    
+    # Check singularity of L matrix
+    L <- L[complete.cases(L),]
+    LL<- t(L)%*%L
+    LL.eig<- abs(eigen(LL %*% t(LL))$values)
+    if(any(LL.eig<1e-12)) stop("L'L matrix is singular or near singular")
+    L
+  } else {
+    stop("Invalid pentype entry for PEER smooth")
+  }
+  
+  # Default k
+  if (k<0) k <- K
+  if (k==K) {
+    v <- diag(K)
+  } else {
+    W <- xt$W
+    v <- svd(data.matrix(W) %*% solve(L))$v[,1:k]
+  }
+  
+  D <- L %*% v
+  D <- t(D) %*% D
+  D <- (D + t(D))/2
+  
+  # Return object
+  object$X <- v
+  object$S <- if (toupper(pentype)=="NONE") list() else list(D)
+  ## numerically determine null space dim -- seems safer than relying on m, 
+  ## for pentype DECOMP and USER
+  object$null.space.dim <- k - qr(D)$rank
+  object$rank <- k - object$null.space.dim
+  object$df <- k #need this for gamm
+  object$argvals <- data[[1]]
+  object$v <- v
+  class(object) <- "peer.smooth"
+  object
+}
 
-  se.Gamma<- sqrt(diag(vcov.gamma))
-  Gamma<- cbind(GammaHat, se.Gamma)
-  colnames(Gamma)<- c('Estimate', 'SE')
+#' mgcv-style constructor for prediction of PEER terms
+#' 
+#' @param object a \code{peer.smooth} object created by
+#'   \code{\link{smooth.construct.peer.smooth.spec}}, see
+#'   \code{\link[mgcv]{smooth.construct}}
+#' @param data  see \code{\link[mgcv]{smooth.construct}}
+#' @return design matrix for PEER terms
+#' @author Jonathan Gellar
+#' @export
 
-  #Returning output when se=T
-  status<- 1
-  ret <- list(out_PEER, fitted.vals, Gamma,  V, V.1,
-              GammaHat, vcov.gamma, se.Gamma, AIC, BIC, logLik, Y, W, L_PEER,
-              lambda, N, K, sigma.e, status)
-  names(ret)<- c("fit", "fitted.vals", "Gamma", "V", "V.1",
-                 "GammaHat", "vcov.gamma", "se.Gamma", "AIC", "BIC", "logLik", "Y", "W", "L",
-                 "lambda", "N", "K", "sigma", "status")
-
-  class(ret) <- "peer"
-  ret
+Predict.matrix.peer.smooth <- function(object, data) {
+  apply(object$v, 2, function(x)
+    approx(object$argvals, x, data[[object$term]])$y)
 }

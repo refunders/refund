@@ -4,11 +4,9 @@
 \alias{lf.vd}
 \title{Construct a VDFR regression term}
 \usage{
-lf.vd(X, tind = seq(0, 1, l = ncol(X)), Tind = NULL, T.trans = identity,
-  domain = c("untransformed", "lagged", "standardized"),
-  interaction = c("nonparametric", "none", "linear", "quadratic"),
-  integration = c("simpson", "trapezoidal", "riemann"), basistype = c("s",
-  "te", "t2"), rescale.unit = TRUE, splinepars = NULL)
+lf.vd(X, argvals = seq(0, 1, l = ncol(X)), vd = NULL,
+  integration = c("simpson", "trapezoidal", "riemann"), L = NULL,
+  basistype = c("s", "te", "t2"), transform = NULL, mp = TRUE, ...)
 }
 \arguments{
 \item{X}{matrix containing variable-domain functions. Should be \eqn{N x J},
@@ -16,47 +14,47 @@ where \eqn{N} is the number of subjects and \eqn{J} is the maximum number of tim
 points per subject. Most rows will have \code{NA} values in the right-most
 columns, corresponding to unobserved time points.}
 
-\item{tind}{matrix (or vector) containing the time indices of evaluations of
-\eqn{X_i(t)}. If a matrix, it must be the same dimensionality as \code{X}; if a
-vector, must be of length \code{ncol(X)}.}
+\item{argvals}{indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+as a matrix allows for different observations times for each subject.}
 
-\item{Tind}{vector of values of \eqn{T_i}. Defaults to the \code{tind} value
-corresponding to the last observation of \eqn{X_i(t)}.}
+\item{vd}{vector of values of containing the variable-domain width (\eqn{T_i}
+above). Defaults to the \code{argvals} value corresponding to the last
+non-\code{NA} element of \eqn{X_i(t)}.}
 
-\item{T.trans}{optional function applied to \code{Tind} to allow the interaction
-to occur on a transformed scale, e.g. the log or quantile scale.}
+\item{integration}{method used for numerical integration. Defaults to \code{"simpson"}'s rule
+for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
+\code{"trapezoidal"} or \code{"riemann"}.}
 
-\item{domain}{defines the domain for each function \eqn{X_i(t)}; see Details.}
+\item{L}{an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
+integration over \code{t}. If present, overrides \code{integration}.}
 
-\item{interaction}{defines the type of interaction between \eqn{t} and \eqn{T_i};
-see Details. Must be nonparametric if \code{domain} is not ``standardized."}
+\item{basistype}{character string indicating type of bivariate basis used.
+Options include \code{"s"} (the default), \code{"te"}, and \code{"t2"},
+which correspond to \code{mgcv::s}, \code{mgcv::te}, and \code{mgcv::t2}.}
 
-\item{integration}{method used for numerical integration. Defaults to
-``\code{simpson}"'s rule. Alternatively and for non-equidistant grids,
-``\code{trapezoidal}" or ``\code{riemann}".}
+\item{transform}{character string indicating an optional basis transformation;
+see Details for options.}
 
-\item{basistype}{type of bivariate basis used. Corresponds to either \code{mgcv::s}
-or \code{mgcv::te}. ``\code{te}" option is only allowed when
-\code{domain="standardized"} and \code{interaction="nonparametric"}.}
+\item{mp}{for \code{transform=="linear"} or \code{transform=="quadratic"},
+\code{TRUE} to use multiple penalties for the smooth (one for each marginal
+basis). If \code{FALSE}, penalties are concatonated into a single
+block-diagonal penalty matrix (with one smoothing parameter).}
 
-\item{rescale.unit}{logical, indicating whether the \code{tind} and {Tind}
-indices should be rescaled to go from 0 to 1. Rescaling occurs after
-\code{T.trans} is applied.}
-
-\item{splinepars}{optional arguments specifying options for representing
-and penalizing the functional coefficient. These are passed directly to
-\code{mgcv::s} or \code{mgcv::te}. Defaults to the default choices
-of the associated \code{basistype}. See \code{\link{s}} or \code{\link{te}}
-in \code{mgcv} for details.}
+\item{...}{optional arguments for basis and penalization to be passed to the
+  function indicated by \code{basistype}. These could include, for example,
+  \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
+  \code{\link{s}} for details.}
 }
 \value{
 a list with the following entries
    \item{call}{a \code{call} to \code{s} or \code{te}, using the appropriately constructed
      weight matrices}
    \item{data}{data used by the \code{call}, which includes the matrices indicated
-     by \code{tindname}, \code{Tindname}, and \code{LXname}}
+     by \code{argname}, \code{Tindname}, and \code{LXname}}
    \item{L}{the matrix of weights used for the integration}
-   \item{tindname}{the name used for the \code{tind} variable in the \code{formula}
+   \item{argname}{the name used for the \code{argvals} variable in the \code{formula}
      used by \code{mgcv::gam}}
    \item{Tindname}{the name used for the \code{Tind} variable in the \code{formula}
      used by \code{mgcv::gam}}
@@ -65,67 +63,121 @@ a list with the following entries
 }
 \description{
 This function defines the a variable-domain functional regression term
-for inclusion in an \code{mgcv::gam-formula} (or \code{bam} or
-\code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{fgam}}.
-The default is the ``untransformed" term,\eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
+for inclusion in an \code{\link[mgcv]{gam}}-formula (or \code{\link[mgcv]{bam}} or
+\code{\link[mgcv]{gamm}} or \code{gamm4::gamm} as constructed by
+\code{\link{pfr}}. These are functional predictors for which each function is
+observed over a domain of different width.
+The default is the term \eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
 where \eqn{X_i(t)} is a functional predictor of length \eqn{T_i} and \eqn{\beta(t,T_i)}
-is an unknown bivariate coefficient function. Lagged-domain and
-standardized-domain models are also allowed. For the standardized-domain
-model, the interaction between \eqn{t} and \eqn{T_i} could be nonparametric, linear,
-quadratic, or not present at all. Basis choice is fully custiomizable using
-the options of \code{mgcv::s} and \code{mgcv::te}, though tensor-product
-bases are not allowed except in the standardized-domain case.
+is an unknown bivariate coefficient function. Various domain transformations
+are available, such as lagging or domain-standardizing the coordinates, or
+parameterizing the interactions; these often result in improved model fit.
+Basis choice is fully custiomizable using the options of
+\code{\link[mgcv]{s}} and \code{\link[mgcv]{te}}.
 }
 \details{
-The default (``untransformed") variable-domain functional regression
-   model uses the term \eqn{\frac1{T_i}\int_0^{T_i}X_i(t)\beta(t,T_i)dt} to
-   incorporate the functional predictor. This term imposes
+The variable-domain functional regression model uses the term
+   \eqn{\frac1{T_i}\int_0^{T_i}X_i(t)\beta(t,T_i)dt} to incorporate a
+   functional predictor with subject-specific domain width. This term imposes
    a smooth (nonparametric) interaction between \eqn{t} and \eqn{T_i}. The domain
    of the coefficient function is the triangular (or trapezoidal) surface
-   defined by \eqn{{t,T_i: 0\le t\le T_i}}. Tensor product smooths
-   (\code{basistype="te"}) are not allowed, but any bivariate basis
-   allowed by \code{mgcv::s} is supported, such as thin-plate regression splines
-   (the default).
+   defined by \eqn{{t,T_i: 0\le t\le T_i}}. The default basis uses
+   bivariate thin-plate regression splines.
 
-   The ``lagged" VDFR model is similar to the ``untransformed" model, but
-   each function is aligned according to their final measurement of
-   \eqn{X_i(t)} as opposed to their first. This model is equivalent to
-   the untransformed model, up to the assumptions imposed by the basis
-   choice and smoothness.
+   Different basis tranformations can result in different properties; see
+   Gellar, et al. (2014) for a more complete description. We make five basis
+   transformations easily accessable using the \code{transform} argument.
+   This argument is a character string that can take one of the following
+   values:
+   \enumerate{
+     \item \code{"lagged"}: transforms \code{argvals} to \code{argvals - vd}
+     \item \code{"standardized"}: transforms \code{argvals} to \code{argvals/vd},
+       and then rescales \code{vd} linearly so it ranges from 0 to 1
+     \item \code{"linear"}: first transforms the domain as in
+       \code{"standardized"}, then parameterizes the interaction with
+       \code{"vd"} to be linear
+     \item \code{"quadratic"}: first transforms the domain as in
+       \code{"standardized"}, then parameterizes the interaction with
+       \code{"vd"} to be quadratic
+     \item \code{"noInteraction"}: first transforms the domain as in
+       \code{"standardized"}, then reduces the bivariate basis to univariate
+       with no effect of \code{vd}. This would be equivalent to using
+       \code{\link{lf}} on the domain-standardized predictor functions.
+   }
 
-   The ``standardized" models apply the subject-specific domain transformation
-   \eqn{s = t/T_i}, which linearly stretches (or compresses) each function to
-   the domain \eqn{[0,1]}. For nonparametric interactions, the functional
-   predictor is incorporated into the model by the term
-   \eqn{\int_0^1 X*_i(s)\beta*(s,T_i) dt}, where \eqn{X*_i(s) = X_i(sT_i)}
-   are the rescaled functional predictors. Because we still allow the coefficient
-   function \eqn{\beta*(s,T_i)} to change with \eqn{T_i}, this model is
-   equivalent to the untransformed model, up to the assumptions imposed by the
-   numerical integration, basis choice, and smoothness. Practically, results differ
-   primarily due to the smoothness assumptions. Because smoothness is imposed on the
-   rescaled domain \eqn{{s,T_i: 0\le s\le 1, 0\le T_i\le max_i(T_i)}}, when transformed
-   back to the original time domain \eqn{t}, the resulting coefficient function can be
-   less smooth (across \eqn{t}) for smaller values of \eqn{T_i} than for larger values.
+   The practical effect of using the \code{"lagged"} basis is to increase
+   smoothness along the right (diagonal) edge of the resultant estimate.
+   The practical effect of using a \code{"standardized"} basis is to allow
+   for greater smoothness at high values of \eqn{T_i} compared to lower
+   values.
 
-   Since the domain of the standardized coefficient function is rectangular, tensor product
-   bases are allowed. This form also allows us to easily parameterize the interaction
-   between \eqn{t} and \eqn{T_i}. The software supports three different parameterizations
-   of this interaction: ``linear" implies \eqn{\beta*(s,T_i) = \beta_1(s) + T_i\beta_2(s)},
-   ``quadratic" implies \eqn{\beta*(s,T_i) = \beta_1(s) + T_i\beta_2(s) + T_i^2\beta_3(s)},
-   and ``none" implies \eqn{\beta*(s,T_i) = \beta(s)}. Note that this last parameterization
-   implies no interaction at all, and is equivalent to \code{lf()} using the standardized
-   functional predictors.
+   These basis transformations rely on the basis constructors
+   available in the \code{mgcvTrans} package. For more specific control over
+   the transformations, you can use \code{bs="dt"} and/or \code{bs="pi"};
+   see \code{\link{smooth.construct.dt.smooth.spec}} or
+   \code{\link{smooth.construct.pi.smooth.spec}} for an explanation of the
+   options (entered through the \code{xt} argument of \code{lf.vd}/\code{s}).
+
+   Note that tensor product bases are only recommended when a standardized
+   transformation is used. Without this transformation, just under half of
+   the "knots" used to define the basis will fall outside the range of the
+   data and have no data available to estimate them. The penalty allows
+   the corresponding coefficients to be estiamted, but results may be
+   unstable.
+}
+\examples{
+data(sofa)
+  fit.vd1 <- pfr(death ~ lf.vd(SOFA) + age + los,
+                 family="binomial", data=sofa)
+  fit.vd2 <- pfr(death ~ lf.vd(SOFA, transform="lagged") + age + los,
+                 family="binomial", data=sofa)
+  fit.vd3 <- pfr(death ~ lf.vd(SOFA, transform="standardized") + age + los,
+                 family="binomial", data=sofa)
+  fit.vd4 <- pfr(death ~ lf.vd(SOFA, transform="standardized",
+                               basistype="te") + age + los,
+                 family="binomial", data=sofa)
+  fit.vd5 <- pfr(death ~ lf.vd(SOFA, transform="linear", bs="ps") + age + los,
+                 family="binomial", data=sofa)
+  fit.vd6 <- pfr(death ~ lf.vd(SOFA, transform="quadratic", bs="ps") + age + los,
+                 family="binomial", data=sofa)
+  fit.vd7 <- pfr(death ~ lf.vd(SOFA, transform="noInteraction", bs="ps") + age + los,
+                 family="binomial", data=sofa)
+
+  ests <- lapply(1:7, function(i) {
+    c.i <- coef(get(paste0("fit.vd", i)), n=173, n2=173)
+    c.i[(c.i$SOFA.arg <= c.i$SOFA.vd),]
+  })
+
+  # Try plotting for each i
+  i <- 1
+  lims <- c(-2,8)
+  if (requireNamespace("ggplot2", quietly = TRUE) &
+      requireNamespace("RColorBrewer", quietly = TRUE)) {
+        est <- ests[[i]]
+        est$value[est$value<lims[1]] <- lims[1]
+        est$value[est$value>lims[2]] <- lims[2]
+        ggplot2::ggplot(est, ggplot2::aes(SOFA.arg, SOFA.vd)) +
+          ggplot2::geom_tile(ggplot2::aes(colour=value, fill=value)) +
+          ggplot2::scale_fill_gradientn(  name="", limits=lims,
+                    colours=rev(RColorBrewer::brewer.pal(11,"Spectral"))) +
+          ggplot2::scale_colour_gradientn(name="", limits=lims,
+                    colours=rev(RColorBrewer::brewer.pal(11,"Spectral"))) +
+          ggplot2::scale_y_continuous(expand = c(0,0)) +
+          ggplot2::scale_x_continuous(expand = c(0,0)) +
+          ggplot2::theme_bw()
+  }
 }
 \author{
-Jonathan E. Gellar <jgellar1@jhu.edu>
+Jonathan E. Gellar <JGellar@mathematica-mpr.com>
 }
 \references{
-Gellar, J. E., Colantuoni, E., Needham, D. M., and
-   Crainiceanu, C. M. (2014). Variable-domain functional regression for modeling
-   ICU data. \emph{Journal of the American Statistical Association}, 109, 1425--1439.
+Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
+   Ciprian M. Crainiceanu. Variable-Domain Functional Regression for Modeling
+   ICU Data. Journal of the American Statistical Association,
+   109(508):1425-1439, 2014.
 }
 \seealso{
-\code{\link{lf}}, mgcv's
-   \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.
+\code{\link{pfr}}, \code{\link{lf}}, mgcv's
+   \code{\link{linear.functional.terms}}.
 }
 

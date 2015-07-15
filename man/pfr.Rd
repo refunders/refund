@@ -4,54 +4,147 @@
 \alias{pfr}
 \title{Penalized Functional Regression}
 \usage{
-pfr(formula = NULL, fitter = NA, ...)
+pfr(formula = NULL, fitter = NA, method = "REML", ...)
 }
 \arguments{
-\item{formula}{a formula with special terms as for \code{\link{gam}},
-with additional special terms \code{\link{af}}() and \code{\link{lf}}().}
+\item{formula}{a formula that could contain any of the following special terms:
+\code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
+\code{\link{peer}()},  \code{\link{fpc}()},
+or \code{\link{re}()}; also \code{mgcv}'s \code{\link{s}()},
+\code{\link{te}()}, or \code{\link{t2}()}.}
 
 \item{fitter}{the name of the function used to estimate the model. Defaults
 to \code{\link{gam}} if the matrix of functional responses has less than 2e5
 data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
 and "gamm4" (see \code{\link{gamm4}}) are valid options as well.}
 
+\item{method}{The smoothing parameter estimation method. Default is
+\code{"REML"}. For options, see \code{\link{gam}}.}
+
 \item{...}{additional arguments that are valid for \code{\link{gam}} or
-\code{\link{bam}}; for example, specify a \code{gamma} > 1 to increase amount
-of smoothing when using GCV to choose smoothing parameters or
-\code{method="REML"} to change to REML for estimation of smoothing parameters
-(default is GCV).}
+  \code{\link{bam}}. These include \code{data} and \code{family} to specify
+  the input data and outcome family, as well as many options to control the
+  estimation.}
 }
 \value{
 A fitted pfr-object, which is a \code{\link{gam}}-object with some
-additional information in a pfr-element If fitter is "gamm" or "gamm4", only
-the $gam part of the returned list is modified in this way.
+  additional information in a \code{$pfr}-element. If fitter is \code{"gamm"}
+  or \code{"gamm4"}, only the \code{$gam} part of the returned list is
+  modified in this way.
 }
 \description{
 Implements various approaches to penalized scalar-on-function regression.
-These techniques include penalized functional regression (Goldsmith et al.,
-2011), functional principal component regression (Reiss and Ogden, 2007),
-functional generalized additive models (McLean et al., 2013), and partially
-empirical eigenvectors for regression (Randolph et al., 2012).
-This function is a wrapper for mgcv's \code{\link{gam}}
-and its siblings to fit models with a scalar (but necessarily continuous)
-response. For the old version, which implements only the Goldsmith et al.
-(2011) approach, see \code{\link{pfr_old}}.
+These techniques include Penalized Functional Regression (Goldsmith et al.,
+2011),
+Functional Principal Component Regression (Reiss and Ogden, 2007),
+Functional Generalized Additive Models (McLean et al., 2013), Partially
+Empirical Eigenvectors for Regression (Randolph et al., 2012), and
+Variable-Domain Functional Regression (Gellar et al., 2014).
+This function is a wrapper for mgcv's \code{\link{gam}} and its siblings
+to fit models with a scalar (but not necessarily continuous) response.
 }
 \section{Warning}{
 
-Binomial responses should be specified as a numeric vector rather than as a
-matrix or a factor.
+  Binomial responses should be specified as a numeric vector rather than as a
+  matrix or a factor.
+}
+\examples{
+# See lf(), lf.vd(), af(), fpc(), and peer() for additional examples
+
+data(DTI)
+DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
+par(mfrow=c(1,2))
+
+# Fit model with linear functional term for CCA
+fit.lf <- pfr(pasat ~ lf(cca, k=30, bs="ps"), data=DTI1)
+plot(fit.lf, ylab=expression(paste(beta(t))), xlab="t")
+
+# Alternative way to plot
+bhat.lf <- coef(fit.lf, n=101)
+bhat.lf$upper <- bhat.lf$value + 1.96*bhat.lf$se
+bhat.lf$lower <- bhat.lf$value - 1.96*bhat.lf$se
+matplot(bhat.lf$cca.argvals, bhat.lf[,c("value", "upper", "lower")],
+        type="l", lty=c(1,2,2), col=1,
+        ylab=expression(paste(beta(t))), xlab="t")
+
+# Fit model with additive functional term for CCA, using tensor product basis
+fit.af <- pfr(pasat ~ af(cca, Qtransform=TRUE, k=c(7,7)), data=DTI1)
+plot(fit.af, scheme=2, xlab="cca(t)", ylab="t", main="Tensor Product", rug=FALSE)
+
+# Change basistype to thin-plate regression splines
+fit.af.s <- pfr(pasat ~ af(cca, basistype="s", Qtransform=TRUE, k=50),
+                data=DTI1)
+plot(fit.af.s, scheme=2, xlab="cca(t)", ylab="t", main="TPRS", rug=FALSE)
+
+# Visualize bivariate function at various values of x
+par(mfrow=c(2,2))
+vis.pfr(fit.af, xval=.2)
+vis.pfr(fit.af, xval=.4)
+vis.pfr(fit.af, xval=.6)
+vis.pfr(fit.af, xval=.8)
+
+# Include random intercept for subject
+DTI.re <- DTI[complete.cases(DTI$cca),]
+DTI.re$ID <- factor(DTI.re$ID)
+fit.re <- pfr(pasat ~ lf(cca, k=30) + re(ID), data=DTI.re)
+coef.re <- coef(fit.re)
+par(mfrow=c(1,2))
+plot(fit.re)
+
+# FPCR_R Model
+fit.fpc <- pfr(pasat ~ fpc(cca), data=DTI.re)
+plot(fit.fpc)
+
+# PEER Model with second order difference penalty
+DTI.use <- DTI[DTI$case==1,]
+DTI.use <- DTI.use[complete.cases(DTI.use$cca),]
+fit.peer <- pfr(pasat ~ peer(cca, argvals=seq(0,1,length=93),
+                             integration="riemann", pentype="D"), data=DTI.use)
+plot(fit.peer)
 }
 \author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
+Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Mathew W. McLean,
+Jeff Goldsmith, and Fabian Scheipl
 }
 \references{
+Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
+Penalized functional regression. \emph{Journal of Computational and Graphical
+Statistics}, 20(4), 830-851.
+
+Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012). Longitudinal
+penalized functional regression for cognitive outcomes on neuronal tract
+measurements. \emph{Journal of the Royal Statistical Society: Series C},
+61(3), 453-469.
+
+Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
+functional linear models - partially empirical eigenvectors for regression.
+\emph{Electronic Journal of Statistics}, 6, 323-353.
+
+Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
+functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
+
+Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
+dissertation, Department of Biostatistics, Columbia University. Available
+at http://works.bepress.com/phil_reiss/11/.
+
+Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
+regression and functional partial least squares. \emph{Journal of the
+American Statistical Association}, 102, 984-996.
+
+Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
+with images as predictors. \emph{Biometrics}, 66, 61-69.
+
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of
 Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269.
 Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
+
+Gellar, J. E., Colantuoni, E., Needham, D. M., and Crainiceanu, C. M. (2014).
+Variable-Domain Functional Regression for Modeling ICU Data. Journal of the
+American Statistical Association, 109(508): 1425-1439.
 }
 \seealso{
-\code{\link{af}}, \code{\link{lf}}
+\code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}},
+  \code{\link{fpc}}, \code{\link{peer}}, \code{\link{re}}.
 }
 

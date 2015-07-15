@@ -33,8 +33,10 @@ Imports:
     RLRsim,
     splines,
     grpreg,
-    ggplot2
+    ggplot2,
+    stats
 Suggests:
+    RColorBrewer,
     reshape2,
     testthat
 Description: Developer version of refund. Methods for regression for functional
@@ -43,12 +45,18 @@ Description: Developer version of refund. Methods for regression for functional
     image data.
 License: GPL (>= 2)
 LazyLoad: yes
+LazyData: true
 Repository: CRAN
 Collate:
     'Omegas.R'
     'af.R'
+    'af_old.R'
     'amc.R'
     'ccb.fpc.R'
+    'create.prep.func.R'
+    'coefficients.pfr.R'
+    'dt_basis.R'
+    'irreg2mat.R'
     'fbps.R'
     'fgam.R'
     'fosr.R'
@@ -57,12 +65,15 @@ Collate:
     'fosr.perm.test.R'
     'fosr.vs.R'
     'fosr2s.R'
+    'fpc.R'
+    'fpca2s.R'
     'fpca.sc.R'
     'fpca.face.R'
+    'fpca.ssvd.R'
     'fpcr.R'
     'fpcr.setup.R'
-    'getEst.R'
     'lf.R'
+    'lf_old.R'
     'lf.vd.R'
     'lofocv.R'
     'lpeer.R'
@@ -70,7 +81,9 @@ Collate:
     'quadWeights.R'
     'lw.test.R'
     'osplinepen2d.R'
+    'parse.predict.pfr.R'
     'peer.R'
+    'peer_old.R'
     'pffr-ff.R'
     'pffr-ffpc.R'
     'pffr-methods.R'
@@ -81,28 +94,28 @@ Collate:
     'pffr.R'
     'pfr.R'
     'pfr_old.R'
+    'pi_basis.R'
     'plot.fosr.R'
     'plot.fosr.perm.R'
     'plot.fosr.vs.R'
     'plot.fpcr.R'
     'plot.lpeer.R'
     'plot.peer.R'
+    'postprocess.pfr.R'
     'predict.fgam.R'
+    'predict.pfr.R'
+    'predict.pfr_old.R'
+    'preprocess.pfr.R'
     'pspline.setting.R'
     'pwcv.R'
+    'summary.pfr.R'
     're.R'
     'rlrt.pfr.R'
-    'fpca2s.R'
-    'fpca.ssvd.R'
     'vis.fgam.R'
-    'parse.predict.pfr.R'
-    'postprocess.pfr.R'
-    'predict.pfr.R'
     'predict.fosr.vs.R'
-    'preprocess.pfr.R'
-    'irreg2mat.R'
     'CD4-data.R'
     'DTI-data.R'
     'DTI2-data.R'
     'PEER.Sim-data.R'
     'gasoline-data.R'
+    'vis.pfr.R'
