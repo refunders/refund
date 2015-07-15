@@ -89,6 +89,7 @@ DTI2 <- DTI1[complete.cases(DTI1),]
 ## GCV to choose smoothing parameters
 fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))),
             method="GCV.Cp", gamma=1.2, data=DTI1)
+plot(fit1, scheme=2)
 vis.pfr(fit1)
 
 

@@ -124,25 +124,12 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
     if (is.character(f)) {
       # Create transformation functions for recognized character strings
       if (f=="QTransform")
-        object$QTransform <- TRUE
+        object$QT <- TRUE
       tf[[i]] <- getTF(f, length(object$term))
     } else if (!is.function(f))
       stop("Unrecognized type for 'dt' transformation function")
   }
   
-  #tf <- lapply(tf, function(f) {
-  #  if (is.character(f)) {
-  #    # Create transformation functions for recognized character strings
-  #    if (f=="QTransform")
-  #      assign("QTransform", TRUE, pos=object)
-  #      #object$QTransform <- TRUE
-  #    getTF(f, length(object$term))
-  #  } else if (is.function(f)) {
-  #    # Already a function - just return it
-  #    f
-  #  } else stop("Unrecognized type for 'dt' transformation function")
-  #})
-    
   # Names of tf are the names of the variables to transform
   if (is.null(names(tf)))
     # Unnamed: use the first length(tf) terms as the names

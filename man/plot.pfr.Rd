@@ -4,14 +4,15 @@
 \alias{plot.pfr}
 \title{Plot a pfr object}
 \usage{
-\method{plot}{pfr}(x, Qscale = FALSE, ...)
+\method{plot}{pfr}(x, Qtransform = FALSE, ...)
 }
 \arguments{
 \item{x}{a fitted \code{pfr}-object}
 
-\item{Qscale}{For additive functional terms fit with
-\code{af(Qtransform=TRUE)}, should the coefficient be plotted on the
-raw scale or the quantile-transformed scale?}
+\item{Qtransform}{For additive functional terms fit with
+\code{af(Qtransform=TRUE)}, \code{TRUE} indicates the coefficient should be
+plotted on the quantile-transformed scale, whereas \code{FALSE} indicates
+the scale of the original data}
 
 \item{...}{arguments handed over to \code{\link[mgcv]{plot.gam}}}
 }
@@ -23,7 +24,8 @@ can be used to generate customized plots.
 \description{
 This function plots the smooth coefficients of a pfr object. These include
 functional coefficients as well as any smooths of scalar covariates. The
-function simply dispatches to \code{plot.gam}.
+function dispatches to \code{plot.gam}, after injecting a small amount of
+code into the function to handle special cases.
 }
 \author{
 Jonathan Gellar

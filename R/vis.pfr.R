@@ -1,21 +1,22 @@
 #' Visualization of PFR objects
 #'
-#' Produces perspective or contour plot views of an estimated surface corresponding to \code{\link{af}}
-#' terms fit using \code{\link{pfr}} or plots \dQuote{slices} of the estimated surface or estimated
-#' second derivative surface with one of its arguments fixed and corresponding twice-standard error
-#' \dQuote{Bayesian} confidence bands constructed using the method in Marra and Wood (2012).  See the details.
-
+#' Produces perspective or contour plot views of an estimated surface corresponding
+#' smooths over two or more dimensions. Alternatively plots \dQuote{slices} of the
+#' estimated surface or estimated second derivative surface with one of its arguments fixed.
+#' Corresponding twice-standard error \dQuote{Bayesian} confidence bands are
+#' constructed using the method in Marra and Wood (2012). See the details.
+#' 
 #' @param object an \code{pfr} object, produced by \code{\link{pfr}}
-#' @param af.term identifier for the af term to be plotted. This is only important
-#'   if multiple \code{af} terms are present. Can either be a character string
-#'   containing the name of the functional predictor to be plotted, or an integer
-#'   indexing the appropriate term, from the list of af terms in the order they
-#'   appear in the model formula.
+#' @param select index for the smooth term to be plotted, according to its position
+#'   in the model formula (and in \code{object$smooth}). Not needed if only one
+#'   multivariate term is present.
+#   Can be entered as an integer index, or as a
+#   character string containing the name of the functional predictor to be plotted.
 #' @param xval a number in the range of functional predictor to be plotted.  The surface will be plotted
 #'   with the first argument of the estimated surface fixed at this value
 #' @param tval a number in the domain of the functional predictor to be plotted.  The surface will be
 #'   plotted with the second argument of the estimated surface fixed at this value. Ignored if \code{xval}
-#'   is specified
+#'   is specified.
 #' @param deriv2 logical; if \code{TRUE}, plot the estimated second derivative surface along with
 #'   Bayesian confidence bands.  Only implemented for the "slices" plot from either \code{xval} or
 #'   \code{tval} being specified
@@ -51,10 +52,11 @@
 #' @importFrom lattice levelplot
 #' @importFrom graphics persp
 #' @export
+#' 
 #' @examples
 #' ################# DTI Example #####################
 #' data(DTI)
-#'
+#' 
 #' ## only consider first visit and cases (since no PASAT scores for controls),
 #' ## and remove missing data
 #' DTI <- DTI[DTI$visit==1 & DTI$case==1 & complete.cases(DTI$cca),]
@@ -76,103 +78,79 @@
 #' xval <- runif(1, min(fit$pfr$ft[[1]]$Xrange), max(fit$pfr$ft[[1]]$Xrange))
 #' tval <- runif(1, min(fit$pfr$ft[[1]]$xind), max(fit$pfr$ft[[1]]$xind))
 #' par(mfrow=c(2, 2))
-#' vis.pfr(fit, af.term='cca', deriv2=FALSE, xval=xval)
-#' vis.pfr(fit, af.term='cca', deriv2=FALSE, tval=tval)
-#' vis.pfr(fit, af.term='cca', deriv2=TRUE, xval=xval)
-#' vis.pfr(fit, af.term='cca', deriv2=TRUE, tval=tval)
+#' vis.pfr(fit, select='cca', deriv2=FALSE, xval=xval)
+#' vis.pfr(fit, select='cca', deriv2=FALSE, tval=tval)
+#' vis.pfr(fit, select='cca', deriv2=TRUE, xval=xval)
+#' vis.pfr(fit, select='cca', deriv2=TRUE, tval=tval)
 
-vis.pfr=function(object, af.term=1, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50,
+vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50,
                   plot.type = "persp", ticktype = "detailed", ...){
   
-  if(!length(object$pfr) | !any(object$pfr$termtype == "af"))
-    stop('Model contains no af terms for plotting')
+  trm.dim <- sapply(object$smooth, function(x) x$dim)
+  n.mv <- sum(trm.dim>1)
+  if (!all(length(object$pfr), length(object$smooth), n.mv>0))
+    stop('Model contains no smooth terms for visualization')
   
-  # ttypes are the term types for object$smooth; fttypes for object$pfr$ft
-  ftlist  <- c("lf", "af", "lf.vd", "peer") # This vector identifies term types that end up in ft
-  ttypes  <- object$pfr$termtype[object$pfr$termtype != "par"]
-  fttypes <- ttypes[ttypes %in% ftlist]
-  ftnames <- sapply(strsplit(sapply(object$pfr$ft, function(x) x$tindname),
-                             ".", fixed=TRUE), function(x) x[1])
-  stopifnot(length(ttypes)  == length(object$smooth))
-  stopifnot(length(fttypes) == length(object$pfr$ft))
-  
-  if (is.character(af.term)) {
-    af.ind <- which(ftnames == af.term & fttypes=="af")
-    if (!length(af.ind))  stop("Unrecognized af.term")
-    if (length(af.ind)>1) stop("Multiple af.terms matched?")
-  } else if (is.numeric(af.term)) {
-    af.ind <- which(fttypes=="af")[af.term]
-    af.term <- ftnames[af.ind]
-    if (is.na(af.ind)) stop("af.term entry exceeds the number of af terms")
-  } else {
-    stop("Uncrecognized af.term type")
+  if (!(object$smooth[[select]]$dim > 1)) {
+    if (select==1 & n.mv==1) {
+      select <- which(trm.dim>1)
+    } else {
+      stop('Term indicated by \"select\" is not a multivariate smooth')
+    }
   }
   
+  
+  # ttypes are the term types for object$smooth; fttypes for object$pfr$ft
+  #ftlist  <- c("lf", "af", "lf.vd", "peer") # This vector identifies term types that end up in ft
+  ttypes  <- object$pfr$termtype[object$pfr$termtype != "par"]
+  #fttypes <- ttypes[ttypes %in% ftlist]
+  #ftnames <- sapply(strsplit(sapply(object$pfr$ft, function(x) x$tindname),
+  #                           ".", fixed=TRUE), function(x) x[1])
+  #stopifnot(length(ttypes)  == length(object$smooth))
+  #stopifnot(length(fttypes) == length(object$pfr$ft))
+  #
+  #if (is.character(select)) {
+  #  af.ind <- which(ftnames == select & fttypes=="af")
+  #  if (!length(af.ind))  stop("Unrecognized \"select\" index")
+  #  if (length(af.ind)>1) stop("Multiple \"select\" indicess matched?")
+  #} else if (is.numeric(select)) {
+  af.ind <- which(ttypes%in%c("lf","af","peer","fpc","lf.vd"))[select]
+  #  select <- ftnames[af.ind]
+  #  if (is.na(af.ind)) stop("select entry exceeds the number of af terms")
+  #} else {
+  #  stop("Uncrecognized select type")
+  #}
+  
   # Corresponding coefficient indices
-  sind <- which(ttypes %in% ftlist)[af.ind]
-  tind <- 1:length(object$coefficients) %in% c(object$smooth[[sind]]$first.para:
-                                               object$smooth[[sind]]$last.para)
+  smooth.i <- object$smooth[[select]]
+  #sind <- which(ttypes %in% ftlist)[af.ind]
+  tind <- 1:length(object$coefficients) %in%
+    c(smooth.i$first.para:smooth.i$last.para)
+  tvar <- modify_nm(smooth.i$term[2])
+  mtitle <- if (!is.null(smooth.i$QT))
+    bquote(paste(hat(F),'(p,t),   p=',hat(G)[t],'(',.(tvar),')',sep=''))
+  else
+    bquote(paste(hat(F),'(',.(tvar),',t)',sep=''))
+  
   if(!(length(tval)+length(xval))) {
     # Plot entire surface (not slices)
     temp <- list()
-    temp[[paste('L.',af.term,sep='')]] <- 1
+    temp[[smooth.i$by]] <- 1
     if(plot.type=='persp' ) {
-      
-      tvar <- tolower(af.term)
-      
-      if(object$pfr$ft[[af.ind]]$Qtransform){
-        mtitle <- bquote(paste(hat(F),'(p,t),   p=',hat(G)[t],'(',.(tvar),')',sep=''))
-      }else{
-        mtitle <- bquote(paste(hat(F),'(',.(tvar),',t)',sep=''))
-      }
-      tvar <- paste('\n',tvar,sep='')
-      vis.gam(object, view=paste0(af.term, c(".omat", ".tmat")), cond=temp,
+      vis.gam(object, view=paste0(tvar, c(".omat", ".tmat")), cond=temp,
               ticktype=ticktype, theta=theta, contour.col=rev(heat.colors(100)),
               xlab=tvar, ylab='\nt', zlab='', main=mtitle, ...)
       
-    } else if(plot.type=='contour'){
+    } else if (plot.type=='contour'){
       # not making use of vis.gam because want colour key/legend
-      nfine <- 51
-      trange <- range(object$pfr$ft[[af.ind]]$xind)
-      tvals <- seq(trange[1],trange[2],l=nfine)
-      Xrange <- object$pfr$ft[[af.ind]]$Xrange
-      xvals <- seq(Xrange[1],Xrange[2],l=nfine)
-      newdata <- expand.grid(tvals,xvals)
-      newot <- newdata[[1]]
-      newX  <- newdata[[2]]
-      newdata <- list()
-      newdata[[paste(af.term,'.omat',sep='')]] <- matrix(newX,ncol=1)
-      newdata[[paste(af.term,'.tmat',sep='')]] <- matrix(newot,ncol=1)
-      newdata[[paste('L.',af.term,sep='')]] <- matrix(1,ncol=1,nrow=length(newX))
-      #attr(newdata[[paste(af.term,sep='')]],'L') <- matrix(1,nr=1,nc=length(newX))
-      #attr(newdata[[paste(af.term,sep='')]],'tmat') <- matrix(newot,nr=1)
+      est <- coef(object, select=select)
+      ylab=ifelse(is.null(smooth.i$QT), tvar, 'p')
+      names(est)[1:2] <- c("t", "x")
       
-      varnames <- all.vars(terms(object))
-      varnames <- varnames[!(varnames %in% c(paste('L.',af.term,sep=''),
-                                             paste(af.term,'.tmat',sep=''),
-                                             paste(af.term,'.omat',sep='')))]
-      varnames <- varnames[-1]
-      if(length(varnames)){
-        for(i in 1:length(varnames)){
-          newdata[[varnames[i]]] <- rep(object$pfr$datameans[names(object$pfr$datameans)==varnames[i]],l=length(newX))#matrix(object$pfr$datameans[names(object$pfr$datameans)==varnames[i]],nr=1,nc=length(newX))
-        }
-      }
-      #newdata <- list2df(newdata)
-      dmat <- predict.gam(object, newdata=newdata, type='lpmatrix',
-                          terms=af.term, na.action=na.exclude)[,tind]
-      
-      preds <- dmat%*%object$coef[tind]
-      tvar <- tolower(af.term)
-      if(object$pfr$ft[[af.ind]]$Qtransform){
-        mtitle <- bquote(paste(hat(F),'(p,t),   p=',hat(G)[t],'(',.(tvar),')',sep=''))
-      }else{
-        mtitle <- bquote(paste(hat(F),'(',.(tvar),',t)',sep=''))
-      }
-      
-      xlab=ifelse(object$pfr$ft[[af.ind]]$Qtransform,tvar,'p')
-      lattice::levelplot(preds~newX*newot,contour=TRUE,labels=TRUE,pretty=TRUE,ylab='t',xlab=xlab,
-                         col.regions=rev(heat.colors(100)),main=as.expression(mtitle),...)
-      
+      lattice::levelplot(value~t*x, data=est, contour=TRUE, labels=TRUE, 
+                         pretty=TRUE, xlab='t', ylab=ylab,
+                         col.regions=rev(heat.colors(100)),
+                         main=as.expression(mtitle), ...)
     }
   } else {
     # Plot slice of surface
@@ -186,28 +164,22 @@ vis.pfr=function(object, af.term=1, xval = NULL, tval = NULL, deriv2 = FALSE, th
         tval=tval[1]
       }
     }
-    nfine <- 200
-    
-    parnames <- object$pfr$termnames[object$pfr$termtype=="par"]
-    parind   <- names(object$coef) %in% c('(Intercept)', parnames)
-    ind      <- as.logical(parind+tind)
-    afterm   <- tolower(af.term)
     
     if (length(xval)) {
       # x fixed
-      trange <- range(object$pfr$ft[[af.ind]]$xind)
-      tvals <- seq(trange[1],trange[2],l=nfine)
-      xvals <- rep(xval,l=nfine)
+      trange <- range(object$pfr$ft[[select]]$xind)
+      tvals <- seq(trange[1],trange[2],l=101)
+      xvals <- rep(xval,l=101)
       xlab='t'
       x=tvals
       if(!deriv2) {
         main=bquote(paste(hat(F)(.(round(xval,3)),t),' by t',sep=''))
         ylab=bquote(paste(hat(F)(.(round(xval,3)),t),sep=''))
       } else {
-        main=bquote(paste(frac(partialdiff^2,partialdiff*.(afterm)^2)*hat('F')(.(afterm),t),
-                          '|',phantom()[.(afterm)==.(round(xval,3))],' by t',sep=''))
-        ylab=bquote(paste(frac(partialdiff^2,partialdiff*.(afterm)^2)*hat('F')(.(afterm),t),
-                          '|',phantom()[.(afterm)==.(round(xval,3))],sep=''))
+        main=bquote(paste(frac(partialdiff^2,partialdiff*.(tvar)^2)*hat('F')(.(tvar),t),
+                          '|',phantom()[.(tvar)==.(round(xval,3))],' by t',sep=''))
+        ylab=bquote(paste(frac(partialdiff^2,partialdiff*.(tvar)^2)*hat('F')(.(tvar),t),
+                          '|',phantom()[.(tvar)==.(round(xval,3))],sep=''))
       }
     } else{
       # t fixed
@@ -226,11 +198,11 @@ vis.pfr=function(object, af.term=1, xval = NULL, tval = NULL, deriv2 = FALSE, th
       
     }
     newdata <- list()
-    newdata[[paste(af.term,'.omat',sep='')]] <- xvals
-    newdata[[paste(af.term,'.tmat',sep='')]] <- tvals
-    newdata[[paste('L.',af.term,sep='')]] <- rep(1,l=length(xvals))
+    newdata[[paste(tvar,'.omat',sep='')]] <- xvals
+    newdata[[paste(tvar,'.tmat',sep='')]] <- tvals
+    newdata[[paste('L.',tvar,sep='')]] <- rep(1,l=length(xvals))
     varnames <- all.vars(terms(object))
-    varnames <- varnames[!(varnames %in% c(paste('L.',af.term,sep=''),paste(af.term,'.tmat',sep=''),paste(af.term,'.omat',sep='')))]
+    varnames <- varnames[!(varnames %in% c(paste('L.',tvar,sep=''),paste(tvar,'.tmat',sep=''),paste(tvar,'.omat',sep='')))]
     varnames <- varnames[-1]
     if(length(varnames)){
       for(i in 1:length(varnames)){
@@ -238,20 +210,20 @@ vis.pfr=function(object, af.term=1, xval = NULL, tval = NULL, deriv2 = FALSE, th
       }
     }
     
-    lpmat <- predict.gam(object,newdata=newdata,type='lpmatrix')[,ind]
+    lpmat <- predict.gam(object,newdata=newdata,type='lpmatrix')[,tind]
     if(deriv2){
       eps <- 1e-7 ## finite difference interval
-      newdata[[paste(af.term,'.omat',sep='')]] <- xvals + eps
-      X1 <- predict.gam(object,newdata=newdata,type='lpmatrix')[,ind]
+      newdata[[paste(tvar,'.tmat',sep='')]] <- tvals + eps
+      X1 <- predict.gam(object,newdata=newdata,type='lpmatrix')[,tind]
       
-      newdata[[paste(af.term,'.omat',sep='')]] <- xvals + 2*eps
-      X2 <- predict.gam(object,newdata=newdata,type='lpmatrix')[,ind]
+      newdata[[paste(tvar,'.tmat',sep='')]] <- tvals + 2*eps
+      X2 <- predict.gam(object,newdata=newdata,type='lpmatrix')[,tind]
       
       lpmat <- (X2-2*X1+lpmat)/eps^2
     }
     
-    preds <- sum(object$cmX)+lpmat%*%object$coef[ind]
-    se.preds <- rowSums(lpmat%*%object$Vp[ind,ind]*lpmat)^.5
+    preds <- sum(object$cmX)+lpmat%*%object$coef[tind]
+    se.preds <- rowSums(lpmat%*%object$Vp[tind,tind]*lpmat)^.5
     ucl <- preds+2*se.preds
     lcl <- preds-2*se.preds
     ylim <- range(ucl,lcl,preds)
@@ -265,3 +237,8 @@ vis.pfr=function(object, af.term=1, xval = NULL, tval = NULL, deriv2 = FALSE, th
   }
 }
 
+modify_nm <- function(x) {
+  x <- gsub("\\.omat", "", x)
+  x <- gsub("tmat", "argvals", x)
+  x
+}

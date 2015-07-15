@@ -4,24 +4,22 @@
 \alias{vis.pfr}
 \title{Visualization of PFR objects}
 \usage{
-vis.pfr(object, af.term = 1, xval = NULL, tval = NULL, deriv2 = FALSE,
+vis.pfr(object, select = 1, xval = NULL, tval = NULL, deriv2 = FALSE,
   theta = 50, plot.type = "persp", ticktype = "detailed", ...)
 }
 \arguments{
 \item{object}{an \code{pfr} object, produced by \code{\link{pfr}}}
 
-\item{af.term}{identifier for the af term to be plotted. This is only important
-if multiple \code{af} terms are present. Can either be a character string
-containing the name of the functional predictor to be plotted, or an integer
-indexing the appropriate term, from the list of af terms in the order they
-appear in the model formula.}
+\item{select}{index for the smooth term to be plotted, according to its position
+in the model formula (and in \code{object$smooth}). Not needed if only one
+multivariate term is present.}
 
 \item{xval}{a number in the range of functional predictor to be plotted.  The surface will be plotted
 with the first argument of the estimated surface fixed at this value}
 
 \item{tval}{a number in the domain of the functional predictor to be plotted.  The surface will be
 plotted with the second argument of the estimated surface fixed at this value. Ignored if \code{xval}
-is specified}
+is specified.}
 
 \item{deriv2}{logical; if \code{TRUE}, plot the estimated second derivative surface along with
 Bayesian confidence bands.  Only implemented for the "slices" plot from either \code{xval} or
@@ -41,10 +39,11 @@ Bayesian confidence bands.  Only implemented for the "slices" plot from either \
 Simply produces a plot
 }
 \description{
-Produces perspective or contour plot views of an estimated surface corresponding to \code{\link{af}}
-terms fit using \code{\link{pfr}} or plots \dQuote{slices} of the estimated surface or estimated
-second derivative surface with one of its arguments fixed and corresponding twice-standard error
-\dQuote{Bayesian} confidence bands constructed using the method in Marra and Wood (2012).  See the details.
+Produces perspective or contour plot views of an estimated surface corresponding
+smooths over two or more dimensions. Alternatively plots \dQuote{slices} of the
+estimated surface or estimated second derivative surface with one of its arguments fixed.
+Corresponding twice-standard error \dQuote{Bayesian} confidence bands are
+constructed using the method in Marra and Wood (2012). See the details.
 }
 \details{
 The confidence bands used when plotting slices of the estimated surface or second derivative
@@ -78,10 +77,10 @@ vis.pfr(fit, plot.type='contour')
 xval <- runif(1, min(fit$pfr$ft[[1]]$Xrange), max(fit$pfr$ft[[1]]$Xrange))
 tval <- runif(1, min(fit$pfr$ft[[1]]$xind), max(fit$pfr$ft[[1]]$xind))
 par(mfrow=c(2, 2))
-vis.pfr(fit, af.term='cca', deriv2=FALSE, xval=xval)
-vis.pfr(fit, af.term='cca', deriv2=FALSE, tval=tval)
-vis.pfr(fit, af.term='cca', deriv2=TRUE, xval=xval)
-vis.pfr(fit, af.term='cca', deriv2=TRUE, tval=tval)
+vis.pfr(fit, select='cca', deriv2=FALSE, xval=xval)
+vis.pfr(fit, select='cca', deriv2=FALSE, tval=tval)
+vis.pfr(fit, select='cca', deriv2=TRUE, xval=xval)
+vis.pfr(fit, select='cca', deriv2=TRUE, tval=tval)
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}

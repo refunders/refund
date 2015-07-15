@@ -68,6 +68,7 @@
 #' ## GCV to choose smoothing parameters
 #' fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))),
 #'             method="GCV.Cp", gamma=1.2, data=DTI1)
+#' plot(fit1, scheme=2)
 #' vis.pfr(fit1)
 #'
 #'
@@ -79,7 +80,8 @@
 #'             method="GCV.Cp", gamma=1.2, data=DTI2[-test,])
 #' par(mfrow=c(1,2))
 #' plot(fit2, scheme=2, rug=FALSE)
-#' vis.pfr(fit2, af.term="cca", xval=.6)
+# vis.pfr(fit2, select="cca", xval=.6)
+#' vis.pfr(fit2, select=1, xval=.6)
 #' pred <- predict(fit2, newdata = DTI2[test,], type='response', PredOutOfRange = TRUE)
 #' sqrt(mean((DTI2$pasat[test] - pred)^2))
 #' 
@@ -94,7 +96,7 @@
 #' par(mfrow=c(1,2))
 #' plot(fit3, scheme=2, rug=FALSE)
 #' abline(h=0, col="green")
-#' vis.pfr(fit3, af.term="rcst", plot.type="contour")
+#' vis.pfr(fit3, select="rcst", plot.type="contour")
 #' 
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Fabian Scheipl,
 #'   and Jonathan Gellar

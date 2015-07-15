@@ -101,8 +101,19 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
             if (cnms[i] == modify_nm(smooth.i$term[j]))
               # Rename coordinate with unmodified name
               names(coords)[i] <- smooth.i$term[j]
-        if (!all(smooth.i$term %in% names(coords)))
-          stop("coords must be a named list with names in smooth[[select]]$term")
+        if (!all(smooth.i$term %in% names(coords))) {
+          newtrms <- smooth.i$term[!(smooth.i$term %in% names(coords))]
+          if (is.null(n))
+            n <- sapply(object$model[newtrms], ndefault)
+          else if (length(n)==1)
+            n <- rep(n, length(newtrms))
+          else
+            stop("length(n) must match the number of arguments not included in coords")
+          newcoords <- mapply(function(x,y) {
+            seq(min(x), max(x), length=y)
+          }, object$model[newtrms], n, SIMPLIFY=FALSE)
+          coords <- c(coords, newcoords)
+        }
       }
     }
     
