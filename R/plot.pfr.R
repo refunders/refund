@@ -25,6 +25,11 @@ plot.pfr <- function(x, Qtransform=FALSE, ...) {
   class(x) <- class(x)[-1]
   
   if (Qtransform) {
+    # Flag the smooths
+    for (i in 1:length(x$smooth))
+      if (!is.null(x$smooth[[i]]$QT))
+        x$smooth[[i]]$QTplot <- TRUE
+    
     # Inject code into plot.gam to rescale
     bod <- as.list(body(mgcv:::plot.mgcv.smooth))
     loc <- locfcn(bod, "rep(ym, rep(n2, n2))")
@@ -34,7 +39,7 @@ plot.pfr <- function(x, Qtransform=FALSE, ...) {
       trace(mgcv:::plot.mgcv.smooth,
             at=list(loc), print=FALSE, tracer = quote({
               # Inserted Code
-              if (!is.null(x$QT)) {
+              if (!is.null(x$QTplot)) {
                 tf <- x$tf[[1]]
                 raw$y <- tf(raw$x, raw$y)
                 ym <- seq(min(raw$y), max(raw$y), length = n2)
@@ -112,7 +117,11 @@ locfcn <- function(bod, txt) {
   ret
 }
 
-# # @export
+
+#plot.mgcv.smooth <- getFromNamespace("plot.mgcv.smooth", "mgcv")
+
+
+# @export
 # plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1, 
 #                               se2.mult = 2, partial.resids = FALSE, rug = TRUE, se = TRUE, 
 #                               scale = -1, n = 100, n2 = 40, pers = FALSE, theta = 30, phi = 30, 
@@ -289,6 +298,39 @@ locfcn <- function(bod, txt) {
 #         dat <- data.frame(x = xx, y = yy)
 #         names(dat) <- c(xterm, yterm)
 #       }
+#       
+#       if (!is.null(x$QTplot)) {
+#         tf <- x$tf[[1]]
+#         raw$y <- tf(raw$x, raw$y)
+#         ym <- seq(min(raw$y), max(raw$y), length = n2)
+#         yy <- rep(ym, rep(n2, n2))
+#         if (too.far > 0)
+#           exclude <- rep(FALSE, length(yy))
+#         #exclude <- exclude.too.far(xx, yy, raw$x, raw$y, dist = too.far)
+#         x0 <- environment(tf)$x0
+#         t0 <- environment(tf)$t0
+#         idx <- factor(t0)
+#         newidx <- factor(xx)
+#         tmp <- tapply(x0, t0, function(y) y,
+#                       simplify=F)
+#         for (lev in levels(newidx)) {
+#           yy[newidx==lev] <- if (lev %in% levels(idx)) {
+#             quantile(tmp[[which(levels(idx)==lev)]], yy[newidx==lev])
+#           } else {
+#             u1 <- as.numeric(levels(idx))
+#             idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
+#             idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
+#             bounds <- sapply(c(idx1, idx2), function(i) {
+#               quantile(tmp[[i]], yy[newidx==lev])
+#             })
+#             apply(bounds, 1, function(y) {
+#               approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
+#                      xout = as.numeric(lev), rule=2)$y
+#             })
+#           }
+#         }                
+#       }
+#       
 #       X <- PredictMat(x, dat)
 #       if (is.null(main)) {
 #         main <- label
