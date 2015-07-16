@@ -29,81 +29,7 @@ plot.pfr <- function(x, Qtransform=FALSE, ...) {
     for (i in 1:length(x$smooth))
       if (!is.null(x$smooth[[i]]$QT))
         x$smooth[[i]]$QTplot <- TRUE
-    
-#     # Inject code into plot.gam to rescale
-#     bod <- as.list(body(plot.mgcv.smooth))
-#     loc <- locfcn(bod, "rep(ym, rep(n2, n2))")
-#     loc[length(loc)] <- loc[length(loc)] + 2
-#     
-#     suppressMessages(
-#       trace(plot.mgcv.smooth,
-#             at=list(loc), print=FALSE, tracer = quote({
-#               # Inserted Code
-#               if (!is.null(x$QTplot)) {
-#                 tf <- x$tf[[1]]
-#                 raw$y <- tf(raw$x, raw$y)
-#                 ym <- seq(min(raw$y), max(raw$y), length = n2)
-#                 yy <- rep(ym, rep(n2, n2))
-#                 if (too.far > 0)
-#                   exclude <- rep(FALSE, length(yy))
-#                   #exclude <- mgcv::exclude.too.far(xx, yy, raw$x, raw$y, dist = too.far)
-#                 x0 <- environment(tf)$x0
-#                 t0 <- environment(tf)$t0
-#                 idx <- factor(t0)
-#                 newidx <- factor(xx)
-#                 tmp <- tapply(x0, t0, function(y) y,
-#                               simplify=F)
-#                 for (lev in levels(newidx)) {
-#                   yy[newidx==lev] <- if (lev %in% levels(idx)) {
-#                     quantile(tmp[[which(levels(idx)==lev)]], yy[newidx==lev])
-#                   } else {
-#                     u1 <- as.numeric(levels(idx))
-#                     idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
-#                     idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
-#                     bounds <- sapply(c(idx1, idx2), function(i) {
-#                       quantile(tmp[[i]], yy[newidx==lev])
-#                     })
-#                     apply(bounds, 1, function(y) {
-#                       approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
-#                              xout = as.numeric(lev), rule=2)$y
-#                     })
-#                   }
-#                 }                
-#               }
-#             })))
-#     on.exit({
-#       suppressMessages(try(untrace(plot.mgcv.smooth), silent = TRUE))
-#     })
-
-  } else {
-    # Inject code into plot.gam to exclude coordinates outside range
-    bod <- as.list(body(plot.gam))
-    loc <- which(sapply(bod, function(x)
-      any(grepl(x, pattern="is.null(P)", fixed=TRUE)))) + 1
-    suppressMessages(
-      trace(plot.gam,
-            at=loc, print=FALSE, tracer = quote({
-              # Inserted Code
-              for (i in 1:m) if (!is.null(x$smooth[[i]]$QT)) {
-                tf <- x$smooth[[i]]$tf[[1]]
-                if (!is.null(tf)) {
-                  rna <- environment(tf)$retNA
-                  environment(tf)$retNA <- TRUE
-                  cgrid <- expand.grid(pd[[i]]$x, pd[[i]]$y)
-                  new.exclude <- is.na(tf(cgrid[,1], cgrid[,2]))
-                  environment(tf)$retNA <- rna
-                  if (!is.null(pd[[i]]$exclude))
-                    pd[[i]]$exclude[new.exclude] <- TRUE
-                  pd[[i]]$fit[new.exclude] <- NA
-                  if (se && pd[[i]]$se)
-                    pd[[i]]$se.fit[new.exclude] <- NA
-                }}
-              })))
-    on.exit({
-      suppressMessages(try(untrace(plot.gam), silent = TRUE))
-    })
   }
-  
   my.plot.gam(x, ...)
 }
 
@@ -562,7 +488,6 @@ plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1
       yy <- rep(ym, rep(n2, n2))
       if (too.far > 0) 
         exclude <- mgcv::exclude.too.far(xx, yy, raw$x, raw$y, dist = too.far)
-        #exclude <- rep(FALSE, length(yy))
       else exclude <- rep(FALSE, n2 * n2)
       
       if (!is.null(x$QTplot)) {

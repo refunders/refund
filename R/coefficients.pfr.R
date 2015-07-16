@@ -77,9 +77,12 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
         n <- rep(n, smooth.i$dim)
       else if (length(n)!=smooth.i$dim)
         stop("length of n must match the number of terms of the smooth")
-      coords <- mapply(function(x,y) {
-        seq(min(x), max(x), length=y)
-      }, object$model[smooth.i$term], n, SIMPLIFY=FALSE)
+      coords <- mapply(function(x,y,z) {
+        if (Qtransform & !is.null(smooth.i$QT) & z==2)
+          seq(0,1,length=y)
+        else
+          seq(min(x), max(x), length=y)
+      }, object$model[smooth.i$term], n, 1:length(n), SIMPLIFY=FALSE)
     } else {
       # Check coords to make sure they match, otherwise throw a warning
       cnms <- names(coords)
@@ -125,6 +128,35 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
     coef.i <- do.call(expand.grid, coords)[smooth.i$term]
     if (smooth.i$by!="NA")
       coef.i[smooth.i$by] <- 1
+    
+    if (Qtransform & !is.null(smooth.i$QT)) {
+      tf <- smooth.i$tf[[1]]
+      x0 <- environment(tf)$x0
+      t0 <- environment(tf)$t0
+      idx <- factor(t0)
+      newidx <- factor(coef.i[,1])
+      oldx = newx <- coef.i[,2]
+      
+      tmp <- tapply(x0, t0, function(y) y, simplify=F)
+      for (lev in levels(newidx)) {
+        newx[newidx==lev] <- if (lev %in% levels(idx)) {
+          quantile(tmp[[which(levels(idx)==lev)]], newx[newidx==lev])
+        } else {
+          u1 <- as.numeric(levels(idx))
+          idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
+          idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
+          bounds <- sapply(c(idx1, idx2), function(i) {
+            quantile(tmp[[i]], newx[newidx==lev])
+          })
+          apply(bounds, 1, function(y) {
+            approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
+                   xout = as.numeric(lev), rule=2)$y
+          })
+        }
+      }
+      coef.i[,2] <- newx
+    }
+    
     pmat <- mgcv::PredictMat(smooth.i, coef.i)
     
     # Get coefficient function
@@ -175,6 +207,10 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
   
   # Modify coordinate names
   names(coef.i)[1:smooth.i$dim] <- sapply(smooth.i$term, modify_nm)
+  if (Qtransform & !is.null(smooth.i$QT)) {
+    coef.i[,2] <- oldx
+    names(coef.i)[2] <- paste0(names(coef.i)[2], ".quantile")
+  }    
   coef.i
 }
 
