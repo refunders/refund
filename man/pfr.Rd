@@ -69,12 +69,16 @@ matplot(bhat.lf$cca.argvals, bhat.lf[,c("value", "upper", "lower")],
 
 # Fit model with additive functional term for CCA, using tensor product basis
 fit.af <- pfr(pasat ~ af(cca, Qtransform=TRUE, k=c(7,7)), data=DTI1)
-plot(fit.af, scheme=2, xlab="t", ylab="cca(t)", main="Tensor Product", rug=FALSE)
+plot(fit.af, scheme=2, xlab="t", ylab="cca(t)", main="Tensor Product")
+plot(fit.af, scheme=2, Qtransform=TRUE,
+     xlab="t", ylab="cca(t)", main="Tensor Product")
 
 # Change basistype to thin-plate regression splines
 fit.af.s <- pfr(pasat ~ af(cca, basistype="s", Qtransform=TRUE, k=50),
                 data=DTI1)
 plot(fit.af.s, scheme=2, xlab="t", ylab="cca(t)", main="TPRS", rug=FALSE)
+plot(fit.af.s, scheme=2, Qtransform=TRUE,
+     xlab="t", ylab="cca(t)", main="TPRS", rug=FALSE)
 
 # Visualize bivariate function at various values of x
 par(mfrow=c(2,2))

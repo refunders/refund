@@ -25,6 +25,10 @@
 #' @param useVc if \code{TRUE}, standard errors are calculated using a covariance
 #'   matrix that has been corrected for smoothing parameter uncertainty. This
 #'   matrix will only be available under ML or REML smoothing.
+#' @param Qtransform For additive functional terms fit with
+#'   \code{af(Qtransform=TRUE)}, \code{TRUE} indicates the coefficient should be
+#'   extracted on the quantile-transformed scale, whereas \code{FALSE} indicates
+#'   the scale of the original data
 # @param limit if \code{TRUE}, checks if a \code{limits} function was
 #   used to generate the term, and if so, applies the function to the
 #   output to only produce estimates over regions that were within "limits".
@@ -48,7 +52,7 @@
 
 coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
                              se=ifelse(length(object$smooth) & select, TRUE, FALSE),
-                             seWithMean=FALSE, useVc=TRUE, ...) {
+                             seWithMean=FALSE, useVc=TRUE, Qtransform=FALSE, ...) {
   
   V <- if (useVc & !is.null(object$Vc)) object$Vc else object$Vp
   
