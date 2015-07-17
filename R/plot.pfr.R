@@ -45,13 +45,11 @@ locfcn <- function(bod, txt) {
   ret
 }
 
-plot.random.effect <- getFromNamespace("plot.random.effect", "mgcv")
-#plot.mgcv.smooth <- getFromNamespace("plot.mgcv.smooth", "mgcv")
 
 #' Local version of \code{plot.gam}
 #' 
-#' These internal functions were copied from \code{mgcv}, with some minor
-#' changes to allow for plotting \code{pfr} objects.
+#' These internal functions were copied from Simon Wood's \code{mgcv} package,
+#' with some minor changes to allow for plotting \code{pfr} objects.
 #' 
 #' @seealso \code{\link[mgcv]{plot.gam}}
 #' @keywords internal
@@ -733,3 +731,9 @@ plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1
     }
   }
 }
+
+
+#' @rdname pfr_plot.gam
+#' @keywords internal
+plot.random.effect <- getFromNamespace("plot.random.effect", "mgcv")
+

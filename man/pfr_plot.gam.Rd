@@ -3,6 +3,7 @@
 \name{pfr_plot.gam}
 \alias{pfr_plot.gam}
 \alias{plot.mgcv.smooth}
+\alias{plot.random.effect}
 \title{Local version of \code{plot.gam}}
 \usage{
 pfr_plot.gam(x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
@@ -20,10 +21,18 @@ pfr_plot.gam(x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
   ylim = NULL, xlim = NULL, too.far = 0.1, shade = FALSE,
   shade.col = "gray80", shift = 0, trans = I, by.resids = FALSE,
   scheme = 0, ...)
+
+\method{plot}{random.effect}(x, P = NULL, data = NULL, label = "",
+  se1.mult = 1, se2.mult = 2, partial.resids = FALSE, rug = TRUE,
+  se = TRUE, scale = -1, n = 100, n2 = 40, pers = FALSE, theta = 30,
+  phi = 30, jit = FALSE, xlab = NULL, ylab = NULL, main = NULL,
+  ylim = NULL, xlim = NULL, too.far = 0.1, shade = FALSE,
+  shade.col = "gray80", shift = 0, trans = I, by.resids = FALSE,
+  scheme = 0, ...)
 }
 \description{
-These internal functions were copied from \code{mgcv}, with some minor
-changes to allow for plotting \code{pfr} objects.
+These internal functions were copied from Simon Wood's \code{mgcv} package,
+with some minor changes to allow for plotting \code{pfr} objects.
 }
 \seealso{
 \code{\link[mgcv]{plot.gam}}
