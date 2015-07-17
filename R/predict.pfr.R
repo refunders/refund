@@ -13,6 +13,7 @@
 #' object or alternatively can be supplied as attributes of the matrix of functional predictor values.
 #' Any variables in the model not specified in newdata are set to their average values from the data
 #' supplied during fitting the model
+#' 
 #' @param type character; see \code{\link{predict.gam}} for details
 #' @param se.fit logical; see \code{\link{predict.gam}} for details
 #' @param terms character see \code{\link{predict.gam}} for details
@@ -22,10 +23,12 @@
 #' of the domain.  If this argument is false, attempting to predict a value of the functional predictor
 #' outside the range of this basis produces an error
 #' @param ... additional arguments passed on to \code{\link{predict.gam}}
+#' 
 #' @return If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long
 #' format. If \code{se == TRUE}, a list with entries fit and se.fit containing fits and standard errors,
 #' respectively. If \code{type == "terms" or "iterms"} each of these lists is a list of matrices of the
 #' same dimension as the response for newdata containing the linear predictor and its se for each term
+#' 
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @seealso \code{\link{pfr}}, \code{\link[mgcv]{predict.gam}}
 #' @export
@@ -126,22 +129,23 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                   }
                 } else {
                   # af() term
-                  newdata[[cov]] <- af$prep.func(newX = newdata[[cov]])$processed  
+                  newdata[[cov]] <- af$prep.func(newX = newdata[[cov]])  
                 }
                 
               }
-              if (af$Qtransform) {
-                if(type=='lpmatrix' & J!=length(af$xind)){
-                  stop('Prediction with quantile transformation only implemented for when new data observation times match original data observation times')
-                }
-                for (i in 1:nobs) {
-                  newdata[[cov]][i, ] <- mapply(function(tecdf,
-                                                         x) {
-                    tecdf(x)
-                  }, tecdf = af$ecdflist, x = newdata[[cov]][i,
-                                                             ])
-                }
-              }
+              
+              #if (af$Qtransform) {
+              #  if(type=='lpmatrix' & J!=length(af$xind)){
+              #    stop('Prediction with quantile transformation only implemented for when new data observation times match original data observation times')
+              #  }
+              #  for (i in 1:nobs) {
+              #    newdata[[cov]][i, ] <- mapply(function(tecdf,
+              #                                           x) {
+              #      tecdf(x)
+              #    }, tecdf = af$ecdflist, x = newdata[[cov]][i,
+              #                                               ])
+              #  }
+              #}
               if(type=='lpmatrix') newdata[[cov]] <- as.vector(newdata[[cov]])
               gamdata[[paste(cov, ".omat", sep = "")]] <- newdata[[cov]]
               gamdata[[paste(cov, ".tmat", sep = "")]] <- tmat
@@ -193,7 +197,7 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                   }
                 } else {
                   # lf() term
-                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])$processed  
+                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])  
                 }
                 
               }

@@ -34,9 +34,7 @@
 #'   be desired to increase this slightly over the default of \code{range(X)} if concerned about predicting
 #'   for future observed curves that take values outside of \code{range(X)}
 #' @param Qtransform logical; should the functional be transformed using the empirical cdf and
-#'   applying a quantile transformation on each column of \code{X} prior to fitting?  This ensures
-#'   \code{Xrange=c(0,1)}.  If \code{Qtransform=TRUE} and \code{presmooth=TRUE}, presmoothing is done prior
-#'   to transforming the functional predictor
+#'   applying a quantile transformation on each column of \code{X} prior to fitting?
 #' @param ... optional arguments for basis and penalization to be passed to the
 #'   function indicated by \code{basistype}. These could include, for example,
 #'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
@@ -51,10 +49,7 @@
 #'   \item{\code{tindname}}{the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}}
 #'   \item{\code{Lname}}{the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}}
 #'   \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{af}}
-#'   \item{\code{Qtranform}}{the \code{Qtransform} argument supplied to \code{af}}
 #'   \item{\code{Xrange}}{the \code{Xrange} argument supplied to \code{af}}
-#'   \item{\code{ecdflist}}{a list containing one empirical cdf function from applying \code{\link{ecdf}}
-#'     to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}}
 #'   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
 #'     \code{\link{create.prep.func}}}
 #' 
@@ -71,20 +66,22 @@
 #' ## order marginal difference penalties
 #' ## specifying gamma > 1 enforces more smoothing when using
 #' ## GCV to choose smoothing parameters
-#' fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))),
-#'             method="GCV.Cp", gamma=1.2, data=DTI1)
+#' fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3)),
+#'                        presmooth="bspline", bs="ps"),
+#'             method="GCV.Cp", gamma=1.2, data=DTI2)
+#' plot(fit1, scheme=2)
 #' vis.pfr(fit1)
 #'
-#'
-#' ## fgam term for the cca measurements plus an flm term for the rcst measurements
+#' ## af term for the cca measurements plus an lf term for the rcst measurements
 #' ## leave out 10 samples for prediction
 #' test <- sample(nrow(DTI2), 10)
-#' fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,3), c(2,3))) +
+#' fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,2), c(2,2)), bs="ps",
+#'                        presmooth="fpca.face") +
 #'                     lf(rcst, k=7, m=c(2,2), bs="ps"),
 #'             method="GCV.Cp", gamma=1.2, data=DTI2[-test,])
 #' par(mfrow=c(1,2))
 #' plot(fit2, scheme=2, rug=FALSE)
-#' vis.pfr(fit2, af.term="cca", xval=.6)
+#' vis.pfr(fit2, select=1, xval=.6)
 #' pred <- predict(fit2, newdata = DTI2[test,], type='response', PredOutOfRange = TRUE)
 #' sqrt(mean((DTI2$pasat[test] - pred)^2))
 #' 
@@ -94,12 +91,27 @@
 #' DTI3 <- DTI[DTI$visit==1,]
 #' DTI3 <- DTI3[complete.cases(DTI3$rcst),]
 #' z1 <- rnorm(nrow(DTI3))
-#' fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), Qtransform=TRUE) +
+#' fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), bs="ps",
+#'                       presmooth="fpca.face", Qtransform=TRUE) +
 #'                     s(z1, k = 10), family="binomial", select=TRUE, data=DTI3)
 #' par(mfrow=c(1,2))
 #' plot(fit3, scheme=2, rug=FALSE)
 #' abline(h=0, col="green")
-#' vis.pfr(fit3, af.term="rcst", plot.type="contour")
+#' 
+#' # 4 versions: fit with/without Qtransform, plotted with/without Qtransform
+#' fit4 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), bs="ps",
+#'                       presmooth="fpca.face", Qtransform=FALSE) +
+#'                     s(z1, k = 10), family="binomial", select=TRUE, data=DTI3)
+#' par(mfrow=c(2,2))
+#' zlms <- c(-7.2,4.3)
+#' plot(fit4, select=1, scheme=2, main="QT=FALSE", zlim=zlms, xlab="t", ylab="rcst")
+#' plot(fit4, select=1, scheme=2, Qtransform=TRUE, main="QT=FALSE", rug=FALSE,
+#'      zlim=zlms, xlab="t", ylab="p(rcst)")
+#' plot(fit3, select=1, scheme=2, main="QT=TRUE", zlim=zlms, xlab="t", ylab="rcst")
+#' plot(fit3, select=1, scheme=2, Qtransform=TRUE, main="QT=TRUE", rug=FALSE,
+#'      zlim=zlms, xlab="t", ylab="p(rcst)")
+#' 
+#' vis.pfr(fit3, select=1, plot.type="contour")
 #' 
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Fabian Scheipl,
 #'   and Jonathan Gellar
@@ -108,16 +120,16 @@
 #' pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 #' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
 #' \code{\link{pfr}} for examples
-#' @importFrom stats ecdf
+# @importFrom stats ecdf
 #' @importFrom fda int2Lfd smooth.basisPar eval.fd create.bspline.basis
 #' @importFrom utils modifyList getFromNamespace
 #' @export
 
 af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
-               basistype = c("te","t2", "s"),
+               basistype = c("te", "t2", "s"),
                integration = c("simpson", "trapezoidal", "riemann"),
-               L = NULL, presmooth = NULL, presmooth.opts = NULL, 
-               Xrange=range(X), Qtransform=FALSE, ...) {
+               L = NULL, presmooth = NULL, presmooth.opts = NULL,
+               Xrange=range(X, na.rm=T), Qtransform=FALSE, ...) {
   
   # Catch if af_old syntax is used
   dots <- list(...)
@@ -166,7 +178,6 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
     prep.func = create.prep.func(X = X, argvals = xind[1,], method = presmooth,
                                  options = presmooth.opts)
     X <- prep.func(newX = X)
-
     # need to check that smoothing didn't change range of data
     if(!Qtransform){
       if(max(X)>Xrange[2]){
@@ -177,15 +188,7 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
       }
     }
   }
-
-  ecdf=NULL
-  if(Qtransform){
-    Xrange <- c(0,1)
-    X <- apply(X, 2, function(x){ (rank(x)-1)/(length(x)-1)} )
-    # need to keep ecdf's for prediction later
-    ecdflist <- apply(X, 2, ecdf)
-  }
-
+  
   if (!is.null(L)) {
     stopifnot(nrow(L) == n, ncol(L) == nt)
   } else {
@@ -201,16 +204,33 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
       cbind(rep(mean(diffs), n), diffs)
     })
   }
-
-  data <- list(X, xind, L)
-  names(data) <- c(xindname, tindname, Lname)
+  
+  # Set up dots to make a "dt" basis call
+  if (Qtransform) {
+    bs0 <- dots$bs
+    xt0 <- dots$xt
+    dots$bs <- "dt"
+    tf <- list("QTransform")
+    names(tf) <- xindname
+    dots$xt <- list(tf=tf)
+    dots$xt$basistype <- basistype
+    basistype <- "s"
+    if (!is.null(bs0)) dots$xt$bs <- bs0
+    if (!is.null(xt0)) dots$xt$xt <- xt0
+  }
+  
+  # Set up data and call
+  data <- list(xind, X, L)
+  names(data) <- c(tindname, xindname, Lname)
   splinefun <- as.symbol(basistype)
-  call <- as.call(c(list(splinefun, z = as.symbol(substitute(tindname)),
-                         x = as.symbol(substitute(xindname)),
+  call <- as.call(c(list(splinefun, z=as.symbol(substitute(tindname)),
+                         x=as.symbol(substitute(xindname)),
                          by = as.symbol(substitute(Lname))), dots))
-  res <-list(call = call, data = data, xind = xind[1,], L = L, xindname = xindname, tindname=tindname,
-             Lname=Lname,Qtransform=Qtransform,presmooth=presmooth,Xrange=Xrange)
-  if(Qtransform) res$ecdflist <- ecdflist
+  
+  # Return list
+  res <- list(call = call, data = data, xind = xind[1,], L = L,
+              xindname = xindname, tindname=tindname, Lname=Lname,
+              presmooth=presmooth, Xrange=Xrange)
   if(!is.null(presmooth)) {res$prep.func <- prep.func} 
   return(res)
 }

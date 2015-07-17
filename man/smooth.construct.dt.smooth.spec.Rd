@@ -86,6 +86,9 @@ The following character strings are recognized as built-in transformations:
   \item \code{"linear01"}: linearly rescale from 0 to 1 (univariate)
   \item \code{"s-t"}: first term ("s") minus the second term ("t") (bivariate)
   \item \code{"s/t"}: first term ("s") divided by the second term ("t") (bivariate)
+  \item \code{"QTransform"}: performs a time-specific ecdf transformation for
+    a bivariate smooth, where time is indicated by the first term, and
+    \eqn{x} by the second term. Primarily for use with \code{refund::af}.
 }
 
 

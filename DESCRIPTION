@@ -101,6 +101,7 @@ Collate:
     'plot.fpcr.R'
     'plot.lpeer.R'
     'plot.peer.R'
+    'plot.pfr.R'
     'postprocess.pfr.R'
     'predict.fgam.R'
     'predict.pfr.R'

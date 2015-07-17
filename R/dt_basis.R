@@ -65,6 +65,9 @@
 #'   \item \code{"linear01"}: linearly rescale from 0 to 1 (univariate)
 #'   \item \code{"s-t"}: first term ("s") minus the second term ("t") (bivariate)
 #'   \item \code{"s/t"}: first term ("s") divided by the second term ("t") (bivariate)
+#'   \item \code{"QTransform"}: performs a time-specific ecdf transformation for
+#'     a bivariate smooth, where time is indicated by the first term, and
+#'     \eqn{x} by the second term. Primarily for use with \code{refund::af}.
 #' }
 #' 
 #' 
@@ -119,16 +122,17 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
     warning("No transformation function supplied... using identity")
   }
   if (!is.list(tf)) tf <- list(tf)
-  tf <- lapply(tf, function(f) {
+  for (i in 1:length(tf)) {
+    f <- tf[[i]]
     if (is.character(f)) {
       # Create transformation functions for recognized character strings
-      getTF(f, length(object$term))
-    } else if (is.function(f)) {
-      # Already a function - just return it
-      f
-    } else stop("Unrecognized type for 'dt' transformation function")
-  })
-    
+      if (f=="QTransform")
+        object$QT <- TRUE
+      tf[[i]] <- getTF(f, length(object$term))
+    } else if (!is.function(f))
+      stop("Unrecognized type for 'dt' transformation function")
+  }
+  
   # Names of tf are the names of the variables to transform
   if (is.null(names(tf)))
     # Unnamed: use the first length(tf) terms as the names
@@ -179,17 +183,20 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
   } else {
     # tensor product smooth: need to create new smooth.spec object
     args <- xt[!(names(xt) %in% c("tf", "basistype"))]
-    if (is.null(args$k) & object$bs.dim>0) args$k <- object$bs.dim
-    if (is.null(args$m) & !is.na(object$p.order)) args$m <- object$p.order
+    if (!is.null(xt$bs)) args$bs <- xt$bs
+    if (is.null(args$k) & any(object$bs.dim>0)) args$k <- object$bs.dim
+    if (is.null(args$m) & !any(is.na(object$p.order))) args$m <- object$p.order
     if (is.null(args$id) & !is.null(object$id)) args$id <- object$id
     if (is.null(args$sp) & !is.null(object$sp)) args$sp <- object$sp
     if ((xt$basistype %in% c("te", "ti")) & is.null(args$fx))
       args$fx <- object$fixed
     if (!(object$by == "NA"))
       args$by <- as.symbol(object$by)
-    eval(as.call(c(list(quote(eval(parse(text=paste0("mgcv::", xt$basistype))))),
+    newobj <- eval(as.call(c(list(quote(eval(parse(text=paste0("mgcv::", xt$basistype))))),
                    lapply(object$term, as.symbol),
-                   args)))    
+                   args)))
+    if (!is.null(object$QT)) newobj$QT <- object$QT
+    newobj
   }
   
   # Create smooth and modify return object
@@ -210,6 +217,48 @@ getTF <- function(fname, nterm) {
     function(x) log(x)
   } else if (fname=="ecdf") {
     function(x) ecdf(x0)(x)
+  } else if (fname=="QTransform") {
+    if (nterm >= 2) {
+      f <- function(t,x) {
+        tmp <- tapply(x0, t0, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
+        idx <- factor(t0)
+        if (!is.character(all.equal(x,x0)) & !is.character(all.equal(t,t0))) {
+          idx <- as.numeric(idx)
+          for (i in 1:length(tmp)) {
+            x[idx==i] <- tmp[[i]]
+          }
+        } else {
+          # We are predicting on new data: Interpolate
+          newidx <- factor(t)
+          for (lev in levels(newidx)) {
+            x[newidx == lev] <- if (lev %in% levels(idx)) {
+              newx <- approx(x0[idx==lev], tmp[[which(levels(idx)==lev)]], 
+                             xout = x[newidx == lev],
+                             rule=ifelse(retNA, 1, 2))$y
+              #newx[x[newidx == lev] < min(x0[idx==lev])] <- -1
+              #newx[x[newidx == lev] > max(x0[idx==lev])] <- 2
+            } else {
+              # Need to interpolate between neighbors
+              u1 <- as.numeric(levels(idx))
+              idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
+              idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
+              bounds <- sapply(c(idx1, idx2), function(i) {
+                approx(x0[idx == levels(idx)[i]], tmp[[i]],
+                       xout = x[newidx == lev], rule=2)$y
+              })
+              apply(bounds, 1, function(y) {
+                approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
+                       xout = as.numeric(lev), rule=2)$y
+              })
+            }
+          }
+        }
+        x
+      }
+      environment(f)$retNA <- FALSE
+      f
+    }
+    else stop(paste0("Not enough terms for ", fname, " transformation"))
   } else if (fname=="linear01") {
     function(x) (x - max(x0))/(max(x0) - min(x0))
   } else if (fname=="s-t") {
@@ -281,4 +330,54 @@ Predict.matrix.dt.smooth <- function(object, data) {
   object$tf <- NULL
   class(object) <- object$class
   mgcv::Predict.matrix(object, tdata)
+}
+
+# Original QTFunc: whatever data comes in, it scales it according to itself
+# QTFunc <- function(t,x) {
+#   tmp <- tapply(x, t, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
+#   nms <- as.numeric(names(tmp))
+#   idx <- as.numeric(factor(t))
+#   for (i in 1:length(tmp)) {
+#     x[idx==i] <- tmp[[i]]
+#   }
+#   x
+# }
+
+if(getRversion() >= "2.15.1")  utils::globalVariables("t0")
+if(getRversion() >= "2.15.1")  utils::globalVariables("retNA")
+QTFunc <- function(t,x,retNA) {
+  if (!exists("x0")) x0 <- x
+  if (!exists("t0")) t0 <- t
+  tmp <- tapply(x0, t0, function(y) {(rank(y)-1)/(length(y)-1)}, simplify=F)
+  idx <- factor(t0)
+  if (!is.character(all.equal(x,x0)) & !is.character(all.equal(t,t0))) {
+    idx <- as.numeric(idx)
+    for (i in 1:length(tmp)) {
+      x[idx==i] <- tmp[[i]]
+    }
+  } else {
+    # We are predicting on new data: Interpolate
+    newidx <- factor(t)
+    for (lev in levels(newidx)) {
+      x[newidx == lev] <- if (lev %in% levels(idx)) {
+        newx <- approx(x0[idx==lev], tmp[[which(levels(idx)==lev)]], 
+                       xout = x[newidx == lev],
+                       rule=ifelse(retNA, 1, 2))$y
+      } else {
+        # Need to interpolate between neighbors
+        u1 <- as.numeric(levels(idx))
+        idx1 <- which(u1 == max(u1[u1<as.numeric(lev)]))
+        idx2 <- which(u1 == min(u1[u1>as.numeric(lev)]))
+        bounds <- sapply(c(idx1, idx2), function(i) {
+          approx(x0[idx == levels(idx)[i]], tmp[[i]],
+                 xout = x[newidx == lev], rule=2)$y
+        })
+        apply(bounds, 1, function(y) {
+          approx(as.numeric(levels(idx)[idx1:idx2]), c(y[1], y[2]),
+                 xout = as.numeric(lev), rule=2)$y
+        })
+      }
+    }
+  }
+  x
 }

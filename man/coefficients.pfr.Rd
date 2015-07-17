@@ -5,45 +5,69 @@
 \alias{coefficients.pfr}
 \title{Extract coefficient functions from a fitted pfr-object}
 \usage{
-\method{coefficients}{pfr}(object, select = NULL, se = TRUE,
-  exclude = FALSE, plot = FALSE, ...)
+\method{coefficients}{pfr}(object, select = 1, coords = NULL, n = NULL,
+  se = ifelse(length(object$smooth) & select, TRUE, FALSE),
+  seWithMean = FALSE, useVc = TRUE, Qtransform = FALSE, ...)
 
-\method{coef}{pfr}(object, select = NULL, se = TRUE, exclude = FALSE,
-  plot = FALSE, ...)
+\method{coef}{pfr}(object, select = 1, coords = NULL, n = NULL,
+  se = ifelse(length(object$smooth) & select, TRUE, FALSE),
+  seWithMean = FALSE, useVc = TRUE, Qtransform = FALSE, ...)
 }
 \arguments{
 \item{object}{return object from \code{\link{pfr}}}
 
-\item{select}{which of the smooth terms to extract coefficients from
-(integer vector). If \code{NULL}, returns all smooth terms.}
+\item{select}{integer indicating the index of the desired smooth term
+in \code{object$smooth}. Enter 0 to request the raw coefficients
+(i.e., \code{object$coefficients}) and standard errors (if \code{se==TRUE}).}
 
-\item{se}{compute standard errors? defaults to TRUE. See \code{\link[mgcv]{plot.gam}}}
+\item{coords}{named list indicating the desired coordinates where the
+coefficient function is to be evaluated. Names must match the argument names
+in \code{object$smooth[[select]]$term}. If \code{NULL}, uses \code{n}
+to generate equally-spaced coordinates.}
 
-\item{exclude}{if \code{TRUE}, excludes reporting of the estimate at coordinates that are
-"too far" from data used to fit the model, as determined by
-\code{mgcv::plot.mgcv.smooth}, by setting the estimate to \code{NA}.}
+\item{n}{integer vector indicating the number of equally spaced coordinates
+for each argument. If length 1, the same number is used for each argument.
+Otherwise, the length must match \code{object$smooth[[select]]$dim}.}
 
-\item{plot}{if \code{TRUE}, also plots the coefficient(s)}
+\item{se}{if \code{TRUE}, returns pointwise standard error estimates. Defaults
+to \code{FALSE} if raw coefficients are being returned; otherwise \code{TRUE}.}
 
-\item{...}{further arguments passed on to \pkg{mgcv}'s \code{plot.gam}. Common
-  arguments include \code{n} and \code{n2} to set the number of coordinates
-  to estimate for 1-D and 2-D coefficient functions, and \code{seWithMean}
-  if the standard error should include uncertainty about the overall mean.
-  See \code{\link[mgcv]{plot.gam}}.}
+\item{seWithMean}{if \code{TRUE} the standard errors include uncertainty about
+the overall mean; if \code{FALSE}, they relate purely to the centered
+smooth itself. Marra and Wood (2012) suggests that \code{TRUE} results in
+better coverage performance for GAMs.}
+
+\item{useVc}{if \code{TRUE}, standard errors are calculated using a covariance
+matrix that has been corrected for smoothing parameter uncertainty. This
+matrix will only be available under ML or REML smoothing.}
+
+\item{Qtransform}{For additive functional terms, \code{TRUE} indicates the
+coefficient should be extracted on the quantile-transformed scale, whereas
+\code{FALSE} indicates the scale of the original data. Note this is
+different from the \code{Qtransform} arguemnt of \code{af}, which specifies
+the scale on which the term is fit.}
+
+\item{...}{these arguments are ignored}
 }
 \value{
-a list of data.frames containing the evaluation points,
-   coefficient function values and optionally their se's for each term in \code{select}.
-   If only one term is selected, the one data frame is unlisted.
+a data frame containing the evaluation points,
+   coefficient function values and optionally the SE's for the term indicated
+   by \code{select}.
 }
 \description{
-Extract coefficient functions from a fitted pfr-object
+This function is used to extract a coefficient from a fitted `pfr` model, in
+particular smooth functions resulting from including functional terms specified
+with \code{lf}, \code{af}, etc. It can also be used to extract smooths
+genereated using \code{mgcv}'s \code{s}, \code{te}, or \code{t2}.
 }
-\examples{
-#TODO: see ?pfr
+\details{
+Should add a description here about entering coordinates.
 }
 \author{
-Fabian Scheipl and Jonathan Gellar, se-computation parts adapted from
-   Simon Wood's \code{plot.gam}.
+Fabian Scheipl and Jonathan Gellar
+}
+\references{
+Marra, G and S.N. Wood (2012) Coverage Properties of Confidence Intervals for
+Generalized Additive Model Components. Scandinavian Journal of Statistics.
 }
 

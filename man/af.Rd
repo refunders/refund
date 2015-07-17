@@ -6,8 +6,8 @@
 \usage{
 af(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL, basistype = c("te",
   "t2", "s"), integration = c("simpson", "trapezoidal", "riemann"),
-  L = NULL, presmooth = NULL, presmooth.opts = NULL, Xrange = range(X),
-  Qtransform = FALSE, ...)
+  L = NULL, presmooth = NULL, presmooth.opts = NULL, Xrange = range(X,
+  na.rm = T), Qtransform = FALSE, ...)
 }
 \arguments{
 \item{X}{functional predictors, expressed as an \code{N} by \code{J} matrix,
@@ -46,9 +46,7 @@ be desired to increase this slightly over the default of \code{range(X)} if conc
 for future observed curves that take values outside of \code{range(X)}}
 
 \item{Qtransform}{logical; should the functional be transformed using the empirical cdf and
-applying a quantile transformation on each column of \code{X} prior to fitting?  This ensures
-\code{Xrange=c(0,1)}.  If \code{Qtransform=TRUE} and \code{presmooth=TRUE}, presmoothing is done prior
-to transforming the functional predictor}
+applying a quantile transformation on each column of \code{X} prior to fitting?}
 
 \item{...}{optional arguments for basis and penalization to be passed to the
   function indicated by \code{basistype}. These could include, for example,
@@ -65,10 +63,7 @@ A list with the following entries:
   \item{\code{tindname}}{the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}}
   \item{\code{Lname}}{the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}}
   \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{af}}
-  \item{\code{Qtranform}}{the \code{Qtransform} argument supplied to \code{af}}
   \item{\code{Xrange}}{the \code{Xrange} argument supplied to \code{af}}
-  \item{\code{ecdflist}}{a list containing one empirical cdf function from applying \code{\link{ecdf}}
-    to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}}
   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
     \code{\link{create.prep.func}}}
 }
@@ -92,20 +87,22 @@ DTI2 <- DTI1[complete.cases(DTI1),]
 ## order marginal difference penalties
 ## specifying gamma > 1 enforces more smoothing when using
 ## GCV to choose smoothing parameters
-fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3))),
-            method="GCV.Cp", gamma=1.2, data=DTI1)
+fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3)),
+                       presmooth="bspline", bs="ps"),
+            method="GCV.Cp", gamma=1.2, data=DTI2)
+plot(fit1, scheme=2)
 vis.pfr(fit1)
 
-
-## fgam term for the cca measurements plus an flm term for the rcst measurements
+## af term for the cca measurements plus an lf term for the rcst measurements
 ## leave out 10 samples for prediction
 test <- sample(nrow(DTI2), 10)
-fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,3), c(2,3))) +
+fit2 <- pfr(pasat ~ af(cca, k=c(7,7), m=list(c(2,2), c(2,2)), bs="ps",
+                       presmooth="fpca.face") +
                     lf(rcst, k=7, m=c(2,2), bs="ps"),
             method="GCV.Cp", gamma=1.2, data=DTI2[-test,])
 par(mfrow=c(1,2))
 plot(fit2, scheme=2, rug=FALSE)
-vis.pfr(fit2, af.term="cca", xval=.6)
+vis.pfr(fit2, select=1, xval=.6)
 pred <- predict(fit2, newdata = DTI2[test,], type='response', PredOutOfRange = TRUE)
 sqrt(mean((DTI2$pasat[test] - pred)^2))
 
@@ -115,12 +112,27 @@ sqrt(mean((DTI2$pasat[test] - pred)^2))
 DTI3 <- DTI[DTI$visit==1,]
 DTI3 <- DTI3[complete.cases(DTI3$rcst),]
 z1 <- rnorm(nrow(DTI3))
-fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), Qtransform=TRUE) +
+fit3 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), bs="ps",
+                      presmooth="fpca.face", Qtransform=TRUE) +
                     s(z1, k = 10), family="binomial", select=TRUE, data=DTI3)
 par(mfrow=c(1,2))
 plot(fit3, scheme=2, rug=FALSE)
 abline(h=0, col="green")
-vis.pfr(fit3, af.term="rcst", plot.type="contour")
+
+# 4 versions: fit with/without Qtransform, plotted with/without Qtransform
+fit4 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), bs="ps",
+                      presmooth="fpca.face", Qtransform=FALSE) +
+                    s(z1, k = 10), family="binomial", select=TRUE, data=DTI3)
+par(mfrow=c(2,2))
+zlms <- c(-7.2,4.3)
+plot(fit4, select=1, scheme=2, main="QT=FALSE", zlim=zlms, xlab="t", ylab="rcst")
+plot(fit4, select=1, scheme=2, Qtransform=TRUE, main="QT=FALSE", rug=FALSE,
+     zlim=zlms, xlab="t", ylab="p(rcst)")
+plot(fit3, select=1, scheme=2, main="QT=TRUE", zlim=zlms, xlab="t", ylab="rcst")
+plot(fit3, select=1, scheme=2, Qtransform=TRUE, main="QT=TRUE", rug=FALSE,
+     zlim=zlms, xlab="t", ylab="p(rcst)")
+
+vis.pfr(fit3, select=1, plot.type="contour")
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,
