@@ -35,15 +35,15 @@ plot.pfr <- function(x, Qtransform=FALSE, ...) {
   pfr_plot.gam(x, ...)
 }
 
-locfcn <- function(bod, txt) {
-  loc <- which(sapply(bod, function(x)
-    any(grepl(x, pattern=txt, fixed=TRUE))))
-  ret <- if (length(loc)) {
-    newbod <- bod[[loc]]
-    c(loc, locfcn(newbod, txt))
-  } else c()
-  ret
-}
+# locfcn <- function(bod, txt) {
+#   loc <- which(sapply(bod, function(x)
+#     any(grepl(x, pattern=txt, fixed=TRUE))))
+#   ret <- if (length(loc)) {
+#     newbod <- bod[[loc]]
+#     c(loc, locfcn(newbod, txt))
+#   } else c()
+#   ret
+# }
 
 
 #' Local version of \code{plot.gam}
