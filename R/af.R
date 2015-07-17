@@ -67,11 +67,10 @@
 #' ## specifying gamma > 1 enforces more smoothing when using
 #' ## GCV to choose smoothing parameters
 #' fit1 <- pfr(pasat ~ af(cca, k=c(8,8), m=list(c(2,3), c(2,3)),
-#'                        presmooth="fpca.face", bs="ps"),
+#'                        presmooth="bspline", bs="ps"),
 #'             method="GCV.Cp", gamma=1.2, data=DTI2)
 #' plot(fit1, scheme=2)
 #' vis.pfr(fit1)
-#'
 #'
 #' ## af term for the cca measurements plus an lf term for the rcst measurements
 #' ## leave out 10 samples for prediction
@@ -99,9 +98,18 @@
 #' plot(fit3, scheme=2, rug=FALSE)
 #' abline(h=0, col="green")
 #' 
-#' # Plot on untransformed and quantile-transformed scales side-by-side
-#' plot(fit3, select=1, scheme=2)
-#' plot(fit3, select=1, scheme=2, Qtransform=TRUE)
+#' # 4 versions: fit with/without Qtransform, plotted with/without Qtransform
+#' fit4 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), bs="ps",
+#'                       presmooth="fpca.face", Qtransform=FALSE) +
+#'                     s(z1, k = 10), family="binomial", select=TRUE, data=DTI3)
+#' par(mfrow=c(2,2))
+#' zlms <- c(-7.2,4.3)
+#' plot(fit4, select=1, scheme=2, main="QT=FALSE", zlim=zlms, xlab="t", ylab="rcst")
+#' plot(fit4, select=1, scheme=2, Qtransform=TRUE, main="QT=FALSE", rug=FALSE,
+#'      zlim=zlms, xlab="t", ylab="p(rcst)")
+#' plot(fit3, select=1, scheme=2, main="QT=TRUE", zlim=zlms, xlab="t", ylab="rcst")
+#' plot(fit3, select=1, scheme=2, Qtransform=TRUE, main="QT=TRUE", rug=FALSE,
+#'      zlim=zlms, xlab="t", ylab="p(rcst)")
 #' 
 #' vis.pfr(fit3, select=1, plot.type="contour")
 #' 

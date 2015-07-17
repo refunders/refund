@@ -9,10 +9,11 @@
 \arguments{
 \item{x}{a fitted \code{pfr}-object}
 
-\item{Qtransform}{For additive functional terms fit with
-\code{af(Qtransform=TRUE)}, \code{TRUE} indicates the coefficient should be
-plotted on the quantile-transformed scale, whereas \code{FALSE} indicates
-the scale of the original data}
+\item{Qtransform}{For additive functional terms, \code{TRUE} indicates the
+coefficient should be plotted on the quantile-transformed scale, whereas
+\code{FALSE} indicates the scale of the original data. Note this is
+different from the \code{Qtransform} arguemnt of \code{af}, which specifies
+the scale on which the term is fit.}
 
 \item{...}{arguments handed over to \code{\link[mgcv]{plot.gam}}}
 }
@@ -24,8 +25,8 @@ can be used to generate customized plots.
 \description{
 This function plots the smooth coefficients of a pfr object. These include
 functional coefficients as well as any smooths of scalar covariates. The
-function dispatches to \code{plot.gam}, after injecting a small amount of
-code into the function to handle special cases.
+function dispatches to \code{pfr_plot.gam}, which is our local copy of
+\code{\link[mgcv]{plot.gam}} with some minor changes.
 }
 \author{
 Jonathan Gellar

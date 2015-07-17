@@ -7,11 +7,11 @@
 \usage{
 \method{coefficients}{pfr}(object, select = 1, coords = NULL, n = NULL,
   se = ifelse(length(object$smooth) & select, TRUE, FALSE),
-  seWithMean = FALSE, useVc = TRUE, ...)
+  seWithMean = FALSE, useVc = TRUE, Qtransform = FALSE, ...)
 
 \method{coef}{pfr}(object, select = 1, coords = NULL, n = NULL,
   se = ifelse(length(object$smooth) & select, TRUE, FALSE),
-  seWithMean = FALSE, useVc = TRUE, ...)
+  seWithMean = FALSE, useVc = TRUE, Qtransform = FALSE, ...)
 }
 \arguments{
 \item{object}{return object from \code{\link{pfr}}}
@@ -40,6 +40,12 @@ better coverage performance for GAMs.}
 \item{useVc}{if \code{TRUE}, standard errors are calculated using a covariance
 matrix that has been corrected for smoothing parameter uncertainty. This
 matrix will only be available under ML or REML smoothing.}
+
+\item{Qtransform}{For additive functional terms, \code{TRUE} indicates the
+coefficient should be extracted on the quantile-transformed scale, whereas
+\code{FALSE} indicates the scale of the original data. Note this is
+different from the \code{Qtransform} arguemnt of \code{af}, which specifies
+the scale on which the term is fit.}
 
 \item{...}{these arguments are ignored}
 }

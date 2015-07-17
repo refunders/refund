@@ -2,14 +2,15 @@
 #' 
 #' This function plots the smooth coefficients of a pfr object. These include
 #' functional coefficients as well as any smooths of scalar covariates. The
-#' function dispatches to \code{plot.gam}, after injecting a small amount of
-#' code into the function to handle special cases.
+#' function dispatches to \code{pfr_plot.gam}, which is our local copy of
+#' \code{\link[mgcv]{plot.gam}} with some minor changes.
 #' 
 #' @param x a fitted \code{pfr}-object
-#' @param Qtransform For additive functional terms fit with
-#'   \code{af(Qtransform=TRUE)}, \code{TRUE} indicates the coefficient should be
-#'   plotted on the quantile-transformed scale, whereas \code{FALSE} indicates
-#'   the scale of the original data
+#' @param Qtransform For additive functional terms, \code{TRUE} indicates the
+#'   coefficient should be plotted on the quantile-transformed scale, whereas
+#'   \code{FALSE} indicates the scale of the original data. Note this is
+#'   different from the \code{Qtransform} arguemnt of \code{af}, which specifies
+#'   the scale on which the term is fit.
 #' @param ... arguments handed over to \code{\link[mgcv]{plot.gam}}
 #' 
 #' @return This function's main purpose is its side effect of generating plots.
@@ -23,14 +24,15 @@
 
 plot.pfr <- function(x, Qtransform=FALSE, ...) {
   class(x) <- class(x)[-1]
+  smooth.types <- x$pfr$termtype[x$pfr$termtype != "par"]
   
   if (Qtransform) {
     # Flag the smooths
     for (i in 1:length(x$smooth))
-      if (!is.null(x$smooth[[i]]$QT))
-        x$smooth[[i]]$QTplot <- TRUE
+      if (smooth.types[i]=="af")
+        x$smooth[[i]]$Qplot <- TRUE
   }
-  my.plot.gam(x, ...)
+  pfr_plot.gam(x, ...)
 }
 
 locfcn <- function(bod, txt) {
@@ -45,7 +47,15 @@ locfcn <- function(bod, txt) {
 
 plot.random.effect <- getFromNamespace("plot.random.effect", "mgcv")
 #plot.mgcv.smooth <- getFromNamespace("plot.mgcv.smooth", "mgcv")
-my.plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0, 
+
+#' Local version of \code{plot.gam}
+#' 
+#' These internal functions were copied from \code{mgcv}, with some minor
+#' changes to allow for plotting \code{pfr} objects.
+#' 
+#' @seealso \code{\link[mgcv]{plot.gam}}
+#' @keywords internal
+pfr_plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0, 
                          select = NULL, scale = -1, n = 100, n2 = 40, pers = FALSE, 
                          theta = 30, phi = 30, jit = FALSE, xlab = NULL, ylab = NULL, 
                          main = NULL, ylim = NULL, xlim = NULL, too.far = 0.1, all.terms = FALSE, 
@@ -145,7 +155,9 @@ my.plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
       if (is.null(P)) 
         pd[[i]] <- list(plot.me = FALSE)
       else if (is.null(P$fit)) {
-        if (!is.null(x$smooth[[i]]$QT) & is.null(x$smooth[[i]]$QTplot)) {
+        if (!is.null(x$smooth[[i]]$QT) & is.null(x$smooth[[i]]$Qplot)) {
+          # af term that was fit on quantile scale, but plotting on raw scale
+          # need to get rid of coordinates outside original data range
           tf <- x$smooth[[i]]$tf[[1]]
           if (!is.null(tf)) {
             rna <- environment(tf)$retNA
@@ -155,9 +167,6 @@ my.plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
             environment(tf)$retNA <- rna
             if (!is.null(P$exclude))
               P$exclude[new.exclude] <- TRUE
-            #P$fit[new.exclude] <- NA
-            #if (se && P$se)
-            #  P$se.fit[new.exclude] <- NA
           }
         }
         
@@ -325,6 +334,9 @@ my.plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
   invisible(pd)
 }
 
+
+#' @rdname pfr_plot.gam
+#' @keywords internal
 plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1, 
                               se2.mult = 2, partial.resids = FALSE, rug = TRUE, se = TRUE, 
                               scale = -1, n = 100, n2 = 40, pers = FALSE, theta = 30, phi = 30, 
@@ -490,15 +502,19 @@ plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1
         exclude <- mgcv::exclude.too.far(xx, yy, raw$x, raw$y, dist = too.far)
       else exclude <- rep(FALSE, n2 * n2)
       
-      if (!is.null(x$QTplot)) {
-        tf <- x$tf[[1]]
-        raw$y <- tf(raw$x, raw$y)
+      if (!is.null(x$Qplot)) {
+        # Transform raw data to quantile scale
+        x0 <- raw$y
+        t0 <- raw$x
+        raw$y <- QTFunc(t0, x0, retNA=FALSE)
+        
+        # Create grid on quantile scale
         ym <- seq(min(raw$y), max(raw$y), length = n2)
         yy <- rep(ym, rep(n2, n2))
         if (too.far > 0)
           exclude <- mgcv::exclude.too.far(xx, yy, raw$x, raw$y, dist = too.far)
-        x0 <- environment(tf)$x0
-        t0 <- environment(tf)$t0
+        
+        # Transform back to data scale for prediction
         idx <- factor(t0)
         newidx <- factor(xx)
         tmp <- tapply(x0, t0, function(y) y,
@@ -532,6 +548,9 @@ plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1
       }
       
       X <- PredictMat(x, dat)
+      
+      #if (!is.null(x$Qplot) & is.null())
+      
       if (is.null(main)) {
         main <- label
       }
@@ -626,8 +645,8 @@ plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1
                                    n2, n2), add = TRUE, col = 3, ...)
           if (rug) {
             if (is.null(list(...)[["pch"]])) 
-              points(P$raw$x, P$raw$y, pch = ".", ...)
-            else points(P$raw$x, P$raw$y, ...)
+              points(P$raw$x, P$raw$y, pch = ".")
+            else points(P$raw$x, P$raw$y)
           }
         }
         else {

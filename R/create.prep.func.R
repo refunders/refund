@@ -53,7 +53,7 @@ create.prep.func = function(X, argvals=seq(0, 1, length = ncol(X)),
   } else if (method == "bspline"){
     function(newX = NULL, argvals. = argvals, options. = options){
       nbasis = ifelse(is.null(options.$nbasis), 10, options.$nbasis)
-      Bspline = bs(x = argvals., degree=3, df=nbasis)
+      Bspline = bs(x = argvals., degree=3, df=nbasis, intercept = TRUE)
       processed = matrix(NA, nrow = nrow(newX), ncol = ncol(newX))
       for(i in 1:nrow(newX)){
         processed[i,] = Bspline %*% coef(lm(newX[i, ]~ 0+Bspline ))

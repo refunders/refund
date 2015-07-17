@@ -25,10 +25,11 @@
 #' @param useVc if \code{TRUE}, standard errors are calculated using a covariance
 #'   matrix that has been corrected for smoothing parameter uncertainty. This
 #'   matrix will only be available under ML or REML smoothing.
-#' @param Qtransform For additive functional terms fit with
-#'   \code{af(Qtransform=TRUE)}, \code{TRUE} indicates the coefficient should be
-#'   extracted on the quantile-transformed scale, whereas \code{FALSE} indicates
-#'   the scale of the original data
+#' @param Qtransform For additive functional terms, \code{TRUE} indicates the
+#'   coefficient should be extracted on the quantile-transformed scale, whereas
+#'   \code{FALSE} indicates the scale of the original data. Note this is
+#'   different from the \code{Qtransform} arguemnt of \code{af}, which specifies
+#'   the scale on which the term is fit.
 # @param limit if \code{TRUE}, checks if a \code{limits} function was
 #   used to generate the term, and if so, applies the function to the
 #   output to only produce estimates over regions that were within "limits".
@@ -64,6 +65,7 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
   
   object$coefficients[is.na(object$coefficients)] <- 0 #Zero out singular coefs
   smooth.i <- object$smooth[[select]]
+  smooth.type <- object$pfr$termtype[object$pfr$termtype != "par"][select]
   
   coef.i <- if ("random.effect" %in% class(smooth.i)) {
     stop("Random effects not yet implemented for coef.pfr")
@@ -78,7 +80,8 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
       else if (length(n)!=smooth.i$dim)
         stop("length of n must match the number of terms of the smooth")
       coords <- mapply(function(x,y,z) {
-        if (Qtransform & !is.null(smooth.i$QT) & z==2)
+        if (Qtransform & smooth.type=="af" & z==2)
+          #        if (Qtransform & !is.null(smooth.i$QT) & z==2)
           seq(0,1,length=y)
         else
           seq(min(x), max(x), length=y)
@@ -129,10 +132,16 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
     if (smooth.i$by!="NA")
       coef.i[smooth.i$by] <- 1
     
-    if (Qtransform & !is.null(smooth.i$QT)) {
-      tf <- smooth.i$tf[[1]]
-      x0 <- environment(tf)$x0
-      t0 <- environment(tf)$t0
+    if (Qtransform & smooth.type=="af") {
+      if (is.null(smooth.i$QT)) {
+        x0 <- as.vector(object$model[[smooth.i$term[2]]])
+        t0 <- as.vector(object$model[[smooth.i$term[1]]])
+      } else {
+        tf <- smooth.i$tf[[1]]
+        x0 <- environment(tf)$x0
+        t0 <- environment(tf)$t0
+      }
+      
       idx <- factor(t0)
       newidx <- factor(coef.i[,1])
       oldx = newx <- coef.i[,2]
@@ -207,7 +216,7 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
   
   # Modify coordinate names
   names(coef.i)[1:smooth.i$dim] <- sapply(smooth.i$term, modify_nm)
-  if (Qtransform & !is.null(smooth.i$QT)) {
+  if (Qtransform & smooth.type=="af") {
     coef.i[,2] <- oldx
     names(coef.i)[2] <- paste0(names(coef.i)[2], ".quantile")
   }    
