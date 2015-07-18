@@ -4,14 +4,17 @@
 #' \code{\link{pfr}} formula, where \eqn{\beta(t)} is estimated with
 #' structured penalties (Randloph et al., 2012).
 #'
-#' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
+#' @param X functional predictors, typically expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
-#'   indicated by \code{NA} values.
+#'   indicated by \code{NA} values. Alternatively, can be an object of class
+#'   \code{"fd"}; see \code{\link[fda]{fd}}.
 #' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 #'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
 #'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
-#'   as a matrix allows for different observations times for each subject.
+#'   as a matrix allows for different observations times for each subject. If
+#'   \code{NULL}, defaults to an equally-spaced grid between 0 or 1 (or within
+#'   \code{X$basis$rangeval} if \code{X} is a \code{fd} object.)
 #' @param pentype the type of penalty to apply, one of \code{"RIDGE"}, \code{"D"},
 #'  \code{"DECOMP"}, or \code{"USER"}; see Details.
 #' @param Q matrix \eqn{Q} used for \code{pentype="DECOMP"}; see Details.
@@ -93,7 +96,7 @@
 #'
 #'
 
-peer <- function(X, argvals=seq(0, 1, l=ncol(X)), pentype="RIDGE",
+peer <- function(X, argvals=NULL, pentype="RIDGE",
                  Q=NULL, phia=10^3, L=NULL,  ...) {
 
   # Catch if peer_old syntax is used
@@ -110,6 +113,16 @@ peer <- function(X, argvals=seq(0, 1, l=ncol(X)), pentype="RIDGE",
     ret <- eval(call, envir=parent.frame())
     return(ret)
   }
+  
+  if (class(X)=="fd") {
+    # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
+    if (is.null(argvals))
+      argvals <- argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],
+                                length = length(X$fdnames[[1]]))
+    X <- t(eval.fd(argvals, X))
+  } else if (is.null(argvals))
+    argvals <- seq(0, 1, l = ncol(X))
+  
   if("xt" %in% names(dots)) stop("peer() does not accept an xt-argument.")
   xt <- call("list", pentype=pentype, W=substitute(X), phia=phia, L=L,
     Q=substitute(Q))

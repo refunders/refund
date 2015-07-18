@@ -6,10 +6,17 @@
 #' constructed by \code{\link{pfr}}. Currently only one-dimensional functions
 #' are allowed.
 #' 
-#' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
+#' @param X functional predictors, typically expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
-#'   indicated by \code{NA} values.
+#'   indicated by \code{NA} values. Alternatively, can be an object of class
+#'   \code{"fd"}; see \code{\link[fda]{fd}}.
+#' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+#'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+#'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+#'   as a matrix allows for different observations times for each subject. If
+#'   \code{NULL}, defaults to an equally-spaced grid between 0 or 1 (or within
+#'   \code{X$basis$rangeval} if \code{X} is a \code{fd} object.)
 #' @param method the method used for finding principal components. The default
 #'   is an unconstrained SVD of the \eqn{XB} matrix. Alternatives include
 #'   constrained (functional) principal components approaches
@@ -82,15 +89,26 @@
 #' @seealso \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
 #' @export
 
-fpc <- function(X, method=c("svd", "fpca.sc", "fpca.face", "fpca.ssvd"),
+fpc <- function(X, argvals=NULL, 
+                method=c("svd", "fpca.sc", "fpca.face", "fpca.ssvd"),
                 ncomp=NULL, pve=0.99, penalize=(method=="svd"),
                 bs="ps", k=40, ...) {
   method <- match.arg(method)
+  
+  if (class(X)=="fd") {
+    # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
+    if (is.null(argvals))
+      argvals <- argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],
+                                length = length(X$fdnames[[1]]))
+    X <- t(eval.fd(argvals, X))
+  } else if (is.null(argvals))
+    argvals <- seq(0, 1, l = ncol(X))
+  
   if("xt" %in% names(list(...)))
     stop("fpc() does not accept an xt-argument.")
   xt <- call("list", X=substitute(X), method=method, npc=ncomp, pve=pve,
              penalize=penalize, bs=bs)
-  lf (X=X, bs="fpc", k=k, xt=xt, ...)
+  lf (X=X, argvals=argvals, bs="fpc", k=k, xt=xt, ...)
 }
 
 

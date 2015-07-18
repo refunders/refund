@@ -7,14 +7,17 @@
 #' for a list of bivariate basis and penalty options; the default is a tensor
 #' product basis with marginal cubic regression splines for estimating \eqn{F(x,t)}.
 #' 
-#' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
+#' @param X functional predictors, typically expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
-#'   indicated by \code{NA} values.
+#'   indicated by \code{NA} values. Alternatively, can be an object of class
+#'   \code{"fd"}; see \code{\link[fda]{fd}}.
 #' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 #'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
 #'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
-#'   as a matrix allows for different observations times for each subject.
+#'   as a matrix allows for different observations times for each subject. If
+#'   \code{NULL}, defaults to an equally-spaced grid between 0 or 1 (or within
+#'   \code{X$basis$rangeval} if \code{X} is a \code{fd} object.)
 #' @param xind same as argvals. It will not be supported in the next version of refund.
 #' @param basistype defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
 #'   use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
@@ -125,7 +128,7 @@
 #' @importFrom utils modifyList getFromNamespace
 #' @export
 
-af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
+af <- function(X, argvals = NULL, xind = NULL,
                basistype = c("te", "t2", "s"),
                integration = c("simpson", "trapezoidal", "riemann"),
                L = NULL, presmooth = NULL, presmooth.opts = NULL,
@@ -152,6 +155,16 @@ af <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
     cat("Warnings: xind argument is renamed as argvals and will not be supported
         in the next version of refund.")
   }
+  
+  if (class(X)=="fd") {
+    # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
+    if (is.null(argvals))
+      argvals <- argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],
+                                length = length(X$fdnames[[1]]))
+    X <- t(eval.fd(argvals, X))
+  } else if (is.null(argvals))
+    argvals <- seq(0, 1, l = ncol(X))
+  xind = argvals
   
   xind = argvals
   n=nrow(X)

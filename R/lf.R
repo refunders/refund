@@ -9,14 +9,17 @@
 #' default is thin-plate regression splines, as this is the default option
 #' for \code{\link[mgcv]{s}}.
 #' 
-#' @param X functional predictors, expressed as an \code{N} by \code{J} matrix,
+#' @param X functional predictors, typically expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
-#'   indicated by \code{NA} values.
+#'   indicated by \code{NA} values. Alternatively, can be an object of class
+#'   \code{"fd"}; see \code{\link[fda]{fd}}.
 #' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 #'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
 #'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
-#'   as a matrix allows for different observations times for each subject.
+#'   as a matrix allows for different observations times for each subject. If
+#'   \code{NULL}, defaults to an equally-spaced grid between 0 or 1 (or within
+#'   \code{X$basis$rangeval} if \code{X} is a \code{fd} object.)
 #' @param xind same as argvals. It will not be supported in the next version of refund.
 #' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule
 #'   for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
@@ -81,11 +84,11 @@
 #' 
 #' @seealso \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
 #'  and \code{\link{linear.functional.terms}}; \code{\link{pfr}} for additonal examples
-#' @importFrom fda create.bspline.basis smooth.basisPar eval.fd
+#' @importFrom fda eval.fd
 #' @export lf
 
 
-lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
+lf <- function(X, argvals = NULL, xind = NULL,
                integration = c("simpson", "trapezoidal", "riemann"),
                L = NULL, presmooth = NULL, presmooth.opts = NULL, ...) {
   
@@ -108,7 +111,17 @@ lf <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
         version of refund.")
     argvals = xind
   }
+  
+  if (class(X)=="fd") {
+    # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
+    if (is.null(argvals))
+      argvals <- argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],
+                                length = length(X$fdnames[[1]]))
+    X <- t(eval.fd(argvals, X))
+  } else if (is.null(argvals))
+    argvals <- seq(0, 1, l = ncol(X))
   xind = argvals
+  
   
   n=nrow(X)
   nt=ncol(X)

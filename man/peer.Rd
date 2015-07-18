@@ -4,19 +4,22 @@
 \alias{peer}
 \title{Construct a PEER regression term in a \code{pfr} formula}
 \usage{
-peer(X, argvals = seq(0, 1, l = ncol(X)), pentype = "RIDGE", Q = NULL,
-  phia = 10^3, L = NULL, ...)
+peer(X, argvals = NULL, pentype = "RIDGE", Q = NULL, phia = 10^3,
+  L = NULL, ...)
 }
 \arguments{
-\item{X}{functional predictors, expressed as an \code{N} by \code{J} matrix,
+\item{X}{functional predictors, typically expressed as an \code{N} by \code{J} matrix,
 where \code{N} is the number of columns and \code{J} is the number of
 evaluation points. May include missing/sparse functions, which are
-indicated by \code{NA} values.}
+indicated by \code{NA} values. Alternatively, can be an object of class
+\code{"fd"}; see \code{\link[fda]{fd}}.}
 
 \item{argvals}{indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
 an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
-as a matrix allows for different observations times for each subject.}
+as a matrix allows for different observations times for each subject. If
+\code{NULL}, defaults to an equally-spaced grid between 0 or 1 (or within
+\code{X$basis$rangeval} if \code{X} is a \code{fd} object.)}
 
 \item{pentype}{the type of penalty to apply, one of \code{"RIDGE"}, \code{"D"},
 \code{"DECOMP"}, or \code{"USER"}; see Details.}
