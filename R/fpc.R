@@ -40,17 +40,45 @@
 #' formula. \code{fpc} simply calls \code{lf} with the appropriate options for
 #' the \code{fpc} basis and penalty construction.
 #' 
-#' The method is the FPCR-R method of Reiss and Ogden (2007). This
-#'   method is also implemented in \code{\link{fpcr}}; here we implement the
+#' This function implements both the FPCR-R and FPCR-C methods of Reiss and
+#' Ogden (2007). Both methods consist of the following steps:
+#' \enumerate{
+#'  \item project \eqn{X} onto a spline basis \eqn{B}
+#'  \item perform a principal components decomposition of \eqn{XB}
+#'  \item use those PC's as the basis in fitting a (generalized) functional
+#'    linear model
+#' }
+#' 
+#' This implementation provides options for each of these steps. The basis
+#' for in step 1 can be specified using the arguemnts \code{bs} and \code{k},
+#' as well as other options via \code{...}; see \code{\link[mgcv]{s}} for
+#' these options. The type of PC-decomposition is specified with \code{method}.
+#' And the FLM can be fit either penalized or unpenalized via \code{penalize}.
+#' 
+#' The default is FPCR-R, which uses a b-spline basis, an unconstrained 
+#' principal components decomposition using \code{\link{svd}}, and the FLM
+#' fit with a second-order difference penalty. FPCR-C can be selected by
+#' using a different option for \code{method}, indicating a constrained
+#' ("functional") PC decomposition, and by default an unpeanlized fit of the
+#' FLM.
+#' 
+#' FPCR-R is also implemented in \code{\link{fpcr}}; here we implement the
 #'   method for inclusion in a \code{pfr} formula.
 #' 
 #' @return The result of a call to \code{\link{lf}}.
 #' 
 #' @references
+#' Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
+#' dissertation, Department of Biostatistics, Columbia University. Available
+#' at http://works.bepress.com/phil_reiss/11/.
+#'
 #' Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
 #' regression and functional partial least squares. \emph{Journal of the
 #' American Statistical Association}, 102, 984-996.
 #' 
+#' Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
+#' with images as predictors. \emph{Biometrics}, 66, 61-69.
+#'
 #' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Phil Reiss
 #'   \email{phil.reiss@@nyumc.org}, Lan Huo \email{lan.huo@@nyumc.org}, and
 #'   Lei Huang \email{huangracer@@gmail.com}
@@ -58,12 +86,6 @@
 #' @examples
 #' data(gasoline)
 #' par(mfrow=c(3,1))
-#' 
-#' exists("coefficients")
-#' exists("coefficients.pfr")
-#' exists("coef")
-#' exists("coef.pfr")
-#' exists("coef.pffr")
 #' 
 #' # Fit PFCR_R
 #' gasmod1 <- pfr(octane ~ fpc(NIR, ncomp=30), data=gasoline)

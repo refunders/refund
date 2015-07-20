@@ -34,11 +34,13 @@ A fitted pfr-object, which is a \code{\link{gam}}-object with some
 }
 \description{
 Implements various approaches to penalized scalar-on-function regression.
-These techniques include Penalized Functional Regression (Goldsmith et al.,
-2011),
+These techniques include
+Penalized Functional Regression (Goldsmith et al., 2011),
+Longitudinal Penalized Functional Regression (Goldsmith, et al., 2012),
 Functional Principal Component Regression (Reiss and Ogden, 2007),
-Functional Generalized Additive Models (McLean et al., 2013), Partially
-Empirical Eigenvectors for Regression (Randolph et al., 2012), and
+Partially Empirical Eigenvectors for Regression (Randolph et al., 2012),
+Functional Generalized Additive Models (McLean et al., 2013),
+and
 Variable-Domain Functional Regression (Gellar et al., 2014).
 This function is a wrapper for mgcv's \code{\link{gam}} and its siblings
 to fit models with a scalar (but not necessarily continuous) response.
@@ -120,23 +122,13 @@ penalized functional regression for cognitive outcomes on neuronal tract
 measurements. \emph{Journal of the Royal Statistical Society: Series C},
 61(3), 453-469.
 
-Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
-functional linear models - partially empirical eigenvectors for regression.
-\emph{Electronic Journal of Statistics}, 6, 323-353.
-
-Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
-functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
-
-Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
-dissertation, Department of Biostatistics, Columbia University. Available
-at http://works.bepress.com/phil_reiss/11/.
-
 Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
 regression and functional partial least squares. \emph{Journal of the
 American Statistical Association}, 102, 984-996.
 
-Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
-with images as predictors. \emph{Biometrics}, 66, 61-69.
+Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
+functional linear models - partially empirical eigenvectors for regression.
+\emph{Electronic Journal of Statistics}, 6, 323-353.
 
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of

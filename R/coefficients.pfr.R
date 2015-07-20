@@ -35,14 +35,11 @@
 #   output to only produce estimates over regions that were within "limits".
 #' @param ... these arguments are ignored
 #'   
-#' @details
-#' Should add a description here about entering coordinates.
-#'   
 #' @return a data frame containing the evaluation points, 
 #'    coefficient function values and optionally the SE's for the term indicated
 #'    by \code{select}.
 #' 
-#' @author Fabian Scheipl and Jonathan Gellar
+#' @author Jonathan Gellar and Fabian Scheipl
 #' 
 #' @references
 #' Marra, G and S.N. Wood (2012) Coverage Properties of Confidence Intervals for
@@ -117,8 +114,9 @@ coefficients.pfr <- function(object, select=1, coords=NULL, n=NULL,
             n <- sapply(object$model[newtrms], ndefault)
           else if (length(n)==1)
             n <- rep(n, length(newtrms))
-          else
+          else if (length(n) != length(newtrms))
             stop("length(n) must match the number of arguments not included in coords")
+          # Create new coordinates for newtrms based on n
           newcoords <- mapply(function(x,y) {
             seq(min(x), max(x), length=y)
           }, object$model[newtrms], n, SIMPLIFY=FALSE)

@@ -60,11 +60,8 @@ particular smooth functions resulting from including functional terms specified
 with \code{lf}, \code{af}, etc. It can also be used to extract smooths
 genereated using \code{mgcv}'s \code{s}, \code{te}, or \code{t2}.
 }
-\details{
-Should add a description here about entering coordinates.
-}
 \author{
-Fabian Scheipl and Jonathan Gellar
+Jonathan Gellar and Fabian Scheipl
 }
 \references{
 Marra, G and S.N. Wood (2012) Coverage Properties of Confidence Intervals for
