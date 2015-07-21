@@ -88,12 +88,13 @@
 #' @export lf
 
 
-lf <- function(X, argvals = NULL, xind = NULL,
+lf <- function(..., argvals = NULL, xind = NULL,
                integration = c("simpson", "trapezoidal", "riemann"),
-               L = NULL, presmooth = NULL, presmooth.opts = NULL, ...) {
+               L = NULL, presmooth = NULL, presmooth.opts = NULL) {
+  
+  dots <- list(...)
   
   # Catch if lf_old syntax is used
-  dots <- list(...)
   dots.unmatched <- names(dots)[!(names(dots) %in% names(formals(s)))]
   if (any(dots.unmatched %in% names(formals(lf_old))) | is.logical(presmooth)) {
     warning(paste0("The interface for lf() has changed, see ?lf for details. ",
@@ -109,17 +110,41 @@ lf <- function(X, argvals = NULL, xind = NULL,
   if (!is.null(xind)) {
     cat("Argument xind is placed by argvals. xind will not be supported in the next
         version of refund.")
-    argvals = xind
+    if (is.null(argvals)) argvals <- xind
   }
   
-  if (class(X)=="fd") {
-    # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
-    if (is.null(argvals))
-      argvals <- argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],
-                                length = length(X$fdnames[[1]]))
-    X <- t(eval.fd(argvals, X))
-  } else if (is.null(argvals))
-    argvals <- seq(0, 1, l = ncol(X))
+  # Seperate data from extra arguments
+  is.data <- if (is.null(names(dots))) rep(TRUE, length(dots)) else names(dots)==""
+  data <- dots[ is.data]
+  dots <- dots[!is.data]
+  datnms <- sapply(pryr::dots(...)[is.data], deparse)
+  
+  # Convert fd objects to matrices
+  for (i in 1:length(data)) {
+    data.i <- data[[i]]
+    if (class(data.i)=="fd") {
+      stop("Not yet implemented - need to figure out argvals")
+      if (is.null(argvals))
+        argvals <- argvals <- seq(data.i$basis$rangeval[1], data.i$basis$rangeval[2],
+                                  length = length(data.i$fdnames[[1]]))
+      X <- t(eval.fd(argvals.i, data.i))
+    }
+  }
+  
+  # Separate functional and scalar data
+  is.f <- sapply(data, function(x) !is.null(nrow(x)))
+  data.f <- data[ is.f]
+  data.s <- data[!is.f]
+  
+  # Check variable lengths
+  nobs <- unlist(c(sapply(data.f, function(x) dim(x)[1]), sapply(data.s, length)))
+  if (!all(length(nobs)>1, var(nobs)>0))
+    stop("lf variables have different lengths")
+  
+  # Set up argvals, and convert to matrices
+  
+  
+  
   xind = argvals
   
   
