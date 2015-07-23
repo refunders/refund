@@ -35,12 +35,26 @@ residual curve error structure can be estimated using Bayesian FPCA or a
 Wishart prior. Model parameters can be estimated using a Gibbs sampler
 or variational Bayes.
 }
+\examples{
+\dontrun{
+data(DTI)
+DTI = subset(DTI, select = c(cca, case, pasat))
+DTI = DTI[complete.cases(DTI),]
+DTI$gender = factor(sample(c("male","female"), dim(DTI)[1], replace = TRUE))
+DTI$status = factor(sample(c("RRMS", "SPMS", "PPMS"), dim(DTI)[1], replace = TRUE))
+
+fosr.dti = bayes_fosr(cca ~ pasat, data = DTI)
+fosr.dti2 = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10)
+fosr.dti2 = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10, est.method = "Gibbs", cov.method = "Wishart")
+}
+}
 \author{
 Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
 }
 \references{
-Goldsmith, J., Kitago, T. (Under Review).
+Goldsmith, J., Kitago, T. (Accepted).
 Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 Function-on-Scalar Regression.
+Journal of the Royal Statistical Society: Series C.
 }
 

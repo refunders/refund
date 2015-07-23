@@ -8,7 +8,7 @@ Xt_siginv_X(tx, siginv, y = NULL)
 }
 \description{
 Internal function used compute the product
-`(X \otimes \Theta)^t (I \otimes \Sigma^{-1}) (X \otimes \Theta)`
+`(X otimes Theta)^t (I otimes Sigma^{-1}) (X otimes Theta)`
 in cross-sectional VB algorithm and Gibbs sampler
 }
 \author{
