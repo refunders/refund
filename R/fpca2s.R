@@ -19,10 +19,11 @@
 ##' regular sequence from 0 to 1.
 ##' @param smooth logical; defaults to TRUE, if NULL, no smoothing of
 ##' eigenvectors.
-##' @return A list with components \item{Yhat}{predicted data matrix}
+##' @return An \code{fpca} object with components \item{Yhat}{predicted data matrix}
+##' \item{Y}{Observed data}
 ##' \item{scores}{matrix of scores} \item{mu}{mean function} \item{npc}{number
-##' of principal components} \item{eigenvectors}{matrix of eigenvectors}
-##' \item{eigenvalues}{vector of eigenvalues}
+##' of principal components} \item{efunctions}{matrix of eigenvectors}
+##' \item{evalues}{vector of eigenvalues}
 ##' @author Luo Xiao \email{lxiao@@jhsph.edu}
 ##' @export
 ##' @importFrom stats smooth.spline
@@ -150,5 +151,14 @@ function(Y, npc=NA, center = TRUE, argvals = NULL,smooth=TRUE){
   scores = X%*%U[,1:npc]/sqrt(J)
 
   Yhat = t(eigenvectors%*%t(scores)*sqrt(J) + meanX)
-  return(list(Yhat = Yhat,scores = scores, mu = meanX,eigenvectors=eigenvectors,eigenvalues=eigenvalues, npc=npc))
+  ret = list(Yhat = Yhat,
+             Y = Y,
+             scores = scores, 
+             mu = meanX,
+             efunctions=eigenvectors,
+             evalues=eigenvalues, 
+             npc=npc)
+  class(ret) = "fpca"
+  return(ret)
+  
 }
