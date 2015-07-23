@@ -27,24 +27,24 @@ vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = 
   # not used now but may need this later
   call <- match.call()
   
-  tf <- terms.formula(formula, specials = "re")
+  tf <- terms.formula(formula, specials = "re.fosr")
   trmstrings <- attr(tf, "term.labels")
   specials <- attr(tf, "specials")    # if there are no random effects this will be NULL
-  where.re <-specials$re - 1
+  where.re.fosr <-specials$re.fosr - 1
   
   # gets matrix of fixed and random effects
-  if(length(where.re)!=0){
-    mf_fixed <- model.frame(tf[-where.re], data = data)
-    formula = tf[-where.re]
+  if(length(where.re.fosr)!=0){
+    mf_fixed <- model.frame(tf[-where.re.fosr], data = data)
+    formula = tf[-where.re.fosr]
     
     # get random effects matrix
     responsename <- attr(tf, "variables")[2][[1]]
-    REs = eval(parse(text=attr(tf[where.re], "term.labels")))
+    REs = eval(parse(text=attr(tf[where.re.fosr], "term.labels")))
     
     # set up dataframe if data = NULL
     formula2 <- paste(responsename, "~", REs[[1]],sep = "")
     newfrml <- paste(responsename, "~", REs[[2]],sep = "")
-    newtrmstrings <- attr(tf[-where.re], "term.labels")
+    newtrmstrings <- attr(tf[-where.re.fosr], "term.labels")
     
     formula2 <- formula(paste(c(formula2, newtrmstrings), collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
@@ -277,14 +277,16 @@ vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = 
   r2.fr = 1 - (sum((Y - Yhat.subj)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
   r2.frp = 1 - (sum((Y - Yhat)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
     
-#  ret = list(beta.cur, beta.UB, beta.LB, psi.cur, pcaef.cur, ranef.cur, ranef.subj, Yhat, Yhat.subj, edf, 
-#             sigeps.pm, r2.f, r2.fr, r2.frp, mu.q.BW, mu.q.BZ, mu.q.Bpsi, mu.q.C, 
-#             1/((A + IJ*D/2)/(b.q.sigma.me)), 1/((A+I*Kt/2)/b.q.lambda.BZ), 1/((A+Kt/2)/b.q.lambda.BW), 1/((A+Kt/2)/b.q.lambda.Bpsi))
-#  names(ret) = c("beta.pm", "beta.UB", "beta.LB", "psi.pm", "pcaef.cur", "ranef.pm", "ranef.subj", "Yhat", "Yhat.subj", "edf", 
-#             "sigeps.pm", "r2.f", "r2.fr", "r2.frp", "BW.pm", "BZ.pm", "Bpsi.pm", "BC.pm", "sige.pm", "sigz.pm", "sigw.pm", "sigpsi.pm")
-
-  ret = list(beta.cur, beta.UB, beta.LB, fixef.cur, mt_fixed, data, psi.cur, sigeps.pm, lambda.pm)
-  names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data", "psi.hat", "sigeps.pm", "lambda.pm")
+  fpca.obj = list(Yhat = pcaef.cur,
+                  Y = Y - X %*% beta.cur,
+                  scores = mu.q.C %*% temp$v %*% diag(temp$d, Kp, Kp),
+                  mu = apply(Y - X %*% beta.cur, 2, mean, na.rm = TRUE),
+                  efunctions = t(psi.cur), 
+                  evalues = lambda.pm,
+                  npc = Kp)
+  class(fpca.obj) = "fpca"
+  ret = list(beta.cur, beta.UB, beta.LB, fixef.cur, mt_fixed, data, sigeps.pm, fpca.obj)
+  names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data", "sigeps.pm", "fpca.obj")
   class(ret) = "fosr"
   ret
 

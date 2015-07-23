@@ -34,24 +34,24 @@ gibbs_mult_fpca = function(formula, Kt=5, Kp = 2, data=NULL, N.iter = 5000, N.bu
   # not used now but may need this later
   call <- match.call()
   
-  tf <- terms.formula(formula, specials = "re")
+  tf <- terms.formula(formula, specials = "re.fosr")
   trmstrings <- attr(tf, "term.labels")
   specials <- attr(tf, "specials")    # if there are no random effects this will be NULL
-  where.re <-specials$re - 1
+  where.re.fosr <-specials$re.fosr - 1
   
   # gets matrix of fixed and random effects
-  if(length(where.re)!=0){
-    mf_fixed <- model.frame(tf[-where.re], data = data)
-    formula = tf[-where.re]
+  if(length(where.re.fosr)!=0){
+    mf_fixed <- model.frame(tf[-where.re.fosr], data = data)
+    formula = tf[-where.re.fosr]
     
     # get random effects matrix
     responsename <- attr(tf, "variables")[2][[1]]
-    REs = eval(parse(text=attr(tf[where.re], "term.labels")))
+    REs = eval(parse(text=attr(tf[where.re.fosr], "term.labels")))
     
     # set up dataframe if data = NULL
     formula2 <- paste(responsename, "~", REs[[1]],sep = "")
     newfrml <- paste(responsename, "~", REs[[2]],sep = "")
-    newtrmstrings <- attr(tf[-where.re], "term.labels")
+    newtrmstrings <- attr(tf[-where.re.fosr], "term.labels")
     
     formula2 <- formula(paste(c(formula2, newtrmstrings), collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))

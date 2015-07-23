@@ -38,24 +38,24 @@ vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1
   # not used now but may need this later
   call <- match.call()
   
-  tf <- terms.formula(formula, specials = "re")
+  tf <- terms.formula(formula, specials = "re.fosr")
   trmstrings <- attr(tf, "term.labels")
   specials <- attr(tf, "specials")    # if there are no random effects this will be NULL
-  where.re <-specials$re - 1
+  where.re.fosr <-specials$re.fosr - 1
   
   # gets matrix of fixed and random effects
-  if(length(where.re)!=0){
-    mf_fixed <- model.frame(tf[-where.re], data = data)
-    formula = tf[-where.re]
+  if(length(where.re.fosr)!=0){
+    mf_fixed <- model.frame(tf[-where.re.fosr], data = data)
+    formula = tf[-where.re.fosr]
     
     # get random effects matrix
     responsename <- attr(tf, "variables")[2][[1]]
-    REs = eval(parse(text=attr(tf[where.re], "term.labels")))
+    REs = eval(parse(text=attr(tf[where.re.fosr], "term.labels")))
     
     # set up dataframe if data = NULL
     formula2 <- paste(responsename, "~", REs[[1]],sep = "")
     newfrml <- paste(responsename, "~", REs[[2]],sep = "")
-    newtrmstrings <- attr(tf[-where.re], "term.labels")
+    newtrmstrings <- attr(tf[-where.re.fosr], "term.labels")
     
     formula2 <- formula(paste(c(formula2, newtrmstrings), collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
@@ -250,9 +250,17 @@ vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1
   temp = svd(t(psi.cur))
   psi.cur = t(temp$u)
   lambda.pm = temp$d
-  
-  ret = list(beta.cur, beta.UB, beta.LB, fixef.cur, mt_fixed, data, psi.cur, sigeps.pm, lambda.pm)
-  names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data", "psi.hat", "sigeps.pm", "lambda.pm")
+
+  fpca.obj = list(Yhat = pcaef.cur,
+                  Y = Y - X %*% beta.cur,
+                  scores = mu.q.C %*% temp$v %*% diag(temp$d, Kp, Kp),
+                  mu = apply(Y - X %*% beta.cur, 2, mean, na.rm = TRUE),
+                  efunctions = t(psi.cur), 
+                  evalues = lambda.pm,
+                  npc = Kp)
+  class(fpca.obj) = "fpca"
+  ret = list(beta.cur, beta.UB, beta.LB, fixef.cur, mt_fixed, data, sigeps.pm, fpca.obj)
+  names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data", "sigeps.pm", "fpca.obj")
   class(ret) = "fosr"
   ret
 
