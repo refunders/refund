@@ -304,19 +304,27 @@ model.matrix.pffr <- function (object, ...)
     predict(object, type = "lpmatrix", reformat=FALSE, ...)
 }
 
-#' Obtain residuals for a pffr fit
+#' Obtain residuals and fitted values for a pffr models
+#'
+#' See \code{\link{predict.pffr}} for alternative options to extract estimated
+#' values from a \code{pffr} object.
+#' "Fitted values" here refers to the estimated additive predictor values,
+#' these will not be on the scale of the response for models with link functions.
 #'
 #' @param object a fitted \code{pffr}-object
-#' @param reformat logical, defaults to TRUE. Should residuals be returned in \code{n x yindex} matrix
-#'    form (default for regular grid data) or in the shape of the originally supplied \code{ydata}
-#'    argument or (default for sparse/irregular data), or, if \code{FALSE}, simply in the
-#'    long vector shape returned by \code{resid.gam()}?
+#' @param reformat logical, defaults to TRUE. Should residuals be returned in
+#'   \code{n x yindex} matrix form (regular grid data) or, respectively, in the
+#'   shape of the originally supplied \code{ydata} argument (sparse/irregular
+#'   data), or, if \code{FALSE}, simply as a long vector as returned by
+#'   \code{resid.gam()}?
 #' @param ... other arguments, passed to \code{\link[mgcv]{residuals.gam}}.
 #'
-#' @return A matrix or vector of residuals
+#' @return A matrix or \code{ydata}-like \code{data.frame} or a vector of
+#'   residuals / fitted values (see \code{reformat}-argument)
 #' @export
 #' @importFrom mgcv residuals.gam
 #' @method residuals pffr
+#' @aliases fitted.pffr
 #' @author Fabian Scheipl
 residuals.pffr <- function (object, reformat=TRUE, ...)
 {
@@ -340,24 +348,9 @@ residuals.pffr <- function (object, reformat=TRUE, ...)
     return(ret)
 }
 
-#' Obtain fitted values for a pffr fit
-#'
-#' Returns the linear predictor for the model data. See \code{\link{predict.pffr}}
-#' for alternative options.
-#'
-#' @param object a fitted \code{pffr}-object
-#' @param reformat logical, defaults to TRUE. Should residuals be returned in \code{n x yindex} matrix
-#'    form (default for regular grid data) or in the shape of the originally supplied \code{ydata}
-#'    argument or (default for sparse/irregular data), or, if \code{FALSE}, simply in the
-#'    long vector shape returned by \code{resid.gam()}?
-#' @param ... not used
-#'
-#' @return A matrix (grid data) or \code{data.frame} (sparse/irregular data)
-#'  or vector (if \code{!reformat}) of fitted values
 #' @method fitted pffr
 #' @export
-#' @author Fabian Scheipl
-#  TODO: fix for non-grid data without newdata, yind
+#' @rdname residuals.pffr
 fitted.pffr <- function (object, reformat=TRUE, ...)
 {
     if (!inherits(object, "pffr"))
