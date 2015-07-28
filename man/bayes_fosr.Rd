@@ -37,15 +37,50 @@ or variational Bayes.
 }
 \examples{
 \dontrun{
+
+library(reshape2)
+library(ggplot2)
+
+##### Cross-sectional real-data examples #####
+
+## organize data
 data(DTI)
 DTI = subset(DTI, select = c(cca, case, pasat))
 DTI = DTI[complete.cases(DTI),]
 DTI$gender = factor(sample(c("male","female"), dim(DTI)[1], replace = TRUE))
 DTI$status = factor(sample(c("RRMS", "SPMS", "PPMS"), dim(DTI)[1], replace = TRUE))
 
-fosr.dti.default = bayes_fosr(cca ~ pasat, data = DTI)
-fosr.dti.vb = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10)
-fosr.dti.gibbs = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10, est.method = "Gibbs", cov.method = "Wishart")
+## fit models
+default = bayes_fosr(cca ~ pasat, data = DTI)
+VB = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10)
+Gibbs = bayes_fosr(cca ~ pasat, data = DTI, Kt = 10, est.method = "Gibbs", cov.method = "Wishart")
+OLS = bayes_fosr(cca ~ pasat, data = DTI, Kt = 10, est.method = "OLS")
+GLS = bayes_fosr(cca ~ pasat, data = DTI, Kt = 10, est.method = "GLS")
+
+## plot results
+models = c("default", "VB", "Gibbs", "OLS", "GLS")
+intercepts = sapply(models, function(u) get(u)$beta.hat[1,])
+slopes = sapply(models, function(u) get(u)$beta.hat[2,])
+
+plot.dat = melt(intercepts); colnames(plot.dat) = c("grid", "method", "value")
+ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) + geom_path() + theme_bw()
+
+plot.dat = melt(slopes); colnames(plot.dat) = c("grid", "method", "value")
+ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) + geom_path() + theme_bw()
+
+## fit a model with an interaction
+fosr.dti.interaction = bayes_fosr(cca ~ pasat*gender, data = DTI, Kp = 4, Kt = 10)
+
+
+##### Longitudinal real-data examples #####
+
+data(DTI2)
+DTI2 = subset(DTI2, select = c(cca, id, pasat))
+DTI2 = DTI2[complete.cases(DTI2),]
+
+default = bayes_fosr(cca ~ pasat + re(id), data = DTI2)
+VB = bayes_fosr(cca ~ pasat + re(id), data = DTI2, Kt = 10, cov.method = "Wishart")
+
 }
 }
 \author{
