@@ -32,19 +32,6 @@
 #' @importFrom pbs pbs
 #' @export
 #' 
-#' @examples
-#' 
-#' library(refund)
-#' library(dplyr)
-#' 
-#' data(DTI)
-#' DTI = subset(DTI, select = c(cca, case, pasat))
-#' DTI = DTI[complete.cases(DTI),]
-#' DTI$gender = factor(sample(c("male","female"), dim(DTI)[1], replace = TRUE))
-#' DTI$status = factor(sample(c("RRMS", "SPMS", "PPMS"), dim(DTI)[1], replace = TRUE))
-#' 
-#' fosr.dti = fosr_gls(cca ~ pasat * gender + status, data = DTI)
-#' 
 gls_cs = function(formula, data=NULL, Kt=5, basis = "bs", sigma = NULL, verbose = TRUE, CI.type = "pointwise"){
   
   # not used now but may need this later
@@ -62,7 +49,9 @@ gls_cs = function(formula, data=NULL, Kt=5, basis = "bs", sigma = NULL, verbose 
     
     # get random effects matrix
     responsename <- attr(tf, "variables")[2][[1]]
-    REs = eval(parse(text=attr(tf[where.re], "term.labels")))
+    REs = list(NA, NA)
+    REs[[1]] = names(eval(parse(text=attr(tf[where.re], "term.labels")))$data) 
+    REs[[2]]=paste0("(1|",REs[[1]],")")
     
     # set up dataframe if data = NULL
     formula2 <- paste(responsename, "~", REs[[1]],sep = "")
@@ -77,7 +66,6 @@ gls_cs = function(formula, data=NULL, Kt=5, basis = "bs", sigma = NULL, verbose 
     if(length(data)==0){Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=mf)$Zt
     }else
     {Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=data)$Zt}
-    
     
   } else {
     mf_fixed <- model.frame(tf, data = data)

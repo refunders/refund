@@ -16,7 +16,7 @@
 #' @param sig2.me starting value for measurement error variance
 #' @param alpha tuning parameter balancing second-derivative penalty and
 #' zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)
-#' @param seed seed value to start the sampler; ensures reproducibility
+#' @param SEED seed value to start the sampler; ensures reproducibility
 #' @param verbose logical defaulting to \code{TRUE} -- should updates on progress be printed?
 #' 
 #' @references
@@ -29,29 +29,32 @@
 #' @importFrom MASS mvrnorm
 #' @export
 #' 
-gibbs_mult_fpca = function(formula, Kt=5, Kp = 2, data=NULL, N.iter = 5000, N.burn = 1000, sig2.me = .01, alpha = .1, SEED = NULL){
+gibbs_mult_fpca = function(formula, Kt=5, Kp = 2, data=NULL, verbose = TRUE, N.iter = 5000, N.burn = 1000, 
+                           sig2.me = .01, alpha = .1, SEED = NULL){
 
   # not used now but may need this later
   call <- match.call()
   
-  tf <- terms.formula(formula, specials = "re.fosr")
+  tf <- terms.formula(formula, specials = "re")
   trmstrings <- attr(tf, "term.labels")
   specials <- attr(tf, "specials")    # if there are no random effects this will be NULL
-  where.re.fosr <-specials$re.fosr - 1
+  where.re <-specials$re - 1
   
   # gets matrix of fixed and random effects
-  if(length(where.re.fosr)!=0){
-    mf_fixed <- model.frame(tf[-where.re.fosr], data = data)
-    formula = tf[-where.re.fosr]
+  if(length(where.re)!=0){
+    mf_fixed <- model.frame(tf[-where.re], data = data)
+    formula = tf[-where.re]
     
     # get random effects matrix
     responsename <- attr(tf, "variables")[2][[1]]
-    REs = eval(parse(text=attr(tf[where.re.fosr], "term.labels")))
+    REs = list(NA, NA)
+    REs[[1]] = names(eval(parse(text=attr(tf[where.re], "term.labels")))$data) 
+    REs[[2]]=paste0("(1|",REs[[1]],")")
     
     # set up dataframe if data = NULL
     formula2 <- paste(responsename, "~", REs[[1]],sep = "")
     newfrml <- paste(responsename, "~", REs[[2]],sep = "")
-    newtrmstrings <- attr(tf[-where.re.fosr], "term.labels")
+    newtrmstrings <- attr(tf[-where.re], "term.labels")
     
     formula2 <- formula(paste(c(formula2, newtrmstrings), collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
@@ -61,7 +64,6 @@ gibbs_mult_fpca = function(formula, Kt=5, Kp = 2, data=NULL, N.iter = 5000, N.bu
     if(length(data)==0){Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=mf)$Zt
     }else
     {Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=data)$Zt}
-    
     
   } else {
     mf_fixed <- model.frame(tf, data = data)
@@ -110,7 +112,6 @@ gibbs_mult_fpca = function(formula, Kt=5, Kp = 2, data=NULL, N.iter = 5000, N.bu
 
   ## number of fixed effects
   p = dim(W.des)[2]
-
 
   ## matrices to store within-iteration estimates 
   BW = array(NA, c(Kt, p, N.iter))

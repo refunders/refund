@@ -38,24 +38,26 @@ vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1
   # not used now but may need this later
   call <- match.call()
   
-  tf <- terms.formula(formula, specials = "re.fosr")
+  tf <- terms.formula(formula, specials = "re")
   trmstrings <- attr(tf, "term.labels")
   specials <- attr(tf, "specials")    # if there are no random effects this will be NULL
-  where.re.fosr <-specials$re.fosr - 1
+  where.re <-specials$re - 1
   
   # gets matrix of fixed and random effects
-  if(length(where.re.fosr)!=0){
-    mf_fixed <- model.frame(tf[-where.re.fosr], data = data)
-    formula = tf[-where.re.fosr]
+  if(length(where.re)!=0){
+    mf_fixed <- model.frame(tf[-where.re], data = data)
+    formula = tf[-where.re]
     
     # get random effects matrix
     responsename <- attr(tf, "variables")[2][[1]]
-    REs = eval(parse(text=attr(tf[where.re.fosr], "term.labels")))
+    REs = list(NA, NA)
+    REs[[1]] = names(eval(parse(text=attr(tf[where.re], "term.labels")))$data) 
+    REs[[2]]=paste0("(1|",REs[[1]],")")
     
     # set up dataframe if data = NULL
     formula2 <- paste(responsename, "~", REs[[1]],sep = "")
     newfrml <- paste(responsename, "~", REs[[2]],sep = "")
-    newtrmstrings <- attr(tf[-where.re.fosr], "term.labels")
+    newtrmstrings <- attr(tf[-where.re], "term.labels")
     
     formula2 <- formula(paste(c(formula2, newtrmstrings), collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
@@ -65,7 +67,6 @@ vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1
     if(length(data)==0){Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=mf)$Zt
     }else
     {Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=data)$Zt}
-    
     
   } else {
     mf_fixed <- model.frame(tf, data = data)
@@ -206,7 +207,7 @@ vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1
     resid = as.vector(Y - fixef.cur - pcaef.cur)
     b.q.sigma.me = as.numeric(Bsig + .5 * (crossprod(resid[!is.na(resid)]) + 
                                         sum(diag(sumXtX %*% sigma.q.beta)) + 
-                                        f_sum4(mu.q.c= mu.q.C, sig.q.c = sigma.q.C, mu.q.bpsi = mu.q.Bpsi, sig.q.bphi = sigma.q.Bpsi, theta= Theta, obspts.mat = !is.na(Y))) )
+                                        f_sum4(mu.q.c= mu.q.C, sig.q.c = sigma.q.C, mu.q.bpsi = mu.q.Bpsi, sig.q.bpsi = sigma.q.Bpsi, theta= Theta, obspts.mat = !is.na(Y))) )
         
     ## lambda for fixed effects
     for(term in 1:dim(W.des)[2]){

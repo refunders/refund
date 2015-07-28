@@ -7,15 +7,15 @@
 f_sum2(y, fixef, mu.q.c, kt, theta)
 }
 \arguments{
-\item{y}{}
+\item{y}{outcome matrix}
 
-\item{fixef}{}
+\item{fixef}{current estimate of fixed effects}
 
-\item{mu.q.c}{}
+\item{mu.q.c}{current value of mu.q.c}
 
-\item{kt}{}
+\item{kt}{number of basis functions}
 
-\item{theta}{}
+\item{theta}{spline basis}
 }
 \description{
 Internal function used compute a sum in FPCA-based covariance updates

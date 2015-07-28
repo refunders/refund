@@ -20,6 +20,9 @@ called.}
 \item{Kt}{number of spline basis functions used to estimate coefficient functions}
 
 \item{Kp}{number of FPCA basis functions to be estimated}
+
+\item{alpha}{tuning parameter balancing second-derivative penalty and
+zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)}
 }
 \description{
 Fitting function for function-on-scalar regression for multilevel data.

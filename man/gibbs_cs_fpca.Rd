@@ -26,6 +26,8 @@ called.}
 
 \item{N.burn}{number of iterations discarded as burn-in}
 
+\item{SEED}{seed value to start the sampler; ensures reproducibility}
+
 \item{sig2.me}{starting value for measurement error variance}
 
 \item{alpha}{tuning parameter balancing second-derivative penalty and
@@ -42,8 +44,6 @@ for FPC effects}
 
 \item{Bpsi}{hyperparameter for inverse gamma controlling variance of spline terms
 for FPC effects}
-
-\item{seed}{seed value to start the sampler; ensures reproducibility}
 }
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.

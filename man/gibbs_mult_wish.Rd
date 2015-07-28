@@ -41,7 +41,7 @@ for population-level effects}
 
 \item{v}{hyperparameter for inverse Wishart prior on residual covariance}
 
-\item{seed}{seed value to start the sampler; ensures reproducibility}
+\item{SEED}{seed value to start the sampler; ensures reproducibility}
 }
 \description{
 Fitting function for function-on-scalar regression for multilevel data.

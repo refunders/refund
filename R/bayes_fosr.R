@@ -40,15 +40,19 @@
 #' DTI$gender = factor(sample(c("male","female"), dim(DTI)[1], replace = TRUE))
 #' DTI$status = factor(sample(c("RRMS", "SPMS", "PPMS"), dim(DTI)[1], replace = TRUE))
 #' 
-#' fosr.dti = bayes_fosr(cca ~ pasat, data = DTI)
-#' fosr.dti2 = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10)
-#' fosr.dti2 = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10, est.method = "Gibbs", cov.method = "Wishart")
+#' fosr.dti.default = bayes_fosr(cca ~ pasat, data = DTI)
+#' fosr.dti.vb = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10)
+#' fosr.dti.gibbs = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10, est.method = "Gibbs", cov.method = "Wishart")
 #' }
 #' 
 bayes_fosr = function(formula, data=NULL, est.method = "VB", cov.method = "FPCA", ...){
   
-  ranef = sum(grepl("re", formula))
-
+  tf <- terms.formula(formula, specials = "re")
+  trmstrings <- attr(tf, "term.labels")
+  specials <- attr(tf, "specials")    # if there are no random effects this will be NULL
+  where.re <-specials$re - 1
+  ranef = length(where.re)
+  
   if(ranef == 0 & est.method == "GLS"){
     ret = gls_cs(formula = formula, data = data, ...)
   } else if(ranef == 0 & est.method == "OLS"){
@@ -70,7 +74,7 @@ bayes_fosr = function(formula, data=NULL, est.method = "VB", cov.method = "FPCA"
   } else if(ranef == 1 & est.method == "Gibbs" & cov.method == "Wishart"){
     ret = gibbs_mult_wish(formula = formula, data = data, ...)
   } else {
-    error("The combination of estimation method and covariance structure you specified is not yet implemented.")
+    stop("The combination of estimation method and covariance structure you specified is not yet implemented.")
   }
   
   ret

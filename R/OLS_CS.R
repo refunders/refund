@@ -25,7 +25,6 @@
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
 #' @importFrom pbs pbs
-#' @importFrom refund fpca.sc
 #' @export
 #' 
 ols_cs = function(formula, data=NULL, Kt=5, basis = "bs", verbose = TRUE){

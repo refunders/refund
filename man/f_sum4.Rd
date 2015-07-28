@@ -4,20 +4,20 @@
 \alias{f_sum4}
 \title{Sum computation 2}
 \usage{
-f_sum4(mu.q.c, sig.q.c, mu.q.bpsi, sig.q.bphi, theta, obspts.mat)
+f_sum4(mu.q.c, sig.q.c, mu.q.bpsi, sig.q.bpsi, theta, obspts.mat)
 }
 \arguments{
-\item{mu.q.c}{}
+\item{mu.q.c}{current value of mu.q.c}
 
-\item{sig.q.c}{}
+\item{sig.q.c}{current value of sig.q.c}
 
-\item{theta}{}
+\item{mu.q.bpsi}{current value of mu.q.bpsi}
 
-\item{obspts.mat}{}
+\item{sig.q.bpsi}{current value of sig.q.bpsi}
 
-\item{mu.q.bspi}{}
+\item{theta}{current value of theta}
 
-\item{sig.q.bpsi}{}
+\item{obspts.mat}{matrix indicating where curves are observed}
 }
 \description{
 Internal function used compute a sum in FPCA-based covariance updates

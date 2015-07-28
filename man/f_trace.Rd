@@ -7,13 +7,13 @@
 f_trace(Theta_i, Sig_q_Bpsi, Kp, Kt)
 }
 \arguments{
-\item{Theta_i}{}
+\item{Theta_i}{basis functions on observed grid points}
 
-\item{Sig_q_Bpsi}{}
+\item{Sig_q_Bpsi}{variance of FPC basis coefficients}
 
-\item{Kp}{}
+\item{Kp}{number of FPCs}
 
-\item{Kt}{}
+\item{Kt}{number of spline basis functions}
 }
 \description{
 Internal function used compute a trace in FPCA-based covariance updates

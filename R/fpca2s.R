@@ -69,8 +69,8 @@
 ##'   ###################################################
 ##'   ####               SVDS               ########
 ##'   ###################################################
-##'   Phi <- results$eigenvectors
-##'   eigenvalues <- results$eigenvalues
+##'   Phi <- results$efunctions
+##'   eigenvalues <- results$evalues
 ##'
 ##'   for(k in 1:N){
 ##'     if(Phi[,k]%*%phi[,k]< 0)

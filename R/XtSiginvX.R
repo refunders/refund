@@ -1,14 +1,19 @@
 #' Internal computation function
 #' 
-#' Internal function used compute the product
+#' Internal function used compute the products
 #' `(X otimes Theta)^t (I otimes Sigma^{-1}) (X otimes Theta)`
+#' and
+#' `(X otimes Theta)^t (I otimes Sigma^{-1}) (y)`
 #' in cross-sectional VB algorithm and Gibbs sampler
 #' 
+#' @param tx transpose of the X design matrix
+#' @param siginv inverse variance matrix
+#' @param y outcome matrix. if \code{NULL}, function computes
+#' first product; if not, function computes second product.
 #' 
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' 
 Xt_siginv_X = function(tx, siginv, y = NULL){
-  
   
   D = dim(siginv)[1]
   I = dim(tx)[2] / D

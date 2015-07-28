@@ -37,18 +37,6 @@ using an FPC decomposition of the OLS residual curves; finally, a GLS estimate
 of spline coefficients is estimated. Although this is in the `BayesFoSR` package,
 there is nothing Bayesian about this FoSR.
 }
-\examples{
-library(refund)
-library(dplyr)
-
-data(DTI)
-DTI = subset(DTI, select = c(cca, case, pasat))
-DTI = DTI[complete.cases(DTI),]
-DTI$gender = factor(sample(c("male","female"), dim(DTI)[1], replace = TRUE))
-DTI$status = factor(sample(c("RRMS", "SPMS", "PPMS"), dim(DTI)[1], replace = TRUE))
-
-fosr.dti = fosr_gls(cca ~ pasat * gender + status, data = DTI)
-}
 \author{
 Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
 }

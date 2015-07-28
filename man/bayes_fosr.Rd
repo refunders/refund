@@ -43,9 +43,9 @@ DTI = DTI[complete.cases(DTI),]
 DTI$gender = factor(sample(c("male","female"), dim(DTI)[1], replace = TRUE))
 DTI$status = factor(sample(c("RRMS", "SPMS", "PPMS"), dim(DTI)[1], replace = TRUE))
 
-fosr.dti = bayes_fosr(cca ~ pasat, data = DTI)
-fosr.dti2 = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10)
-fosr.dti2 = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10, est.method = "Gibbs", cov.method = "Wishart")
+fosr.dti.default = bayes_fosr(cca ~ pasat, data = DTI)
+fosr.dti.vb = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10)
+fosr.dti.gibbs = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10, est.method = "Gibbs", cov.method = "Wishart")
 }
 }
 \author{

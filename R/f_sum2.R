@@ -2,11 +2,11 @@
 #' 
 #' Internal function used compute a sum in FPCA-based covariance updates
 #' 
-#' @param y
-#' @param fixef
-#' @param mu.q.c
-#' @param kt
-#' @param theta
+#' @param y outcome matrix
+#' @param fixef current estimate of fixed effects
+#' @param mu.q.c current value of mu.q.c
+#' @param kt number of basis functions
+#' @param theta spline basis
 #' 
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' 

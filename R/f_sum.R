@@ -2,10 +2,10 @@
 #' 
 #' Internal function used compute a sum in FPCA-based covariance updates
 #' 
-#' @param mu.q.c
-#' @param sig.q.c
-#' @param theta
-#' @param obspts.mat
+#' @param mu.q.c current value of mu.q.c
+#' @param sig.q.c current value of sig.q.c
+#' @param theta spline basis
+#' @param obspts.mat matrix indicating the points on which data is observed
 #' 
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' 

@@ -27,6 +27,10 @@ called.}
 \item{alpha}{tuning parameter balancing second-derivative penalty and
 zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)}
 
+\item{min.iter}{minimum number of iterations}
+
+\item{max.iter}{maximum number of iterations}
+
 \item{Aw}{hyperparameter for inverse gamma controlling variance of spline terms
 for population-level effects}
 
@@ -35,7 +39,7 @@ for population-level effects}
 
 \item{v}{hyperparameter for inverse Wishart prior on residual covariance}
 
-\item{seed}{seed value to start the sampler; ensures reproducibility}
+\item{SEED}{seed value to start the sampler; ensures reproducibility}
 }
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.
