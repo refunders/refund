@@ -29,39 +29,35 @@
 #' 
 ols_cs = function(formula, data=NULL, Kt=5, basis = "bs", verbose = TRUE){
   
-  # not used now but may need this later
   call <- match.call()
-  
   tf <- terms.formula(formula, specials = "re")
   trmstrings <- attr(tf, "term.labels")
-  specials <- attr(tf, "specials")    # if there are no random effects this will be NULL
+  specials <- attr(tf, "specials")
   where.re <-specials$re - 1
-  
-  # gets matrix of fixed and random effects
-  if(length(where.re)!=0){
+  if (length(where.re) != 0) {
     mf_fixed <- model.frame(tf[-where.re], data = data)
     formula = tf[-where.re]
-    
-    # get random effects matrix
     responsename <- attr(tf, "variables")[2][[1]]
-    REs = eval(parse(text=attr(tf[where.re], "term.labels")))
-    
-    # set up dataframe if data = NULL
-    formula2 <- paste(responsename, "~", REs[[1]],sep = "")
-    newfrml <- paste(responsename, "~", REs[[2]],sep = "")
+    ###
+    REs = list(NA, NA)
+    REs[[1]] = names(eval(parse(text=attr(tf[where.re], "term.labels")), envir=data)$data)
+    REs[[2]]=paste0("(1|",REs[[1]],")")
+    ###
+    formula2 <- paste(responsename, "~", REs[[1]], sep = "")
+    newfrml <- paste(responsename, "~", REs[[2]], sep = "")
     newtrmstrings <- attr(tf[-where.re], "term.labels")
-    
-    formula2 <- formula(paste(c(formula2, newtrmstrings), collapse = "+"))
+    formula2 <- formula(paste(c(formula2, newtrmstrings), 
+                              collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
     mf <- model.frame(formula2, data = data)
-    
-    # creates the Z matrix. get rid of $zt if you want a list with more stuff.
-    if(length(data)==0){Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=mf)$Zt
-    }else
-    {Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=data)$Zt}
-    
-    
-  } else {
+    if (length(data) == 0) {
+      Z = lme4::mkReTrms(lme4::findbars(newfrml), fr = mf)$Zt
+    }
+    else {
+      Z = lme4::mkReTrms(lme4::findbars(newfrml), fr = data)$Zt
+    }
+  }
+  else {
     mf_fixed <- model.frame(tf, data = data)
   }
   mt_fixed <- attr(mf_fixed, "terms")

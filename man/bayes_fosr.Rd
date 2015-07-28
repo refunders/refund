@@ -39,6 +39,7 @@ or variational Bayes.
 \dontrun{
 
 library(reshape2)
+library(dplyr)
 library(ggplot2)
 
 ##### Cross-sectional real-data examples #####
@@ -53,7 +54,8 @@ DTI$status = factor(sample(c("RRMS", "SPMS", "PPMS"), dim(DTI)[1], replace = TRU
 ## fit models
 default = bayes_fosr(cca ~ pasat, data = DTI)
 VB = bayes_fosr(cca ~ pasat, data = DTI, Kp = 4, Kt = 10)
-Gibbs = bayes_fosr(cca ~ pasat, data = DTI, Kt = 10, est.method = "Gibbs", cov.method = "Wishart")
+Gibbs = bayes_fosr(cca ~ pasat, data = DTI, Kt = 10, est.method = "Gibbs", cov.method = "Wishart",
+                   N.iter = 500, N.burn = 200)
 OLS = bayes_fosr(cca ~ pasat, data = DTI, Kt = 10, est.method = "OLS")
 GLS = bayes_fosr(cca ~ pasat, data = DTI, Kt = 10, est.method = "GLS")
 

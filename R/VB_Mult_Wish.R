@@ -38,44 +38,39 @@
 vb_mult_wish = function(formula, data=NULL, verbose = TRUE, Kt = 5, alpha = .1, min.iter = 10, max.iter = 50,
                         Az = NULL, Bz = NULL, Aw = NULL, Bw = NULL, v = NULL){
 
-  # not used now but may need this later
   call <- match.call()
-  
   tf <- terms.formula(formula, specials = "re")
   trmstrings <- attr(tf, "term.labels")
-  specials <- attr(tf, "specials")    # if there are no random effects this will be NULL
+  specials <- attr(tf, "specials")
   where.re <-specials$re - 1
-  
-  # gets matrix of fixed and random effects
-  if(length(where.re)!=0){
+  if (length(where.re) != 0) {
     mf_fixed <- model.frame(tf[-where.re], data = data)
     formula = tf[-where.re]
-    
-    # get random effects matrix
     responsename <- attr(tf, "variables")[2][[1]]
+    ###
     REs = list(NA, NA)
-    REs[[1]] = names(eval(parse(text=attr(tf[where.re], "term.labels")))$data) 
+    REs[[1]] = names(eval(parse(text=attr(tf[where.re], "term.labels")), envir=data)$data)
     REs[[2]]=paste0("(1|",REs[[1]],")")
-    
-    # set up dataframe if data = NULL
-    formula2 <- paste(responsename, "~", REs[[1]],sep = "")
-    newfrml <- paste(responsename, "~", REs[[2]],sep = "")
+    ###
+    formula2 <- paste(responsename, "~", REs[[1]], sep = "")
+    newfrml <- paste(responsename, "~", REs[[2]], sep = "")
     newtrmstrings <- attr(tf[-where.re], "term.labels")
-    
-    formula2 <- formula(paste(c(formula2, newtrmstrings), collapse = "+"))
+    formula2 <- formula(paste(c(formula2, newtrmstrings), 
+                              collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
     mf <- model.frame(formula2, data = data)
-    
-    # creates the Z matrix. get rid of $zt if you want a list with more stuff.
-    if(length(data)==0){Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=mf)$Zt
-    }else
-    {Z = lme4::mkReTrms(lme4::findbars(newfrml),fr=data)$Zt}
-    
-  } else {
+    if (length(data) == 0) {
+      Z = lme4::mkReTrms(lme4::findbars(newfrml), fr = mf)$Zt
+    }
+    else {
+      Z = lme4::mkReTrms(lme4::findbars(newfrml), fr = data)$Zt
+    }
+  }
+  else {
     mf_fixed <- model.frame(tf, data = data)
   }
   mt_fixed <- attr(mf_fixed, "terms")
-  
+
   # get response (Y)
   Y <- model.response(mf_fixed, "numeric")
   
