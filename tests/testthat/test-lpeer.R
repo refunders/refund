@@ -34,10 +34,10 @@ test_that("lpeer with pentype='DECOMP' works", {
 
  ## Extract values for arguments for lpeer() from given data
  K<- 100
- W<- PEER.Sim[,c(3:(K+2))]
- Y<- PEER.Sim[,K+3]
- t<- PEER.Sim[,2]
- id<- PEER.Sim[,1]
+ W <- PEER.Sim[, "W"]
+ Y <- PEER.Sim[, "Y"]
+ t <- PEER.Sim[, "t"]
+ id <- PEER.Sim[, "id"]
 
  ##Load Q matrix containing structural information
  data(Q)
@@ -73,11 +73,11 @@ test_that("lpeer with pentype='USER' works", {
  data(PEER.Sim)
 
  ## Extract values for arguments for lpeer() from given data
- K<- 100
- W<- PEER.Sim[,c(3:(K+2))]
- Y<- PEER.Sim[,K+3]
- t<- PEER.Sim[,2]
- id<- PEER.Sim[,1]
+ K <- 100
+ W <- PEER.Sim[, "W"]
+ Y <- PEER.Sim[, "Y"]
+ t <- PEER.Sim[, "t"]
+ id <- PEER.Sim[, "id"]
 
  ##Load Q matrix containing structural information
  data(Q)
@@ -90,7 +90,7 @@ test_that("lpeer with pentype='USER' works", {
  expect_message(lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), funcs=W,
  		     pentype='USER', f_t=cbind(1,t), L=L, se=TRUE), "The fit is successful.")
 
- L1<- adiag(L, L)
+ L1<- magic::adiag(L, L)
  expect_message(lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), comm.pen=FALSE, funcs=W,
               pentype='USER', f_t=cbind(1,t), L=L1, se=TRUE), "The fit is successful.")
 })
