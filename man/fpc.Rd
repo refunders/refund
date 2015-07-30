@@ -32,9 +32,9 @@ constrained (functional) principal components approaches}
 principal components}
 
 \item{penalize}{if \code{TRUE}, a roughness penalty is applied to the
-functional estimate. Deafults to \code{FALSE} if \code{method=="svd"}
+functional estimate. Deafults to \code{TRUE} if \code{method=="svd"}
 (corresponding to the FPCR_R method of Reiss and Ogden (2007)), and
-\code{TRUE} if \code{method!="svd"} (corresponding to FPCR_C).}
+\code{FALSE} if \code{method!="svd"} (corresponding to FPCR_C).}
 
 \item{bs}{two letter character string indicating the \code{mgcv}-style basis
 to use for pre-smoothing \code{X}}
@@ -85,6 +85,12 @@ FLM.
 
 FPCR-R is also implemented in \code{\link{fpcr}}; here we implement the
   method for inclusion in a \code{pfr} formula.
+}
+\section{NOTE}{
+
+Unlike \code{\link{fpcr}}, \code{fpc} within a \code{pfr} formula does
+not automatically decorrelate the functional predictors from additional
+scalar covariates.
 }
 \examples{
 data(gasoline)
