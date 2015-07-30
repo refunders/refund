@@ -74,7 +74,7 @@ coefboot.pffr <- function(object,
     unlist(coefvec)
   }
   if(object$pffr$sparseOrNongrid) {
-    error("coefboot.pffr not implemented for sparse/irregular data")
+    stop("coefboot.pffr not (yet...) implemented for sparse/irregular data")
 
     ## TODO:
     ## - "all(ydata$.obs %in% 1:nobs)" in pffr means overwriting .obs required

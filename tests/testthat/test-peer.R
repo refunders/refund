@@ -1,4 +1,5 @@
-context("Testing peer")
+context("Testing pfr's peer()")
+
 library(refundDevel)
 
 test_that("peer with D2 penalty", {
@@ -12,12 +13,11 @@ test_that("peer with D2 penalty", {
 
 test_that("peer with structured penalty works", {
  skip_on_cran()
- 
- data(PEER.Sim)
- data(Q)
- PEER.Sim1<- subset(PEER.Sim, t==0)
- 
+
+ data(PEER.Sim, Q)
+
  # Setting k to max possible value
- fit.decomp <- pfr(Y ~ peer(W, pentype="Decomp", Q=Q, k=99), data=PEER.Sim1)
+ fit.decomp <- pfr(Y ~ peer(W, pentype="Decomp", Q=Q, k=99),
+   data=subset(PEER.Sim, t==0))
  expect_is(fit.decomp, "pfr")
 })
