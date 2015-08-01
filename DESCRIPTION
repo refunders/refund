@@ -18,9 +18,9 @@ Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@g
     person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"), 
     person(c("Madan", "Gopal"), "Kundu", role="ctb"))
 Depends:
-    R (>= 2.14.0),
-    fda
+    R (>= 2.14.0)
 Imports:
+    fda,
     Matrix,
     lattice,
     boot,
