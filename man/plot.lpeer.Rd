@@ -23,11 +23,13 @@ in the call to \code{\link{lpeer}}, and does not reflect any multiplicity
 correction.
 }
 \examples{
+\dontrun{
 data(DTI)
 cca = DTI$cca[which(DTI$case == 1),]
 DTI = DTI[which(DTI$case == 1),]
 fit.cca.lpeer1 = lpeer(Y=DTI$pasat, t=DTI$visit, subj=DTI$ID, funcs = cca)
 plot(fit.cca.lpeer1)
+}
 }
 \author{
 Madan Gopal Kundu \email{mgkundu@iupui.edu}

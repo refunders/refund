@@ -19,7 +19,7 @@
 #'
 #' @author Jonathan Gellar
 #' @seealso \code{\link{af}}, \code{\link{pfr}}
-# @importFrom mgcv plot.gam
+#' @importFrom mgcv plot.gam
 #' @export
 plot.pfr <- function(x, Qtransform=FALSE, ...) {
   class(x) <- class(x)[-1]

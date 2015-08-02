@@ -38,7 +38,7 @@ Imports:
 Suggests:
     RColorBrewer,
     reshape2
-Description: Developer version of refund. Methods for regression for functional
+Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to
     image data.

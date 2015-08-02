@@ -129,6 +129,7 @@ Please note that currently, if \code{multi.sp = TRUE}, then \code{lambda}
 must be \code{NULL} and \code{method} must be \code{"GLS"}.
 }
 \examples{
+\dontrun{
 require(fda)
 # The first two lines, adapted from help(fRegress) in package fda,
 # set up a functional data object representing daily average
@@ -151,7 +152,6 @@ data1 <- pffrSim(scenario="ff", n=40)
 formod = fosr(Y~xlin+xsmoo, data=data1)
 plot(formod, 1)
 
-\dontrun{
 # Penalized GLS
 glsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="GLS")
 plot(glsmod, 1)
