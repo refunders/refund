@@ -1,0 +1,121 @@
+Package: refund
+Type: Package
+Title: refund: Regression with Functional Data
+Version: 0.1-12
+Date: 2015-08-02
+Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"), 
+    person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"), 
+    person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"), 
+    person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"), 
+    person("Jaroslaw", "Harezlak", role="aut"), 
+    person(c("Mathew", "W."), "McLean", role="aut", email = "mathew.w.mclean@gmail.com"),
+    person("Bruce", "Swihart", role ="aut", email = "bswihart@jhsph.edu"),
+    person("Luo", "Xiao", role="aut", email = "lxiao@jhsph.edu"),
+    person("Ciprian", "Crainiceanu", role = "aut", email = "ccrainic@jhsph.edu"), 
+    person("Philip", "Reiss", role = "aut", email = "phil.reiss@nyumc.org"), 
+    person("Yakuan", "Chen", role="ctb", email = "yc2641@@cumc.columbia.edu"),
+    person("Sonja", "Greven", role = "ctb"),
+    person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"), 
+    person(c("Madan", "Gopal"), "Kundu", role="ctb"))
+Depends:
+    R (>= 2.14.0)
+Imports:
+    fda,
+    Matrix,
+    lattice,
+    boot,
+    mgcv (>= 1.8-4),
+    MASS,
+    magic,
+    nlme,
+    gamm4,
+    lme4,
+    RLRsim,
+    splines,
+    grpreg,
+    ggplot2,
+    stats
+Suggests:
+    RColorBrewer,
+    reshape2
+Description: Developer version of refund. Methods for regression for functional
+    data, including function-on-scalar, scalar-on-function, and
+    function-on-function regression. Some of the functions are applicable to
+    image data.
+License: GPL (>= 2)
+LazyLoad: yes
+LazyData: true
+Repository: CRAN
+Collate:
+    'Omegas.R'
+    'af.R'
+    'af_old.R'
+    'amc.R'
+    'ccb.fpc.R'
+    'create.prep.func.R'
+    'coefficients.pfr.R'
+    'dt_basis.R'
+    'irreg2mat.R'
+    'fbps.R'
+    'fgam.R'
+    'fosr.R'
+    'fosr.perm.R'
+    'fosr.perm.fit.R'
+    'fosr.perm.test.R'
+    'fosr.vs.R'
+    'fosr2s.R'
+    'fpc.R'
+    'fpca2s.R'
+    'fpca.sc.R'
+    'fpca.face.R'
+    'fpca.ssvd.R'
+    'fpcr.R'
+    'fpcr.setup.R'
+    'lf.R'
+    'lf_old.R'
+    'lf.vd.R'
+    'lofocv.R'
+    'lpeer.R'
+    'lpfr.R'
+    'quadWeights.R'
+    'lw.test.R'
+    'osplinepen2d.R'
+    'parse.predict.pfr.R'
+    'peer.R'
+    'peer_old.R'
+    'pffr-ff.R'
+    'pffr-ffpc.R'
+    'pffr-methods.R'
+    'pffr-pcre.R'
+    'pffr-robust.R'
+    'pffr-sff.R'
+    'pffr-utilities.R'
+    'pffr.R'
+    'pfr.R'
+    'pfr_old.R'
+    'pi_basis.R'
+    'plot.fosr.R'
+    'plot.fosr.perm.R'
+    'plot.fosr.vs.R'
+    'plot.fpcr.R'
+    'plot.lpeer.R'
+    'plot.peer.R'
+    'plot.pfr.R'
+    'postprocess.pfr.R'
+    'predict.fgam.R'
+    'predict.pfr.R'
+    'predict.pfr_old.R'
+    'preprocess.pfr.R'
+    'pspline.setting.R'
+    'pwcv.R'
+    'summary.pfr.R'
+    're.R'
+    'rlrt.pfr.R'
+    'vis.fgam.R'
+    'predict.fosr.vs.R'
+    'CD4-data.R'
+    'DTI-data.R'
+    'DTI2-data.R'
+    'PEER.Sim-data.R'
+    'gasoline-data.R'
+    'vis.pfr.R'
