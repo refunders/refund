@@ -5,7 +5,6 @@ function(x,knots=35,p=3,m=2){
 # K: the list of knots or the numbers of knots
 # p: degrees for B-splines, with defaults values 3
 # m: orders of difference penalty, with default values 2
-#require(splines)
 #require(Matrix)
 if(length(knots)==1)
 {

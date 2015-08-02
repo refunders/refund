@@ -3,3 +3,5 @@
 ^\.git$
 ^\.gitignore$
 ^\.travis\.yml$
+.git-tricks.md
+refund.Rproj
