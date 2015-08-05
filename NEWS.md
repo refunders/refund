@@ -13,3 +13,5 @@
 * bug fix in `fpca.face()`.
 
 * export `expand.call()`.
+
+* add cross-sectional FoSR using GLS, variational Bayes and Gibbs sampler

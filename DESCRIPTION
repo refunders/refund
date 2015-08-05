@@ -34,7 +34,9 @@ Imports:
     splines,
     grpreg,
     ggplot2,
-    stats
+    stats,
+    MCMCpack,
+    pbs
 Suggests:
     RColorBrewer,
     reshape2
@@ -119,3 +121,19 @@ Collate:
     'PEER.Sim-data.R'
     'gasoline-data.R'
     'vis.pfr.R'
+    'GLS_CS.R'
+    'Gibbs_CS_FPCA.R'
+    'Gibbs_CS_Wish.R'
+    'Gibbs_Mult_FPCA.R'
+    'Gibbs_Mult_Wish.R'
+    'OLS_CS.R'
+    'VB_CS_FPCA.R'
+    'VB_CS_Wish.R'
+    'VB_Mult_FPCA.R'
+    'VB_Mult_Wish.R'
+    'XtSiginvX.R'
+    'bayes_fosr.R'
+    'f_sum.R'
+    'f_sum2.R'
+    'f_sum4.R'
+    'f_trace.R'
