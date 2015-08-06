@@ -3,6 +3,4 @@
 * win-builder (devel and release)
 
 ## R CMD check results
-There were no ERRORs or WARNINGs.
-
-There are 3 NOTEs on winbuilder R-devel. The notes asked to import some basic functions explicitly, e.g. import abline from graphics.
+There were no ERRORs or WARNINGs or NOTEs.

@@ -1,6 +1,6 @@
 Package: refund
 Type: Package
-Title: refund: Regression with Functional Data
+Title: Regression with Functional Data
 Version: 0.1-12
 Date: 2015-08-02
 Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"), 
@@ -36,7 +36,8 @@ Imports:
     ggplot2,
     stats,
     MCMCpack,
-    pbs
+    pbs,
+    methods
 Suggests:
     RColorBrewer,
     reshape2
