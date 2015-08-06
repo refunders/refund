@@ -123,9 +123,19 @@
 #' pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 #' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
 #' \code{\link{pfr}} for examples
-# @importFrom stats ecdf
+#' @importFrom stats ecdf
 #' @importFrom fda int2Lfd smooth.basisPar eval.fd create.bspline.basis
 #' @importFrom utils modifyList getFromNamespace
+#' @importFrom utils head tail
+#' @importFrom grDevices col2rgb dev.interactive devAskNewPage heat.colors rgb
+#' @importFrom graphics abline axis box contour image lines mtext par plot points strheight strwidth text title
+#' @importFrom stats approx coef complete.cases contrasts
+#' @importFrom stats cov cov2cor dbeta fitted formula median
+#' @importFrom stats model.frame model.response na.exclude optimize
+#' @importFrom stats pnorm predict rchisq resid residuals
+#' @importFrom stats rgamma runif sd termplot terms var vcov
+#' @importFrom stats weighted.mean
+#' @importFrom methods as
 #' @export
 
 af <- function(X, argvals = NULL, xind = NULL,

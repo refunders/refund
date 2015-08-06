@@ -1,8 +1,8 @@
 Package: refundDevel
 Type: Package
 Title: developer version of refund: Regression with Functional Data
-Version: 0.3-3
-Date: 2015-03-03
+Version: 0.3-4
+Date: 2015-08-05
 Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"), 
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"), 
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"), 
@@ -36,7 +36,8 @@ Imports:
     ggplot2,
     stats,
     MCMCpack,
-    pbs
+    pbs,
+    methods
 Suggests:
     RColorBrewer,
     reshape2,
