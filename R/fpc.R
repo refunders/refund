@@ -24,9 +24,9 @@
 #' @param pve proportion of variance explained; used to choose the number of
 #'   principal components
 #' @param penalize if \code{TRUE}, a roughness penalty is applied to the
-#'   functional estimate. Deafults to \code{FALSE} if \code{method=="svd"}
+#'   functional estimate. Deafults to \code{TRUE} if \code{method=="svd"}
 #'   (corresponding to the FPCR_R method of Reiss and Ogden (2007)), and
-#'   \code{TRUE} if \code{method!="svd"} (corresponding to FPCR_C).
+#'   \code{FALSE} if \code{method!="svd"} (corresponding to FPCR_C).
 #' @param bs two letter character string indicating the \code{mgcv}-style basis
 #'   to use for pre-smoothing \code{X}
 #' @param k the dimension of the pre-smoothing basis
@@ -64,6 +64,11 @@
 #' 
 #' FPCR-R is also implemented in \code{\link{fpcr}}; here we implement the
 #'   method for inclusion in a \code{pfr} formula.
+#' 
+#' @section NOTE:
+#' Unlike \code{\link{fpcr}}, \code{fpc} within a \code{pfr} formula does
+#' not automatically decorrelate the functional predictors from additional
+#' scalar covariates.
 #' 
 #' @return The result of a call to \code{\link{lf}}.
 #' 

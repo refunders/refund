@@ -5,3 +5,4 @@
 ^\.travis\.yml$
 .git-tricks.md
 refund.Rproj
+^cran-comments\.md$

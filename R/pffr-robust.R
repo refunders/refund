@@ -41,87 +41,86 @@ coefboot.pffr <- function(object,
   ##
   modcall <- object$pffr$call
   modcall$formula <- object$pffr$formula
-  if(is.symbol(modcall$data)){
+  if(is.language(modcall$data)){
     modcall$data <- eval(modcall$data, environment(object$pffr$formula))
   }
-  if(is.symbol(modcall$yind)){
+  if(!is.null(modcall$ydata) && is.language(modcall$ydata)){
+    modcall$ydata <- eval(modcall$ydata, environment(object$pffr$formula))
+  }
+  if(is.language(modcall$yind)){
     modcall$yind <- eval(modcall$yind, environment(object$pffr$formula))
   }
-  if(is.symbol(modcall$hatSigma)){
+  if(is.language(modcall$hatSigma)){
     modcall$hatSigma <- eval(modcall$hatSigma, environment(object$pffr$formula))
   }
-
   if(!is.null(modcall$algorithm)){
     if(modcall$algorithm != "gam"){
       stop("bootstrap implemented only for gam-fits.\n")
     }
   }
-   modcall$fit <- TRUE
+  modcall$fit <- TRUE
   yind <- modcall$yind
 
   ## refit models on bootstrap data sets & save fits
-  cat("starting bootstrap ")
-  ## this no longer passes CRAN CHECK:
-  ## check whether this is already a child process, and
-  ## switch of parallelization if yes
-  # if(parallel:::isChild()) parallel <- "no"
+  message("starting bootstrap (", B, " replications).\n")
 
-  # resample Y
-  bootfct.resample <- function(modcall, data, indices) {
-    dataB <- data[indices,]
-    modcall$data <- dataB
-    #modcall$G$w <- rep(table(factor(indices, levels=1:nrow(data))), each = length(yind))
+  bootcoef <- function(modcall){
     mb <- eval(as.call(modcall))
     coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
     ##save results as one long vector as boot can't deal with lists
     coefvec <- c(coefs$pterms[,"value"],
       sapply(coefs$smterms, function(x) x$value))
     if(showProgress) cat(".")
-    return(unlist(coefvec))
+    unlist(coefvec)
   }
-  #resample residuals
-  bootfct.resid <- function(modcall, data, indices) {
-    dataB <- data
-    fitted <- fitted(object)
-    resid <- resid(object)[indices,]
-    dataB[[deparse(object$formula[[2]])]] <- fitted + resid
-    modcall$data <- dataB
+  if(object$pffr$sparseOrNongrid) {
+    stop("coefboot.pffr not (yet...) implemented for sparse/irregular data")
 
-    mb <- eval(as.call(modcall))
-    coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
-    ##save results as one long vector as boot can't deal with lists
-    coefvec <- c(coefs$pterms[,"value"],
-      sapply(coefs$smterms, function(x) x$value))
-    if(showProgress) cat(".")
-    return(unlist(coefvec))
+    ## TODO:
+    ## - "all(ydata$.obs %in% 1:nobs)" in pffr means overwriting .obs required
+    ## - subset does not yield REPEATED obs
+    #resample.default <- function(modcall, data, indices) {
+    #  dataB <- data[indices,]
+    #  ydataB <- subset(modcall$ydata, .obs %in% indices)
+    #  modcall$data <- dataB
+    #  modcall$ydata <- ydataB
+    #  modcall
+    #}
+
+  } else {
+    resample.default <- function(modcall, data, indices) {
+      dataB <- data[indices,]
+      modcall$data <- dataB
+      modcall
+    }
+    resample.resid <- function(modcall, data, indices, center=FALSE) {
+      dataB <- data
+      fitted <- fitted(object)
+      resid <- resid(object)[indices,]
+      if(center) {
+        resid <- resid - colMeans(resid)
+      }
+      dataB[[deparse(object$formula[[2]])]] <- fitted + resid
+      modcall$data <- dataB
+      modcall
+    }
+    resample.residc <- function(modcall, data, indices) {
+      resample.resid(modcall, data, indices, n1, n2, n3, center=TRUE)
+    }
   }
-  #resample centered residuals
-  bootfct.residc <- function(modcall, data, indices) {
-    dataB <- data
-    fitted <- fitted(object)
-    resid <- resid(object)[indices,]
-    resid <- resid - colMeans(resid)
-    dataB[[deparse(object$formula[[2]])]] <- fitted + resid
-    modcall$data <- dataB
+  resample <- switch(method,
+    "resample"=resample.default,
+    "residual"=resample.resid,
+    "residual.c"=resample.residc)
 
-    mb <- eval(as.call(modcall))
-    coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
-    ##save results as one long vector as boot can't deal with lists
-    coefvec <- c(coefs$pterms[,"value"],
-      sapply(coefs$smterms, function(x) x$value))
-    if(showProgress) cat(".")
-    return(unlist(coefvec))
+  bootfct <- function(modcall, data, indices){
+    modcall <- resample(modcall, data, indices)
+    bootcoef(modcall)
   }
 
-
-  bootreps <- boot(data=modcall$data,
-    statistic=switch(method,
-      "resample"=bootfct.resample,
-      "residual"=bootfct.resid,
-      "residual.c"=bootfct.residc),
-    R=B,
-    modcall=modcall, parallel=parallel, ncpus=ncpus)
-  if(showProgress) cat("done.\n")
+  bootreps <- boot(data=modcall$data, statistic=bootfct, R=B, modcall=modcall,
+    parallel=parallel, ncpus=ncpus)
+  if(showProgress) message("done.\n")
 
   ## disentangle bootreps
   coefboot <- coef(object, se = FALSE, n1=n1, n2=n2, n3=n3)
@@ -148,7 +147,6 @@ coefboot.pffr <- function(object,
     smtrmsboot[[i]] <- t((bootreps$t[,-(1:length(ptrms))])[,start[i]:stop[i]])
   }
   names(smtrmsboot) <- smtrms
-
 
   ## get bootstrap CIs
   cat("calculating bootstrap CIs....")

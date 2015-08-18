@@ -62,10 +62,12 @@
 #' slopes = sapply(models, function(u) get(u)$beta.hat[2,])
 #' 
 #' plot.dat = melt(intercepts); colnames(plot.dat) = c("grid", "method", "value")
-#' ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) + geom_path() + theme_bw()
+#' ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) + 
+#'    geom_path() + theme_bw()
 #' 
 #' plot.dat = melt(slopes); colnames(plot.dat) = c("grid", "method", "value")
-#' ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) + geom_path() + theme_bw()
+#' ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) + 
+#'    geom_path() + theme_bw()
 #' 
 #' ## fit a model with an interaction
 #' fosr.dti.interaction = bayes_fosr(cca ~ pasat*gender, data = DTI, Kp = 4, Kt = 10)
