@@ -276,7 +276,7 @@ vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = 
   r2.frp = 1 - (sum((Y - Yhat)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
     
   fpca.obj = list(Yhat = pcaef.cur,
-                  Y = Y - X %*% beta.cur,
+                  Y = Y - (fixef.cur + ranef.cur),
                   scores = mu.q.C %*% temp$v %*% diag(temp$d, Kp, Kp),
                   mu = apply(Y - X %*% beta.cur, 2, mean, na.rm = TRUE),
                   efunctions = t(psi.cur), 
