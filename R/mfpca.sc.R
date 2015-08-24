@@ -72,7 +72,17 @@
 ##' @importFrom Matrix nearPD Matrix t as.matrix
 ##' @importFrom mgcv gam predict.gam
 ##' @importFrom gamm4 gamm4
+##' 
+##' @examples 
+##'  \dontrun{
+##'  data(DTI)
+##'  DTI = subset(DTI, Nscans == 3)  ## example where all subjects have exactly 3 visits
+##'  id  = DTI$ID
+##'  Y = DTI$cca
+##'  mfpca.DTI =  mfpca.sc(Y=Y, id = id, twoway = TRUE)
+##'  }
 ## npc=1 seems to give error
+
 
 ###############################################################################################
 #
@@ -93,7 +103,7 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   if (!is.null(visit)){
     visit = as.integer(factor(visit))
   }else{ visit = ave(id, id, FUN=seq_along)}
-    
+  
   Y.df <- data.frame(id=id, visit = visit)
   Y.df$Y <- Y
   J = length(unique(visit))  ## gets max number of visits
@@ -214,16 +224,16 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
                       newdata = data.frame(row.vec = row.vec, col.vec = col.vec))
     npc.0b = matrix(s.npc.0b, D, D)
     npc.0b = (npc.0b + t(npc.0b))/2  ##  smoothed (between) covariance matrix
-  
+    
   }
-    
-    
+  
+  
   ###
   #
   #  add option for covariance method == 1 and makePD argument
   #
   ###
-
+  
   ###########################################################################################
   #      CALCULATE Kw, THE WITHIN COVARIANCE
   #
@@ -294,6 +304,13 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
     Ai = matrix(0, npc[[1]], Ti)
     Bi = matrix(0, npc[[2]] * J, Ti)
     
+    Yij.center = lapply(1:J, function(j) {
+      observed = obs.points[[j]]  
+      Y[J*(m-1)+j, observed]-mu[observed]-eta[observed, j]
+    })
+    
+    Yi.center = matrix(unlist(Yij.center))
+    
     for (j1 in 1:J){     
       ## sets diagonal of cov.y matrix
       cov.y [ 1:numObs[[j1]] + (j1-1)*ifelse(j1==1, 0, numObs[[j1-1]]), 1:numObs[[j1]] + (j1-1)*ifelse(j1==1, 0, numObs[[j1-1]])] <- Z1[obs.points[[j1]],] %*% diag( evalues[[1]]) %*%  t( Z1[obs.points[[j1]], ] ) +  Z2[obs.points[[j1]], ] %*% diag( evalues[[2]]) %*%  t( Z2[obs.points[[j1]], ] ) + diag( rep(sigma2, numObs[[j1]]) )
@@ -313,9 +330,9 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
     }
     
     ## get centered y values for mth subject as vector with NA values omitted
-    subj.indices = J*(m-1) + 1:J
-    Yi.center <- as.matrix(na.omit(as.vector(Y.tilde[subj.indices,])))
+    #Yi.center <- as.matrix(na.omit(as.vector(Y.tilde[subj.indices,])))
     
+    subj.indices = J*(m-1) + 1:J
     score1[m ,] <- Ai %*% ginv(cov.y) %*% Yi.center
     score2[subj.indices,] <- t( matrix( Bi %*% ginv(cov.y) %*% Yi.center, ncol=J) )    
     
