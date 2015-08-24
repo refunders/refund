@@ -13,11 +13,6 @@
 ##' \code{mfpca.sc} uses penalized splines to smooth the covariance functions, as
 ##' developed by Di et al. (2009) and Goldsmith et al. (2013).
 ##'
-##' The functional data must be supplied as either \itemize{ \item an \eqn{n
-##' \times d} matrix \code{Y}, each row of which is one functional observation,
-##' with missing values allowed and with a column \code{' .id'}. A column \code{' .visit'} 
-##' may be supplied as well if the user intends to calculate visit-specific means.
-##'
 ##' @param Y, The user must supply a matrix of functions on a regular grid
 ##' @param id Must be supplied, a vector containing the id information used to identify clusters
 ##' @param visit A vector containing information used to identify visits. Defaults to \code{NULL}.
