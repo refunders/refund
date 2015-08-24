@@ -74,6 +74,15 @@ MFPCA with sparse data in Di et al. (2014).
 \code{mfpca.sc} uses penalized splines to smooth the covariance functions, as
 developed by Di et al. (2009) and Goldsmith et al. (2013).
 }
+\examples{
+\dontrun{
+ data(DTI)
+ DTI = subset(DTI, Nscans == 3)  ## example where all subjects have exactly 3 visits
+ id  = DTI$ID
+ Y = DTI$cca
+ mfpca.DTI =  mfpca.sc(Y=Y, id = id, twoway = TRUE)
+ }
+}
 \author{
 Julia Wrobel \email{jw3134@cumc.columbia.edu}, Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, and Chongzhi Di
 }
