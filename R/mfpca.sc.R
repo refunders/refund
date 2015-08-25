@@ -110,6 +110,8 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   M = length(unique(id)) ## number of subjects
   D = NCOL(Y)  
   I = NROW(Y)  
+  nVisits <- data.frame(table(id))  ## calculate number of visitis for each subject
+  colnames(nVisits) <- c("id", "numVisits")
   
   if (is.null(argvals))  argvals = seq(0, 1, , D)  
   d.vec = rep(argvals, each = I) 
@@ -144,7 +146,7 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
     Y.tilde = Y - matrix(mu, I, D, byrow = TRUE)  ## subtract the mean function from Y
   }
   
-  
+
   ####################################################################################
   ####################################################################################################
   # cov.est.method == 2 obtains a naive covariance estimate which is then smoothed
@@ -152,21 +154,23 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   
   ##################################################################################
   #      CALCULATE Kt, THE TOTAL COVARIANCE
-  #
-  ###     Calculate the pairs to calculate the total covariance function
-  ###   you should have jeff double check that this part is correct 
+  # 
   ##################################################################################
   
   if (cov.est.method == 2) {  ## make sure to exclude this if you don't incorporate cov.est.method == 1
     cov.sum = cov.count = cov.mean = matrix(0, D, D)
+    row.ind = 0  ## get row index of data frame 
     for (m in 1:M) {
-      for(j in 1:J) {
-        row.ind <- (m-1)*J + j
-        obs.points = which(!is.na(Y[row.ind,]))
+      for(j in 1:nVisits[m, 2]) {
+        row.ind.temp <- row.ind  + j
+        obs.points = which(!is.na(Y[row.ind.temp,]))
         cov.count[ obs.points, obs.points ] <- cov.count[ obs.points, obs.points ] + 1
-        cov.sum[ obs.points, obs.points ] <- cov.sum[ obs.points, obs.points ] + tcrossprod(Y.tilde[row.ind, obs.points])
+        cov.sum[ obs.points, obs.points ] <- cov.sum[ obs.points, obs.points ] + tcrossprod(Y.tilde[row.ind.temp, obs.points])
       }
+      row.ind = row.ind + nVisits[m, 2]
     } 
+    
+    
     G.0 = ifelse(cov.count == 0, NA, cov.sum/cov.count)  
     diag.G0 = diag(G.0) 
     diag(G.0) = NA
@@ -199,20 +203,26 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   
   if (cov.est.method == 2) {  ## make sure to exclude this if you don't incorporate cov.est.method == 1
     cov.sum = cov.count = cov.mean = matrix(0, D, D)
-    n.visit <- rep(J, M)
+    row.ind = 0
+    ids.KB = nVisits[nVisits$numVisits > 1, c("id")]
     
     for(m in 1:M) {
-      for(j in 1:(n.visit[m]-1) ) 
-        row.ind1 <- (m-1)*J + j  
-      obs.points1 = which(!is.na(Y[row.ind1,]))
-      for(k in (j+1):n.visit[m] ) {
-        row.ind2 <- (m-1)*J + k
-        obs.points2 = which(!is.na(Y[row.ind2,]))
-        cov.count[ obs.points1, obs.points2 ] <- cov.count[ obs.points1, obs.points2 ] + 1
-        cov.sum[ obs.points1, obs.points2 ] <- cov.sum[ obs.points1, obs.points2 ] + tcrossprod(Y.tilde[row.ind1, obs.points1], Y.tilde[row.ind2, obs.points2]) 
-        cov.count[ obs.points2, obs.points1 ] <- cov.count[ obs.points2, obs.points1 ] + 1
-        cov.sum[ obs.points2, obs.points1 ] <- cov.sum[ obs.points2, obs.points1 ] +  tcrossprod(Y.tilde[row.ind2, obs.points2], Y.tilde[row.ind1, obs.points1])                                                        
+      if (Y.df$id[m] %in% ids.KB){ ## check if mth subject has at least 2 visits
+        for(j in 1:(nVisits[m, 2]-1) ) 
+          #row.ind1 <- (m-1)*J + j 
+          row.ind1 <- row.ind + j
+        obs.points1 = which(!is.na(Y[row.ind1,]))
+        for(k in (j+1):nVisits[m, 2] ) {
+          #row.ind2 <- (m-1)*J + k
+          row.ind2 <- row.ind + k
+          obs.points2 = which(!is.na(Y[row.ind2,]))
+          cov.count[ obs.points1, obs.points2 ] <- cov.count[ obs.points1, obs.points2 ] + 1
+          cov.sum[ obs.points1, obs.points2 ] <- cov.sum[ obs.points1, obs.points2 ] + tcrossprod(Y.tilde[row.ind1, obs.points1], Y.tilde[row.ind2, obs.points2]) 
+          cov.count[ obs.points2, obs.points1 ] <- cov.count[ obs.points2, obs.points1 ] + 1
+          cov.sum[ obs.points2, obs.points1 ] <- cov.sum[ obs.points2, obs.points1 ] +  tcrossprod(Y.tilde[row.ind2, obs.points2], Y.tilde[row.ind1, obs.points1])                                                        
+        }
       }
+      row.ind = row.ind + nVisits[m, 2]
     }
     
     G.0b <- ifelse(cov.count==0, NA,  cov.sum/cov.count)  ## between covariance
@@ -230,7 +240,7 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   
   ###
   #
-  #  add option for covariance method == 1 and makePD argument
+  #  add option for covariance method == 1 and makePD arguments
   #
   ###
   
@@ -283,18 +293,18 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   sigma2 <- max(weighted.mean(DIAG, w = w2, na.rm = TRUE), 0) ### estimated measurement error variance
   
   ################################################################################
-  
-  Yhat <- matrix(0, M*J, D)
-  Yhat.subject <- matrix(0, M*J, D)  
+  Yhat = Yhat.subject =  matrix(0, I, D)
   
   score1 <- matrix(0, nrow=M, ncol=npc[[1]])    
-  score2 <- matrix(0, nrow=M*J, ncol=npc[[2]])    
+  score2 <- matrix(0, nrow=I, ncol=npc[[2]])    
   Z1 = efunctions[[1]]
   Z2 = efunctions[[2]]
-  
+    
+  row.ind = 0
   for(m in 1:M) {
     
-    obs.points = lapply(1:J, function(j) which(!is.na(Y[J*(m-1) + j, ])) )
+    Jm = nVisits[m, 2]  ## number of visits for mth subject
+    obs.points = lapply(1:Jm, function(j) which(!is.na(Y[row.ind + j, ])) )
     
     ## Ti is number of non-NA observations across all visits for a subject
     numObs = lapply(obs.points, length)
@@ -302,46 +312,44 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
     
     cov.y = matrix(0, Ti, Ti)
     Ai = matrix(0, npc[[1]], Ti)
-    Bi = matrix(0, npc[[2]] * J, Ti)
+    Bi = matrix(0, npc[[2]] * Jm, Ti)
     
-    Yij.center = lapply(1:J, function(j) {
+    Yij.center = lapply(1:Jm, function(j) {
       observed = obs.points[[j]]  
-      Y[J*(m-1)+j, observed]-mu[observed]-eta[observed, j]
+      Y[row.ind + j, observed]-mu[observed]-eta[observed, j]
     })
     
     Yi.center = matrix(unlist(Yij.center))
     
-    for (j1 in 1:J){     
+    for (j1 in 1:Jm){     
       ## sets diagonal of cov.y matrix
-      cov.y [ 1:numObs[[j1]] + (j1-1)*ifelse(j1==1, 0, numObs[[j1-1]]), 1:numObs[[j1]] + (j1-1)*ifelse(j1==1, 0, numObs[[j1-1]])] <- Z1[obs.points[[j1]],] %*% diag( evalues[[1]]) %*%  t( Z1[obs.points[[j1]], ] ) +  Z2[obs.points[[j1]], ] %*% diag( evalues[[2]]) %*%  t( Z2[obs.points[[j1]], ] ) + diag( rep(sigma2, numObs[[j1]]) )
+      indices1 = 1:numObs[[j1]] + (j1-1)*ifelse(j1==1, 0, numObs[[j1-1]])
+      cov.y [indices1 , indices1] <- Z1[obs.points[[j1]],] %*% diag( evalues[[1]]) %*%  t( Z1[obs.points[[j1]], ] ) +  Z2[obs.points[[j1]], ] %*% diag( evalues[[2]]) %*%  t( Z2[obs.points[[j1]], ] ) + diag( rep(sigma2, numObs[[j1]]) )
       
-      if(j1 < J){
-        for (j2 in (j1+1):J){        
-          cov.y[1:numObs[[j2]] + (j2-1)*numObs[[j2-1]], 1:numObs[[j1]] + (j1-1)*ifelse(j1==1, 0, numObs[[j1-1]])] <- Z1[obs.points[[j2]], ] %*% diag( evalues[[1]]) %*%  t( Z1[obs.points[[j1]], ] )
-          cov.y[1:numObs[[j1]] + (j1-1)*ifelse(j1==1, 0, numObs[[j1-1]]), 1:numObs[[j2]] + (j2-1)*numObs[[j2-1]]] <- t(cov.y[1:numObs[[j2]] + (j2-1)*numObs[[j2-1]], 1:numObs[[j1]] + (j1-1)*ifelse(j1==1, 0, numObs[[j1-1]])])
+      if(j1 < Jm && nVisits$numVisits[m] > 1){
+        for (j2 in (j1+1):Jm){
+          indices2 = 1:numObs[[j2]] + (j2-1)*numObs[[j2-1]]
+          cov.y[indices2, indices1] <- Z1[obs.points[[j2]], ] %*% diag( evalues[[1]]) %*%  t( Z1[obs.points[[j1]], ] )
+          cov.y[indices1, indices2] <- t(cov.y[indices2, indices1])
         }
       }      
     }
     
     ##the following defines Ai and Bi
-    for(j in 1:J) {      
+    for(j in 1:Jm) {      
       Ai[1:npc[[1]], 1:numObs[[j]] + (j-1)*ifelse(j==1, 0, numObs[[j-1]])] <- diag(evalues[[1]]) %*% t(Z1[obs.points[[j]],])
       Bi[1:npc[[2]] + npc[[2]] * (j-1), 1:numObs[[j]] + (j-1)*ifelse(j==1, 0, numObs[[j-1]])] <- diag(evalues[[2]]) %*% t(Z2[obs.points[[j]],])
     }
-    
-    ## get centered y values for mth subject as vector with NA values omitted
-    #Yi.center <- as.matrix(na.omit(as.vector(Y.tilde[subj.indices,])))
-    
-    subj.indices = J*(m-1) + 1:J
+        
+    subj.indices = row.ind + 1:Jm
     score1[m ,] <- Ai %*% ginv(cov.y) %*% Yi.center
-    score2[subj.indices,] <- t( matrix( Bi %*% ginv(cov.y) %*% Yi.center, ncol=J) )    
+    score2[subj.indices,] <- t( matrix( Bi %*% ginv(cov.y) %*% Yi.center, ncol=Jm) )    
     
-    for(j in 1:J) {
-      row.ind <- (m-1)*J + j
-      Yhat[row.ind,] <- as.matrix(mu) + eta[,j] + Z1 %*% score1[m,] + Z2 %*% score2[row.ind ,] 
-      Yhat.subject[row.ind, ] <- as.matrix(mu) + eta[,j] + as.vector(Z1 %*% score1[m,])
+    for(j in 1:Jm) {
+      Yhat[row.ind + j,] <- as.matrix(mu) + eta[,j] + Z1 %*% score1[m,] + Z2 %*% score2[row.ind + j ,] 
+      Yhat.subject[row.ind + j, ] <- as.matrix(mu) + eta[,j] + as.vector(Z1 %*% score1[m,])
     }
-    
+    row.ind = row.ind + nVisits[m, 2]
   }
   
   scores <- list(level1 = score1, level2 = score2)
