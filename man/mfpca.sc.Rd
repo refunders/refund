@@ -77,7 +77,7 @@ developed by Di et al. (2009) and Goldsmith et al. (2013).
 \examples{
 \dontrun{
  data(DTI)
- DTI = subset(DTI, Nscans == 3)  ## example where all subjects have exactly 3 visits
+ DTI = subset(DTI, Nscans < 6)  ## example where all subjects have 6 or fewer visits
  id  = DTI$ID
  Y = DTI$cca
  mfpca.DTI =  mfpca.sc(Y=Y, id = id, twoway = TRUE)
