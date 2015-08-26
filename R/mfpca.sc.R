@@ -364,7 +364,7 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   # Returns an object of class 'mfpca'
   ##############################################################################
   
-  ret.objects = c("Yhat", "Yhat.subject","Y", "scores", "mu", "efunctions", "evalues", "npc", "sigma2")
+  ret.objects = c("Yhat", "Yhat.subject","Y.df", "scores", "mu", "efunctions", "evalues", "npc", "sigma2")
   
   if (twoway) {
     ret.objects = c(ret.objects, "eta")
