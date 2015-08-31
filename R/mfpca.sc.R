@@ -11,7 +11,7 @@
 ##' MFPCA was proposed in Di et al. (2009), with variations for 
 ##' MFPCA with sparse data in Di et al. (2014). 
 ##' \code{mfpca.sc} uses penalized splines to smooth the covariance functions, as
-##' developed by Di et al. (2009) and Goldsmith et al. (2013).
+##' Described in Di et al. (2009) and Goldsmith et al. (2013).
 ##'
 ##' @param Y, The user must supply a matrix of functions on a regular grid
 ##' @param id Must be supplied, a vector containing the id information used to identify clusters
@@ -56,18 +56,14 @@
 ##' @references Di, C., Crainiceanu, C., Caffo, B., and Punjabi, N. (2009).
 ##' Multilevel functional principal component analysis. \emph{Annals of Applied
 ##' Statistics}, 3, 458--488.
+##' 
+##' Di, C., Crainiceanu, C., Caffo, B., and Punjabi, N. (2014).
+##' Multilevel sparse functional principal component analysis. \emph{Stat}, 3, 126--143.
 ##'
 ##' Goldsmith, J., Greven, S., and Crainiceanu, C. (2013). Corrected confidence
 ##' bands for functional data using principal components. \emph{Biometrics},
 ##' 69(1), 41--51.
 ##'
-##' Staniswalis, J. G., and Lee, J. J. (1998). Nonparametric regression
-##' analysis of longitudinal data. \emph{Journal of the American Statistical
-##' Association}, 93, 1403--1418.
-##'
-##' Yao, F., Mueller, H.-G., and Wang, J.-L. (2005). Functional data analysis
-##' for sparse longitudinal data. \emph{Journal of the American Statistical
-##' Association}, 100, 577--590.
 ##' @export
 ##' @importFrom Matrix nearPD Matrix t as.matrix
 ##' @importFrom mgcv gam predict.gam
