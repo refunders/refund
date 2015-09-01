@@ -26,7 +26,7 @@
 ##' given, this overrides \code{pve}).
 ##'
 ##' @param makePD logical: should positive definiteness be enforced for the
-##' covariance surface estimate?
+##' covariance surface estimate? Defaults to \code{FALSE} Only \code{FALSE} is currently supported.
 ##' @param center logical: should an estimated mean function be subtracted from
 ##' \code{Y}? Set to \code{FALSE} if you have already demeaned the data using
 ##' your favorite mean function estimate.
@@ -34,7 +34,7 @@
 ##'  @param cov.est.method covariance estimation method. If set to \code{1}, a
 ##' one-step method that applies a bivariate smooth to the \eqn{y(s_1)y(s_2)}
 ##' values. This can be very slow. If set to \code{2} (the default), a two-step
-##' method that obtains a naive covariance estimate which is then smoothed.
+##' method that obtains a naive covariance estimate which is then smoothed. \code{2} is currently supported.
 ##' @param integration quadrature method for numerical integration; only
 ##' \code{"trapezoidal"} is currently supported.
 ##' 
