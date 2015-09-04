@@ -68,6 +68,7 @@
 ##' @importFrom Matrix nearPD Matrix t as.matrix
 ##' @importFrom mgcv gam predict.gam
 ##' @importFrom gamm4 gamm4
+##' @importFrom MASS ginv
 ##' 
 ##' @examples 
 ##'  \dontrun{
