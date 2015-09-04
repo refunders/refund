@@ -76,6 +76,7 @@
 #' ##### Longitudinal real-data examples #####
 #' 
 #' data(DTI2)
+#' class(DTI2$cca) = class(DTI2$cca)[-1]
 #' DTI2 = subset(DTI2, select = c(cca, id, pasat))
 #' DTI2 = DTI2[complete.cases(DTI2),]
 #' 

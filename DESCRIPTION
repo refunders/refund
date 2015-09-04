@@ -1,8 +1,8 @@
 Package: refund
 Type: Package
 Title: Regression with Functional Data
-Version: 0.1-12
-Date: 2015-08-02
+Version: 0.1-13
+Date: 2015-09-04
 Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"), 
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"), 
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"), 
@@ -138,3 +138,4 @@ Collate:
     'f_sum2.R'
     'f_sum4.R'
     'f_trace.R'
+    'mfpca.sc.R'

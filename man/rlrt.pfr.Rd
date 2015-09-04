@@ -8,7 +8,7 @@ functional predictors}
 rlrt.pfr(pfr.obj = pfr.obj, test = NULL, ...)
 }
 \arguments{
-\item{pfr.obj}{an object returned by pfr}
+\item{pfr.obj}{an object returned by pfr_old()}
 
 \item{test}{"constancy" will test functional form of the coefficient
 function of the last function listed in funcs in pfr.obj against the null
@@ -29,6 +29,7 @@ model as fit with mgcv::gam} \item{m }{the model containing only the
 parameters being tested as fit with mgcv::gam}
 }
 \description{
+NOTE: this function is designed to work with pfr_old() rather than pfr().
 Given a pfr object of family="gaussian", tests whether the function is
 identically equal to its mean (constancy), or whether the functional
 predictor significantly improves the model (inclusion).  Based on
@@ -85,9 +86,9 @@ apply(is.na(W1), 2, mean)
 apply(is.na(W2), 2, mean)
 
 ## fit two univariate models, then one model with both functional predictors
-pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
-pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
-pfr.obj.t3 <- pfr(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
+pfr.obj.t1 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
+pfr.obj.t2 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
+pfr.obj.t3 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
 
 ## plot the coefficient function and bounds
 dev.new()

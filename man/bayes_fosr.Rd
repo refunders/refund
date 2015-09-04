@@ -79,6 +79,7 @@ fosr.dti.interaction = bayes_fosr(cca ~ pasat*gender, data = DTI, Kp = 4, Kt = 1
 ##### Longitudinal real-data examples #####
 
 data(DTI2)
+class(DTI2$cca) = class(DTI2$cca)[-1]
 DTI2 = subset(DTI2, select = c(cca, id, pasat))
 DTI2 = DTI2[complete.cases(DTI2),]
 

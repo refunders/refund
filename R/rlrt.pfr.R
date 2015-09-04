@@ -1,6 +1,7 @@
 ##' Likelihood Ratio Test and Restricted Likelihood Ratio Test for inference of
 ##' functional predictors
 ##'
+##' NOTE: this function is designed to work with pfr_old() rather than pfr().
 ##' Given a pfr object of family="gaussian", tests whether the function is
 ##' identically equal to its mean (constancy), or whether the functional
 ##' predictor significantly improves the model (inclusion).  Based on
@@ -27,7 +28,7 @@
 ##' something else, a warning is printed and the model refit with "ML" and a
 ##' test is then conducted.
 ##'
-##' @param pfr.obj an object returned by pfr
+##' @param pfr.obj an object returned by pfr_old()
 ##' @param test "constancy" will test functional form of the coefficient
 ##' function of the last function listed in funcs in pfr.obj against the null
 ##' of a constant line: the average of the functional predictor.  "inclusion"
@@ -105,9 +106,9 @@
 ##' apply(is.na(W2), 2, mean)
 ##'
 ##' ## fit two univariate models, then one model with both functional predictors
-##' pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
-##' pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
-##' pfr.obj.t3 <- pfr(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
+##' pfr.obj.t1 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
+##' pfr.obj.t2 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
+##' pfr.obj.t3 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
 ##'
 ##' ## plot the coefficient function and bounds
 ##' dev.new()
@@ -165,6 +166,9 @@
 ##' }
 rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
 {
+  
+  warning("rlrt.pfr() is designed to be used with pfr_old() rather than pfr(). ")
+  
   if(is.null(test) || !(test %in% c("constancy","inclusion")) ){
     print("test must be 'constancy' or 'inclusion'")
     break;
