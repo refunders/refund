@@ -136,6 +136,7 @@
 #' @importFrom stats rgamma runif sd termplot terms var vcov
 #' @importFrom stats weighted.mean
 #' @importFrom methods as
+#' @importFrom stats ave
 #' @export
 
 af <- function(X, argvals = NULL, xind = NULL,

@@ -16,7 +16,8 @@ Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@g
     person("Yakuan", "Chen", role="ctb", email = "yc2641@@cumc.columbia.edu"),
     person("Sonja", "Greven", role = "ctb"),
     person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"), 
-    person(c("Madan", "Gopal"), "Kundu", role="ctb"))
+    person(c("Madan", "Gopal"), "Kundu", role="ctb"),
+    person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"))
 Depends:
     R (>= 2.14.0)
 Imports:
