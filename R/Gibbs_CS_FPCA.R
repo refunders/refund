@@ -35,6 +35,7 @@
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
 #' @importFrom MASS mvrnorm
+#' @importFrom lme4 mkReTrms findbars
 #' @export
 #' 
 gibbs_cs_fpca = function(formula, Kt=5, Kp=2, data=NULL, verbose = TRUE, N.iter = 5000, N.burn = 1000, SEED = NULL, 

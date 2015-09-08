@@ -1,3 +1,13 @@
+# refund 0.1-13
+
+* add `mfpca.sc()` function.
+
+* add example for DTI data.
+
+* export `pfr_old()`.
+
+* fix documentation and add warning message for `rlrt.pfr()`.
+
 # refund 0.1-12
 
 * new `pfr()` function. The new `pfr()` function merged the old pfr and fgam functionality.
