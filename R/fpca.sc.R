@@ -272,7 +272,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     npc = ifelse(is.null(npc), min(which(cumsum(evalues)/sum(evalues) > pve)), npc)
     efunctions = matrix(Winvsqrt%*%eigen(V, symmetric = TRUE)$vectors[, seq(len = npc)], nrow = D, ncol = npc)
     evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values[1:npc]  # use correct matrix for eigenvalue problem
-    cov.hat = efunctions %*% diag(evalues) %*% t(efunctions)
+    cov.hat = efunctions %*% tcrossprod(diag(evalues, nrow = npc, ncol = npc), efunctions)
     ### numerical integration for estimation of sigma2
     T.len <- argvals[D] - argvals[1] # total interval length
     T1.min <- min(which(argvals >= argvals[1] + 0.25*T.len)) # left bound of narrower interval T1
