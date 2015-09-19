@@ -1,21 +1,21 @@
 Package: refundDevel
 Type: Package
 Title: developer version of refund: Regression with Functional Data
-Version: 0.3-4
+Version: 0.3-5
 Date: 2015-08-05
-Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"), 
-    person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"), 
-    person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"), 
-    person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"), 
-    person("Jaroslaw", "Harezlak", role="aut"), 
+Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"),
+    person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
+    person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
+    person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"),
+    person("Jaroslaw", "Harezlak", role="aut"),
     person(c("Mathew", "W."), "McLean", role="aut", email = "mathew.w.mclean@gmail.com"),
     person("Bruce", "Swihart", role ="aut", email = "bswihart@jhsph.edu"),
     person("Luo", "Xiao", role="aut", email = "lxiao@jhsph.edu"),
-    person("Ciprian", "Crainiceanu", role = "aut", email = "ccrainic@jhsph.edu"), 
-    person("Philip", "Reiss", role = "aut", email = "phil.reiss@nyumc.org"), 
+    person("Ciprian", "Crainiceanu", role = "aut", email = "ccrainic@jhsph.edu"),
+    person("Philip", "Reiss", role = "aut", email = "phil.reiss@nyumc.org"),
     person("Yakuan", "Chen", role="ctb", email = "yc2641@@cumc.columbia.edu"),
     person("Sonja", "Greven", role = "ctb"),
-    person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"), 
+    person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"),
     person(c("Madan", "Gopal"), "Kundu", role="ctb"),
     person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"))
 Depends:
