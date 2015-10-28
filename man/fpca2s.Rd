@@ -24,10 +24,11 @@ regular sequence from 0 to 1.}
 eigenvectors.}
 }
 \value{
-A list with components \item{Yhat}{predicted data matrix}
+An \code{fpca} object with components \item{Yhat}{predicted data matrix}
+\item{Y}{Observed data}
 \item{scores}{matrix of scores} \item{mu}{mean function} \item{npc}{number
-of principal components} \item{eigenvectors}{matrix of eigenvectors}
-\item{eigenvalues}{vector of eigenvalues}
+of principal components} \item{efunctions}{matrix of eigenvectors}
+\item{evalues}{vector of eigenvalues}
 }
 \description{
 This function performs functional PCA by performing an ordinary singular
@@ -69,8 +70,8 @@ function into \code{\link{fpca.ssvd}} in future versions of the package.
   ###################################################
   ####               SVDS               ########
   ###################################################
-  Phi <- results$eigenvectors
-  eigenvalues <- results$eigenvalues
+  Phi <- results$efunctions
+  eigenvalues <- results$evalues
 
   for(k in 1:N){
     if(Phi[,k]\%*\%phi[,k]< 0)

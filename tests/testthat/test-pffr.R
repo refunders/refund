@@ -137,6 +137,7 @@ test_that("sff terms are working", {
   expect_is(summary(m.s), "summary.pffr")
   expect_true(
     max(abs((fitted(m.lin) - fitted(m.s))/fitted(m.lin))) < .05 )
+  expect_equal(fitted(m.s), predict(m.s, newdata = data))
 })
 
 

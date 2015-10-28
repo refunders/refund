@@ -155,7 +155,7 @@ predict.pffr <- function(object,
                                 gamdata[[paste(cov, ".smat", sep="")]] <-
                                     matrix(sff$xind, byrow=TRUE, ncol=length(sff$xind), nrow=nobs*nyindex)
                                 gamdata[[paste(cov, ".tmat", sep="")]] <-
-                                    matrix(rep(sff$yind, times=nobs), ncol=length(sff$xind), nrow=nobs*nyindex)
+                                    matrix(rep(object$pffr$yind, times=nobs), ncol=length(sff$xind), nrow=nobs*nyindex)
                                 gamdata[[paste("L.", cov, sep="")]] <-  predL[rep(1:nobs, e=nyindex),]
                             }
                         }

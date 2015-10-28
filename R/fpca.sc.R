@@ -57,8 +57,10 @@
 ##' method that obtains a naive covariance estimate which is then smoothed.
 ##' @param integration quadrature method for numerical integration; only
 ##' \code{"trapezoidal"} is currently supported.
-##' @return \item{Yhat}{FPC approximation (projection onto leading components)
-##' of \code{Y.pred} if specified, or else of \code{Y}.} \item{scores}{\eqn{n
+##' @return An object of class \code{fpca} containing:
+##' \item{Yhat}{FPC approximation (projection onto leading components)
+##' of \code{Y.pred} if specified, or else of \code{Y}.} 
+##' \item{Y}{the observed data}\item{scores}{\eqn{n
 ##' \times npc} matrix of estimated FPC scores.} \item{mu}{estimated mean
 ##' function (or a vector of zeroes if \code{center==FALSE}).} \item{efunctions
 ##' }{\eqn{d \times npc} matrix of estimated eigenfunctions of the functional
@@ -270,7 +272,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     npc = ifelse(is.null(npc), min(which(cumsum(evalues)/sum(evalues) > pve)), npc)
     efunctions = matrix(Winvsqrt%*%eigen(V, symmetric = TRUE)$vectors[, seq(len = npc)], nrow = D, ncol = npc)
     evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values[1:npc]  # use correct matrix for eigenvalue problem
-    cov.hat = efunctions %*% diag(evalues) %*% t(efunctions)
+    cov.hat = efunctions %*% tcrossprod(diag(evalues, nrow = npc, ncol = npc), efunctions)
     ### numerical integration for estimation of sigma2
     T.len <- argvals[D] - argvals[1] # total interval length
     T1.min <- min(which(argvals >= argvals[1] + 0.25*T.len)) # left bound of narrower interval T1
@@ -307,12 +309,13 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
         }
     }
 
-    ret.objects = c("Yhat", "scores", "mu", "efunctions", "evalues", "npc")
+    ret.objects = c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc")
     if (var) {
-        ret.objects = c(ret.objects, "sigma2", "diag.var", "VarMats")
-        if (simul) ret.objects = c(ret.objects, "crit.val")
+      ret.objects = c(ret.objects, "sigma2", "diag.var", "VarMats")
+      if (simul) ret.objects = c(ret.objects, "crit.val")
     }
     ret = lapply(1:length(ret.objects), function(u) get(ret.objects[u]))
     names(ret) = ret.objects
+    class(ret) = "fpca"
     return(ret)
 }

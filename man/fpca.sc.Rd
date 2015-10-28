@@ -63,8 +63,10 @@ method that obtains a naive covariance estimate which is then smoothed.}
 \code{"trapezoidal"} is currently supported.}
 }
 \value{
+An object of class \code{fpca} containing:
 \item{Yhat}{FPC approximation (projection onto leading components)
-of \code{Y.pred} if specified, or else of \code{Y}.} \item{scores}{\eqn{n
+of \code{Y.pred} if specified, or else of \code{Y}.}
+\item{Y}{the observed data}\item{scores}{\eqn{n
 \times npc} matrix of estimated FPC scores.} \item{mu}{estimated mean
 function (or a vector of zeroes if \code{center==FALSE}).} \item{efunctions
 }{\eqn{d \times npc} matrix of estimated eigenfunctions of the functional

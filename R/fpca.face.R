@@ -326,7 +326,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   efunctions <- eigenvectors[,1:N]
   evalues <- J*eigenvalues[1:N]
   
-  ret.objects <- c("Yhat", "scores", "mu", "efunctions", "evalues", "npc")
+  ret.objects <- c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc")
   if(var) {
     sigma2 = sigmahat2
     VarMats = vector("list",I)
@@ -350,5 +350,6 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   }
   ret = lapply(1:length(ret.objects), function(u) get(ret.objects[u]))
   names(ret) = ret.objects
+  class(ret) = "fpca"
   return(ret)      	                	
 }
