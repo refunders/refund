@@ -102,6 +102,17 @@
 #'   for all \eqn{t} in \code{ff}-terms so that the global functional intercept
 #'   can be interpreted as the global mean function.
 #'
+#'   The \code{family}-argument can be used to specify all of the response
+#'   distributions and link functions described in
+#'   \code{\link[mgcv]{family.mgcv}}. Note that  \code{family = "gaulss"} is
+#'   treated in a special way: Users can supply the formula for the variance by
+#'   supplying a special argument \code{varformula}, but this is not modified in
+#'   the way that the \code{formula}-argument is but handed over to the fitter
+#'   directly, so this is for expert use only. If \code{varformula} is not
+#'   given, \code{pffr} will use the parameters from argument \code{bs.int} to
+#'   define a spline basis along the index of the response, i.e., a smooth
+#'   variance function over $t$ for responses $Y(t)$.
+#'
 #' @param formula a formula with special terms as for \code{\link[mgcv]{gam}},
 #'   with additional special terms \code{\link{ff}(), \link{sff}(),
 #'   \link{ffpc}(), \link{pcre}()} and \code{c()}.
@@ -137,19 +148,22 @@
 #'   constraints for functional regression, see Details.
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}} or
 #'   \code{\link[mgcv]{bam}}. \code{subset} is not implemented.
-#' @return a fitted \code{pffr}-object, which is a
+#' @return A fitted \code{pffr}-object, which is a
 #'   \code{\link[mgcv]{gam}}-object with some additional information in an
 #'   \code{pffr}-entry. If \code{algorithm} is \code{"gamm"} or \code{"gamm4"},
 #'   only the \code{$gam} part of the returned list is modified in this way.
+#'   Available methods/functions to postprocess fitted models:
+#'   \code{\link{summary.pffr}}, \code{\link{plot.pffr}}, \code{\link{coef.pffr}}, \code{\link{fitted.pffr}}, \code{\link{residuals.pffr}},
+#'   \code{\link{predict.pffr}}, \code{\link{model.matrix.pffr}},  \code{\link{qq.pffr}}, \code{\link{pffr.check}}.
 #' @author Fabian Scheipl, Sonja Greven
 #' @seealso \code{\link[mgcv]{smooth.terms}} for details of \code{mgcv} syntax
 #'   and available spline bases and penalties.
-#' @references Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2013).
-#'   Penalized function-on-function regression. (under revision)
+#' @references Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2015).
+#'   Penalized function-on-function regression. Computational Statistics, 30(2):539--568.
 #'   \url{http://biostats.bepress.com/jhubiostat/paper254/}
 #'
 #'   Scheipl, F., Staicu, A.-M. and Greven, S. (2015). Functional Additive Mixed
-#'   Models. Journal of Computational \& Graphical Statistics, to appear.
+#'   Models. Journal of Computational \& Graphical Statistics, 24(2): 477--501.
 #'   \url{http://arxiv.org/abs/1207.5947}
 #' @export
 #' @importFrom mgcv ti
@@ -227,17 +241,26 @@ pffr <- function(
   ## and not in GlobalEnv get used....
 
   ## warn if any entries in ... are not arguments for gam/gam.fit or gamm4/lmer
+  ## check for special case of gaulss family
   dots <- list(...)
+  gaulss <- FALSE
   if(length(dots)){
     validDots <- if(!is.na(algorithm) && algorithm=="gamm4"){
       c(names(formals(gamm4)), names(formals(lmer)))
     } else {
-        c(names(formals(gam)), names(formals(bam)), names(formals(gam.fit)))
+      c(names(formals(gam)), names(formals(bam)), names(formals(gam.fit)))
+    }
+    if(!is.null(dots$family) && dots$family == "gaulss") {
+      validDots <- c(validDots, "varformula")
+      gaulss <- TRUE
     }
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
     if(length(notUsed))
       warning("Arguments <", paste(notUsed, collapse=", "), "> supplied but not used." )
   }
+
+
+
 
   sparseOrNongrid <- !is.null(ydata)
   if(sparseOrNongrid){
@@ -363,8 +386,7 @@ pffr <- function(
     stackpattern <- rep(1:nobs, each=nyindex)
 
   } else {
-
-
+    # sparseOrNongrid:
     yindname <- "yindex"
     yindvec <- ydata$.index
     yindvecname <- as.symbol(paste(yindname,".vec",sep=""))
@@ -715,6 +737,16 @@ pffr <- function(
 
   newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse="+"))
   environment(newfrml) <- newfrmlenv
+
+  # variance formula for gaulss
+  if(gaulss) {
+    if(is.null(dots$varformula)) {
+        dots$varformula <- formula(paste("~", safeDeparse(
+          as.call(c(as.name("s"), x = as.symbol(yindvecname), bs.int)))))
+    }
+    environment(dots$varformula) <- newfrmlenv
+    newfrml <- list(newfrml, dots$varformula)
+  }
   pffrdata <- list2df(as.list(newfrmlenv))
 
   newcall <- expand.call(pffr, call)

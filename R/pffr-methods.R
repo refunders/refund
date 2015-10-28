@@ -748,5 +748,46 @@ print.summary.pffr <- function(x, digits = max(3, getOption("digits") - 3),
     invisible(x)
 }
 
+#' QQ plots for pffr model residuals
+#'
+#' This is simply a wrapper for code{\link[mgcv]{qq.gam}()}.
+#'
+#' @param object a fitted \code{\link{pffr}}-object
+#' @inheritParams mgcv::qq.gam
+#' @export
+qq.pffr <- function (object, rep = 0, level = 0.9, s.rep = 10, type = c("deviance",
+  "pearson", "response"), pch = ".", rl.col = 2, rep.col = "gray80",
+  ...) {
+  if (!inherits(object, "pffr"))
+    stop("`object' is not of class \"pffr\"")
+  call <- match.call()
+  # drop pffr-class so only gam-methods are used on object
+  class(object) <- class(object)[-1]
+  call$object <- object
+  call[[1]] <- mgcv::qq.gam
+  eval(call)
+}
 
-
+#' Some diagnostics for a fitted pffr model
+#'
+#' This is simply a wrapper for \code{\link[mgcv]{gam.check}()}.
+#'
+#' @param b a fitted \code{\link{pffr}}-object
+#' @inheritParams mgcv::gam.check
+#' @param rep passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
+#' @param level passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
+#' @param rl.col passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
+#' @param rep.col passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
+#' @export
+pffr.check <- function (b, old.style = FALSE, type = c("deviance", "pearson",
+  "response"), k.sample = 5000, k.rep = 200, rep = 0, level = 0.9,
+  rl.col = 2, rep.col = "gray80", ...)  {
+  if (!inherits(b, "pffr"))
+    stop("`object' is not of class \"pffr\"")
+  call <- match.call()
+  # drop pffr-class so only gam-methods are used on b
+  class(b) <- class(b)[-1]
+  call$b <- b
+  call[[1]] <- mgcv::gam.check
+  eval(call)
+}
