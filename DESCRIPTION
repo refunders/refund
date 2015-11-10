@@ -141,3 +141,6 @@ Collate:
     'f_sum4.R'
     'f_trace.R'
     'mfpca.sc.R'
+    'fpca.lfda.R'
+    'predict.fbps.R'
+    'select_knots.R'

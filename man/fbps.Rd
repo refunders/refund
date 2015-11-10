@@ -4,9 +4,11 @@
 \alias{fbps}
 \title{Sandwich smoother for matrix data}
 \usage{
-fbps(data, covariates = NULL, knots = 35, p = 3, m = 2, lambda = NULL,
-  alpha = 1, search.grid = T, search.length = 100, method = "L-BFGS-B",
-  lower = -20, upper = 20, control = NULL)
+fbps(data, subj = NULL, covariates = NULL, knots = 35,
+  knots.option = "equally-spaced", periodicity = c(FALSE, FALSE), p = 3,
+  m = 2, lambda = NULL, selection = "GCV", search.grid = T,
+  search.length = 100, method = "L-BFGS-B", lower = -20, upper = 20,
+  control = NULL)
 }
 \arguments{
 \item{data}{n1 by n2 data matrix without missing data}
@@ -23,9 +25,6 @@ for all dimensions; defaults to 35}
 
 \item{lambda}{user-specified smoothing parameters; defaults to NULL}
 
-\item{alpha}{the coefficient of the penalty for degrees of freedom in the
-GCV criterion; defaults to 1}
-
 \item{search.grid}{logical; defaults to TRUE, if FALSE, uses
 \command{optim}}
 
@@ -38,6 +37,9 @@ defaults to 100}
 \command{optim}; defaults are -20 and 20.}
 
 \item{control}{see \command{optim}}
+
+\item{alpha}{the coefficient of the penalty for degrees of freedom in the
+GCV criterion; defaults to 1}
 }
 \value{
 A list with components \item{lambda}{vector of length 2 of selected
