@@ -14,8 +14,6 @@
 ##' @param p degrees of B-splines; defaults to 3
 ##' @param m order of differencing penalty; defaults to 2
 ##' @param lambda user-specified smoothing parameters; defaults to NULL
-##' @param alpha the coefficient of the penalty for degrees of freedom in the
-##' GCV criterion; defaults to 1
 ##' @param search.grid logical; defaults to TRUE, if FALSE, uses
 ##' \command{optim}
 ##' @param search.length number of equidistant (log scale) smoothing parameter;
@@ -24,6 +22,10 @@
 ##' @param lower,upper bounds for log smoothing parameter, passed to
 ##' \command{optim}; defaults are -20 and 20.
 ##' @param control see \command{optim}
+##' @param subj vector of subject id (corresponding to the columns of data); defaults to NULL
+##' @param knots.option knot selection method; defaults to "equally-spaced"
+##' @param periodicity vector of two logical, indicating periodicity in the direction of row and column; defaults to c(FALSE, FALSE)
+##' @param selection selection of smoothing paramter; defaults to "GCV"
 ##' @return A list with components \item{lambda}{vector of length 2 of selected
 ##' smoothing parameters} \item{Yhat}{fitted data} \item{trace}{trace of the
 ##' overall smoothing matrix} \item{gcv}{value of generalized cross validation}
@@ -77,7 +79,7 @@
 ##' persp(x,z,est$Yhat,zlab="f(x,z)",zlim=c(-1,2.5),phi=30,theta=45,
 ##'       expand=0.8,r=4,col="red",main="Estimated surface")
 ##' @importFrom stats optim
-fbps <- function(data,subj=NULL,covariates = NULL, knots=35, knots.option="equally-spaced",
+fbps <- function(data, subj=NULL,covariates = NULL, knots=35, knots.option="equally-spaced",
                  periodicity = c(FALSE,FALSE), p=3,m=2,lambda=NULL,
                  selection = "GCV",
                  search.grid = T, search.length = 100, method="L-BFGS-B",
@@ -148,7 +150,7 @@ fbps <- function(data,subj=NULL,covariates = NULL, knots=35, knots.option="equal
       knots_right <- 2*zknots[K2] - zknots[K2-(1:p2)]
       zknots <- c(knots_left,zknots,knots_right)
     }
-  #######################################################################################
+    #######################################################################################
     Y = data 
     
     ###################   precalculation for fbps smoothing  ##########################################66

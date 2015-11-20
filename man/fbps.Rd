@@ -13,17 +13,25 @@ fbps(data, subj = NULL, covariates = NULL, knots = 35,
 \arguments{
 \item{data}{n1 by n2 data matrix without missing data}
 
+\item{subj}{vector of subject id (corresponding to the columns of data); defaults to NULL}
+
 \item{covariates}{list of two vectors of covariates of lengthes n1 and n2;
 if NULL, then generates equidistant covariates}
 
 \item{knots}{list of two vectors of knots or number of equidistant knots
 for all dimensions; defaults to 35}
 
+\item{knots.option}{knot selection method; defaults to "equally-spaced"}
+
+\item{periodicity}{vector of two logical, indicating periodicity in the direction of row and column; defaults to c(FALSE, FALSE)}
+
 \item{p}{degrees of B-splines; defaults to 3}
 
 \item{m}{order of differencing penalty; defaults to 2}
 
 \item{lambda}{user-specified smoothing parameters; defaults to NULL}
+
+\item{selection}{selection of smoothing paramter; defaults to "GCV"}
 
 \item{search.grid}{logical; defaults to TRUE, if FALSE, uses
 \command{optim}}
@@ -37,9 +45,6 @@ defaults to 100}
 \command{optim}; defaults are -20 and 20.}
 
 \item{control}{see \command{optim}}
-
-\item{alpha}{the coefficient of the penalty for degrees of freedom in the
-GCV criterion; defaults to 1}
 }
 \value{
 A list with components \item{lambda}{vector of length 2 of selected

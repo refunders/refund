@@ -11,6 +11,8 @@
 
 \item{newdata}{a data frame or list consisting of x and z values for which predicted values are desired.
 vecotrs of x and z need to be of the same length.}
+
+\item{...}{additional arguments.}
 }
 \value{
 A list with components \item{x}{a vector of x given in newdata}

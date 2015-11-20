@@ -5,6 +5,7 @@
 #' @param object an object returned by \code{\link{fbps}}
 #' @param newdata a data frame or list consisting of x and z values for which predicted values are desired. 
 #' vecotrs of x and z need to be of the same length.
+#' @param ... additional arguments.
 #' @return A list with components \item{x}{a vector of x given in newdata}
 #' \item{z}{a vector of z given in newdata} \item{fitted.values}{a vector of
 #'  fitted values corresponding to x and z given in newdata} 
