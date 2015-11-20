@@ -324,7 +324,19 @@ Predict.matrix.pss.smooth<-function(object,data)
   Predict.matrix.pspline.smooth(object,data)
 }
 
+#' @importFrom mgcv smooth.construct.ps.smooth.spec
+smooth.construct.ffs.smooth.spec <- function(object,data,knots) {
+  ret <- smooth.construct.ps.smooth.spec(object, data, knots)
+  class(ret) <- c("ffs.smooth", class(ret))
+  ret
+}
 
+#' @importFrom mgcv smooth.construct.ps.smooth.spec
+smooth.construct.ps_c.smooth.spec<-function(object,data,knots) {
+  object <- smooth.construct.ps.smooth.spec(object,data,knots)
+  object$C <- object$xt$C1
+  object
+}
 
 
 getSpandDist <- function(Ke1, Ke2){
