@@ -39,7 +39,8 @@ Imports:
     stats,
     MCMCpack,
     pbs,
-    methods
+    methods,
+    rgl
 Suggests:
     RColorBrewer,
     reshape2,

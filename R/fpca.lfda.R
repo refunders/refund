@@ -122,9 +122,9 @@
 #'   
 #'   
 #'   # mean function (true vs. estimated)
-#'   persp3d(x=TT, y = ss, z= t(sapply(TT, function(a) meanFn(s=ss, t = a))),
+#'   rgl::persp3d(x=TT, y = ss, z= t(sapply(TT, function(a) meanFn(s=ss, t = a))),
 #'           xlab="visit times", ylab="s", zlab="estimated mean fn")
-#'   persp3d(x = TT, y = ss, est$bivariateSmoothMeanFunc, add = TRUE, col='light blue')
+#'   rgl::persp3d(x = TT, y = ss, est$bivariateSmoothMeanFunc, add = TRUE, col='light blue')
 #'   
 #'   ################   mFPCA step   ################
 #'   par(mfrow=c(1,2))
