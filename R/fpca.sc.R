@@ -282,7 +282,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     sigma2 <- max(weighted.mean(DIAG, w=w2, na.rm = TRUE), 0)
 
     ####
-    D.inv = diag(1/evalues)
+    D.inv = diag(1/evalues, nrow = npc, ncol = npc)
     Z = efunctions
     Y.tilde = Y.pred - matrix(mu, I.pred, D, byrow = TRUE)
     Yhat = matrix(0, nrow = I.pred, ncol = D)
