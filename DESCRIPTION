@@ -146,3 +146,4 @@ Collate:
     'fpca.lfda.R'
     'predict.fbps.R'
     'select_knots.R'
+RoxygenNote: 5.0.1
