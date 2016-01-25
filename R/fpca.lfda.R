@@ -1,4 +1,4 @@
-#' Longtiudinal Functional Data Analysis using FPCA
+#' Longitudinal Functional Data Analysis using FPCA
 #'
 #' Implements longitudinal functional data analysis (Park and Staicu, 2015).
 #' It decomposes longitudinally-observed functional observations in two steps.

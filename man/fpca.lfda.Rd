@@ -2,7 +2,7 @@
 % Please edit documentation in R/fpca.lfda.R
 \name{fpca.lfda}
 \alias{fpca.lfda}
-\title{Longtiudinal Functional Data Analysis using FPCA}
+\title{Longitudinal Functional Data Analysis using FPCA}
 \usage{
 fpca.lfda(Y, subject.index, visit.index, obsT = NULL, funcArg = NULL,
   numTEvalPoints = 41, newdata = NULL, fbps.knots = c(5, 10),
