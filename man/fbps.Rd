@@ -4,12 +4,16 @@
 \alias{fbps}
 \title{Sandwich smoother for matrix data}
 \usage{
-fbps(data, covariates = NULL, knots = 35, p = 3, m = 2, lambda = NULL,
-  alpha = 1, search.grid = T, search.length = 100, method = "L-BFGS-B",
-  lower = -20, upper = 20, control = NULL)
+fbps(data, subj = NULL, covariates = NULL, knots = 35,
+  knots.option = "equally-spaced", periodicity = c(FALSE, FALSE), p = 3,
+  m = 2, lambda = NULL, selection = "GCV", search.grid = T,
+  search.length = 100, method = "L-BFGS-B", lower = -20, upper = 20,
+  control = NULL)
 }
 \arguments{
 \item{data}{n1 by n2 data matrix without missing data}
+
+\item{subj}{vector of subject id (corresponding to the columns of data); defaults to NULL}
 
 \item{covariates}{list of two vectors of covariates of lengthes n1 and n2;
 if NULL, then generates equidistant covariates}
@@ -17,14 +21,17 @@ if NULL, then generates equidistant covariates}
 \item{knots}{list of two vectors of knots or number of equidistant knots
 for all dimensions; defaults to 35}
 
+\item{knots.option}{knot selection method; defaults to "equally-spaced"}
+
+\item{periodicity}{vector of two logical, indicating periodicity in the direction of row and column; defaults to c(FALSE, FALSE)}
+
 \item{p}{degrees of B-splines; defaults to 3}
 
 \item{m}{order of differencing penalty; defaults to 2}
 
 \item{lambda}{user-specified smoothing parameters; defaults to NULL}
 
-\item{alpha}{the coefficient of the penalty for degrees of freedom in the
-GCV criterion; defaults to 1}
+\item{selection}{selection of smoothing paramter; defaults to "GCV"}
 
 \item{search.grid}{logical; defaults to TRUE, if FALSE, uses
 \command{optim}}

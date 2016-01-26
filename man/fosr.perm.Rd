@@ -10,7 +10,7 @@
 fosr.perm(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL,
   con0 = NULL, argvals = NULL, lambda = NULL, lambda0 = NULL,
   multi.sp = FALSE, nperm, level = 0.05, plot = TRUE, xlabel = "",
-  title = NULL, prelim = 15, ...)
+  title = NULL, prelim = if (multi.sp) 0 else 15, ...)
 
 fosr.perm.fit(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL,
   con0 = NULL, argvals = NULL, lambda = NULL, lambda0 = NULL,
@@ -60,7 +60,8 @@ permuted-data pointwise F-type statistics.}
 
 \item{prelim}{number of preliminary permutations.  The smoothing parameter
 in the main permutations will be fixed to the median value from these
-preliminary permutations.  If \code{prelim=0}, this is not done.}
+preliminary permutations.  If \code{prelim=0}, this is not done. Preliminary
+permutations are not available when \code{multi.sp = TRUE} (hence the complicated default).}
 
 \item{x}{object of class \code{fosr.perm}, outputted by \code{fosr.perm},
 \code{fosr.perm.fit}, or \code{fosr.perm.test}.}

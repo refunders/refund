@@ -17,7 +17,8 @@ Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@g
     person("Sonja", "Greven", role = "ctb"),
     person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"),
     person(c("Madan", "Gopal"), "Kundu", role="ctb"),
-    person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"))
+    person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"),
+    person("So Young", "Park", role="ctb", email="spark13@ncsu.edu"))
 Depends:
     R (>= 2.14.0)
 Imports:
@@ -140,3 +141,7 @@ Collate:
     'f_sum4.R'
     'f_trace.R'
     'mfpca.sc.R'
+    'fpca.lfda.R'
+    'predict.fbps.R'
+    'select_knots.R'
+RoxygenNote: 5.0.1

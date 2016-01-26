@@ -78,7 +78,7 @@
 ##' Gavish, M., and Donoho, D. L.  (2014). The optimal hard threshold for
 ##' singular values is 4/sqrt(3).  \emph{IEEE Transactions on Information Theory}, 60(8), 5040--5053.
 ##' @examples
-##'
+##' \dontrun{
 ##' ## as in Sec. 6.2 of Huang, Shen, Buja (2008):
 ##'  set.seed(2678695)
 ##'  n <- 101
@@ -108,6 +108,7 @@
 ##'          main="true smooth Y", bty="n")
 ##'  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="",
 ##'          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
+##' }
 ##' @export
 ##' @importFrom stats smooth.spline optim
 ##' @importFrom Matrix as.matrix

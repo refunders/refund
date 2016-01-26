@@ -55,10 +55,13 @@ penalty.}
 \code{\link[mgcv]{bam}}. \code{subset} is not implemented.}
 }
 \value{
-a fitted \code{pffr}-object, which is a
+A fitted \code{pffr}-object, which is a
   \code{\link[mgcv]{gam}}-object with some additional information in an
   \code{pffr}-entry. If \code{algorithm} is \code{"gamm"} or \code{"gamm4"},
   only the \code{$gam} part of the returned list is modified in this way.
+  Available methods/functions to postprocess fitted models:
+  \code{\link{summary.pffr}}, \code{\link{plot.pffr}}, \code{\link{coef.pffr}}, \code{\link{fitted.pffr}}, \code{\link{residuals.pffr}},
+  \code{\link{predict.pffr}}, \code{\link{model.matrix.pffr}},  \code{\link{qq.pffr}}, \code{\link{pffr.check}}.
 }
 \description{
 Implements additive regression for functional and scalar covariates and
@@ -163,6 +166,17 @@ the index of the functional response.\cr
   (\code{~z}) and centered functional covariates with \eqn{\sum_i X_i(t) = 0}
   for all \eqn{t} in \code{ff}-terms so that the global functional intercept
   can be interpreted as the global mean function.
+
+  The \code{family}-argument can be used to specify all of the response
+  distributions and link functions described in
+  \code{\link[mgcv]{family.mgcv}}. Note that  \code{family = "gaulss"} is
+  treated in a special way: Users can supply the formula for the variance by
+  supplying a special argument \code{varformula}, but this is not modified in
+  the way that the \code{formula}-argument is but handed over to the fitter
+  directly, so this is for expert use only. If \code{varformula} is not
+  given, \code{pffr} will use the parameters from argument \code{bs.int} to
+  define a spline basis along the index of the response, i.e., a smooth
+  variance function over $t$ for responses $Y(t)$.
 }
 \examples{
 ###############################################################################
@@ -217,12 +231,12 @@ plot(m3.sparse, pers=TRUE, pages=1)
 Fabian Scheipl, Sonja Greven
 }
 \references{
-Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2013).
-  Penalized function-on-function regression. (under revision)
+Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2015).
+  Penalized function-on-function regression. Computational Statistics, 30(2):539--568.
   \url{http://biostats.bepress.com/jhubiostat/paper254/}
 
   Scheipl, F., Staicu, A.-M. and Greven, S. (2015). Functional Additive Mixed
-  Models. Journal of Computational \& Graphical Statistics, to appear.
+  Models. Journal of Computational \& Graphical Statistics, 24(2): 477--501.
   \url{http://arxiv.org/abs/1207.5947}
 }
 \seealso{
