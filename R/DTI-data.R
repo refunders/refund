@@ -27,10 +27,13 @@
 ##' \item{ID}{Numeric vector of subject ID numbers;}
 ##' \item{visit}{Numeric vector of the subject-specific visit
 ##' numbers;}
+##' \item{visit.time}{Numeric vector of the subject-specific visit time, measured
+##' in days since first visit;}
 ##' \item{Nscans}{Numeric vector indicating the total number of visits
 ##' for each subject;}
-##' \item{case}{Numeric vector of multiple
-##' sclerosis case status: 0 - healthy control, 1 - MS case;}
+##' \item{case}{Numeric vector of multiple sclerosis case status: 0 - healthy control, 1 - MS case;}
+##' \item{sex}{factor variable indicated subject's sex;}
+##' 
 ##' \item{pasat}{Numeric vector containing the PASAT score at
 ##' each visit.}
 ##' }

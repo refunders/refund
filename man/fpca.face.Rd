@@ -84,7 +84,7 @@ regarded as experimental for functional PCA, and will typically not work
 well if you have more observations than grid points.
 }
 \examples{
-
+\dontrun{
 ## as in Sec. 6.2 of Huang, Shen, Buja (2008):
  set.seed(2678695)
  n <- 101
@@ -114,6 +114,7 @@ well if you have more observations than grid points.
          main="true smooth Y", bty="n")
  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="",
          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
+}
 }
 \author{
 Fabian Scheipl
