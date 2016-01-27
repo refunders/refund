@@ -63,7 +63,7 @@
 #' @importFrom stats aggregate
 #'  
 #' @examples 
-#'
+#'   \dontrun{ 
 #'   ########################################
 #'   ###   Illustration with real data    ###
 #'   ########################################   
@@ -102,8 +102,7 @@
 #'          type='l', lty = 1, ylab="", xlab="s", main = "Subject = 1")    
 #'   matplot(ss, t(lfpca.dti$fitted.values.all[[2]][c(1,21,41),]), 
 #'          type='l', lty = 1, ylab="", xlab="s", main = "Subject = 2")    
-#'
-#'          
+#'      
 #'   ########################################
 #'   ### Illustration with simulated data ###
 #'   ########################################   
@@ -251,6 +250,7 @@
 #'   matplot(TT, do.call(cbind,lapply(est.lme$sFPCA.xiHat.bySubj, function(a) a[,2])), 
 #'           xlab="visit time", main="k=2", type='l', ylab="", col=rainbow(100, alpha = 1),
 #'           lwd=1, lty=1)
+#'   }
 
 ################################################################################################
 ################################################################################################

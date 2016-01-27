@@ -1,3 +1,9 @@
+# refund 0.1-14
+
+* add `fpca.lfda()` function
+
+* add functions and data set from refund.shiny package
+
 # refund 0.1-13
 
 * add `mfpca.sc()` function.
