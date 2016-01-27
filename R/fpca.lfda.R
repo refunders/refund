@@ -60,6 +60,7 @@
 #' @importFrom mgcv gam s
 #' @importFrom splines spline.des
 #' @importFrom Matrix kronecker as.matrix
+#' @importFrom stats aggregate
 #'  
 #' @examples 
 #'
