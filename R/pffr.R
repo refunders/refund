@@ -792,7 +792,7 @@ pffr <- function(
     }
   }
 
-  trace(mgcv::smooth.construct.tensor.smooth.spec, print = FALSE,
+  suppressMessages(trace(mgcv::smooth.construct.tensor.smooth.spec, print = FALSE,
     at = length(as.list(body(mgcv::smooth.construct.tensor.smooth.spec))) - 1,
     quote({
       if("ffs.smooth" %in% unlist(sapply(object$margin, class))){
@@ -810,8 +810,9 @@ pffr <- function(
           #object$sp <- c(rep(-1, m), 1)
           class(object) <- c("ffs.tensor.smooth.spec", class(object))
         }
-      }}))
-  on.exit(untrace(mgcv::smooth.construct.tensor.smooth.spec))
+      }})))
+
+  on.exit(suppressMessages(untrace(mgcv::smooth.construct.tensor.smooth.spec)))
 
   # call algorithm to estimate model
   m <- eval(newcall)

@@ -213,7 +213,6 @@ ffpcplot <- function(object, type=c("fpc+surf", "surf", "fpc"), pages=1,
                 }
             }
             if(type=="fpc+surf" | type=="surf"){
-                browser()
                 persp(trm$xind, object$pffr$yind,  z=phibeta[[i]], 
                     theta=theta, phi=phi,
                     ticktype=ticktype, xlab="x.index", ylab="y.index",
