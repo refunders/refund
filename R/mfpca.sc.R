@@ -31,7 +31,7 @@
 ##' \code{Y}? Set to \code{FALSE} if you have already demeaned the data using
 ##' your favorite mean function estimate.
 ##'
-##'  @param cov.est.method covariance estimation method. If set to \code{1}, a
+##' @param cov.est.method covariance estimation method. If set to \code{1}, a
 ##' one-step method that applies a bivariate smooth to the \eqn{y(s_1)y(s_2)}
 ##' values. This can be very slow. If set to \code{2} (the default), a two-step
 ##' method that obtains a naive covariance estimate which is then smoothed. \code{2} is currently supported.
@@ -80,7 +80,6 @@
 ##'  }
 ## npc=1 seems to give error
 
-
 ###############################################################################################
 #
 # mfpca.sc : multilevel functional principal components analysis by smoothed covariance
@@ -100,7 +99,7 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   if (!is.null(visit)){
     visit = as.integer(factor(visit))
   }else{ visit = ave(id, id, FUN=seq_along)}
-  
+
   Y.df <- data.frame(id=id, visit = visit)
   Y.df$Y <- Y
   J = length(unique(visit))  ## gets max number of visits
@@ -109,7 +108,7 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   I = NROW(Y)  
   nVisits <- data.frame(table(id))  ## calculate number of visitis for each subject
   colnames(nVisits) <- c("id", "numVisits")
-  
+
   if (is.null(argvals))  argvals = seq(0, 1, , D)  
   d.vec = rep(argvals, each = I) 
   
@@ -166,7 +165,6 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
       }
       row.ind = row.ind + nVisits[m, 2]
     } 
-    
     
     G.0 = ifelse(cov.count == 0, NA, cov.sum/cov.count)  
     diag.G0 = diag(G.0) 
@@ -240,7 +238,7 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   #  add option for covariance method == 1 and makePD arguments
   #
   ###
-  
+
   ###########################################################################################
   #      CALCULATE Kw, THE WITHIN COVARIANCE
   #

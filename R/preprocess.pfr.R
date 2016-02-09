@@ -60,16 +60,16 @@ preprocess.pfr <- function (subj=NULL, covariates = NULL, funcs, kz = NULL, kb =
         t[[i]] = seq(0, 1, length = dim(Funcs[[i]])[2])
         #if (length(t[[i]])>70) nbasis = max(nbasis,35)
         FPCA[[i]] = fpca.face(Y = Funcs[[i]], Y.pred = Funcs.new[[i]], knots=nbasis,pve = pve)
-        if (is.null(kz[i]) || kz[i]>dim(FPCA[[i]]$eigenvectors)[2]){
-            psi[[i]] = FPCA[[i]]$eigenvectors
+        if (is.null(kz[i]) || kz[i]>dim(FPCA[[i]]$efunctions)[2]){
+            psi[[i]] = FPCA[[i]]$efunctions
             C[[i]]=FPCA[[i]]$scores*sqrt(dim(Funcs[[i]])[2])
-            kz.adj[i] =  dim(FPCA[[i]]$eigenvectors)[2]
+            kz.adj[i] =  dim(FPCA[[i]]$efunctions)[2]
             cat("For the ", i, "-th functional predictor, the number of PCs changes to", kz.adj[i],"\n");
             cat("For details, see the manual\n");
         }
         else {
-            #cat(kz[i],"\n",dim(FPCA[[i]]$eigenvectors),"\n")
-            psi[[i]] = FPCA[[i]]$eigenvectors[,1:kz[i]]
+            #cat(kz[i],"\n",dim(FPCA[[i]]$efunctions),"\n")
+            psi[[i]] = FPCA[[i]]$efunctions[,1:kz[i]]
             C[[i]]=FPCA[[i]]$scores[,1:kz[i]]*sqrt(dim(Funcs[[i]])[2])
             kz.adj[i] =  kz[i]
         }

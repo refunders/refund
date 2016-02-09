@@ -1,8 +1,8 @@
-Package: refundDevel
+Package: refund
 Type: Package
-Title: developer version of refund: Regression with Functional Data
-Version: 0.3-6
-Date: 2015-10-28
+Title: Regression with Functional Data
+Version: 0.1-14
+Date: 2016-01-27
 Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
@@ -17,7 +17,8 @@ Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@g
     person("Sonja", "Greven", role = "ctb"),
     person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"),
     person(c("Madan", "Gopal"), "Kundu", role="ctb"),
-    person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"))
+    person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"),
+    person("So Young", "Park", role="ctb", email="spark13@ncsu.edu"))
 Depends:
     R (>= 2.14.0)
 Imports:
@@ -41,9 +42,8 @@ Imports:
     methods
 Suggests:
     RColorBrewer,
-    reshape2,
-    testthat
-Description: Developer version of refund. Methods for regression for functional
+    reshape2
+Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to
     image data.
@@ -141,3 +141,6 @@ Collate:
     'f_sum4.R'
     'f_trace.R'
     'mfpca.sc.R'
+    'fpca.lfda.R'
+    'predict.fbps.R'
+    'select_knots.R'

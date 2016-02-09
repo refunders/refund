@@ -1,6 +1,5 @@
-# `refund`: Developer Version
-[![](https://travis-ci.org/refunders/refund.svg?branch=devel)](https://travis-ci.org/refunders/refund)
-[![Coverage Status](https://coveralls.io/repos/refunders/refund/badge.svg?branch=devel)](https://coveralls.io/r/refunders/refund?branch=devel)
+# `refund`
+[![](https://travis-ci.org/refunders/refund.svg?branch=master)](https://travis-ci.org/refunders/refund)
 
 ## Methods for regression with functional data
 

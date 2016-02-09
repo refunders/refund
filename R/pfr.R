@@ -84,7 +84,7 @@
 #' # Fit model with linear functional term for CCA
 #' fit.lf <- pfr(pasat ~ lf(cca, k=30, bs="ps"), data=DTI1)
 #' plot(fit.lf, ylab=expression(paste(beta(t))), xlab="t")
-#' 
+#' \dontrun{
 #' # Alternative way to plot
 #' bhat.lf <- coef(fit.lf, n=101)
 #' bhat.lf$upper <- bhat.lf$value + 1.96*bhat.lf$se
@@ -131,6 +131,7 @@
 #' fit.peer <- pfr(pasat ~ peer(cca, argvals=seq(0,1,length=93),
 #'                              integration="riemann", pentype="D"), data=DTI.use)
 #' plot(fit.peer)
+#' }
 
 pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
 

@@ -112,7 +112,7 @@
 ##' Biostatistics}, 6(1), article 28.  Available at
 ##' \url{http://works.bepress.com/phil_reiss/16/}
 ##' @examples
-##'
+##' \dontrun{
 ##' require(fda)
 ##' # The first two lines, adapted from help(fRegress) in package fda,
 ##' # set up a functional data object representing daily average
@@ -135,7 +135,6 @@
 ##' formod = fosr(Y~xlin+xsmoo, data=data1)
 ##' plot(formod, 1)
 ##' 
-##' \dontrun{
 ##' # Penalized GLS
 ##' glsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="GLS")
 ##' plot(glsmod, 1)

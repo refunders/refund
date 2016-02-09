@@ -57,7 +57,7 @@
 #'     \code{\link{create.prep.func}}}
 #' 
 #' @examples
-#' 
+#' \dontrun{
 #' data(DTI)
 #' ## only consider first visit and cases (no PASAT scores for controls)
 #' DTI1 <- DTI[DTI$visit==1 & DTI$case==1,]
@@ -115,6 +115,7 @@
 #'      zlim=zlms, xlab="t", ylab="p(rcst)")
 #' 
 #' vis.pfr(fit3, select=1, plot.type="contour")
+#' }
 #' 
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Fabian Scheipl,
 #'   and Jonathan Gellar
