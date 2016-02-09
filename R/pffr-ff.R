@@ -11,17 +11,21 @@
 #' \eqn{X_i(s)} should work. \eqn{X_i(s)} is assumed to be numeric (duh...).
 #'
 #' If \code{check.ident==TRUE} and \code{basistype!="s"}  (the default), the
-#' routine checks for overlap between the kernel of Cov\eqn{(X(s))} and the
-#' kernel of the marginal penalty over \code{s}, as well as for sufficient rank
-#' of Cov\eqn{(X(s))}. If there is kernel overlap, $\beta(t,s)$ is constrained
-#' to be orthogonal to functions in that overlap space (e.g., if the overlap
-#' contains constant functions, a constraint $\int \beta(t,s) ds = 0 \;\forall\;
-#' t$ is enforced). A warning is given if the effective rank of Cov\eqn{(X(s))}
-#' (defined the number of eigenvalues accounting for at least 0.995 of the total
-#' variance in \eqn{X_i(s)}) is lower than the dimension of the basis for the
-#' covariate direction. See reference for details. Using an
-#' \code{\link{ffpc}}-term may be preferable if \eqn{X_i(s)} is of very low
-#' rank.
+#' routine checks conditions for non-identifiability of the effect.  This occurs
+#' if a) the marginal basis for the functional covariate is rank-deficient
+#' (typically because the functional covariate has lower rank than the spline
+#' basis along its index) and simultaneously b) the kernel of Cov\eqn{(X(s))} is
+#' not disjunct from the kernel of the marginal penalty over \code{s}. In
+#' practice, a) occurs quite frequently, and b) occurs usually because
+#' curve-wise mean centering has removed all constant components from the
+#' functional covariate. \cr If there is kernel overlap, \eqn{\beta(t,s)} is
+#' constrained to be orthogonal to functions in that overlap space (e.g., if the
+#' overlap contains constant functions, constraints "\eqn{\int \beta(t,s) ds =
+#' 0} for all t" are enforced). See reference for details.\cr A warning is
+#' always given if the effective rank of Cov\eqn{(X(s))} (defined as the number
+#' of eigenvalues accounting for at least 0.995 of the total variance in
+#' \eqn{X_i(s)}) is lower than 4. If \eqn{X_i(s)} is of very low rank,
+#' \code{\link{ffpc}}-term may be preferable.
 #'
 #' @param X an n by \code{ncol(xind)} matrix of function evaluations
 #'   \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
@@ -63,7 +67,7 @@
 #'
 #' @author Fabian Scheipl, Sonja Greven
 #' @references For background on \code{check.ident}:\cr Scheipl, F., & Greven,
-#'   S. (2012). Identifiability in penalized function-on-function regression
+#'   S. (2016). Identifiability in penalized function-on-function regression
 #'   models. LMU Munich, Department of Statistics: Technical Report 125.
 #'   \url{http://epub.ub.uni-muenchen.de/13060/}
 #' @export
@@ -72,6 +76,7 @@
 # TODO: allow X to be of class fd (?)
 # TODO: allow X to be a factor -- would result in one beta(s,t) surface for each level? (?)
 # TODO: by variables
+# TODO: add FAME penalty?
 ff <- function(X,
   yind = NULL,
   xind=seq(0, 1, l=ncol(X)),
@@ -157,7 +162,6 @@ ff <- function(X,
 
   }
   LX <- L*X
-  #LX.stacked <- LX[rep(1:n, each=nygrid),]
 
   if(!is.null(limits)){
     if(!is.function(limits)){
@@ -176,8 +180,6 @@ ff <- function(X,
         }
       }
     }
-    #    ind0 <- !t(outer(xind[1,], rep(yind, times=n), limits))
-    #    LX.stacked[ind0] <- 0
   }
 
 
@@ -203,37 +205,55 @@ ff <- function(X,
 
   if(check.ident){
     ## check whether (number of basis functions) < (number of relevant eigenfunctions of X)
-    svdX <- svd(t(X), nu = min(dim(X)), nv = 0)
-    evls <- svdX$d^2
-    maxK <- max(1, min(which((cumsum(evls)/sum(evls)) >= .995)))
+    evX <- svd(X, nu = 0, nv = 0)$d^2
+    maxK <- max(1, min(which((cumsum( evX)/sum(evX)) >= .995)))
+    bsdim <- eval(call)$margin[[1]]$bs.dim
     if(maxK <= 4)
-      warning("Very low effective rank of <", deparse(match.call()$X), "> detected. ",
-        maxK," largest eigenvalues of its covariance alone account for >99.5% of variability. ",
-        "<ffpc> might be a better choice here.")
+      warning("Very low effective rank of <", deparse(match.call()$X),
+        "> detected. ", maxK,
+        " largest eigenvalues of its covariance alone account for >99.5% of ",
+        "variability. <ffpc> might be a better choice here.")
+    if(maxK < bsdim){
+      warning("<k> larger than effective rank of <",deparse(match.call()$X),
+        ">. Model identifiable only through penalty.")
+    }
     if(basistype!="s"){
-      bsdim <- eval(call)$margin[[1]]$bs.dim
-
-      # check whether span(Null(X)) and span(B_s%*%Null(penalty)) are disjunct:
-      smConstr <- get(paste0("smooth.construct.", attr(eval(call)$margin[[1]], "class")))
+      # check whether span(Null(X)), span(L * B_s%*%Null(penalty)) are disjunct:
+      # set up marginal spline basis:
+      smConstr <- get(paste0("smooth.construct.",
+        attr(eval(call)$margin[[1]], "class")))
       basisdata <- list(sort(unique(xind)))
       names(basisdata) <- xindname
-      basis <- smConstr(object= eval(call)$margin[[1]], data=basisdata, knots=list())
+      basis <- smConstr(object=list(term=xindname,
+          bs.dim=ifelse(!is.null(call$k[1]), call$k[1], -1),
+          fixed=FALSE, dim=1,
+          p.order=if(!is.null(call$m)) call$m[[1]] else NA,
+          by=NA),
+        data=basisdata, knots=list())
 
-      ind <- svdX$d^2 < (max(svdX$d^2) * 1e-6)
-      N.X <- svdX$u[, ind, drop = FALSE]
-      N.pen <- basis$X %*% Null(basis$S[[1]])
+      # get condition number of marginal design matrix
+      evDs <- svd(LX %*% basis$X, nu = 0, nv = 0)$d^2
+      logCondDs <- log10(max(evDs)) - log10(min(evDs))
+
+      # get condition number of design matrix
+      #FIXME: use truncated SVD instead of Null to get "nullspace",
+      #           as Clara suggested ?
+      #       not done because sims in the paper use this as well....
+      N.X <- Null(t(X))
+      N.pen <- diag(L[1,]) %*% basis$X %*% Null(basis$S[[1]])
       if(any(c(NCOL(N.X) == 0, NCOL(N.pen) == 0))) {
-        spanDistNull <- 1
+        nullOverlap <- 0
       } else {
-        spanDistNull <- getSpandDist(svd(N.X)$u, svd(N.pen)$u)
+        nullOverlap <- trace_lv(svd(N.X)$u, svd(N.pen)$u)
       }
-      if(spanDistNull < 0.7){
-        #         warning("Kernel overlap for <",deparse(match.call()$X),"> and the specified basis and penalty detected. ",
-        #                 "Changing basis for X-direction to <bs='pss'> to make model identifiable through penalty. ",
-        #                 "Coefficient surface estimate will be inherently unreliable.")
-        #         call$bs <- c("pss",
-        #                      sub(".smooth.spec", "", attr(eval(call)$margin[[2]], "class"), fixed=TRUE))
-        # C_overlap constrains functions in overlap to be 0
+      if(nullOverlap > 0.99 & logCondDs > 6){
+        warning("Found badly conditioned design matrix for the functional effect",
+          " and kernel overlap for <", deparse(match.call()$X),
+          "> and the specified basis and penalty. ",
+          "Enforcing constraint to force function components in this overlap to 0 ",
+          "since coefficient surface is not identifiable in that function space.",
+          "See Scheipl/Greven (2016) for details & alternatives.")
+
         C_overlap <- {
           tmp <- svd(qr.fitted(qr(N.X), N.pen))
           t(tmp$u[, which(tmp$d > max(tmp$d)*.Machine$double.eps^.66), drop=FALSE]) %*%
@@ -244,19 +264,13 @@ ff <- function(X,
         } else {
           call$xt <- c(call$xt, C1 = C_overlap)
         }
-        warning("Kernel overlap for <", deparse(match.call()$X),
-          "> and the specified basis and penalty detected. ",
-          "Enforcing constraint to set functions in the overlap to 0 ",
-          "since coefficient surface is not identifiable in this function space.")
+
         call$bs <- c("ps_c",
           sub(".smooth.spec", "", attr(eval(call)$margin[[2]], "class"), fixed=TRUE))
         call[[1]] <- as.symbol("ti")
         call$mc <- c(TRUE, FALSE)
       } else {
-        if(maxK < bsdim){
-          warning("<k> larger than effective rank of <",deparse(match.call()$X),
-            ">. Model identifiable only through penalty.")
-        }
+
       }
     }
   }
