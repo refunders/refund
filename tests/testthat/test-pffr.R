@@ -156,7 +156,5 @@ test_that("ff identifiability stuff works", {
   Y <- LX%*%beta.st
   data <- data.frame(Y=I(Y), X=I(X))
 
-  expect_warning(m <- pffr(Y ~ ff(X, xind=s), yind=t, data=data))
-  expect_equal(class(m$smooth[[2]]$margin[[1]]), "pss.smooth")
-
+  expect_warning(m <- pffr(Y ~ ff(X, xind=s), yind=t, data=data), "kernel overlap")
 })

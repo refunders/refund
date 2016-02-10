@@ -308,7 +308,7 @@ smooth.construct.pss.smooth.spec<-function(object,data,knots)
   ## unpenalized space from zero...
   es <- eigen(object$S[[1]],symmetric=TRUE)
   ## now add a penalty on the penalty null space
-  es$values[(nk-difforder+1):nk] <- es$values[nk-difforder]*shrink^(1:difforder)
+  es$values[(nk-difforder+1):nk] <- es$values[nk-difforder]*shrink
   ## ... so penalty on null space is still less than that on range space.
   object$S[[1]] <- es$vectors%*%(as.numeric(es$values)*t(es$vectors))
   object$rank <- nk
@@ -325,6 +325,7 @@ Predict.matrix.pss.smooth<-function(object,data)
 }
 
 #' @importFrom mgcv smooth.construct.ps.smooth.spec
+#' @export
 smooth.construct.ps_c.smooth.spec<-function(object,data,knots) {
   object <- smooth.construct.ps.smooth.spec(object,data,knots)
   object$C <- object$xt$C1
@@ -332,6 +333,7 @@ smooth.construct.ps_c.smooth.spec<-function(object,data,knots) {
 }
 
 #' @importFrom mgcv smooth.construct.ps.smooth.spec
+#' @export
 smooth.construct.fame.smooth.spec<-function(object,data,knots){
   object$bs <- "ps"
   object <- smooth.construct.ps.smooth.spec(object,data,knots)
