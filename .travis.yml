@@ -24,7 +24,7 @@ notifications:
       - fabian.scheipl@googlemail.com
       - huangracer@gmail.com
     on_success: change
-    on_failure: change
+    on_failure: always
 
 env:
   matrix:
