@@ -20,6 +20,9 @@ after_failure:
 
 notifications:
   email:
+    recipients:
+      - fabian.scheipl@googlemail.com
+      - huangracer@gmail.com
     on_success: change
     on_failure: change
 
