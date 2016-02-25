@@ -234,19 +234,22 @@ ff <- function(X,
       # get condition number of marginal design matrix
       evDs <- svd(LX %*% basis$X, nu = 0, nv = 0)$d^2
       logCondDs <- log10(max(evDs)) - log10(min(evDs))
-
-      # get condition number of design matrix
-      #FIXME: use truncated SVD instead of Null to get "nullspace",
-      #           as Clara suggested ?
-      #       not done because sims in the paper use this as well....
+     
       N.X <- Null(t(X))
+      ## for the artificial examples in the paper below produces surprising 
+      ## results if integration != "riemann":
+      ## -- usually more constraints than expected, e.g. constraints on "linearish" 
+      ## even though nullspace of X only contains constants by construction --
+      ## unless diag(L[1,]) is rm'ed from N.pen: non-constant integration wts 
+      ## seem to implicate higher order eigenfunctions in the kernel as well, e.g. 
+      ## sv's of N.pen have high frequency oscillations, etc (...waves hands...)
       N.pen <- diag(L[1,]) %*% basis$X %*% Null(basis$S[[1]])
       if(any(c(NCOL(N.X) == 0, NCOL(N.pen) == 0))) {
         nullOverlap <- 0
       } else {
         nullOverlap <- trace_lv(svd(N.X)$u, svd(N.pen)$u)
       }
-      if(nullOverlap > 0.99 & logCondDs > 6){
+      if(nullOverlap > 0.95 & logCondDs > 6){
         warning("Found badly conditioned design matrix for the functional effect",
           " and kernel overlap for <", deparse(match.call()$X),
           "> and the specified basis and penalty. ",
