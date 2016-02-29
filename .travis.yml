@@ -13,6 +13,9 @@ bioc_packages:
   - BiocGenerics
   - graph
   - Rgraphviz
+r_packages:
+  - nlme
+
 
 after_failure:
   - ./travis-tool.sh dump_logs
