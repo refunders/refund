@@ -1,6 +1,6 @@
-Package: refund
+Package: refundDevel
 Type: Package
-Title: Regression with Functional Data
+Title: Regression with Functional Data (Developer Version)
 Version: 0.1-15
 Date: 2016-02-25
 Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"),
@@ -47,7 +47,8 @@ Suggests:
 Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to
-    image data.
+    image data. This is the developer version of the package containing untested,
+    bleeding edge features. Caveat emptor!
 License: GPL (>= 2)
 LazyLoad: yes
 LazyData: true
