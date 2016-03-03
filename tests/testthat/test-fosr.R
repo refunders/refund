@@ -1,5 +1,4 @@
 context("Test fosr")
-library(refund)
 
 test_that("fosr Penalized GLS works", {
   skip_on_cran()

@@ -1,5 +1,4 @@
 context("Testing pcre")
-library(refund)
 
 test_that("pcre works as expected", {
   skip_on_cran()
