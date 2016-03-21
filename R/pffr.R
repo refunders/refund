@@ -703,8 +703,8 @@ pffr <- function(
     lapply(terms[where.specials$notff],
            function(x){
              #nms <- all.vars(x)
-             isC <- deparse(x) %in% sapply(terms[where.specials$c], safeDeparse)
-             if(isC){
+             isC <- safeDeparse(x) %in% sapply(terms[where.specials$c], safeDeparse)
+             if(isC) {
                # drop c()
                # FIXME: FUGLY!
                x <- formula(paste("~", gsub("\\)$", "",
