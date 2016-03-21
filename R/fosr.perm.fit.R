@@ -6,6 +6,7 @@ function(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL, argvals 
     if (is.null(Y) == is.null(fdobj)) stop("Please specify 'Y' or 'fdobj', but not both")
 	if (length(lambda) > 1) stop("'lambda' must be a scalar or NULL")
 	if (is.null(X0) & !is.null(con0)) stop("If 'con0' is given, 'X0' must be given too")
+	if (multi.sp & prelim > 0) stop("If multi.sp = TRUE, 'prelim' should be set to 0")
 	df1 = ncol(X) - 1
 	if (!is.null(con)) df1 = df1 - nrow(con)
 	df2 = nrow(X) - df1 - 1

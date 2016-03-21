@@ -112,12 +112,12 @@ ff <- function(X,
   diffXind <- t(round(apply(xind.sc, 1, diff), 3))
   if(is.null(L) & any(apply(diffXind, 1, function(x) length(unique(x))) != 1) && # gridpoints for any  X_i(s) not equidistant?
     integration=="simpson"){
-    warning("Non-equidistant grid detected for ", deparse(substitute(X)), ".\n Changing to trapezoidal rule for integration.")
+    message("Non-equidistant grid detected for ", deparse(substitute(X)), ".\n Changing to trapezoidal rule for integration.")
     integration <- "trapezoidal"
   }
   if(!is.null(limits) && integration != "riemann"){
     integration <- "riemann"
-    warning("<limits>-argument detected. Changing to Riemann sums for numerical integration.")
+    message("<limits>-argument detected. Changing to Riemann sums for numerical integration.")
   }
   # FIXME: figure out weights for simpson's rule on non-equidistant grids instead of all this...
 

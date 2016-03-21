@@ -25,12 +25,8 @@
 ##' functional linear models - partially empirical eigenvectors for regression.
 ##' \emph{Electronic Journal of Statistics}, 6, 323--353.
 ##' @examples
-##'
-##' data(DTI)
-##' cca = DTI$cca[which(DTI$case == 1),]
-##' DTI = DTI[which(DTI$case == 1),]
-##' fit.cca.peer1 = peer(Y=DTI$pasat, funcs = cca)
-##' plot(fit.cca.peer1)
+##' # See example in peer()
+
 ### Function to plot estimated regression function
 plot.peer<- function(x, conf=0.95, ylab='Estimated regression function', main=expression(gamma),...){
   if(!class(x)=='peer') return (cat("Error: The object is not an peer object.\n"))

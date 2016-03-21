@@ -31,7 +31,7 @@
 ##' \code{Y}? Set to \code{FALSE} if you have already demeaned the data using
 ##' your favorite mean function estimate.
 ##'
-##'  @param cov.est.method covariance estimation method. If set to \code{1}, a
+##' @param cov.est.method covariance estimation method. If set to \code{1}, a
 ##' one-step method that applies a bivariate smooth to the \eqn{y(s_1)y(s_2)}
 ##' values. This can be very slow. If set to \code{2} (the default), a two-step
 ##' method that obtains a naive covariance estimate which is then smoothed. \code{2} is currently supported.
