@@ -276,7 +276,10 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   datameans <- sapply(as.list(newfrmlenv), function(x){
     if (is.numeric(x) | is.logical(x)) {
       mean(x)
-    } else NA
+    }else if (is.factor(x)){
+      names(which.max(table(x)))
+    }else
+        NA
   })
   newcall <- expand.call(pfr, call)
   newcall$fitter  <- newcall$bs.int <- newcall$bs.yindex <- NULL
