@@ -13,6 +13,7 @@ bioc_packages:
   - BiocGenerics
   - graph
   - Rgraphviz
+# need this for current nlme:
 r_packages:
   - nlme
 
@@ -30,5 +31,4 @@ notifications:
       - mathew.w.mclean@gmail.com
     on_success: change
     on_failure: always
-
 

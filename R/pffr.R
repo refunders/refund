@@ -703,8 +703,8 @@ pffr <- function(
     lapply(terms[where.specials$notff],
            function(x){
              #nms <- all.vars(x)
-             isC <- deparse(x) %in% sapply(terms[where.specials$c], safeDeparse)
-             if(isC){
+             isC <- safeDeparse(x) %in% sapply(terms[where.specials$c], safeDeparse)
+             if(isC) {
                # drop c()
                # FIXME: FUGLY!
                x <- formula(paste("~", gsub("\\)$", "",
@@ -791,6 +791,28 @@ pffr <- function(
              a matrix with the same dimensions as the response.")
     }
   }
+
+  suppressMessages(trace(mgcv::smooth.construct.tensor.smooth.spec, print = FALSE,
+    at = length(as.list(body(mgcv::smooth.construct.tensor.smooth.spec))) - 1,
+    quote({
+      if("ffs.smooth" %in% unlist(sapply(object$margin, class))){
+        message("extra penalty for ", object$margin[[1]]$term)
+        S1 <- object$S[[1]]
+        es <- eigen(S1, symmetric= TRUE)
+        ind <- es$values < max(es$values)*.Machine$double.eps^.66
+        if (sum(ind)) { ## then there is an unpenalized space remaining
+          U <- es$vectors[, ind, drop=FALSE]
+          Sf <- tcrossprod(U) ## penalty for the unpenalized components
+          m <- length(object$margin)
+          object$S[[m + 1]] <- Sf
+          object$rank[m + 1] <- sum(ind)
+          object$null.space.dim <- 0
+          #object$sp <- c(rep(-1, m), 1)
+          class(object) <- c("ffs.tensor.smooth.spec", class(object))
+        }
+      }})))
+
+  on.exit(suppressMessages(untrace(mgcv::smooth.construct.tensor.smooth.spec)))
 
   # call algorithm to estimate model
   m <- eval(newcall)
