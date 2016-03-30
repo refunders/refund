@@ -68,7 +68,7 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
       ifelse(is.matrix(x), nrow(x), length(x))))) == 1)
     gamdata <- list()
     varmap <- sapply(object$pfr$termnames, function(x)
-      all.vars(formula(paste("~", x))))
+      all.vars(formula(paste("~", x))), simplify = FALSE)
     for (cov in names(newdata)) {
       trms <- which(sapply(varmap, function(x)
         any(grep(paste("^", cov, "$", sep = ""), x))))
