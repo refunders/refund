@@ -201,8 +201,9 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
   xt$class <- class(sm)
   sm$xt <- xt
   sm$xt$tf <- tf
-  class(sm) <- "dt.smooth"
-#  class(sm) <- c("dt.smooth", class(sm))
+#  sm$tf <- tf
+#  sm$class <- class(sm)
+  class(sm) <- c("dt.smooth", class(sm))
   sm
 }
 

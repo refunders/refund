@@ -308,7 +308,7 @@ smooth.construct.pss.smooth.spec<-function(object,data,knots)
   ## unpenalized space from zero...
   es <- eigen(object$S[[1]],symmetric=TRUE)
   ## now add a penalty on the penalty null space
-  es$values[(nk-difforder+1):nk] <- es$values[nk-difforder]*shrink^(1:difforder)
+  es$values[(nk-difforder+1):nk] <- es$values[nk-difforder]*shrink
   ## ... so penalty on null space is still less than that on range space.
   object$S[[1]] <- es$vectors%*%(as.numeric(es$values)*t(es$vectors))
   object$rank <- nk
@@ -324,28 +324,48 @@ Predict.matrix.pss.smooth<-function(object,data)
   Predict.matrix.pspline.smooth(object,data)
 }
 
+#' @importFrom mgcv smooth.construct.ps.smooth.spec
+#' @export
+smooth.construct.ps_c.smooth.spec<-function(object,data,knots) {
+  object <- smooth.construct.ps.smooth.spec(object,data,knots)
+  object$C <- object$xt$C1
+  object
+}
 
+#' @importFrom mgcv smooth.construct.ps.smooth.spec
+#' @export
+smooth.construct.fame.smooth.spec<-function(object,data,knots){
+  object$bs <- "ps"
+  object <- smooth.construct.ps.smooth.spec(object,data,knots)
+  # anti-kernel penalty:
+  object$S[[1]] <- object$xt$penK
 
+  object$rank <- qr(object$S[[1]])$rank
+  object$null.space.dim <-  object$bs.dim - object$rank
 
-getSpandDist <- function(Ke1, Ke2){
-  #Rolf Larsson, Mattias Villani (2001) "A distance measure between cointegration spaces"
-  ## Ke1, Ke2 orthonormal!
-  if(NCOL(Ke1)==0 | NCOL(Ke2)==0){
-    return(1.0)
+  return(object)
+}
+
+# compute dim of overlap of the span of two orthonormal matrices
+trace_lv <- function(A, B, tol=1e-10){
+  ## A, B orthnormal!!
+  #Rolf Larsson, Mattias Villani (2001)
+  #"A distance measure between cointegration spaces"
+
+  if(NCOL(A)==0 | NCOL(B)==0){
+    return(0)
   }
 
-  if(NROW(Ke1) != NROW(Ke2) | NCOL(Ke1) > NROW(Ke1) | NCOL(Ke2) > NROW(Ke2)){
+  if(NROW(A) != NROW(B) | NCOL(A) > NROW(A) | NCOL(B) > NROW(B)){
     return(NA)
   }
 
-  if(NCOL(Ke2)<=NCOL(Ke1)){
-    Ke1orth <- MASS::Null(Ke1)
-    dist <- sum(diag(t(Ke2)%*%Ke1orth%*%t(Ke1orth)%*%Ke2))/min(NCOL(Ke2), NROW(Ke2)-NCOL(Ke2))
+  trace <- if(NCOL(B)<=NCOL(A)){
+    sum(diag(t(B) %*% A %*% t(A) %*% B))
   } else {
-    Ke2orth <- MASS::Null(Ke2)
-    dist <- sum(diag(t(Ke1)%*%Ke2orth%*%t(Ke2orth)%*%Ke1))/min(NCOL(Ke1), NROW(Ke1)-NCOL(Ke1))
+    sum(diag(t(A) %*% B %*% t(B) %*% A))
   }
-  return(dist)
+  trace
 }
 
 
