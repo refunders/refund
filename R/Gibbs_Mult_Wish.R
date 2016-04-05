@@ -34,7 +34,6 @@
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
 #' @importFrom MASS mvrnorm
-#' @importFrom MCMCpack riwish
 #' @export
 #' 
 gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 5000, N.burn = 1000, alpha = .1,
@@ -205,7 +204,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     ###############################################################
 
     resid.cur = Y - ranef.cur
-    inv.sig = solve(riwish(v + IJ, Psi + t(resid.cur) %*% resid.cur))
+    inv.sig = rWishart(1, v + IJ, solve(Psi + t(resid.cur) %*% resid.cur))
 
     ###############################################################
     ## update variance components
