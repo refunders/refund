@@ -283,7 +283,7 @@ vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = 
                   evalues = lambda.pm,
                   npc = Kp)
   class(fpca.obj) = "fpca"
-  ret = list(beta.cur, beta.UB, beta.LB, fixef.cur, ranef.cur, mt_fixed, data, sigeps.pm, fpca.obj)
+  ret = list(beta.cur, beta.UB, beta.LB, Yhat.subj, ranef.cur, mt_fixed, data, sigeps.pm, fpca.obj)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "ranef", "terms", "data", "sigeps.pm", "fpca.obj")
   class(ret) = "fosr"
   ret

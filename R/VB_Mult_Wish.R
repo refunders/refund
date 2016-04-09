@@ -260,7 +260,7 @@ vb_mult_wish = function(formula, data=NULL, verbose = TRUE, Kt = 5, alpha = .1, 
   ret = list(beta.cur, beta.UB, beta.LB, Yhat)
   names(ret) = c("beta.pm", "beta.UB", "beta.LB", "Yhat")
   
-  ret = list(beta.cur, beta.UB, beta.LB, Yhat.fixed, mt_fixed, data)
+  ret = list(beta.cur, beta.UB, beta.LB, Yhat, mt_fixed, data)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data")
   class(ret) = "fosr"
   ret
