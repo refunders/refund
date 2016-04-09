@@ -5,7 +5,8 @@
 \title{Cross-sectional FoSR using Variational Bayes and FPCA}
 \usage{
 vb_cs_fpca(formula, data = NULL, verbose = TRUE, Kt = 5, Kp = 2,
-  alpha = 0.1, Aw = NULL, Bw = NULL, Apsi = NULL, Bpsi = NULL)
+  alpha = 0.1, Aw = NULL, Bw = NULL, Apsi = NULL, Bpsi = NULL,
+  argvals = NULL)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}
@@ -35,6 +36,8 @@ for FPC effects}
 
 \item{Bpsi}{hyperparameter for inverse gamma controlling variance of spline terms
 for FPC effects}
+
+\item{argvals}{not currently implemented}
 }
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.
