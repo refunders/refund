@@ -260,6 +260,9 @@ vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1
                   evalues = lambda.pm,
                   npc = Kp)
   class(fpca.obj) = "fpca"
+  
+  data = if(is.null(data)) { mf_fixed }  else { data }
+  
   ret = list(beta.cur, beta.UB, beta.LB, fixef.cur, mt_fixed, data, sigeps.pm, fpca.obj)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data", "sigeps.pm", "fpca.obj")
   class(ret) = "fosr"

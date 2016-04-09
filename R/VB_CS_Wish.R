@@ -201,6 +201,8 @@ vb_cs_wish = function(formula, data=NULL, verbose = TRUE, Kt=5, alpha = .1, min.
   #r2.f = 1 - (sum((Y - Yhat.fixed)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
   #r2.fr = 1 - (sum((Y - Yhat)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
   
+  data = if(is.null(data)) { mf_fixed }  else { data }
+  
   ret = list(beta.cur, beta.UB, beta.LB, Yhat.fixed, mt_fixed, data)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data")
   class(ret) = "fosr"

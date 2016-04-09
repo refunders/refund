@@ -272,6 +272,8 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
   ranef.pm = Z.des %*% b.pm
   Yhat = apply(y.post, c(1,2), mean)
   
+  data = if(is.null(data)) { mf_fixed }  else { data }
+  
   ret = list(beta.pm, beta.UB, beta.LB, Yhat, mt_fixed, data)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data")
   class(ret) = "fosr"
