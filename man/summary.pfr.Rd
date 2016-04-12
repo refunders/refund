@@ -23,6 +23,6 @@ This function currently simply strips the \code{"pfr"} class label and
 calls \code{\link[mgcv]{summary.gam}}.
 }
 \author{
-Jonathan Gellar \email{JGellar@mathematica-mpr.com}
+Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Fabian Scheipl
 }
 

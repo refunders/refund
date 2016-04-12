@@ -13,9 +13,17 @@
 #' This function currently simply strips the \code{"pfr"} class label and
 #' calls \code{\link[mgcv]{summary.gam}}.
 #'
-#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}
+#' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Fabian Scheipl
 #' @export
-summary.pfr <- function(object, ...) {
-  class(object) <- class(object)[-1]
-  summary(object)
+summary.pfr <- function (object, ...) {
+  call <- match.call()
+  call[[1]] <- mgcv::summary.gam
+  ## drop "pfr" class and replace <object> with changed value s.t. method dispatch
+  ## works without glitches
+  ## if we don't do this, summary.gam will call coef.pfr on the object and that
+  ## doesn't work
+  class(object) <- class(object)[!(class(object) %in% "pfr")]
+  call$object <- as.name("object")
+  eval(call)
+  #TODO: modify term names to correspond to pfr formula notation, see summary.pffr
 }
