@@ -50,7 +50,7 @@ the scale on which the term is fit.}
 \item{...}{these arguments are ignored}
 }
 \value{
-a data frame containing the evaluation points, 
+a data frame containing the evaluation points,
    coefficient function values and optionally the SE's for the term indicated
    by \code{select}.
 }
