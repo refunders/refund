@@ -61,8 +61,8 @@
 #' \item \code{scores} - matrix of scores
 #' \item \code{mu} - mean function
 #' \item \code{npc} - number of principal components
-#' \item \code{eigenvectors} - matrix of eigenvectors
-#' \item \code{eigenvalues} - vector of eigenvalues
+#' \item \code{efunctions} - matrix of eigenvectors
+#' \item \code{evalues} - vector of eigenvalues
 #' }
 #' if \code{var == TRUE} additional components are returned
 #' \enumerate{
@@ -115,8 +115,8 @@
 #' ###################################################
 #' ####               FACE                ########
 #' ###################################################  
-#' Phi <- results$eigenvectors
-#' eigenvalues <- results$eigenvalues
+#' Phi <- results$efunctions
+#' eigenvalues <- results$evalues
 #'
 #' for(k in 1:N){
 #'   if(Phi[,k]\%*\%phi[,k]< 0) 
