@@ -32,6 +32,7 @@
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
 #' @importFrom MASS mvrnorm
+#' @importFrom stats rWishart
 #' @export
 #' 
 gibbs_cs_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 5000, N.burn = 1000, alpha = .1, 
