@@ -171,7 +171,9 @@
 #'   Models. Journal of Computational \& Graphical Statistics, 24(2): 477--501.
 #'   \url{http://arxiv.org/abs/1207.5947}
 #' @export
-#' @importFrom mgcv ti
+#' @importFrom mgcv ti jagam gam gam.fit bam gamm
+#' @importFrom gamm4 gamm4
+#' @importFrom lme4 lmer
 #' @examples
 #' ###############################################################################
 #' # univariate model:

@@ -1,14 +1,14 @@
 #' Multilevel FoSR using a Gibbs sampler and Wishart prior
-#' 
+#'
 #' Fitting function for function-on-scalar regression for multilevel data.
 #' This function estimates model parameters using a Gibbs sampler and estimates
 #' the residual covariance surface using a Wishart prior.
-#' 
-#' @param formula a formula indicating the structure of the proposed model. 
+#'
+#' @param formula a formula indicating the structure of the proposed model.
 #' @param Kt number of spline basis functions used to estimate coefficient functions
-#' @param data an optional data frame, list or environment containing the 
-#' variables in the model. If not found in data, the variables are taken from 
-#' environment(formula), typically the environment from which the function is 
+#' @param data an optional data frame, list or environment containing the
+#' variables in the model. If not found in data, the variables are taken from
+#' environment(formula), typically the environment from which the function is
 #' called.
 #' @param N.iter number of iterations used in the Gibbs sampler
 #' @param N.burn number of iterations discarded as burn-in
@@ -25,17 +25,18 @@
 #' @param v hyperparameter for inverse Wishart prior on residual covariance
 #' @param SEED seed value to start the sampler; ensures reproducibility
 #' @param verbose logical defaulting to \code{TRUE} -- should updates on progress be printed?
-#'  
+#'
 #' @references
 #' Goldsmith, J., Kitago, T. (Under Review).
-#' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
+#' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 #' Function-on-Scalar Regression.
-#' 
+#'
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
 #' @importFrom MASS mvrnorm
+#' @importFrom stats rWishart
 #' @export
-#' 
+#'
 gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 5000, N.burn = 1000, alpha = .1,
                            Az = NULL, Bz = NULL, Aw = NULL, Bw = NULL, v = NULL, SEED = NULL){
 
@@ -56,7 +57,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     formula2 <- paste(responsename, "~", REs[[1]], sep = "")
     newfrml <- paste(responsename, "~", REs[[2]], sep = "")
     newtrmstrings <- attr(tf[-where.re], "term.labels")
-    formula2 <- formula(paste(c(formula2, newtrmstrings), 
+    formula2 <- formula(paste(c(formula2, newtrmstrings),
                               collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
     mf <- model.frame(formula2, data = data)
@@ -71,20 +72,20 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     mf_fixed <- model.frame(tf, data = data)
   }
   mt_fixed <- attr(mf_fixed, "terms")
-  
+
   # get response (Y)
   Y <- model.response(mf_fixed, "numeric")
-  
+
   # x is a matrix of fixed effects
   # automatically adds in intercept
   X <- model.matrix(mt_fixed, mf_fixed, contrasts)
-  
+
   if(!is.null(SEED)) { set.seed(SEED) }
-  
+
   ## fixed and random effect design matrices
   W.des = X
   Z.des = t(as.matrix(Z))
-  
+
   I = dim(Z.des)[2]
   D = dim(Y)[2]
   Ji = as.numeric(apply(Z.des, 2, sum))
@@ -119,33 +120,33 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
   ## initial estimation and hyperparameter choice
   mu.q.BZ = matrix(NA, nrow = Kt, ncol = I)
   for(subj in 1:length(unique(SUBJ))){
-    mu.q.BZ[,subj] = solve(kronecker(Ji[subj], t(Theta) %*% Theta)) %*% t(kronecker(rep(1, Ji[subj]), Theta)) %*% 
+    mu.q.BZ[,subj] = solve(kronecker(Ji[subj], t(Theta) %*% Theta)) %*% t(kronecker(rep(1, Ji[subj]), Theta)) %*%
       (as.vector(t(Y[which(SUBJ == unique(SUBJ)[subj]),])))
-    
+
   }
   vec.BZ = as.vector(mu.q.BZ)
-  
+
   vec.BW = solve(tWIW) %*% tWI %*% vec.BZ
   mu.q.BW = matrix(vec.BW, Kt, p)
-  
+
   Yhat = as.matrix(Z.des %*% t(mu.q.BZ) %*% t(Theta))
-  
+
   if(is.null(v)){
     fpca.temp = fpca.sc(Y = Y - Yhat, pve = .95, var = TRUE)
-    cov.hat = fpca.temp$efunctions %*% tcrossprod(diag(fpca.temp$evalues, nrow = length(fpca.temp$evalues), 
-                                                       ncol = length(fpca.temp$evalues)), fpca.temp$efunctions)    
+    cov.hat = fpca.temp$efunctions %*% tcrossprod(diag(fpca.temp$evalues, nrow = length(fpca.temp$evalues),
+                                                       ncol = length(fpca.temp$evalues)), fpca.temp$efunctions)
     cov.hat = cov.hat + diag(fpca.temp$sigma2, D, D)
     Psi = cov.hat * IJ
   } else {
     Psi = diag(v, D, D)
   }
-  
+
   v = ifelse(is.null(v), IJ, v)
   inv.sig = solve(Psi/v)
-  
+
   Az = ifelse(is.null(Az), I*Kt/2, Az)
   Bz = b.q.lambda.BZ = ifelse(is.null(Bz), .5*sum(diag((t(mu.q.BZ) - Wi %*% t(mu.q.BW)) %*% P.mat %*% t(t(mu.q.BZ) - Wi %*% t(mu.q.BW)))), Bz)
-  
+
   Aw = ifelse(is.null(Aw), Kt/2, Aw)
   if(is.null(Bw)){
     Bw = b.q.lambda.BW = sapply(1:p, function(u) max(1, .5*sum(diag( t(mu.q.BW[,u]) %*% P.mat %*% (mu.q.BW[,u])))))
@@ -153,7 +154,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     Bw = b.q.lambda.BW = rep(Bw, p)
   }
 
-  ## matrices to store within-iteration estimates 
+  ## matrices to store within-iteration estimates
   BW = array(NA, c(Kt, p, N.iter))
     BW[,,1] = bw = matrix(rnorm(Kt * p, 0, 10), Kt, p)
   BZ = array(NA, c(Kt, I, N.iter))
@@ -164,7 +165,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     LAMBDA.BW[1,] = lambda.bw = runif(p, .1, 10)
   LAMBDA.BZ = rep(NA, N.iter)
     LAMBDA.BZ[1] = lambda.ranef = runif(1, .1, 10)
-  
+
   y.post = array(NA, dim = c(IJ, D, (N.iter - N.burn)))
 
   if(verbose) { cat("Beginning Sampler \n") }
@@ -179,11 +180,11 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
 
       t.designmat.Z = t(kronecker(rep(1, Ji[subj]), Theta))
 
-      sigma = solve(t.designmat.Z %*% kronecker(diag(1, Ji[subj], Ji[subj]), inv.sig) %*% t(t.designmat.Z) + 
+      sigma = solve(t.designmat.Z %*% kronecker(diag(1, Ji[subj], Ji[subj]), inv.sig) %*% t(t.designmat.Z) +
                     (lambda.ranef) * P.mat)
       mu = sigma %*% (t.designmat.Z %*% kronecker(diag(1, Ji[subj], Ji[subj]), inv.sig) %*% (as.vector(t(Y[which(SUBJ == unique(SUBJ)[subj]),]))) +
                        ((lambda.ranef) * P.mat) %*% bw %*% (Wi[subj,]))
-      
+
       bz[,subj] = matrix(mvrnorm(1, mu = mu, Sigma = sigma), nrow = Kt, ncol = 1)
     }
     ranef.cur = Z.des %*% t(bz) %*% t(Theta)
@@ -191,10 +192,10 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     ###############################################################
     ## update b-spline parameters for fixed effects
     ###############################################################
-    
+
     sigma = solve( kronecker(diag(lambda.bw), P.mat) + ((lambda.ranef) * tWIW) )
     mu = sigma %*% ((lambda.ranef) * tWI %*% as.vector(bz))
-      
+
     bw = matrix(mvrnorm(1, mu = mu, Sigma = sigma), nrow = Kt, ncol = p)
 
     beta.cur = t(bw) %*% t(Theta)
@@ -216,7 +217,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
       b.post = Bw[term] + 1/2 * bw[,term] %*% P.mat %*% bw[,term]
       lambda.bw[term] = rgamma(1, a.post, b.post)
     }
-      
+
     ## lambda for random effects
     a.post = Az + I*Kt/2
     b.post = Bz + .5 * sum(sapply(1:I, function(u) (t(bz[,u]) - Wi[u,] %*% t(bw)) %*% P.mat %*% t(t(bz[,u]) - Wi[u,] %*% t(bw)) ))
@@ -228,7 +229,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
 
     BW[,,i] = as.matrix(bw)
     BZ[,,i] = as.matrix(bz)
-    
+
     INV.SIG[,,i] = inv.sig
     LAMBDA.BW[i,] = lambda.bw
     LAMBDA.BZ[i] = lambda.ranef
@@ -236,9 +237,9 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     if(i > N.burn){
       y.post[,,i - N.burn] = ranef.cur
     }
-    
+
     if(verbose) { if(round(i %% (N.iter/10)) == 0) {cat(".")} }
-    
+
   }
 
   ###############################################################
@@ -266,21 +267,21 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
 
   ## covariance matrix
   sig.pm = solve(apply(INV.SIG, c(1,2), mean))
-  
+
   ## export fitted values
   fixef.pm = W.des %*% beta.pm
   ranef.pm = Z.des %*% b.pm
   Yhat = apply(y.post, c(1,2), mean)
-  
+
   data = if(is.null(data)) { mf_fixed }  else { data }
-  
+
   ret = list(beta.pm, beta.UB, beta.LB, Yhat, mt_fixed, data)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data")
   class(ret) = "fosr"
   ret
-  
-  
-  
+
+
+
 }
 
 
