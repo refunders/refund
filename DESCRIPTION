@@ -26,7 +26,7 @@ Imports:
     Matrix,
     lattice,
     boot,
-    mgcv (>= 1.8-4),
+    mgcv (>= 1.8-12),
     MASS,
     magic,
     nlme,

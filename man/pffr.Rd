@@ -28,8 +28,8 @@ that are not observed on a regular grid. See Details.}
 \item{algorithm}{the name of the function used to estimate the model.
 Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses
 has less than \code{2e5} data points and to \code{\link[mgcv]{bam}} if not.
-\code{'\link[mgcv]{gamm}'} and \code{'\link[gamm4]{gamm4}'} are valid
-options as well. For \code{'\link[gamm4]{gamm4}'}, see Details.}
+\code{'\link[mgcv]{gamm}'}, \code{'\link[gamm4]{gamm4}'} and \code{'\link[mgcv]{jagam}'} are valid
+options as well. See Details for \code{'\link[gamm4]{gamm4}'} and \code{'\link[mgcv]{jagam}'}.}
 
 \item{method}{Defaults to \code{"REML"}-estimation, including of unknown
 scale. If \code{algorithm="bam"}, the default is switched to
@@ -51,17 +51,24 @@ the global functional intercept. Defaults to \code{list(bs="ps", k=20,
 m=c(2, 1))}, i.e. 20 cubic B-splines bases with first order difference
 penalty.}
 
-\item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}} or
-\code{\link[mgcv]{bam}}. \code{subset} is not implemented.}
+\item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}},
+\code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or \code{'\link[mgcv]{jagam}'}.
+\code{subset} is not implemented.}
 }
 \value{
 A fitted \code{pffr}-object, which is a
   \code{\link[mgcv]{gam}}-object with some additional information in an
   \code{pffr}-entry. If \code{algorithm} is \code{"gamm"} or \code{"gamm4"},
-  only the \code{$gam} part of the returned list is modified in this way.
+  only the \code{$gam} part of the returned list is modified in this way.\cr
   Available methods/functions to postprocess fitted models:
-  \code{\link{summary.pffr}}, \code{\link{plot.pffr}}, \code{\link{coef.pffr}}, \code{\link{fitted.pffr}}, \code{\link{residuals.pffr}},
-  \code{\link{predict.pffr}}, \code{\link{model.matrix.pffr}},  \code{\link{qq.pffr}}, \code{\link{pffr.check}}.
+  \code{\link{summary.pffr}}, \code{\link{plot.pffr}},
+  \code{\link{coef.pffr}}, \code{\link{fitted.pffr}},
+  \code{\link{residuals.pffr}}, \code{\link{predict.pffr}},
+  \code{\link{model.matrix.pffr}},  \code{\link{qq.pffr}},
+  \code{\link{pffr.check}}.\cr If \code{algorithm} is \code{"jagam"}, only
+  the location of the model file and the usual
+  \code{\link[mgcv]{jagam}}-object are returned, you have to run the sampler
+  yourself.\cr
 }
 \description{
 Implements additive regression for functional and scalar covariates and
