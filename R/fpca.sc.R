@@ -286,6 +286,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     Z = efunctions
     Y.tilde = Y.pred - matrix(mu, I.pred, D, byrow = TRUE)
     Yhat = matrix(0, nrow = I.pred, ncol = D)
+    rownames(Yhat) = rownames(Y.pred); colnames(Yhat) = colnames(Y.pred)
     scores = matrix(NA, nrow = I.pred, ncol = npc)
     VarMats = vector("list", I.pred)
     for (i in 1:I.pred) VarMats[[i]] = matrix(NA, nrow = D, ncol = D)
@@ -309,7 +310,9 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
         }
     }
 
-    ret.objects = c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc")
+    index = argvals
+    
+    ret.objects = c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc", "index")
     if (var) {
       ret.objects = c(ret.objects, "sigma2", "diag.var", "VarMats")
       if (simul) ret.objects = c(ret.objects, "crit.val")
