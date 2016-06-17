@@ -111,6 +111,7 @@
 #'    ICU Data. Journal of the American Statistical Association,
 #'    109(508):1425-1439, 2014.
 #' @examples
+#' \dontrun{
 #'   data(sofa)
 #'   fit.vd1 <- pfr(death ~ lf.vd(SOFA) + age + los,
 #'                  family="binomial", data=sofa)
@@ -151,6 +152,7 @@
 #'           ggplot2::scale_x_continuous(expand = c(0,0)) +
 #'           ggplot2::theme_bw()
 #'   }
+#' }
 #'   
 #' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's
 #'    \code{\link{linear.functional.terms}}.

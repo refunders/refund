@@ -1,4 +1,4 @@
-#' Longtiudinal Functional Data Analysis using FPCA
+#' Longitudinal Functional Data Analysis using FPCA
 #'
 #' Implements longitudinal functional data analysis (Park and Staicu, 2015).
 #' It decomposes longitudinally-observed functional observations in two steps.
@@ -29,6 +29,7 @@
 #' @param mFPCA.knots number of knots to use or the vectors of knots in a mFPCA step; used for obtain a smooth estimate of a covarance function; defaults to 35; see \command{fpca.face} 
 #' @param mFPCA.p integer; the degree of B-spline functions to use in a mFPCA step; defaults to 3; see \command{fpca.face} 
 #' @param mFPCA.m integer;order of differencing penalty to use in a mFPCA step; defaults to 2; see \command{fpca.face} 
+#' @param mFPCA.npc pre-specified value for the number of principal components; if given, it overrides \code{pve}; defaults to NULL; see \command{fpca.face}
 #' 
 #' @param LongiModel.method model and estimation method for estimating covariance of estimated scores from a mFPCA step; 
 #'                          either KL expansion model or random effects model; defaults to fpca.sc
@@ -39,7 +40,8 @@
 #' @param gam.method smoothing parameter estimation method when \command{gam} is used for predicting score functions at unobserved visit time, T; defaults to \code{REML}; see \command{gam} 
 #' @param gam.kT dimension of basis functions to use; see \command{gam} 
 #' 
-#' @return A list with components \item{i }{subject id} \item{funcArg }{function argument} \item{visitTime }{visit times}
+#' @return A list with components \item{obsData }{observed data (input)}
+#' \item{i }{subject id} \item{funcArg }{function argument} \item{visitTime }{visit times}
 #' \item{fitted.values }{fitted values (in-sample); of the same dimension as Y} \item{fitted.values.all }{a list of which each component consists of a subject's fitted values at all pairs of evaluation points (s and T)} 
 #' \item{predicted.values }{predicted values for variables provided in newdata}
 #' \item{bivariateSmoothMeanFunc }{estimated bivariate smooth mean function}
@@ -55,12 +57,55 @@
 #'
 #' 
 #' @importFrom lme4 lmer
-#' @importFrom mgcv gam s 
+#' @importFrom mgcv gam s
 #' @importFrom splines spline.des
 #' @importFrom Matrix kronecker as.matrix
-#' @import rgl
+#' @importFrom stats aggregate
 #'  
 #' @examples 
+#'   \dontrun{ 
+#'   ########################################
+#'   ###   Illustration with real data    ###
+#'   ########################################   
+#'
+#'   data(DTI)
+#'   MS <- subset(DTI, case ==1)  # subset data with multiple sclerosis (MS) case
+#'
+#'   index.na <- which(is.na(MS$cca))  
+#'   Y <- MS$cca; Y[index.na] <- fpca.sc(Y)$Yhat[index.na]; sum(is.na(Y))
+#'   id <- MS$ID 
+#'   visit.index <- MS$visit 
+#'   visit.time <- MS$visit.time/max(MS$visit.time)
+#'
+#'   lfpca.dti <- fpca.lfda(Y = Y, subject.index = id,  
+#'                          visit.index = visit.index, obsT = visit.time, 
+#'                          LongiModel.method = 'lme',
+#'                          mFPCA.pve = 0.95)
+#'                          
+#'   TT <- seq(0,1,length.out=41); ss = seq(0,1,length.out=93)
+#'   
+#'   # estimated mean function
+#'   persp(x = ss, y = TT, z = t(lfpca.dti$bivariateSmoothMeanFunc),
+#'         xlab="s", ylab="visit times", zlab="estimated mean fn", col='light blue')
+#'         
+#'   # first three estimated marginal eigenfunctions
+#'   matplot(ss, lfpca.dti$mFPCA.efunctions[,1:3], type='l', xlab='s', ylab='estimated eigen fn')
+#'   
+#'   # predicted scores function corresponding to first two marginal PCs
+#'   matplot(TT, do.call(cbind, lapply(lfpca.dti$sFPCA.xiHat.bySubj, function(a) a[,1])),
+#'           xlab="visit time (T)", ylab="xi_hat(T)", main = "k = 1", type='l')
+#'   matplot(TT, do.call(cbind, lapply(lfpca.dti$sFPCA.xiHat.bySubj, function(a) a[,2])),
+#'           xlab="visit time (T)", ylab="xi_hat(T)", main = "k = 2", type='l')
+#'
+#'   # prediction of cca of first two subjects at T = 0, 0.5 and 1 (black, red, green)
+#'   matplot(ss, t(lfpca.dti$fitted.values.all[[1]][c(1,21,41),]), 
+#'          type='l', lty = 1, ylab="", xlab="s", main = "Subject = 1")    
+#'   matplot(ss, t(lfpca.dti$fitted.values.all[[2]][c(1,21,41),]), 
+#'          type='l', lty = 1, ylab="", xlab="s", main = "Subject = 2")    
+#'      
+#'   ########################################
+#'   ### Illustration with simulated data ###
+#'   ########################################   
 #'
 #'   ###########################################################################################
 #'   # data generation
@@ -122,9 +167,11 @@
 #'   
 #'   
 #'   # mean function (true vs. estimated)
-#'   rgl::persp3d(x=TT, y = ss, z= t(sapply(TT, function(a) meanFn(s=ss, t = a))),
-#'           xlab="visit times", ylab="s", zlab="estimated mean fn")
-#'   rgl::persp3d(x = TT, y = ss, est$bivariateSmoothMeanFunc, add = TRUE, col='light blue')
+#'   par(mfrow=c(1,2))
+#'   persp(x=TT, y = ss, z= t(sapply(TT, function(a) meanFn(s=ss, t = a))),
+#'           xlab="visit times", ylab="s", zlab="true mean fn")
+#'   persp(x = TT, y = ss, est$bivariateSmoothMeanFunc,
+#'    xlab="visit times", ylab="s", zlab="estimated mean fn", col='light blue')
 #'   
 #'   ################   mFPCA step   ################
 #'   par(mfrow=c(1,2))
@@ -203,13 +250,14 @@
 #'   matplot(TT, do.call(cbind,lapply(est.lme$sFPCA.xiHat.bySubj, function(a) a[,2])), 
 #'           xlab="visit time", main="k=2", type='l', ylab="", col=rainbow(100, alpha = 1),
 #'           lwd=1, lty=1)
+#'   }
 
 ################################################################################################
 ################################################################################################
 
 fpca.lfda <- function(Y, subject.index, visit.index, obsT = NULL, funcArg = NULL, numTEvalPoints = 41, newdata = NULL, 
                       fbps.knots = c(5,10), fbps.p = 3, fbps.m = 2,
-                      mFPCA.pve = 0.95, mFPCA.knots = 35, mFPCA.p = 3, mFPCA.m = 2, 
+                      mFPCA.pve = 0.95, mFPCA.knots = 35, mFPCA.p = 3, mFPCA.m = 2, mFPCA.npc = NULL, 
                       LongiModel.method = c('fpca.sc', 'lme'),
                       sFPCA.pve = 0.95, sFPCA.nbasis = 10, sFPCA.npc = NULL,
                       gam.method = 'REML', gam.kT = 10){
@@ -234,10 +282,16 @@ fpca.lfda <- function(Y, subject.index, visit.index, obsT = NULL, funcArg = NULL
   TT <- seq(min(Tij), max(Tij), length.out=numTEvalPoints)
   
   n <- length(unique(subject.index))   # number of subject
+  mi <- aggregate(subject.index, by=list(subject.index), length)[,2]
+  subject.index <- unlist(sapply(1:n, function(a) rep(a, mi[a])))
+  
   M <- length(ss)   # number of eval.points
   J <- length(TT)
   Ncurves <- nrow(y)  # sum of J_i
   uTij <- unique(Tij)
+  
+
+
   
   #######################################
   # bivariate smooth mean function
@@ -251,7 +305,8 @@ fpca.lfda <- function(Y, subject.index, visit.index, obsT = NULL, funcArg = NULL
   #######################################  
   new.y <- y-mu.hat
   
-  fit1 <- fpca.face(Y=new.y, pve=mFPCA.pve, knots=mFPCA.knots, p = mFPCA.p, m = mFPCA.m)
+  fit1 <- fpca.face(Y=new.y, pve=mFPCA.pve, 
+                    knots=mFPCA.knots, p = mFPCA.p, m = mFPCA.m, npc = mFPCA.npc)
   phi.hat <- fit1$efunctions*sqrt(M)   # estimate eigenfunctions
   K.hat <- fit1$npc 
   
@@ -365,7 +420,9 @@ fpca.lfda <- function(Y, subject.index, visit.index, obsT = NULL, funcArg = NULL
   #######################################
   
   if(LongiModel.method == 'fpca.sc'){
-    return(list(i = subject.index, # index for subject
+    ret <- list(obsData = list(y = Y, i = subject.index, j = visit.index, Tij = obsT, funcArg = ss),
+                
+                i = subject.index, # index for subject
                 funcArg = ss,   # eval points in s direction
                 visitTime = TT, # eval points in T direction
                 
@@ -385,10 +442,12 @@ fpca.lfda <- function(Y, subject.index, visit.index, obsT = NULL, funcArg = NULL
                 
                 mFPCA.covar = marCovar.hat,   # estimated marginal covariance
                 sFPCA.longDynCov.k = longDynamicsCov.hat.k) # estimated covariance of longitudinal dynamics
-    )  
+     
   }else if(LongiModel.method == 'lme'){
     
-    return(list(i = subject.index, # index for subject
+    ret <- list(obsData = list(y = Y, i = subject.index, j = visit.index, Tij = obsT, funcArg = ss),
+               
+                i = subject.index, # index for subject
                 funcArg = ss,   # eval points in s direction
                 visitTime = TT, # eval points in T direction
                 
@@ -407,10 +466,12 @@ fpca.lfda <- function(Y, subject.index, visit.index, obsT = NULL, funcArg = NULL
                 
                 mFPCA.covar = marCovar.hat,   # estimated marginal covariance
                 sFPCA.longDynCov.k = longDynamicsCov.hat.k) # estimated covariance of longitudinal dynamics
-    )   
+       
     
   }
   
+  class(ret) <- "lfpca"
+  return(ret)
   
 }
 

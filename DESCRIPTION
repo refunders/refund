@@ -1,8 +1,8 @@
 Package: refundDevel
 Type: Package
-Title: developer version of refund: Regression with Functional Data
-Version: 0.3-6
-Date: 2015-11-11
+Title: Regression with Functional Data (Developer Version)
+Version: 0.1-16
+Date: 2016-05-09
 Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
@@ -18,7 +18,8 @@ Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@g
     person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"),
     person(c("Madan", "Gopal"), "Kundu", role="ctb"),
     person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"),
-    person("So Young", "Park", role="ctb", email="spark13@ncsu.edu"))
+    person("So Young", "Park", role="ctb", email="spark13@ncsu.edu"),
+    person(c("David", "L."), "Miller", role="ctb", email="dave@ninepointeightone.net"))
 Depends:
     R (>= 2.14.0)
 Imports:
@@ -26,7 +27,7 @@ Imports:
     Matrix,
     lattice,
     boot,
-    mgcv (>= 1.8-4),
+    mgcv (>= 1.8-12),
     MASS,
     magic,
     nlme,
@@ -37,18 +38,18 @@ Imports:
     grpreg,
     ggplot2,
     stats,
-    MCMCpack,
     pbs,
-    methods,
-    rgl
+    methods
 Suggests:
     RColorBrewer,
     reshape2,
-    testthat
-Description: Developer version of refund. Methods for regression for functional
+    testthat,
+    dtw
+Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to
-    image data.
+    image data. This is the developer version of the package containing untested,
+    bleeding edge features. Caveat emptor!
 License: GPL (>= 2)
 LazyLoad: yes
 LazyData: true
@@ -108,6 +109,7 @@ Collate:
     'plot.lpeer.R'
     'plot.peer.R'
     'plot.pfr.R'
+    'poridge.R'
     'postprocess.pfr.R'
     'predict.fgam.R'
     'predict.pfr.R'
@@ -146,3 +148,4 @@ Collate:
     'fpca.lfda.R'
     'predict.fbps.R'
     'select_knots.R'
+RoxygenNote: 5.0.1

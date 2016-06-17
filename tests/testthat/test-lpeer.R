@@ -1,5 +1,5 @@
 context("Testing peer")
-library(refundDevel)
+
 
 test_that("lpeer with ridge penalty works", {
   skip_on_cran()

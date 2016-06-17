@@ -1,40 +1,34 @@
-##' Smoothed FPCA via iterative penalized rank one SVDs.
-##'
-##' Implements the algorithm of Huang, Shen, Buja (2008) for finding smooth
-##' right singular vectors of a matrix \code{X} containing (contaminated)
-##' evaluations of functional random variables on a regular, equidistant grid.
-##' If the number of smooth SVs to extract is not specified, the function
-##' hazards a guess for the appropriate number based on the asymptotically
-##' optimal truncation threshold under the assumption of a low rank matrix
-##' contaminated with i.i.d. Gaussian noise with unknown variance derived in
-##' Gavish and Donoho (2014).  Please note that Gavish and Donoho (2014) should be
-##' regarded as experimental for functional PCA, and will typically not work
-##' well if you have more observations than grid points.
-##'
-##'
-##' @param Y,ydata the user must supply either \code{Y}, a matrix of functions
-##' observed on a regular grid, or a data frame \code{ydata} representing
-##' irregularly observed functions. See Details.
-##' @param Y.pred if desired, a matrix of functions to be approximated using
-##' the FPC decomposition.
-##' @param argvals numeric; function argument.
-##' @param pve proportion of variance explained: used to choose the number of
-##' principal components.
-##' @param var logical;
-##' @param simul logical;
-##' @param sim.alpha numeric;
-##' @param npc how many smooth SVs to try to extract, if \code{NA} (the
-##' default) the hard thresholding rule of Gavish and Donoho (2014) is used (see
-##' Details, References).
-##' @param center logical; center \code{Y} so that its column-means are 0? Defaults to
-##' \code{TRUE}
-##' @param p integer; the degree of B-splines functions to use
-##' @param m integer; the order of difference penalty to use
-##' @param knots number of knots to use or the vectors of knots; defaults to 35
-##' @param lambda smoothing parameter; if not specified smoothing parameter is
-##' chosen using \code{\link[stats]{optim}} or a grid search
-##' @param alpha numeric; tuning parameter for GCV; see parameter \code{gamma}
-##' in \code{\link[mgcv]{gam}}
+#' Functional principal component analysis with fast covariance estimation
+#'
+#' A fast implementation of the sandwich smoother (Xiao et al., 2013)
+#' for covariance matrix smoothing. Pooled generalized cross validation
+#' at the data level is used for selecting the smoothing parameter. 
+#' @param Y,ydata the user must supply either \code{Y}, a matrix of functions
+#' observed on a regular grid, or a data frame \code{ydata} representing
+#' irregularly observed functions. See Details.
+#' @param Y.pred if desired, a matrix of functions to be approximated using
+#' the FPC decomposition.
+#' @param argvals numeric; function argument.
+#' @param pve proportion of variance explained: used to choose the number of
+#' principal components.
+#' @param var logical; should an estimate of standard error be returned?
+#' @param simul logical; if \code{TRUE} curves will we simulated using
+#' Monte Carlo to obtain an estimate of the \code{sim.alpha} quantile at each
+#' \code{argval}; ignored if \code{var == FALSE}
+#' @param sim.alpha numeric; if \code{simul==TRUE}, quantile to estimate at
+#' each \code{argval}; ignored if \code{var == FALSE}
+#' @param npc how many smooth SVs to try to extract, if \code{NA} (the
+#' default) the hard thresholding rule of Gavish and Donoho (2014) is used (see
+#' Details, References).
+#' @param center logical; center \code{Y} so that its column-means are 0? Defaults to
+#' \code{TRUE}
+#' @param p integer; the degree of B-splines functions to use
+#' @param m integer; the order of difference penalty to use
+#' @param knots number of knots to use or the vectors of knots; defaults to 35
+#' @param lambda smoothing parameter; if not specified smoothing parameter is
+#' chosen using \code{\link[stats]{optim}} or a grid search
+#' @param alpha numeric; tuning parameter for GCV; see parameter \code{gamma}
+#' in \code{\link[mgcv]{gam}}
 ## @param maxiter how many iterations of the power algorithm to perform at
 ## most (defaults to 15)
 ## @param tol convergence tolerance for power algorithm (defaults to 1e-4)
@@ -52,72 +46,105 @@
 ## messages?  defaults to \code{FALSE}
 ## @param score.method character; method to use to estimate scores; one of
 ## \code{"blup"} or \code{"int"} (default)
-##' @param search.grid logical; should a grid search be used to find \code{lambda}?
-##'  Otherwise, \code{\link[stats]{optim}} is used
-##' @param search.length integer; length of grid to use for grid search for
-##' \code{lambda}; ignored if \code{search.grid} is \code{FALSE}
-##' @param method method to use; see \code{\link[stats]{optim}}
-##' @param lower see \code{\link[stats]{optim}}
-##' @param upper see \code{\link[stats]{optim}}
-##' @param control see \code{\link[stats]{optim}}
-##' @return a list like the returned object from \code{\link{fpca.sc}}, with
-##' entries \code{Yhat}, the smoothed trajectories, \code{scores}, the
-##' estimated FPC scores, \code{mu}, the column means of \code{Y} (or a
-##' vector of zeroes if \code{!center}), \code{efunctions}, the estimated
-##' smooth FPCs (note that these are orthonormal vectors, not evaluations of
-##' orthonormal functions...), \code{evalues}, their associated eigenvalues,
-##' and \code{npc}, the number of smooth components that were extracted.
-##' @author Fabian Scheipl
-##' @seealso \code{\link{fpca.sc}} and \code{\link{fpca.face}} for FPCA based
-##' on smoothing a covariance estimate; \code{\link{fpca2s}} for a faster
-##' SVD-based approach.
-##' @references Huang, J. Z., Shen, H., and Buja, A. (2008).  Functional
-##' principal components analysis via penalized rank one approximation.
-##' \emph{Electronic Journal of Statistics}, 2, 678-695
-##'
-##' Gavish, M., and Donoho, D. L.  (2014). The optimal hard threshold for
-##' singular values is 4/sqrt(3).  \emph{IEEE Transactions on Information Theory}, 60(8), 5040--5053.
-##' @examples
-##'
-##' ## as in Sec. 6.2 of Huang, Shen, Buja (2008):
-##'  set.seed(2678695)
-##'  n <- 101
-##'  m <- 101
-##'  s1 <- 20
-##'  s2 <- 10
-##'  s <- 4
-##'  t <- seq(-1, 1, l=m)
-##'  v1 <- t + sin(pi*t)
-##'  v2 <- cos(3*pi*t)
-##'  V <- cbind(v1/sqrt(sum(v1^2)), v2/sqrt(sum(v2^2)))
-##'  U <- matrix(rnorm(n*2), n, 2)
-##'  D <- diag(c(s1^2, s2^2))
-##'  eps <- matrix(rnorm(m*n, sd=s), n, m)
-##'  Y <- U%*%D%*%t(V) + eps
-##'
-##'  smoothSV <- fpca.ssvd(Y, verbose=TRUE)
-##'
-##'  layout(t(matrix(1:4, nr=2)))
-##'  clrs <- sapply(rainbow(n), function(c)
-##'            do.call(rgb, as.list(c(col2rgb(c)/255, .1))))
-##'  matplot(V, type="l", lty=1, col=1:2, xlab="",
-##'          main="FPCs: true", bty="n")
-##'  matplot(smoothSV$efunctions, type="l", lty=1, col=1:5, xlab="",
-##'          main="FPCs: estimate", bty="n")
-##'  matplot(1:m, t(U%*%D%*%t(V)), type="l", lty=1, col=clrs, xlab="", ylab="",
-##'          main="true smooth Y", bty="n")
-##'  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="",
-##'          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
-##' @export
-##' @importFrom stats smooth.spline optim
-##' @importFrom Matrix as.matrix
+#' @param search.grid logical; should a grid search be used to find \code{lambda}?
+#'  Otherwise, \code{\link[stats]{optim}} is used
+#' @param search.length integer; length of grid to use for grid search for
+#' \code{lambda}; ignored if \code{search.grid} is \code{FALSE}
+#' @param method method to use; see \code{\link[stats]{optim}}
+#' @param lower see \code{\link[stats]{optim}}
+#' @param upper see \code{\link[stats]{optim}}
+#' @param control see \code{\link[stats]{optim}}
+#' @return A list with components
+#' \enumerate{
+#' \item \code{Yhat} - If \code{Y.pred} is specified, the smooth version of
+#' \code{Y.pred}.   Otherwise, if \code{Y.pred=NULL}, the smooth version of \code{Y}.
+#' \item \code{scores} - matrix of scores
+#' \item \code{mu} - mean function
+#' \item \code{npc} - number of principal components
+#' \item \code{efunctions} - matrix of eigenvectors
+#' \item \code{evalues} - vector of eigenvalues
+#' }
+#' if \code{var == TRUE} additional components are returned
+#' \enumerate{
+#' \item \code{sigma2} - estimate of the error variance
+#' \item \code{VarMats} - list of covariance function estimate for each
+#' subject
+#' \item \code{diag.var} - matrix containing the diagonals of each matrix in
+#' \item \code{crit.val} - list of estimated quantiles; only returned if
+#' \code{simul == TRUE}
+#' }
+#' @author Luo Xiao
+#' @seealso   \code{\link{fpca.sc}}  for another covariance-estimate based
+#' smoothing of \code{Y}; \code{\link{fpca2s}} and \code{\link{fpca.ssvd}}
+#' for two SVD-based smoothings.  
+#' @references Xiao, L., Li, Y., and Ruppert, D. (2013).
+#' Fast bivariate \emph{P}-splines: the sandwich smoother,
+#' \emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577-599.
+#'
+#' Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C. (2016).
+#' Fast covariance estimation for high-dimensional functional data.  
+#' \emph{Statistics and Computing}, 26, 409-421.
+#' DOI: 10.1007/s11222-014-9485-x.
+#' @examples
+#' #### settings
+#' I <- 50 # number of subjects
+#' J <- 3000 # dimension of the data
+#' t <- (1:J)/J # a regular grid on [0,1]
+#' N <- 4 #number of eigenfunctions
+#' sigma <- 2 ##standard deviation of random noises
+#' lambdaTrue <- c(1,0.5,0.5^2,0.5^3) # True eigenvalues
+#'   
+#' case = 1
+#' ### True Eigenfunctions
+#'   
+#' if(case==1) phi <- sqrt(2)*cbind(sin(2*pi*t),cos(2*pi*t),
+#'                                 sin(4*pi*t),cos(4*pi*t))
+#' if(case==2) phi <- cbind(rep(1,J),sqrt(3)*(2*t-1),
+#'                           sqrt(5)*(6*t^2-6*t+1),
+#'                          sqrt(7)*(20*t^3-30*t^2+12*t-1))
+#' 
+#' ###################################################
+#' ########     Generate Data            #############
+#' ###################################################
+#' xi <- matrix(rnorm(I*N),I,N);
+#' xi <- xi\%*\%diag(sqrt(lambdaTrue))
+#' X <- xi\%*\%t(phi); # of size I by J
+#' Y <- X + sigma*matrix(rnorm(I*J),I,J)
+#' 
+#' results <- fpca.face(Y,center = TRUE, argvals=t,knots=100,pve=0.99)
+#' ###################################################
+#' ####               FACE                ########
+#' ###################################################  
+#' Phi <- results$efunctions
+#' eigenvalues <- results$evalues
+#'
+#' for(k in 1:N){
+#'   if(Phi[,k]\%*\%phi[,k]< 0) 
+#'     Phi[,k] <- - Phi[,k]
+#' }
+#' 
+#' ### plot eigenfunctions
+#' par(mfrow=c(N/2,2))
+#' seq <- (1:(J/10))*10
+#' for(k in 1:N){
+#'   plot(t[seq],Phi[seq,k]*sqrt(J),type="l",lwd = 3, 
+#'        ylim = c(-2,2),col = "red",
+#'        ylab = paste("Eigenfunction ",k,sep=""),
+#'        xlab="t",main="FACE")
+#'   
+#'   lines(t[seq],phi[seq,k],lwd = 2, col = "black")
+#' }
+#' @export
+#' @importFrom stats smooth.spline optim
+#' @importFrom Matrix as.matrix
+#' @importFrom MASS mvrnorm
 fpca.face <-
 function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
          var = FALSE, simul = FALSE, sim.alpha = 0.95,
          center=TRUE,knots=35,p=3,m=2,lambda=NULL,alpha = 1,
          search.grid=TRUE,search.length=100,
          method="L-BFGS-B", lower=-20,upper=20, control=NULL){
-  
+
   ## data: Y, I by J data matrix, functions on rows
   ## argvals:  vector of J
   ## knots: to specify either the number of knots or the vectors of knots;
@@ -125,7 +152,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   ## p: the degree of B-splines;
   ## m: the order of difference penalty
   ## lambda: user-selected smoothing parameter
-  ## method: see R function "optim" 
+  ## method: see R function "optim"
   ## lower, upper, control: see R function "optim"
   #require(Matrix)
   #source("pspline.setting.R")
@@ -134,23 +161,23 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   data_dim <- dim(Y)
   I <- data_dim[1] ## number of subjects
   J <- data_dim[2] ## number of obs per function
-  
+
   if(is.null(argvals))  argvals <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
-  
+
   meanX <- rep(0,J)
   if(center) {##center the functions
-    meanX <- apply(Y,2,function(x) mean(x,na.rm=TRUE))
+    meanX <- colMeans(Y, na.rm=TRUE)
     meanX <- smooth.spline(argvals,meanX,all.knots =TRUE)$y
     Y <- t(t(Y)- meanX)
   }
-  
+
   ## specify the B-spline basis: knots
   p.p <- p
   m.p <- m
   if(length(knots)==1){
     if(knots+p.p>=J) cat("Too many knots!\n")
     stopifnot(knots+p.p<J)
-    
+
     K.p <- knots
     knots <- seq(-p.p,K.p+p.p,length=K.p+1+2*p.p)/K.p
     knots <- knots*(max(argvals)-min(argvals)) + min(argvals)
@@ -159,7 +186,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   if(K.p>=J) cat("Too many knots!\n")
   stopifnot(K.p <J)
   c.p <- K.p + p.p
-  
+
   ######### precalculation for smoothing #############
   List <- pspline.setting(argvals,knots,p.p,m.p)
   B <- List$B
@@ -174,14 +201,14 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
     if(option==1)
       return(A*(rep(1,dim(A)[1])%*%t(s)))
   }
-  
+
   ######## precalculation for missing data ########
   imputation <- FALSE
   Niter.miss <- 1
-  
+
   Index.miss <- is.na(Y)
   if(sum(Index.miss)>0){
-    num.miss <- apply(Y,2,function(x){sum(is.na(x))})
+    num.miss <- rowSums(is.na(Y))
     for(i in 1:I){
       if(num.miss[i]>0){
         y <- Y[i,]
@@ -224,7 +251,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
       gcv <- gcv/(1-alpha*trace/J/(1-totalmiss))^2
       return(gcv)
     }
-    
+
     if(is.null(lambda)) {
       if(!search.grid){
         fit <- optim(0,face_gcv,method=method,lower=lower,upper=upper,control=control)
@@ -232,20 +259,20 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
           expression <- paste("Smoothing failed! The code is:",fit$convergence)
           print(expression)
         }
-        
+
         lambda <- exp(fit$par)
       } else {
         Lambda <- seq(lower,upper,length=search.length)
         Length <- length(Lambda)
         Gcv <- rep(0,Length)
-        for(i in 1:Length) 
+        for(i in 1:Length)
           Gcv[i] <- face_gcv(Lambda[i])
         i0 <- which.min(Gcv)
         lambda <- exp(Lambda[i0])
       }
     }
     YS <- MM(Ytilde,1/(1+lambda*s),2)
-    
+
     ###################################################
     ####  Eigendecomposition of Smoothed Data #########
     ###################################################
@@ -263,25 +290,25 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
     }
     if(iter.miss>1&&iter.miss< Niter.miss) {
       diff <- norm(YS-YS.temp,"F")/norm(YS,"F")
-      if(diff <= 0.02) 
+      if(diff <= 0.02)
         convergence.vector[iter.miss+1] <- 1
     }
-    
+
     YS.temp <- YS
     iter.miss <- iter.miss + 1
     N <- min(I,c.p)
     d <- Sigma[1:N]
     d <- d[d>0]
     per <- cumsum(d)/sum(d)
-    
+
     N <- ifelse (is.null(npc), min(which(per>pve)), min(npc, length(d)))
-    
+
     #print(c(iter.miss,convergence.vector[iter.miss+1],lambda,diff))
     #########################################
     #######     Principal  Scores   #########
     ########   data imputation      #########
     #########################################
-    
+
     if(imputation) {
       A.N <- A[,1:N]
       d <- Sigma[1:N]
@@ -293,12 +320,12 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
         print("error")
     }
     #if(iter.miss%%10==0) print(iter.miss)
-  } ## end of while loop         
-  
+  } ## end of while loop
+
   ### now calculate scores
   if(is.null(Y.pred)) Y.pred = Y
   else {Y.pred = t(t(as.matrix(Y.pred))-meanX)}
-  
+
   N <- ifelse (is.null(npc), min(which(per>pve)), npc)
   if (N>ncol(A)) {
     warning(paste0("The requested npc of ", npc,
@@ -307,25 +334,25 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
     N <- ncol(A)
   }
   npc <- N
-  
+
   Ytilde <- as.matrix(t(A0)%*%(Bt%*%t(Y.pred)))
   sigmahat2 <- max(mean(Y[!Index.miss]^2) -sum(Sigma),0)
   Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
   Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J))
-  
+
   eigenvectors = as.matrix(B%*%(A0%*%A[,1:N]))
   eigenvalues = Sigma[1:N] #- sigmahat2/J
-  
+
   Yhat <- t(A[,1:N])%*%Ytilde
   Yhat <- as.matrix(B%*%(A0%*%A[,1:N]%*%diag(eigenvalues/(eigenvalues+sigmahat2/J))%*%Yhat))
   Yhat <- t(Yhat + meanX)
-  
-  
+
+
   scores <- sqrt(J)*Xi[,1:N]
   mu <- meanX
   efunctions <- eigenvectors[,1:N]
   evalues <- J*eigenvalues[1:N]
-  
+
   ret.objects <- c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc")
   if(var) {
     sigma2 = sigmahat2
@@ -337,7 +364,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
       VarMats[[i.subj]] = temp
       diag.var[i.subj,] = diag(temp)
       if (simul & sigma2 != 0) {
-        norm.samp = mvrnorm(2500, mu = rep(0, J), Sigma = VarMats[[i.subj]])/matrix(sqrt(diag(VarMats[[i.subj]])), 
+        norm.samp = mvrnorm(2500, mu = rep(0, J), Sigma = VarMats[[i.subj]])/matrix(sqrt(diag(VarMats[[i.subj]])),
                                                   nrow = 2500, ncol = J, byrow = TRUE)
         crit.val[i.subj] = quantile(apply(abs(norm.samp), 1, max), sim.alpha)
       }
@@ -351,5 +378,6 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   ret = lapply(1:length(ret.objects), function(u) get(ret.objects[u]))
   names(ret) = ret.objects
   class(ret) = "fpca"
-  return(ret)      	                	
+  return(ret)
+
 }

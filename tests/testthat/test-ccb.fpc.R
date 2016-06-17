@@ -1,5 +1,4 @@
 context("Testing ccb.fpc")
-library(refundDevel)
 
 test_that("ccb.fpc works as expected", {
   skip_on_cran()

@@ -207,7 +207,10 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
     varnames <- varnames[-1]
     if(length(varnames)){
       for(i in 1:length(varnames)){
-        newdata[[varnames[i]]] <- rep(object$pfr$datameans[names(object$pfr$datameans)==varnames[i]],l=length(xvals))#matrix(object$pfr$datameans[names(object$pfr$datameans)==varnames[i]],nr=1,nc=length(newX))
+        newdata[[varnames[i]]] <-
+          rep(object$pfr$datameans[[which(names(object$pfr$datameans)==varnames[i])]],
+              l=length(xvals))
+        #matrix(object$pfr$datameans[names(object$pfr$datameans)==varnames[i]],nr=1,nc=length(newX))
       }
     }
     

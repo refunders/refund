@@ -1,5 +1,5 @@
 context("Testing functional PCR")
-library(refundDevel)
+
 
 test_that("Check that all 3 fpcr calls yield essentially identical estimates", {
    skip_on_cran()

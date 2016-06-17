@@ -85,11 +85,11 @@
 #' For example, suppose you want to scale
 #' the term linearly so that the data used to define the basis ranges from
 #' 0 to 1. The wrong way to define this transformation function:
-#' \code{function(x) {(x - max(x))/(max(x) - min(x))}}.
+#' \code{function(x) {(x - min(x))/(max(x) - min(x))}}.
 #' This function will result in incorrect predictions if the range of data for
 #' which preditions are being made is not the same as the range of data that was
 #' used to define the basis. The proper way to define this function:
-#' \code{function(x) {(x - max(x0))/(max(x0) - min(x0))}}.
+#' \code{function(x) {(x - min(x0))/(max(x0) - min(x0))}}.
 #' By refering to \code{x0} instead of \code{x}, you are indicating that you
 #' want to use the original data instead of the current data. This may seem
 #' strange to refer to a variable that is not one of the arguments, but the
@@ -98,12 +98,8 @@
 #' 
 #' @return An object of class "dt.smooth". This will contain all the elements
 #'   associated with the \code{\link[mgcv]{smooth.construct}} object from the
-#'   inner smooth (defined by \code{xt$bs}), in addition to:
-#'   \enumerate{
-#'     \item tf: the named list of transformation functions applied to the
-#'     input data
-#'     \item class: the class of the smooth object for the inner smooth
-#'   }
+#'   inner smooth (defined by \code{xt$bs}), in addition to an \code{xt}
+#'   element used by the \code{Predict.matrix} method.
 #' @author Jonathan Gellar
 #' @seealso \code{\link[mgcv]{smooth.construct}}
 #' @export
@@ -201,9 +197,13 @@ smooth.construct.dt.smooth.spec <- function(object, data, knots) {
   
   # Create smooth and modify return object
   sm <- mgcv::smooth.construct(object, data = tdata, knots = knots)
-  sm$tf <- tf
-  sm$class <- class(sm)
-  class(sm) <- "dt.smooth"
+  if (!is.null(sm$xt)) xt$xt <- sm$xt
+  xt$class <- class(sm)
+  sm$xt <- xt
+  sm$xt$tf <- tf
+#  sm$tf <- tf
+#  sm$class <- class(sm)
+  class(sm) <- c("dt.smooth", class(sm))
   sm
 }
 
@@ -260,7 +260,7 @@ getTF <- function(fname, nterm) {
     }
     else stop(paste0("Not enough terms for ", fname, " transformation"))
   } else if (fname=="linear01") {
-    function(x) (x - max(x0))/(max(x0) - min(x0))
+    function(x) (x - min(x0))/(max(x0) - min(x0))
   } else if (fname=="s-t") {
     if (nterm >= 2) function(s,t) s-t
     else stop(paste0("Not enough terms for ", fname, " transformation"))
@@ -298,13 +298,13 @@ getTF <- function(fname, nterm) {
 #'   \code{\link{smooth.construct.dt.smooth.spec}}, see
 #'   \code{\link[mgcv]{smooth.construct}}
 #' @param data  see \code{\link[mgcv]{smooth.construct}}
-#' @return design matrix for PEER terms
+#' @return design matrix for domain-transformed terms
 #' @author Jonathan Gellar
 #' @export
 Predict.matrix.dt.smooth <- function(object, data) {
   # Prediction method for parameteric bivariate basis
   
-  tf <- object$tf
+  tf <- object$xt$tf
   tdata <- lapply(tf, function(f) {
     args <- formals(f)
     argnms <- names(args)
@@ -327,8 +327,9 @@ Predict.matrix.dt.smooth <- function(object, data) {
   tdata[untr] <- data[untr]
   
   # Modify smooth object and call Predict.matrix
-  object$tf <- NULL
-  class(object) <- object$class
+  #object$tf <- NULL
+  class(object) <- object$xt$class
+  object$xt <- object$xt$xt
   mgcv::Predict.matrix(object, tdata)
 }
 

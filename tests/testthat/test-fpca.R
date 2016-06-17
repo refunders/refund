@@ -1,5 +1,4 @@
 context("Testing fpca.xxx")
-library(refundDevel)
 
 set.seed(12212)
 n <- 100
@@ -32,7 +31,7 @@ test_that("all fpca functions agree on toy example", {
   }
 })
 
-test_that("fpca.sc options  wrk", {
+test_that("fpca.sc options work", {
   sc <- fpca.sc(Y)
   sc_cov1 <- fpca.sc(Y, cov.est.method = 1)
   sc_sym <- fpca.sc(Y, useSymm = TRUE)

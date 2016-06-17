@@ -1,7 +1,5 @@
 context("Testing pfr's peer()")
 
-library(refundDevel)
-
 test_that("peer with D2 penalty", {
   skip_on_cran()
 

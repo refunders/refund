@@ -1,5 +1,4 @@
 context("Testing old lpfr")
-library(refundDevel)
 
 test_that("lpfr works with one predictor", {
    skip_on_cran()

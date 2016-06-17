@@ -77,35 +77,35 @@
 #' ffpcplot(m.pc)
 #' }
 ffpc <- function(X,
-        yind=NULL,
-        xind=seq(0, 1, length=ncol(X)),
-        splinepars=list(bs="ps", m=c(2, 1), k=8),
-        decomppars=list(pve = .99, useSymm = TRUE),
-        npc.max=15
+    yind=NULL,
+    xind=seq(0, 1, length=ncol(X)),
+    splinepars=list(bs="ps", m=c(2, 1), k=8),
+    decomppars=list(pve = .99, useSymm = TRUE),
+    npc.max=15
 ){
     # check & format index for Y
-#     if(!missing(yind))
-#         if(is.null(dim(yind))){
-#             yind <- t(t(yind))
-#         }
-#     nygrid <- length(yind)
+    #     if(!missing(yind))
+    #         if(is.null(dim(yind))){
+    #             yind <- t(t(yind))
+    #         }
+    #     nygrid <- length(yind)
     nxgrid <- length(xind)
-
+    
     # check & format index for X
     stopifnot(length(xind) == ncol(X))
     stopifnot(all.equal(order(xind), 1:nxgrid))
-
+    
     decomppars$Y <- X
     klX <- do.call(fpca.sc, decomppars)
     xiMat <- klX$scores[,1:min(ncol(klX$scores),npc.max), drop=FALSE]
-
+    
     #assign unique names based on the given args
     colnames(xiMat) <- paste(make.names(deparse(substitute(X))),".PC", 1:ncol(xiMat), sep="")
     id <- paste(make.names(deparse(substitute(X))),".ffpc", sep="")
     return(list(data=xiMat, PCMat=klX$efunctions[,1:min(ncol(klX$scores),npc.max), drop=FALSE],
-                    meanX=klX$mu,
-                    eigenvalues=klX$evalues,
-                    xind=xind, id=id, splinepars=splinepars))
+        meanX=klX$mu,
+        eigenvalues=klX$evalues,
+        xind=xind, id=id, splinepars=splinepars))
 }#end ffpc()
 
 #' Plot PC-based function-on-function regression terms
@@ -136,18 +136,17 @@ ffpc <- function(X,
 #' @examples \dontrun{
 #'  #see ?ffpc
 #' }
-
-
+##FIXME: scale phibeta with lengths of domains!
 ffpcplot <- function(object, type=c("fpc+surf", "surf", "fpc"), pages=1,
-        se.mult=2,  ticktype="detailed", theta = 30, phi = 30, plot=TRUE,
-        auto.layout=TRUE){
-
+    se.mult=2,  ticktype="detailed", theta = 30, phi = 30, plot=TRUE,
+    auto.layout=TRUE){
+    
     type <- match.arg(type)
     T <- object$pffr$nyindex
     nterms <- length(object$pffr$ffpc)
     ffpcnames <- names(object$pffr$ffpc)
-
-
+    
+    
     betadata <- if(object$pffr$sparseOrNongrid){
         tmp <- object$model[rep(1, T), ]
         tmp[,paste0(object$pffr$yindname,".vec")] <- object$pffr$yind
@@ -157,66 +156,68 @@ ffpcplot <- function(object, type=c("fpc+surf", "surf", "fpc"), pages=1,
     }
     betadata[, grep(".PC[[:digit:]]+$", colnames(betadata))] <- 1
     termsffpc <- predict.gam(object, newdata=betadata, type="iterms", se.fit=TRUE)
-
+    
     betatilde <- termsffpc$fit[,grep(".PC[[:digit:]]+$", colnames(termsffpc$fit)), drop=FALSE]
     betatilde.se <- termsffpc$se.fit[,grep(".PC[[:digit:]]+$", colnames(termsffpc$se.fit)), drop=FALSE]
     betatilde.up <-  betatilde + se.mult*betatilde.se
     betatilde.lo <-  betatilde - se.mult*betatilde.se
-    betatildemap <- lapply(ffpcnames, function(n) which(colnames(betatilde) %in% object$pffr$labelmap[[n]]))
-
+    betatildemap <- lapply(ffpcnames, 
+        function(n) which(colnames(betatilde) %in% object$pffr$labelmap[[n]]))
+    
     phibeta <- vector(length=nterms, mode="list")
     names(phibeta) <- sapply(object$pffr$ffpc, "[[", "id")
     for(i in 1:nterms){
-        ### betatilde_k (t) = \int phi_k(s) beta(s,t) ds \approx 1/S t(Phi_k) %*% beta(s,t)
-        ### --> beta(s,t) = S * Phi %*% [betatilde_1(t) ... betatilde_K(t)]
-        phibeta[[i]] <- length(object$pffr$ffpc[[i]]$xind) * object$pffr$ffpc[[i]]$PCMat %*% t(betatilde[,betatildemap[[i]], drop=FALSE])
+        ### betatilde_k (t) = \int_calS phi_k(s) beta(s,t) ds \approx |calS|/S t(Phi_k) %*% beta(s,t)
+        ### --> beta(s,t) = S/|calS| * Phi %*% [betatilde_1(t) ... betatilde_K(t)]
+        phibeta[[i]] <- 
+            length(object$pffr$ffpc[[i]]$xind)/diff(rev(range(object$pffr$ffpc[[i]]$xind))) * 
+            object$pffr$ffpc[[i]]$PCMat %*% t(betatilde[,betatildemap[[i]], drop=FALSE])
     }
-
-
-
+    
+    
+    
     if(plot){
         if(auto.layout){
             nplots <- switch(type,
-                    "surf"=nterms,
-                    "fpc"=3*nterms,
-                    "fpc+surf"=4*nterms)
-
+                "surf"=nterms,
+                "fpc"=3*nterms,
+                "fpc+surf"=4*nterms)
+            
             #define layout
             plotsperpage <- ceiling(nplots/pages)
             columns <- switch(type,
-                    "surf"=plotsperpage,
-                    "fpc"=3,
-                    "fpc+surf"=4)
+                "surf"=plotsperpage,
+                "fpc"=3,
+                "fpc+surf"=4)
             layout(matrix(1:plotsperpage, ncol=columns, nrow=ceiling(plotsperpage/columns), byrow=TRUE))
         }
-
+        
         for(i in 1:nterms){
             trm <- object$pffr$ffpc[[i]]
             if(type=="fpc+surf" | type=="fpc"){#
                 npc <- ncol(trm$PCMat)
                 plot(1:npc, trm$eigenvalues[1:npc], col=1:npc, xlab="FPC", type="b", pch=19,
-                        ylab=paste0("Estimated eigenvalues: ", trm$id), bty="n")
+                    ylab=paste0("Estimated eigenvalues: ", trm$id), bty="n")
                 matplot(trm$xind, trm$PCMat[,npc:1], type="l", lty=1, col=npc:1, xlab = "",
-                        ylab = paste0("Estimated FPCs: ", trm$id), bty="n")
+                    ylab = paste0("Estimated FPCs: ", trm$id), bty="n")
                 matplot(object$pffr$yind, betatilde[,rev(betatildemap[[i]])], type="l", lty=1,
-                        ylim = range(betatilde.up[,betatildemap[[i]]], betatilde.lo[,betatildemap[[i]]]), col=npc:1,
-                        xlab = "", ylab = paste0("Effects of FPC scores"), bty="n")
+                    ylim = range(betatilde.up[,betatildemap[[i]]], betatilde.lo[,betatildemap[[i]]]), col=npc:1,
+                    xlab = "", ylab = paste0("Effects of FPC scores"), bty="n")
                 abline(h=0, col="grey", lwd=.5)
                 secol <- length(betatildemap[[i]])
                 for(j in rev(betatildemap[[i]])){
                     polygon(cbind(x=c(object$pffr$yind, rev(object$pffr$yind))),
-                            y=c(betatilde.up[,j], rev(betatilde.lo[,j])),
-                            col=do.call(rgb, as.list(c(col2rgb(secol)/255,.1))), border=NA)
+                        y=c(betatilde.up[,j], rev(betatilde.lo[,j])),
+                        col=do.call(rgb, as.list(c(col2rgb(secol)/255,.1))), border=NA)
                     secol <- secol-1
                 }
             }
             if(type=="fpc+surf" | type=="surf"){
-
-                persp(trm$xind, object$pffr$yind,  z=phibeta[[i]],
-                        theta=theta, phi=phi,
-                        ticktype=ticktype, xlab="x.index", ylab="y.index",
-                        zlim=range(as.vector(phibeta[[i]])),
-                        zlab=trm$id)
+                persp(trm$xind, object$pffr$yind,  z=phibeta[[i]], 
+                    theta=theta, phi=phi,
+                    ticktype=ticktype, xlab="x.index", ylab="y.index",
+                    zlim=range(as.vector(phibeta[[i]])),
+                    zlab=trm$id)
             }
         } #end for(i)
     }

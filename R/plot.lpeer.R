@@ -23,12 +23,13 @@
 ##' functional linear models - partially empirical eigenvectors for regression.
 ##' \emph{Electronic Journal of Statistics}, 6, 323--353.
 ##' @examples
-##'
+##' \dontrun{
 ##' data(DTI)
 ##' cca = DTI$cca[which(DTI$case == 1),]
 ##' DTI = DTI[which(DTI$case == 1),]
 ##' fit.cca.lpeer1 = lpeer(Y=DTI$pasat, t=DTI$visit, subj=DTI$ID, funcs = cca)
 ##' plot(fit.cca.lpeer1)
+##' }
 ### Function to plot estimated regression function
 plot.lpeer<- function(x, conf=0.95, ...){
   if(!class(x)=='lpeer') return (cat("Error: The object is not an lpeer object.\n"))
