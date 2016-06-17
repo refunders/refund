@@ -3,4 +3,6 @@
 * win-builder (devel and release)
 
 ## R CMD check results
-There were no ERRORs or WARNINGs or NOTEs.
+There were no ERRORs or NOTEs.
+
+There is 1 WARNING: "'library' or 'require' call not declared from: ‘dtw’" this is because the package is called via the "method="dtw", window.type="sakoechiba"" options to dist().
