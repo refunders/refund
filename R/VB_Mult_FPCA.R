@@ -14,6 +14,7 @@
 #' @param alpha tuning parameter balancing second-derivative penalty and
 #' zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)
 #' @param verbose logical defaulting to \code{TRUE} -- should updates on progress be printed?
+#' @param argvals not currently implemented
 #' 
 #' @references
 #' Goldsmith, J., Kitago, T. (Under Review).
@@ -24,7 +25,7 @@
 #' @importFrom splines bs
 #' @export
 #' 
-vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1){
+vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1, argvals = NULL){
 
   call <- match.call()
   tf <- terms.formula(formula, specials = "re")
@@ -86,6 +87,10 @@ vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = 
   }
   Wi = W.des[firstobs,]
 
+  ## argvals
+  if (!is.null(argvals)) {warning("Argument <argvals> supplied but not used.")}
+  argvals = seq(0,1,,D)
+  
   ## bspline basis and penalty matrix
   Theta = bs(1:D, df=Kt, intercept=TRUE, degree=3)
 
@@ -247,21 +252,12 @@ vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = 
     beta.UB[i,] = beta.cur[i,]+1.96*beta.sd[i,]
   }
 
-  ## convert objects from spam to matrix
-  beta.cur = as.matrix(beta.cur)
-  psi.cur = as.matrix(psi.cur)
-    
   ## effective degrees of freedom for fixed effects
   edf =  10 #sum(diag( (as.numeric((A + IJ*D/2)/(b.q.sigma.me))) * sigma.q.BW %*% t.designmat.X %*% t(t.designmat.X)  ))
 
   ## subj level random effects
   ranef.subj = as.matrix(t(mu.q.BZ) %*% t(Theta))
 
-  ## do svd to get rotated fpca basis
-  temp = svd(t(psi.cur))
-  psi.cur = t(temp$u)
-  lambda.pm = temp$d
-  
   ## export fitted values
   Yhat.fixed = fixef.cur 
   Yhat.subj = fixef.cur + ranef.cur
@@ -275,15 +271,27 @@ vb_mult_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = 
   r2.fr = 1 - (sum((Y - Yhat.subj)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
   r2.frp = 1 - (sum((Y - Yhat)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
     
+  ## do svd to get rotated fpca basis (based on approach in fpca.sc)
+  w <- quadWeights(argvals)
+  Wsqrt <- diag(sqrt(w))
+  Winvsqrt <- diag(1/(sqrt(w)))
+  
+  V <- Wsqrt %*% t(psi.cur) %*% cov(mu.q.C) %*% (psi.cur) %*% Wsqrt
+  efunctions = matrix(Winvsqrt %*% eigen(V, symmetric = TRUE)$vectors[, seq(len = Kp)], nrow = D, ncol = Kp)
+  evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values[1:Kp] 
+  
   fpca.obj = list(Yhat = pcaef.cur,
                   Y = Y - (fixef.cur + ranef.cur),
-                  scores = mu.q.C %*% temp$v %*% diag(temp$d, Kp, Kp),
+                  scores = mu.q.C %*% psi.cur %*% efunctions %*% solve(t(efunctions) %*% (efunctions)),
                   mu = apply(Y - X %*% beta.cur, 2, mean, na.rm = TRUE),
-                  efunctions = t(psi.cur), 
-                  evalues = lambda.pm,
+                  efunctions = efunctions, 
+                  evalues = evalues,
                   npc = Kp)
   class(fpca.obj) = "fpca"
-  ret = list(beta.cur, beta.UB, beta.LB, fixef.cur, ranef.cur, mt_fixed, data, sigeps.pm, fpca.obj)
+  
+  data = if(is.null(data)) { mf_fixed }  else { data }
+  
+  ret = list(beta.cur, beta.UB, beta.LB, Yhat.subj, ranef.cur, mt_fixed, data, sigeps.pm, fpca.obj)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "ranef", "terms", "data", "sigeps.pm", "fpca.obj")
   class(ret) = "fosr"
   ret

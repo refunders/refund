@@ -1,5 +1,4 @@
 context("Testing fpca.xxx")
-library(refund)
 
 set.seed(12212)
 n <- 100

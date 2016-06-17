@@ -1,6 +1,6 @@
 library("testthat")
-library("refund")
+library("refundDevel")
 
 Sys.setenv(NOT_CRAN = "true")
-test_check("refund")
+test_check("refundDevel")
 

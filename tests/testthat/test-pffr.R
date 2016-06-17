@@ -1,5 +1,4 @@
 context("Testing pffr")
-library(refund)
 
 set.seed(9312)
 data2 <- pffrSim(scenario="all", n=200)
