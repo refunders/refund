@@ -40,7 +40,7 @@ The list \code{xt} also has the following optional elements:
 }
 \examples{
 # a simulated example
-library(refund)
+library(refundDevel)
 library(mgcv)
 require(dtw)
 
