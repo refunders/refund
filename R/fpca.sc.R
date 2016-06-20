@@ -26,7 +26,8 @@
 ##' irregularly observed functions. See Details.
 ##' @param Y.pred if desired, a matrix of functions to be approximated using
 ##' the FPC decomposition.
-##' @param argvals function argument.
+##' @param argvals the argument values of the function evaluations in \code{Y},
+#'  defaults to a equidistant grid from 0 to 1.
 ##' @param random.int If \code{TRUE}, the mean is estimated by
 ##' \code{\link[gamm4]{gamm4}} with random intercepts. If \code{FALSE} (the
 ##' default), the mean is estimated by \code{\link[mgcv]{gam}} treating all the
@@ -59,7 +60,7 @@
 ##' \code{"trapezoidal"} is currently supported.
 ##' @return An object of class \code{fpca} containing:
 ##' \item{Yhat}{FPC approximation (projection onto leading components)
-##' of \code{Y.pred} if specified, or else of \code{Y}.} 
+##' of \code{Y.pred} if specified, or else of \code{Y}.}
 ##' \item{Y}{the observed data}\item{scores}{\eqn{n
 ##' \times npc} matrix of estimated FPC scores.} \item{mu}{estimated mean
 ##' function (or a vector of zeroes if \code{center==FALSE}).} \item{efunctions
@@ -68,7 +69,8 @@
 ##' eigenvalues of the covariance operator, i.e., variances of FPC scores.}
 ##' \item{npc }{number of FPCs: either the supplied \code{npc}, or the minimum
 ##' number of basis functions needed to explain proportion \code{pve} of the
-##' variance in the observed curves.} \item{sigma2}{estimated measurement error
+##' variance in the observed curves.} \item{argvals}{argument values of
+##' eigenfunction evaluations} \item{sigma2}{estimated measurement error
 ##' variance.} \item{diag.var}{diagonal elements of the covariance matrices for
 ##' each estimated curve.} \item{VarMats}{a list containing the estimated
 ##' covariance matrices for each curve in \code{Y}.} \item{crit.val}{estimated
@@ -154,8 +156,7 @@
 ##' @importFrom Matrix nearPD Matrix t as.matrix
 ##' @importFrom mgcv gam predict.gam
 ##' @importFrom gamm4 gamm4
-## npc=1 seems to give error
-fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.int = FALSE,
+fpca.sc <- function(Y = NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.int = FALSE,
          nbasis = 10, pve = .99, npc = NULL, var = FALSE, simul = FALSE, sim.alpha = .95,
          useSymm = FALSE, makePD = FALSE, center=TRUE, cov.est.method = 2,
          integration="trapezoidal") {
@@ -177,7 +178,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
     I = NROW(Y)
     I.pred = NROW(Y.pred)
 
-    if (is.null(argvals)) argvals = seq(0,1,,D)
+    if (is.null(argvals)) argvals = seq(0, 1, length = D)
 
     d.vec = rep(argvals, each = I)
     id = rep(1:I, rep(D, I))
@@ -310,9 +311,7 @@ fpca.sc <- function(Y=NULL, ydata = NULL, Y.pred=NULL, argvals = NULL, random.in
         }
     }
 
-    index = argvals
-    
-    ret.objects = c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc", "index")
+    ret.objects = c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc", "argvals")
     if (var) {
       ret.objects = c(ret.objects, "sigma2", "diag.var", "VarMats")
       if (simul) ret.objects = c(ret.objects, "crit.val")
