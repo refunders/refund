@@ -4,27 +4,37 @@
 ##' value decomposition on the functional data matrix, then smoothing the right
 ##' singular vectors by smoothing splines.
 ##'
-##' The eigenvalues are the same as those obtained from eigendecomposition of
-##' the sample covariance matrix. Please note that we expect to merge this
-##' function into \code{\link{fpca.ssvd}} in future versions of the package.
+##' Note that \code{fpca2s} computes smoothed orthonormal eigenvectors
+#'  of the supplied function evaluations (and associated scores), not (!)
+#'  evaluations of the smoothed orthormal eigenfunctions. The smoothed
+#'  orthonormal eigenvectors are then rescaled by the length of the domain
+#'  defined by \code{argvals} to have a quadratic integral approximately equal
+#'  to one (instead of crossproduct equal to one), so they approximate the behavior
+#'  of smooth eigenfunctions. If \code{argvals} is not equidistant,
+#'  \code{fpca2s} will simply return the smoothed eigenvectors without rescaling,
+#'  with a warning.
 ##'
-##' @param Y data matrix (rows: observations; columns: grid of eval. points)
-##' @param npc how many smooth SVs to try to extract. If \code{NA} (the
-##' default), the hard thresholding rule of Gavish and Donoho (2014) is used.
-##' Application of this rule to functional PCA should be regarded as
-##' experimental.
-##' @param center center \code{Y} so that its column-means are 0? Defaults to
-##' \code{TRUE}
-##' @param argvals index vector of \eqn{J} entries for data in \code{Y}; defaults to a
-##' regular sequence from 0 to 1.
+#'@param Y data matrix (rows: observations; columns: grid of eval. points)
+#'@param ydata a data frame \code{ydata} representing
+#'  irregularly observed functions. NOT IMPLEMENTED for this method.
+#'@param argvals the argument values of the function evaluations in \code{Y},
+#'  defaults to a equidistant grid from 0 to 1. See Details.
+#'@param npc how many smooth SVs to try to extract, if \code{NA} (the default)
+#'  the hard thresholding rule of Donoho, Gavish (2013) is used (see Details,
+#'  References).
+#'@param center center \code{Y} so that its column-means are 0? Defaults to
+#'  \code{TRUE}
 ##' @param smooth logical; defaults to TRUE, if NULL, no smoothing of
 ##' eigenvectors.
-##' @return An \code{fpca} object with components \item{Yhat}{predicted data matrix}
-##' \item{Y}{Observed data}
-##' \item{scores}{matrix of scores} \item{mu}{mean function} \item{npc}{number
-##' of principal components} \item{efunctions}{matrix of eigenvectors}
-##' \item{evalues}{vector of eigenvalues}
-##' @author Luo Xiao \email{lxiao@@jhsph.edu}
+#'@return an \code{fpca} object like that returned from \code{\link{fpca.sc}},
+#'  with entries \code{Yhat}, the smoothed trajectories, \code{Y}, the observed
+#'  data, \code{scores}, the estimated FPC loadings, \code{mu}, the column means
+#'  of \code{Y} (or a vector of zeroes if \code{!center}),  \code{efunctions},
+#'  the estimated smooth FPCs (note that these are orthonormal vectors, not
+#'  evaluations of orthonormal functions if \code{argvals} is not equidistant),
+#'  \code{evalues}, their associated eigenvalues, and \code{npc}, the number of
+#'  smooth components that were extracted.
+##' @author Luo Xiao \email{lxiao@@jhsph.edu}, Fabian Scheipl
 ##' @export
 ##' @importFrom stats smooth.spline
 ##' @seealso \code{\link{fpca.sc}} and \code{\link{fpca.face}} for FPCA based
@@ -89,10 +99,17 @@
 ##'       lines(t[seq],phi[seq,k],lwd = 2, col = "black")
 ##'       }
 fpca2s <-
-function(Y, npc=NA, center = TRUE, argvals = NULL,smooth=TRUE){
+function(Y=NULL, ydata = NULL, argvals = NULL, npc = NA, center = TRUE, smooth=TRUE){
 
   ## data: Y, I by J data matrix
   ## argvals: vector of J
+  stopifnot(!is.null(Y))
+  if(any(is.na(Y))) stop("No missing values in <Y> allowed.")
+  if(!is.null(ydata)) {
+    stop(paste("<ydata> argument for irregular data is not supported,",
+      "please use fpca.sc instead."))
+  }
+
   X <- Y
   data_dim <- dim(X)
   I <- data_dim[1]
@@ -102,7 +119,22 @@ function(Y, npc=NA, center = TRUE, argvals = NULL,smooth=TRUE){
     npc <- getNPC.DonohoGavish(X)
   }
 
-  if(is.null(argvals)) argvals <- seq(0, 1, length=J)
+  irregular <- FALSE
+  if(!is.null(argvals)) {
+    stopifnot(is.numeric(argvals),
+      length(argvals) == J,
+      all(!is.na(argvals)))
+    if(any(diff(argvals)/mean(diff(argvals)) > 1.05 |
+        diff(argvals)/mean(diff(argvals)) < 0.95)) {
+      warning(paste("non-equidistant <argvals>-grid detected:",
+        "fpca2s will return orthonormal eigenvectors of the function evaluations",
+        "not evaluations of the orthonormal eigenvectors.",
+        "Use fpca.sc() for the latter instead."))
+      irregular <- TRUE
+    }
+  } else {
+    argvals <- seq(0, 1, length = J)
+  }
 
   meanX <- rep(0,J)
   if(center) {
@@ -141,24 +173,33 @@ function(Y, npc=NA, center = TRUE, argvals = NULL,smooth=TRUE){
   if(smooth==TRUE){
     #### smoothing
     for(j in 1:npc){
-      #temp = pspline(U[,j],argvals,knots=knots,p=p,m=m)$fitted.values
       temp = smooth.spline(argvals,U[,j],all.knots =TRUE)$y
-      U[,j] = temp/sqrt(sum(temp^2))
+      U[,j] = temp
     }
   }
-  eigenvectors=U[,1:npc]
-  eigenvalues = lambda[1:npc]
-  scores = X%*%U[,1:npc]/sqrt(J)
+  if(!irregular){
+    # scale smooth eigenvectors so they're scaled as realizations of orthonormal
+    # eigenfunctions i.e. so that colSums(diff(argvals) * U^2) == 1 instead of
+    # crossprod(U) == diag(npc)
+    scale <- sqrt(mean(diff(argvals)))
+  } else {
+    scale <- 1
+  }
 
-  Yhat = t(eigenvectors%*%t(scores)*sqrt(J) + meanX)
+  eigenvectors=U[,1:npc, drop=FALSE] / scale
+  scores = unname(t(lm.fit(x = eigenvectors, y = t(X))$coefficients))
+  eigenvalues = diag(var(scores))
+
+
+  Yhat = t(eigenvectors%*%t(scores) + meanX)
   ret = list(Yhat = Yhat,
              Y = Y,
-             scores = scores, 
+             scores = scores,
              mu = meanX,
              efunctions=eigenvectors,
-             evalues=eigenvalues, 
-             npc=npc)
+             evalues=eigenvalues,
+             npc=npc,
+    argvals =argvals)
   class(ret) = "fpca"
   return(ret)
-  
 }

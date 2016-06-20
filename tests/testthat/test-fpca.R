@@ -32,6 +32,10 @@ test_that("all fpca functions agree on toy example", {
   expect_equal(sc$efunctions, ssvd$efunctions, tolerance=.1)
   expect_equal(sc$evalues, ssvd$evalues, tolerance=.1)
 
+  twos$efunctions <- flip_efunctions(sc$efunctions, twos$efunctions)
+  expect_equal(sc$efunctions, twos$efunctions, tolerance=.1)
+  expect_equal(sc$evalues, twos$evalues, tolerance=.1)
+
   if(FALSE){
     ##TODO: - fix quadrature weights first
     ##      - flip sign of efunctions if necessary
@@ -64,4 +68,13 @@ test_that("fpca.ssvd options work", {
   expect_equal(ssvd_npc1$efunctions[,1], ssvd$efunctions[,1])
   expect_true(ncol(ssvd_npc1$efunctions) == 1)
   expect_equal(ssvd_d2$efunctions, ssvd$efunctions, tol=.01)
+})
+
+test_that("fpca2s options work", {
+  expect_error(fpca2s(Y = 1:10, ydata=data.frame()), "irregular data")
+  expect_warning(fpca2s(Y = Y, argvals=sqrt(t)), "non-equidistant")
+  twos <- fpca2s(Y)
+  twos_npc1 <- fpca2s(Y, npc=1)
+  expect_equal(twos_npc1$efunctions[,1], twos$efunctions[,1])
+  expect_true(ncol(twos_npc1$efunctions) == 1)
 })
