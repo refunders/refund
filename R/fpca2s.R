@@ -91,23 +91,22 @@
 ##'  par(mfrow=c(N/2,2))
 ##'  seq <- (1:(J/10))*10
 ##'  for(k in 1:N){
-##'       plot(t[seq],Phi[seq,k]*sqrt(J),type="l",lwd = 3,
-##'            ylim = c(-2,2),col = "red",
-##'            ylab = paste("Eigenfunction ",k,sep=""),
-##'            xlab="t",main="SVDS")
+##'       plot(t[seq],Phi[seq,k]*sqrt(J),type='l',lwd = 3,
+##'            ylim = c(-2,2),col = 'red',
+##'            ylab = paste('Eigenfunction ',k,sep=''),
+##'            xlab='t',main='SVDS')
 ##'
-##'       lines(t[seq],phi[seq,k],lwd = 2, col = "black")
+##'       lines(t[seq],phi[seq,k],lwd = 2, col = 'black')
 ##'       }
-fpca2s <-
-function(Y=NULL, ydata = NULL, argvals = NULL, npc = NA, center = TRUE, smooth=TRUE){
+fpca2s <- function(Y = NULL, ydata = NULL, argvals = NULL, npc = NA, center = TRUE,
+  smooth = TRUE) {
 
-  ## data: Y, I by J data matrix
-  ## argvals: vector of J
+  ## data: Y, I by J data matrix argvals: vector of J
   stopifnot(!is.null(Y))
-  if(any(is.na(Y))) stop("No missing values in <Y> allowed.")
-  if(!is.null(ydata)) {
-    stop(paste("<ydata> argument for irregular data is not supported,",
-      "please use fpca.sc instead."))
+  if (any(is.na(Y)))
+    stop("No missing values in <Y> allowed.")
+  if (!is.null(ydata)) {
+    stop(paste("<ydata> argument for irregular data is not supported,", "please use fpca.sc instead."))
   }
 
   X <- Y
@@ -115,69 +114,67 @@ function(Y=NULL, ydata = NULL, argvals = NULL, npc = NA, center = TRUE, smooth=T
   I <- data_dim[1]
   J <- data_dim[2]
 
-  if(is.na(npc)){
+  if (is.na(npc)) {
     npc <- getNPC.DonohoGavish(X)
   }
 
   irregular <- FALSE
-  if(!is.null(argvals)) {
-    stopifnot(is.numeric(argvals),
-      length(argvals) == J,
-      all(!is.na(argvals)))
-    if(any(diff(argvals)/mean(diff(argvals)) > 1.05 |
-        diff(argvals)/mean(diff(argvals)) < 0.95)) {
-      warning(paste("non-equidistant <argvals>-grid detected:",
-        "fpca2s will return orthonormal eigenvectors of the function evaluations",
-        "not evaluations of the orthonormal eigenvectors.",
-        "Use fpca.sc() for the latter instead."))
+  if (!is.null(argvals)) {
+    stopifnot(is.numeric(argvals), length(argvals) == J, all(!is.na(argvals)))
+    if (any(diff(argvals)/mean(diff(argvals)) > 1.05 | diff(argvals)/mean(diff(argvals)) <
+      0.95)) {
+      warning(paste("non-equidistant <argvals>-grid detected:", "fpca2s will return orthonormal eigenvectors of the function evaluations",
+        "not evaluations of the orthonormal eigenvectors.", "Use fpca.sc() for the latter instead."))
       irregular <- TRUE
     }
   } else {
     argvals <- seq(0, 1, length = J)
   }
 
-  meanX <- rep(0,J)
-  if(center) {
-    meanX <- apply(X,2,function(x) mean(x,na.rm=TRUE))
-    meanX <- smooth.spline(argvals,meanX,all.knots =TRUE)$y
-    X <- t(t(X)-meanX)
+  meanX <- rep(0, J)
+  if (center) {
+    meanX <- apply(X, 2, function(x) mean(x, na.rm = TRUE))
+    meanX <- smooth.spline(argvals, meanX, all.knots = TRUE)$y
+    X <- t(t(X) - meanX)
   }
   ### SVD decomposition
-  if(J>I){
-    VV <- X%*%t(X)
+  if (J > I) {
+    VV <- X %*% t(X)
     Eigen <- eigen(VV)
     D <- Eigen$values
-    sel <- (D>0)
-    V <- Eigen$vectors[,sel==1]
-    D <- D[sel==1]
+    sel <- (D > 0)
+    V <- Eigen$vectors[, sel == 1]
+    D <- D[sel == 1]
     D <- sqrt(D)
-    U <- t(X)%*%V%*%diag(1/D)
+    U <- t(X) %*% V %*% diag(1/D)
   }
 
-  if(J<=I){
-    UU <- t(X)%*%X
+  if (J <= I) {
+    UU <- t(X) %*% X
     Eigen <- eigen(UU)
     D <- Eigen$values
-    U <- Eigen$vectors[,D>0]
-    D <- D[D>0]
+    U <- Eigen$vectors[, D > 0]
+    D <- D[D > 0]
     D <- sqrt(D)
   }
 
-  lambda <- D^2/(I-1)/J
+  lambda <- D^2/(I - 1)/J
 
-  if(!is.numeric(npc)) stop("Invalid <npc>.")
-  if(npc<1 | npc>min(I,J)) stop("Invalid <npc>.")
+  if (!is.numeric(npc))
+    stop("Invalid <npc>.")
+  if (npc < 1 | npc > min(I, J))
+    stop("Invalid <npc>.")
   #### end: borrowed from Fabian's code
   message("Extracted ", npc, " smooth components.")
 
-  if(smooth==TRUE){
+  if (smooth == TRUE) {
     #### smoothing
-    for(j in 1:npc){
-      temp = smooth.spline(argvals,U[,j],all.knots =TRUE)$y
-      U[,j] = temp
+    for (j in 1:npc) {
+      temp = smooth.spline(argvals, U[, j], all.knots = TRUE)$y
+      U[, j] = temp
     }
   }
-  if(!irregular){
+  if (!irregular) {
     # scale smooth eigenvectors so they're scaled as realizations of orthonormal
     # eigenfunctions i.e. so that colSums(diff(argvals) * U^2) == 1 instead of
     # crossprod(U) == diag(npc)
@@ -186,20 +183,14 @@ function(Y=NULL, ydata = NULL, argvals = NULL, npc = NA, center = TRUE, smooth=T
     scale <- 1
   }
 
-  eigenvectors=U[,1:npc, drop=FALSE] / scale
+  eigenvectors = U[, 1:npc, drop = FALSE]/scale
   scores = unname(t(lm.fit(x = eigenvectors, y = t(X))$coefficients))
   eigenvalues = diag(var(scores))
 
 
-  Yhat = t(eigenvectors%*%t(scores) + meanX)
-  ret = list(Yhat = Yhat,
-             Y = Y,
-             scores = scores,
-             mu = meanX,
-             efunctions=eigenvectors,
-             evalues=eigenvalues,
-             npc=npc,
-    argvals =argvals)
+  Yhat = t(eigenvectors %*% t(scores) + meanX)
+  ret = list(Yhat = Yhat, Y = Y, scores = scores, mu = meanX, efunctions = eigenvectors,
+    evalues = eigenvalues, npc = npc, argvals = argvals)
   class(ret) = "fpca"
   return(ret)
 }
