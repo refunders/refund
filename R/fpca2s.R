@@ -37,6 +37,7 @@
 ##' @author Luo Xiao \email{lxiao@@jhsph.edu}, Fabian Scheipl
 ##' @export
 ##' @importFrom stats smooth.spline
+##' @importFrom stats lm.fit
 ##' @seealso \code{\link{fpca.sc}} and \code{\link{fpca.face}} for FPCA based
 ##' on smoothing a covariance estimate; \code{\link{fpca.ssvd}} for another
 ##' SVD-based approach.

@@ -95,12 +95,12 @@ Note that \code{fpca2s} computes smoothed orthonormal eigenvectors
  par(mfrow=c(N/2,2))
  seq <- (1:(J/10))*10
  for(k in 1:N){
-      plot(t[seq],Phi[seq,k]*sqrt(J),type="l",lwd = 3,
-           ylim = c(-2,2),col = "red",
-           ylab = paste("Eigenfunction ",k,sep=""),
-           xlab="t",main="SVDS")
+      plot(t[seq],Phi[seq,k]*sqrt(J),type='l',lwd = 3,
+           ylim = c(-2,2),col = 'red',
+           ylab = paste('Eigenfunction ',k,sep=''),
+           xlab='t',main='SVDS')
 
-      lines(t[seq],phi[seq,k],lwd = 2, col = "black")
+      lines(t[seq],phi[seq,k],lwd = 2, col = 'black')
       }
 }
 \author{
