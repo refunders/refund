@@ -18,7 +18,8 @@ irregularly observed functions. See Details.}
 \item{Y.pred}{if desired, a matrix of functions to be approximated using
 the FPC decomposition.}
 
-\item{argvals}{function argument.}
+\item{argvals}{the argument values of the function evaluations in \code{Y},
+defaults to a equidistant grid from 0 to 1.}
 
 \item{random.int}{If \code{TRUE}, the mean is estimated by
 \code{\link[gamm4]{gamm4}} with random intercepts. If \code{FALSE} (the
@@ -65,7 +66,7 @@ method that obtains a naive covariance estimate which is then smoothed.}
 \value{
 An object of class \code{fpca} containing:
 \item{Yhat}{FPC approximation (projection onto leading components)
-of \code{Y.pred} if specified, or else of \code{Y}.} 
+of \code{Y.pred} if specified, or else of \code{Y}.}
 \item{Y}{the observed data}\item{scores}{\eqn{n
 \times npc} matrix of estimated FPC scores.} \item{mu}{estimated mean
 function (or a vector of zeroes if \code{center==FALSE}).} \item{efunctions
@@ -74,7 +75,8 @@ covariance, i.e., the FPC basis functions.} \item{evalues}{estimated
 eigenvalues of the covariance operator, i.e., variances of FPC scores.}
 \item{npc }{number of FPCs: either the supplied \code{npc}, or the minimum
 number of basis functions needed to explain proportion \code{pve} of the
-variance in the observed curves.} \item{sigma2}{estimated measurement error
+variance in the observed curves.} \item{argvals}{argument values of
+eigenfunction evaluations} \item{sigma2}{estimated measurement error
 variance.} \item{diag.var}{diagonal elements of the covariance matrices for
 each estimated curve.} \item{VarMats}{a list containing the estimated
 covariance matrices for each curve in \code{Y}.} \item{crit.val}{estimated
