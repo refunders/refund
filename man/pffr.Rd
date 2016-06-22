@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr.R
 \name{pffr}
 \alias{pffr}
-\title{Penalized function-on-function regression}
+\title{Penalized flexible functional regression}
 \usage{
 pffr(formula, yind, data = NULL, ydata = NULL, algorithm = NA,
   method = "REML", tensortype = c("ti", "t2"), bs.yindex = list(bs = "ps",
@@ -241,8 +241,12 @@ Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2015).
   30(2):539--568. \url{http://biostats.bepress.com/jhubiostat/paper254/}
 
   Scheipl, F., Staicu, A.-M. and Greven, S. (2015). Functional Additive Mixed
-  Models. Journal of Computational \& Graphical Statistics, 24(2): 477--501.
+  Models. Journal of Computational & Graphical Statistics, 24(2): 477--501.
   \url{http://arxiv.org/abs/1207.5947}
+
+  F. Scheipl, J. Gertheiss, S. Greven (2016):  Generalized Functional Additive Mixed Models,
+  Electronic Journal of Statistics, 10(1), 1455--1492.
+  \url{https://projecteuclid.org/euclid.ejs/1464710238}
 }
 \seealso{
 \code{\link[mgcv]{smooth.terms}} for details of \code{mgcv} syntax
