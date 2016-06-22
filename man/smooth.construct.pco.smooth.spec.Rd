@@ -35,7 +35,7 @@ In a \code{\link[mgcv]{gam}} term of the above form \code{s(dummy, bs="pco", k, 
 The list \code{xt} also has the following optional elements:
 \itemize{
   \item \code{add}: Passed to \code{\link{cmdscale}} when performing multidimensional scaling; for details, see the help for that function. (Default \code{FALSE}.)\cr
-   \item \code{fastcmd}: if \code{TRUE}, multidimensional scaling is performed by \code{\link{cmdscale_lanczos}}, which uses Lanczos iteration to eigendecompose the distance matrix; if \code{FALSE}, MDS is carried out by \code{\link{cmdscale}}.
+\item \code{fastcmd}: if \code{TRUE}, multidimensional scaling is performed by \code{\link{cmdscale_lanczos}}, which uses Lanczos iteration to eigendecompose the distance matrix; if \code{FALSE}, MDS is carried out by \code{\link{cmdscale}}. Default is \code{FALSE}, to use \code{cmdscale}.
 }
 }
 \examples{
