@@ -18,7 +18,8 @@ irregularly observed functions. See Details.}
 \item{Y.pred}{if desired, a matrix of functions to be approximated using
 the FPC decomposition.}
 
-\item{argvals}{function argument.}
+\item{argvals}{the argument values of the function evaluations in \code{Y},
+defaults to a equidistant grid from 0 to 1.}
 
 \item{random.int}{If \code{TRUE}, the mean is estimated by
 \code{\link[gamm4]{gamm4}} with random intercepts. If \code{FALSE} (the
@@ -60,12 +61,12 @@ values. This can be very slow. If set to \code{2} (the default), a two-step
 method that obtains a naive covariance estimate which is then smoothed.}
 
 \item{integration}{quadrature method for numerical integration; only
-\code{"trapezoidal"} is currently supported.}
+\code{'trapezoidal'} is currently supported.}
 }
 \value{
 An object of class \code{fpca} containing:
 \item{Yhat}{FPC approximation (projection onto leading components)
-of \code{Y.pred} if specified, or else of \code{Y}.} 
+of \code{Y.pred} if specified, or else of \code{Y}.}
 \item{Y}{the observed data}\item{scores}{\eqn{n
 \times npc} matrix of estimated FPC scores.} \item{mu}{estimated mean
 function (or a vector of zeroes if \code{center==FALSE}).} \item{efunctions
@@ -74,7 +75,8 @@ covariance, i.e., the FPC basis functions.} \item{evalues}{estimated
 eigenvalues of the covariance operator, i.e., variances of FPC scores.}
 \item{npc }{number of FPCs: either the supplied \code{npc}, or the minimum
 number of basis functions needed to explain proportion \code{pve} of the
-variance in the observed curves.} \item{sigma2}{estimated measurement error
+variance in the observed curves.} \item{argvals}{argument values of
+eigenfunction evaluations} \item{sigma2}{estimated measurement error
 variance.} \item{diag.var}{diagonal elements of the covariance matrices for
 each estimated curve.} \item{VarMats}{a list containing the estimated
 covariance matrices for each curve in \code{Y}.} \item{crit.val}{estimated
@@ -92,7 +94,7 @@ framework is used to estimate curve-specific scores and variances.
 
 FPCA via kernel smoothing of the covariance function, with the diagonal
 treated separately, was proposed in Staniswalis and Lee (1998) and much
-extended by Yao et al. (2005), who introduced the "PACE" method.
+extended by Yao et al. (2005), who introduced the 'PACE' method.
 \code{fpca.sc} uses penalized splines to smooth the covariance function, as
 developed by Di et al. (2009) and Goldsmith et al. (2013).
 
@@ -126,22 +128,22 @@ EX.MM = data.frame(fitted = Fit.MM$Yhat[EX,],
            d = as.numeric(colnames(cd4)))
 
 ## plot data for one subject, with curve and interval estimates
-EX.MM.m = melt(EX.MM, id = "d")
+EX.MM.m = melt(EX.MM, id = 'd')
 ggplot(EX.MM.m, aes(x = d, y = value, group = variable, color = variable, linetype = variable)) +
   geom_path() +
   scale_linetype_manual(values = c(fitted = 1, ptwise.UB = 2,
                         ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
   scale_color_manual(values = c(fitted = 1, ptwise.UB = 2,
                      ptwise.LB = 2, simul.UB = 3, simul.LB = 3)) +
-  labs(x = "Months since seroconversion", y = "Total CD4 Cell Count")
+  labs(x = 'Months since seroconversion', y = 'Total CD4 Cell Count')
 
 ## plot estimated mean function
 ggplot(Fit.mu, aes(x = d, y = mu)) + geom_path() +
-  labs(x = "Months since seroconversion", y = "Total CD4 Cell Count")
+  labs(x = 'Months since seroconversion', y = 'Total CD4 Cell Count')
 
 ## plot the first two estimated basis functions
-Fit.basis.m = melt(Fit.basis, id = "d")
-ggplot(subset(Fit.basis.m, variable \%in\% c("phi.1", "phi.2")), aes(x = d,
+Fit.basis.m = melt(Fit.basis, id = 'd')
+ggplot(subset(Fit.basis.m, variable \%in\% c('phi.1', 'phi.2')), aes(x = d,
 y = value, group = variable, color = variable)) + geom_path()
 
 ## input a dataframe instead of a matrix

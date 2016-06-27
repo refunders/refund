@@ -4,15 +4,19 @@
 \alias{fpca.ssvd}
 \title{Smoothed FPCA via iterative penalized rank one SVDs.}
 \usage{
-fpca.ssvd(Y, argvals = NULL, npc = NA, center = TRUE, maxiter = 15,
-  tol = 1e-04, diffpen = 3, gridsearch = TRUE, alphagrid = 1.5^(-20:40),
-  lower.alpha = 1e-05, upper.alpha = 1e+07, verbose = FALSE)
+fpca.ssvd(Y = NULL, ydata = NULL, argvals = NULL, npc = NA,
+  center = TRUE, maxiter = 15, tol = 1e-04, diffpen = 3,
+  gridsearch = TRUE, alphagrid = 1.5^(-20:40), lower.alpha = 1e-05,
+  upper.alpha = 1e+07, verbose = FALSE, integration = "trapezoidal")
 }
 \arguments{
 \item{Y}{data matrix (rows: observations; columns: grid of eval. points)}
 
-\item{argvals}{the argument values where functions are evaluated. It is
-implemented yet.}
+\item{ydata}{a data frame \code{ydata} representing
+irregularly observed functions. NOT IMPLEMENTED for this method.}
+
+\item{argvals}{the argument values of the function evaluations in \code{Y},
+defaults to a equidistant grid from 0 to 1. See Details.}
 
 \item{npc}{how many smooth SVs to try to extract, if \code{NA} (the default)
 the hard thresholding rule of Donoho, Gavish (2013) is used (see Details,
@@ -42,6 +46,8 @@ GCV-optimal smoothing parameters? defaults to \code{TRUE}.}
 
 \item{verbose}{generate graphical summary of progress and diagnostic messages?
 defaults to \code{FALSE}}
+
+\item{integration}{ignored, see Details.}
 }
 \value{
 an \code{fpca} object like that returned from \code{\link{fpca.sc}},
@@ -49,9 +55,9 @@ an \code{fpca} object like that returned from \code{\link{fpca.sc}},
  data, \code{scores}, the estimated FPC loadings, \code{mu}, the column means
  of \code{Y} (or a vector of zeroes if \code{!center}),  \code{efunctions},
  the estimated smooth FPCs (note that these are orthonormal vectors, not
- evaluations of orthonormal functions...), \code{evalues}, their associated
- eigenvalues, and \code{npc}, the number of smooth components that were
- extracted.
+ evaluations of orthonormal functions if \code{argvals} is not equidistant),
+ \code{evalues}, their associated eigenvalues, and \code{npc}, the number of
+ smooth components that were extracted.
 }
 \description{
 Implements the algorithm of Huang, Shen, Buja (2008) for finding smooth right
@@ -64,6 +70,17 @@ noise with unknown variance derived in Donoho, Gavish (2013). Please note that
 Donoho, Gavish (2013) should be regarded as experimental for functional PCA,
 and will typically not work well if you have more observations than grid
 points.
+}
+\details{
+Note that \code{fpca.ssvd} computes smoothed orthonormal eigenvectors
+ of the supplied function evaluations (and associated scores), not (!)
+ evaluations of the smoothed orthormal eigenfunctions. The smoothed
+ orthonormal eigenvectors are then rescaled by the length of the domain
+ defined by \code{argvals} to have a quadratic integral approximately equal
+ to one (instead of crossproduct equal to one), so they approximate the behavior
+ of smooth eigenfunctions. If \code{argvals} is not equidistant,
+ \code{fpca.ssvd} will simply return the smoothed eigenvectors without rescaling,
+ with a warning.
 }
 \examples{
  ## as in Sec. 6.2 of Huang, Shen, Buja (2008):

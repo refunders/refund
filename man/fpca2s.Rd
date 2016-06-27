@@ -4,31 +4,37 @@
 \alias{fpca2s}
 \title{Functional principal component analysis by a two-stage method}
 \usage{
-fpca2s(Y, npc = NA, center = TRUE, argvals = NULL, smooth = TRUE)
+fpca2s(Y = NULL, ydata = NULL, argvals = NULL, npc = NA,
+  center = TRUE, smooth = TRUE)
 }
 \arguments{
 \item{Y}{data matrix (rows: observations; columns: grid of eval. points)}
 
-\item{npc}{how many smooth SVs to try to extract. If \code{NA} (the
-default), the hard thresholding rule of Gavish and Donoho (2014) is used.
-Application of this rule to functional PCA should be regarded as
-experimental.}
+\item{ydata}{a data frame \code{ydata} representing
+irregularly observed functions. NOT IMPLEMENTED for this method.}
+
+\item{argvals}{the argument values of the function evaluations in \code{Y},
+defaults to a equidistant grid from 0 to 1. See Details.}
+
+\item{npc}{how many smooth SVs to try to extract, if \code{NA} (the default)
+the hard thresholding rule of Donoho, Gavish (2013) is used (see Details,
+References).}
 
 \item{center}{center \code{Y} so that its column-means are 0? Defaults to
 \code{TRUE}}
-
-\item{argvals}{index vector of \eqn{J} entries for data in \code{Y}; defaults to a
-regular sequence from 0 to 1.}
 
 \item{smooth}{logical; defaults to TRUE, if NULL, no smoothing of
 eigenvectors.}
 }
 \value{
-An \code{fpca} object with components \item{Yhat}{predicted data matrix}
-\item{Y}{Observed data}
-\item{scores}{matrix of scores} \item{mu}{mean function} \item{npc}{number
-of principal components} \item{efunctions}{matrix of eigenvectors}
-\item{evalues}{vector of eigenvalues}
+an \code{fpca} object like that returned from \code{\link{fpca.sc}},
+ with entries \code{Yhat}, the smoothed trajectories, \code{Y}, the observed
+ data, \code{scores}, the estimated FPC loadings, \code{mu}, the column means
+ of \code{Y} (or a vector of zeroes if \code{!center}),  \code{efunctions},
+ the estimated smooth FPCs (note that these are orthonormal vectors, not
+ evaluations of orthonormal functions if \code{argvals} is not equidistant),
+ \code{evalues}, their associated eigenvalues, and \code{npc}, the number of
+ smooth components that were extracted.
 }
 \description{
 This function performs functional PCA by performing an ordinary singular
@@ -36,9 +42,15 @@ value decomposition on the functional data matrix, then smoothing the right
 singular vectors by smoothing splines.
 }
 \details{
-The eigenvalues are the same as those obtained from eigendecomposition of
-the sample covariance matrix. Please note that we expect to merge this
-function into \code{\link{fpca.ssvd}} in future versions of the package.
+Note that \code{fpca2s} computes smoothed orthonormal eigenvectors
+ of the supplied function evaluations (and associated scores), not (!)
+ evaluations of the smoothed orthormal eigenfunctions. The smoothed
+ orthonormal eigenvectors are then rescaled by the length of the domain
+ defined by \code{argvals} to have a quadratic integral approximately equal
+ to one (instead of crossproduct equal to one), so they approximate the behavior
+ of smooth eigenfunctions. If \code{argvals} is not equidistant,
+ \code{fpca2s} will simply return the smoothed eigenvectors without rescaling,
+ with a warning.
 }
 \examples{
 
@@ -83,16 +95,16 @@ function into \code{\link{fpca.ssvd}} in future versions of the package.
  par(mfrow=c(N/2,2))
  seq <- (1:(J/10))*10
  for(k in 1:N){
-      plot(t[seq],Phi[seq,k]*sqrt(J),type="l",lwd = 3,
-           ylim = c(-2,2),col = "red",
-           ylab = paste("Eigenfunction ",k,sep=""),
-           xlab="t",main="SVDS")
+      plot(t[seq],Phi[seq,k]*sqrt(J),type='l',lwd = 3,
+           ylim = c(-2,2),col = 'red',
+           ylab = paste('Eigenfunction ',k,sep=''),
+           xlab='t',main='SVDS')
 
-      lines(t[seq],phi[seq,k],lwd = 2, col = "black")
+      lines(t[seq],phi[seq,k],lwd = 2, col = 'black')
       }
 }
 \author{
-Luo Xiao \email{lxiao@jhsph.edu}
+Luo Xiao \email{lxiao@jhsph.edu}, Fabian Scheipl
 }
 \references{
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013), Fast

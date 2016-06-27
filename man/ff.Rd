@@ -90,10 +90,10 @@ of eigenvalues accounting for at least 0.995 of the total variance in
 Fabian Scheipl, Sonja Greven
 }
 \references{
-For background on \code{check.ident}:\cr Scheipl, F., & Greven,
+For background on \code{check.ident}:\cr Scheipl, F., Greven,
   S. (2016). Identifiability in penalized function-on-function regression
-  models. LMU Munich, Department of Statistics: Technical Report 125.
-  \url{http://epub.ub.uni-muenchen.de/13060/}
+  models. Electronic Journal of Statistics, 10(1), 495--526.
+  \url{https://projecteuclid.org/euclid.ejs/1457123504}
 }
 \seealso{
 \code{mgcv}'s \code{\link[mgcv]{linear.functional.terms}}
