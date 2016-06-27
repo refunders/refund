@@ -18,8 +18,8 @@
 #' \item{vcov}{the estimated variance-covariance matrix when convergence is achieved.}
 #' \item{method}{group variable selection method to be used or "\code{ls}" for least squares estimation.}
 #' @references
-#' Chen, Y., Goldsmith, J., and Ogden, T. (\emph{under review}).
-#' Variable selection in function-on-scalar regression.
+#' Chen, Y., Goldsmith, J., and Ogden, T. (2016).
+#' Variable selection in function-on-scalar regression. \emph{Stat} 5 88-101
 #' 
 #' @author Yakuan Chen \email{yc2641@@cumc.columbia.edu}
 #' @seealso \code{\link{grpreg}}
