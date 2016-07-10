@@ -27,9 +27,10 @@
 #' @param verbose logical defaulting to \code{TRUE} -- should updates on progress be printed?
 #' 
 #' @references
-#' Goldsmith, J., Kitago, T. (Under Review).
+#' Goldsmith, J., Kitago, T. (2016).
 #' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
-#' Function-on-Scalar Regression.
+#' Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
+#' Series C}, 65 215-236.
 #' 
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
@@ -260,7 +261,9 @@ vb_mult_wish = function(formula, data=NULL, verbose = TRUE, Kt = 5, alpha = .1, 
   ret = list(beta.cur, beta.UB, beta.LB, Yhat)
   names(ret) = c("beta.pm", "beta.UB", "beta.LB", "Yhat")
   
-  ret = list(beta.cur, beta.UB, beta.LB, Yhat.fixed, mt_fixed, data)
+  data = if(is.null(data)) { mf_fixed }  else { data }
+
+  ret = list(beta.cur, beta.UB, beta.LB, Yhat, mt_fixed, data)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data")
   class(ret) = "fosr"
   ret

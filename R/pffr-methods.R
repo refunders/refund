@@ -754,6 +754,8 @@ print.summary.pffr <- function(x, digits = max(3, getOption("digits") - 3),
 #'
 #' @param object a fitted \code{\link{pffr}}-object
 #' @inheritParams mgcv::qq.gam
+#' @importFrom mgcv qq.gam
+#' @importFrom lattice qq
 #' @export
 qq.pffr <- function (object, rep = 0, level = 0.9, s.rep = 10, type = c("deviance",
   "pearson", "response"), pch = ".", rl.col = 2, rep.col = "gray80",

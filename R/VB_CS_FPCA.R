@@ -22,18 +22,20 @@
 #' @param Bpsi hyperparameter for inverse gamma controlling variance of spline terms
 #' for FPC effects
 #' @param verbose logical defaulting to \code{TRUE} -- should updates on progress be printed?
+#' @param argvals not currently implemented
 #'  
 #' @references
-#' Goldsmith, J., Kitago, T. (Under Review).
+#' Goldsmith, J., Kitago, T. (2016).
 #' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
-#' Function-on-Scalar Regression.
+#' Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
+#' Series C}, 65 215-236.
 #' 
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
 #' @export
 #' 
 vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1,
-                      Aw = NULL, Bw = NULL, Apsi = NULL, Bpsi = NULL){
+                      Aw = NULL, Bw = NULL, Apsi = NULL, Bpsi = NULL, argvals = NULL){
   
   # not used now but may need this later
   call <- match.call()
@@ -84,6 +86,10 @@ vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1
   I = dim(X)[1]
   D = dim(Y)[2]
   p = dim(X)[2]
+  
+  ## argvals
+  if (!is.null(argvals)) {warning("Argument <argvals> supplied but not used.")}
+  argvals = seq(0,1,,D)
   
   ## bspline basis and penalty matrix
   Theta = bs(1:D, df=Kt, intercept=TRUE, degree=3)
@@ -247,19 +253,26 @@ vb_cs_fpca = function(formula, data=NULL, verbose = TRUE, Kt=5, Kp=2, alpha = .1
     beta.UB[i,] = beta.cur[i,]+1.96*beta.sd[i,]
   }
   
-  ## do svd to get rotated fpca basis
-  temp = svd(t(psi.cur))
-  psi.cur = t(temp$u)
-  lambda.pm = temp$d
-
+  ## do svd to get rotated fpca basis (based on approach in fpca.sc)
+  w <- quadWeights(argvals)
+  Wsqrt <- diag(sqrt(w))
+  Winvsqrt <- diag(1/(sqrt(w)))
+  
+  V <- Wsqrt %*% t(psi.cur) %*% cov(mu.q.C) %*% (psi.cur) %*% Wsqrt
+  efunctions = matrix(Winvsqrt %*% eigen(V, symmetric = TRUE)$vectors[, seq(len = Kp)], nrow = D, ncol = Kp)
+  evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values[1:Kp] 
+  
   fpca.obj = list(Yhat = pcaef.cur,
                   Y = Y - X %*% beta.cur,
-                  scores = mu.q.C %*% temp$v %*% diag(temp$d, Kp, Kp),
+                  scores = mu.q.C %*% psi.cur %*% efunctions %*% solve(t(efunctions) %*% (efunctions)),
                   mu = apply(Y - X %*% beta.cur, 2, mean, na.rm = TRUE),
-                  efunctions = t(psi.cur), 
-                  evalues = lambda.pm,
+                  efunctions = efunctions, 
+                  evalues = evalues,
                   npc = Kp)
   class(fpca.obj) = "fpca"
+  
+  data = if(is.null(data)) { mf_fixed }  else { data }
+  
   ret = list(beta.cur, beta.UB, beta.LB, fixef.cur, mt_fixed, data, sigeps.pm, fpca.obj)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data", "sigeps.pm", "fpca.obj")
   class(ret) = "fosr"

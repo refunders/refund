@@ -27,9 +27,10 @@
 #' @param verbose logical defaulting to \code{TRUE} -- should updates on progress be printed?
 #' 
 #' @references
-#' Goldsmith, J., Kitago, T. (Under Review).
+#' Goldsmith, J., Kitago, T. (2016).
 #' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
-#' Function-on-Scalar Regression.
+#' Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
+#' Series C}, 65 215-236.
 #' 
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
@@ -200,6 +201,8 @@ vb_cs_wish = function(formula, data=NULL, verbose = TRUE, Kt=5, alpha = .1, min.
   ## export various r2 values
   #r2.f = 1 - (sum((Y - Yhat.fixed)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
   #r2.fr = 1 - (sum((Y - Yhat)^2)/(IJ*D)) / (sum((Y)^2)/(IJ*D))
+  
+  data = if(is.null(data)) { mf_fixed }  else { data }
   
   ret = list(beta.cur, beta.UB, beta.LB, Yhat.fixed, mt_fixed, data)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data")

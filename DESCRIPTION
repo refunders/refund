@@ -2,23 +2,26 @@ Package: refund
 Type: Package
 Title: Regression with Functional Data
 Version: 0.1-15
-Date: 2016-02-25
-Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"),
-    person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
+Date: 2016-07-10
+Authors@R: c(
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
+    person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
+    person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"),
+    person("Julia", "Wrobel", role="aut", email="jw3134@cumc.columbia.edu"),
     person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"),
     person("Jaroslaw", "Harezlak", role="aut"),
     person(c("Mathew", "W."), "McLean", role="aut", email = "mathew.w.mclean@gmail.com"),
     person("Bruce", "Swihart", role ="aut", email = "bswihart@jhsph.edu"),
     person("Luo", "Xiao", role="aut", email = "lxiao@jhsph.edu"),
     person("Ciprian", "Crainiceanu", role = "aut", email = "ccrainic@jhsph.edu"),
-    person("Philip", "Reiss", role = "aut", email = "phil.reiss@nyumc.org"),
+    person(c("Philip", "T."), "Reiss", role = "aut", email = "phil.reiss@nyumc.org"),
     person("Yakuan", "Chen", role="ctb", email = "yc2641@@cumc.columbia.edu"),
     person("Sonja", "Greven", role = "ctb"),
     person("Lan", "Huo", role = "ctb", email = "lan.huo@nyumc.org"),
     person(c("Madan", "Gopal"), "Kundu", role="ctb"),
-    person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"),
-    person("So Young", "Park", role="ctb", email="spark13@ncsu.edu"))
+    person("So Young", "Park", role="ctb", email="spark13@ncsu.edu"),
+    person(c("David", "L."), "Miller", role="ctb", email="dave@ninepointeightone.net"),
+    person("Ana-Maria", "Staicu", role="ctb", email="ana-maria_staicu@ncsu.edu"))
 Depends:
     R (>= 2.14.0)
 Imports:
@@ -26,7 +29,7 @@ Imports:
     Matrix,
     lattice,
     boot,
-    mgcv (>= 1.8-4),
+    mgcv (>= 1.8-12),
     MASS,
     magic,
     nlme,
@@ -41,7 +44,8 @@ Imports:
     methods
 Suggests:
     RColorBrewer,
-    reshape2
+    reshape2,
+    dtw
 Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to
@@ -105,6 +109,7 @@ Collate:
     'plot.lpeer.R'
     'plot.peer.R'
     'plot.pfr.R'
+    'poridge.R'
     'postprocess.pfr.R'
     'predict.fgam.R'
     'predict.pfr.R'

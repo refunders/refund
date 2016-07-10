@@ -28,9 +28,10 @@
 #' @param verbose logical defaulting to \code{TRUE} -- should updates on progress be printed?
 #' 
 #' @references
-#' Goldsmith, J., Kitago, T. (Under Review).
+#' Goldsmith, J., Kitago, T. (2016).
 #' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
-#' Function-on-Scalar Regression.
+#' Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
+#' Series C}, 65 215-236.
 #' 
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
@@ -259,6 +260,8 @@ gibbs_cs_fpca = function(formula, Kt=5, Kp=2, data=NULL, verbose = TRUE, N.iter 
   Yhat = apply(y.post, c(1,2), mean)
   y.LB = apply(y.post, c(1,2), quantile, c(.025))
   y.UB = apply(y.post, c(1,2), quantile, c(.975))
+  
+  data = if(is.null(data)) { mf_fixed }  else { data }
   
   ret = list(beta.pm, beta.UB, beta.LB, Yhat, mt_fixed, data, psi.pm)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data", "psi.pm")

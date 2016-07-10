@@ -47,7 +47,7 @@ and Graphical Statistics}, 20, 830 - 851.
 
 Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2010).
 Longitudinal Penalized Functional Regression for Cognitive Outcomes on
-Neuronal Tract Measurements . \emph{Journal of the Royal Statistical
+Neuronal Tract Measurements. \emph{Journal of the Royal Statistical
 Society: Series C}, 61, 453 - 469.
 }
 

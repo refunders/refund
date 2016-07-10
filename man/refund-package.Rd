@@ -13,11 +13,11 @@ Methods for regression with functional data. Various approaches to regression wi
 
 \author{
 \emph{Authors:}
-Lei Huang \email{huangracer@gmail.com}, Fabian Scheipl \email{fabian.scheipl@stat.uni-muenchen.de}, Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, Jonathan Gellar \email{jgellar1@jhu.edu}, Jaroslaw Harezlak, Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Bruce Swihart \email{bswihart@jhsph.edu}, Luo Xiao \email{lxiao@jhsph.edu}, Ciprian Crainiceanu \email{ccrainic@jhsph.edu}, Philip Reiss \email{phil.reiss@nyumc.org}.
+Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, Fabian Scheipl \email{fabian.scheipl@stat.uni-muenchen.de}, Lei Huang \email{huangracer@gmail.com}, Julia Wrobel \email{jw3134@cumc.columbia.edu}, Jonathan Gellar \email{jgellar1@jhu.edu}, Jaroslaw Harezlak, Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Bruce Swihart \email{bswihart@jhsph.edu}, Luo Xiao \email{lxiao@jhsph.edu}, Ciprian Crainiceanu \email{ccrainic@jhsph.edu}, Philip Reiss \email{phil.reiss@nyumc.org}.
 
 
 \emph{Contributors:}
-Yakuan Chen, Sonja Greven, Lan Huo, Madan Gopal Kundu, Julia Wrobel
+Yakuan Chen, Sonja Greven, Lan Huo, Madan Gopal Kundu, Ana-Maria Staicu, David L. Miller, So Young Park
 
 \emph{Maintainer:} Lei Huang \email{huangracer@gmail.com}
 }

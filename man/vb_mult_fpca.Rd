@@ -5,7 +5,7 @@
 \title{Multilevel FoSR using Variational Bayes and FPCA}
 \usage{
 vb_mult_fpca(formula, data = NULL, verbose = TRUE, Kt = 5, Kp = 2,
-  alpha = 0.1)
+  alpha = 0.1, argvals = NULL)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}
@@ -23,6 +23,8 @@ called.}
 
 \item{alpha}{tuning parameter balancing second-derivative penalty and
 zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)}
+
+\item{argvals}{not currently implemented}
 }
 \description{
 Fitting function for function-on-scalar regression for multilevel data.
@@ -33,8 +35,9 @@ the residual covariance surface using FPCA.
 Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
 }
 \references{
-Goldsmith, J., Kitago, T. (Under Review).
+Goldsmith, J., Kitago, T. (2016).
 Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
-Function-on-Scalar Regression.
+Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
+Series C}, 65 215-236.
 }
 
