@@ -221,7 +221,7 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #'
 #' @examples
 #' # a simulated example
-#' library(refundDevel)
+#' library(refund)
 #' library(mgcv)
 #' require(dtw)
 #'
