@@ -128,13 +128,13 @@
 ##' # Penalized OLS with smoothing parameter chosen by grid search
 ##' olsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="OLS", lambda=100*10:30)
 ##' plot(olsmod, 1)
-##' 
+##'
 ##' # Test use formula to fit fosr
 ##' set.seed(2121)
 ##' data1 <- pffrSim(scenario="ff", n=40)
 ##' formod = fosr(Y~xlin+xsmoo, data=data1)
 ##' plot(formod, 1)
-##' 
+##'
 ##' # Penalized GLS
 ##' glsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="GLS")
 ##' plot(glsmod, 1)
@@ -142,11 +142,11 @@
 ##' @importFrom fda create.bspline.basis eval.basis getbasispenalty fd pca.fd is.fd
 ##' @export
 
-fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, argvals = NULL, 
+fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, argvals = NULL,
         method = c("OLS","GLS","mix"),
-        gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"), 
+        gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"),
         cov.method = c("naive", "mod.chol"),
-        lambda = NULL, nbasis=15, norder=4, 
+        lambda = NULL, nbasis=15, norder=4,
         pen.order=2, multi.sp = ifelse(method=="OLS", FALSE, TRUE), pve=.99,
         max.iter = 1, maxlam = NULL, cv1 = FALSE, scale = FALSE)
 {
@@ -160,17 +160,17 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
       Y = data[,responsename]
       X = model.matrix(formula, data=data)
     }
-  
-  
-    if (is.null(Y)==is.null(fdobj)) stop("Please specify 'Y' or 'fdobj', but not both") 
+
+
+    if (is.null(Y)==is.null(fdobj)) stop("Please specify 'Y' or 'fdobj', but not both")
     resp.type <- if (is.null(Y)) "fd" else "raw"
-    if (is.null(argvals)) 
-        argvals <- if (is.null(fdobj)) seq(0,1, length=ncol(Y)) 
-                else seq(min(fdobj$basis$range), max(fdobj$basis$range), length=201)                
+    if (is.null(argvals))
+        argvals <- if (is.null(fdobj)) seq(0,1, length=ncol(Y))
+                else seq(min(fdobj$basis$range), max(fdobj$basis$range), length=201)
     method <- match.arg(method)
     cov.method <- match.arg(cov.method)
     gam.method <- match.arg(gam.method)
-    
+
     if (method != "OLS" & (length(lambda) > 1))
         stop("Vector-valued lambda allowed only if method = 'OLS'")
     if (!is.null(lambda) & multi.sp)
@@ -194,7 +194,7 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
         Bmat <- J12 <- svdJ$u %*% diag(sqrt(svdJ$d)) %*% t(svdJ$u)
         respmat <- C %*% J12
     }
-    
+
     newfit = U = pca.resid = NULL
     X.sc = scale(X, center = FALSE, scale = scale)
     q = ncol(X)
@@ -208,7 +208,7 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
         }
     }
     else pen = list(diag(q) %x% getbasispenalty(bss, pen.order))
-    
+
     constr = if (!is.null(con)) con %x% diag(nbasis) else NULL
     cv = NULL
     if (method == "OLS") {
@@ -272,7 +272,7 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
                           if (lwstat[nband] > lwstat[1] && lwstat[nband] > lwstat[nband-1]) break
                         }
                     }
-                    
+
                     nband.best = which.max(lwpval)
                     cat("Using half-bandwidth", nband.best, "for precision matrix of residuals\n")
                     sqrt.prec <- sqrt.prec.list[[nband.best]]
@@ -286,7 +286,7 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
                     #F (maybe? not sure this has much effect, but it surely won't hurt):
                     newfit <- amc(as.vector(tcrossprod(sqrt.prec, respmat)),
                             X.sc %x% (sqrt.prec %*% Bmat),
-                            gam.method = gam.method, S = pen, C = constr, 
+                            gam.method = gam.method, S = pen, C = constr,
                             start = if (is.null(con)) as.vector(t(coefmat)) else NULL)
                     coefmat = t(matrix(newfit$coef, ncol = q))
                 } #end GLS
@@ -294,7 +294,7 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
                     if (resp.type=="fd") {
                         resid.fd <- fd(solve(J12, t(residmat)), bss)
                         if (iter==1) {
-                            pca.resid <- pca.fd(resid.fd, nharm=min(ncurve-1, nbasis)) 
+                            pca.resid <- pca.fd(resid.fd, nharm=min(ncurve-1, nbasis))
                             npc <- min(which(cumsum(pca.resid$varprop) > pve))
                         }
                         else pca.resid <- pca.fd(resid.fd, nharm=npc)
@@ -302,8 +302,8 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
                         efuncmat.scaled <- Bmat %*% t(t(pca.resid$harmonics$coef[ , 1:npc]) * sqrt(evalues))
                     }
                     else if (resp.type=="raw") {
-                        if (iter==1) {                           
-                            pca.resid <- fpca.sc(residmat, pve=pve) 
+                        if (iter==1) {
+                            pca.resid <- fpca.sc(residmat, pve=pve)
                             npc <- pca.resid$npc
                         }
                         else pca.resid <- fpca.sc(residmat, npc=npc)
@@ -311,7 +311,7 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
                         efuncmat.scaled <- t(t(pca.resid$efunctions) * sqrt(evalues))
                     }
                     if (iter==1) cat("Using leading", npc, "PCs of residual functions for random effects\n")
-                    
+
                     npen <- length(pen); pendim <- ncol(pen[[1]])
                     pen.aug = vector("list", npen+1)
                     for (l in 1:npen) {
@@ -338,16 +338,16 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
                     #browser()
                     newfit <- amc(as.vector(t(respmat)),
                             cbind(X.sc %x% Bmat,diag(ncurve) %x% efuncmat.scaled),
-                            gam.method = gam.method, S = pen.aug, C = constr.aug, 
-                            start=if (is.null(constr.aug)) startB else NULL)      
-                    
+                            gam.method = gam.method, S = pen.aug, C = constr.aug,
+                            start=if (is.null(constr.aug)) startB else NULL)
+
 
                     vecBt = newfit$coef[1:(q*nbasis)]
                     vecUt = newfit$coef[(q*nbasis+1):(q*nbasis+npc*ncurve)]
                     coefmat = t(matrix(vecBt, ncol=q))
                     U <- t(matrix(vecUt, ncol=ncurve))
                 } #end mix
-        } #end while 
+        } #end while
     } # end !OLS
     if (method == "OLS" | max.iter == 0) {
         residvec <- as.vector(t(respmat)) - (X.sc %x% Bmat) %*% firstfit$coef
