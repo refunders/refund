@@ -1,8 +1,10 @@
 # refundDevel
 
+* homogenized inputs/outputs to most fpca.XXX functions
+
 * fix documentation for fpca.face
 
-• added pco ridge regression see ?poridge
+* added pco ridge regression see ?poridge
 
 # refund 0.1-14
 

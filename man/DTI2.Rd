@@ -42,10 +42,9 @@ Longitudinal penalized functional regression for cognitive outcomes on
 neuronal tract measurements. \emph{Journal of the Royal Statistical
 Society: Series C}, 61(3), 453--469.
 
-Swihart, B. J., Goldsmith, J., and Crainiceanu, C. M. (2012). Testing for
-functional effects.  Johns Hopkins University Dept. of Biostatistics
-Working Paper 247. Available at
-\url{http://biostats.bepress.com/jhubiostat/paper247}
+Swihart, B. J., Goldsmith, J., and Crainiceanu, C. M. (2014). Restricted 
+Likelihood  Ratio Tests for Functional Effects in the Functional Linear Model. 
+\emph{Technometrics}, 56, 483--493.
 }
 \keyword{datasets}
 

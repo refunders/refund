@@ -66,10 +66,10 @@
 #'   \item{data}{a list containing the necessary covariate and weight matrices}
 #'
 #' @author Fabian Scheipl, Sonja Greven
-#' @references For background on \code{check.ident}:\cr Scheipl, F., & Greven,
+#' @references For background on \code{check.ident}:\cr Scheipl, F., Greven,
 #'   S. (2016). Identifiability in penalized function-on-function regression
-#'   models. LMU Munich, Department of Statistics: Technical Report 125.
-#'   \url{http://epub.ub.uni-muenchen.de/13060/}
+#'   models. Electronic Journal of Statistics, 10(1), 495--526.
+#'   \url{https://projecteuclid.org/euclid.ejs/1457123504}
 #' @export
 #' @importFrom MASS Null
 # FIXME: weights for simpson's rule on non-equidistant grids
@@ -234,14 +234,14 @@ ff <- function(X,
       # get condition number of marginal design matrix
       evDs <- svd(LX %*% basis$X, nu = 0, nv = 0)$d^2
       logCondDs <- log10(max(evDs)) - log10(min(evDs))
-     
+
       N.X <- Null(t(X))
-      ## for the artificial examples in the paper below produces surprising 
+      ## for the artificial examples in the paper below produces surprising
       ## results if integration != "riemann":
-      ## -- usually more constraints than expected, e.g. constraints on "linearish" 
+      ## -- usually more constraints than expected, e.g. constraints on "linearish"
       ## even though nullspace of X only contains constants by construction --
-      ## unless diag(L[1,]) is rm'ed from N.pen: non-constant integration wts 
-      ## seem to implicate higher order eigenfunctions in the kernel as well, e.g. 
+      ## unless diag(L[1,]) is rm'ed from N.pen: non-constant integration wts
+      ## seem to implicate higher order eigenfunctions in the kernel as well, e.g.
       ## sv's of N.pen have high frequency oscillations, etc (...waves hands...)
       N.pen <- diag(L[1,]) %*% basis$X %*% Null(basis$S[[1]])
       if(any(c(NCOL(N.X) == 0, NCOL(N.pen) == 0))) {

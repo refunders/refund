@@ -23,10 +23,10 @@
 #' @param ... additional arguments that are passed to individual fitting functions.
 #' 
 #' @references
-#' Goldsmith, J., Kitago, T. (Accepted).
+#' Goldsmith, J., Kitago, T. (2016).
 #' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
-#' Function-on-Scalar Regression.
-#' Journal of the Royal Statistical Society: Series C.
+#' Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
+#' Series C}, 65 215-236.
 #' 
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @export
