@@ -1,14 +1,17 @@
+#' @export
+#' @rdname fosr.perm
 fosr.perm.fit <-
-function(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL, argvals = NULL, lambda = NULL, lambda0 = NULL, 
+function(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL, argvals = NULL, lambda = NULL, lambda0 = NULL,
          multi.sp = FALSE, nperm, prelim, ...) {
-    if (is.null(Y) == is.null(fdobj)) stop("Please specify 'Y' or 'fdobj', but not both") 
+    if (is.null(Y) == is.null(fdobj)) stop("Please specify 'Y' or 'fdobj', but not both")
 	if (length(lambda) > 1) stop("'lambda' must be a scalar or NULL")
 	if (is.null(X0) & !is.null(con0)) stop("If 'con0' is given, 'X0' must be given too")
-	df1 = ncol(X) - 1 
+	if (multi.sp & prelim > 0) stop("If multi.sp = TRUE, 'prelim' should be set to 0")
+	df1 = ncol(X) - 1
 	if (!is.null(con)) df1 = df1 - nrow(con)
 	df2 = nrow(X) - df1 - 1
 	if (!is.null(X0)) df1 = df1 - ncol(X0) + 1
-	if (!is.null(con0)) df1 = df1 + nrow(con0) 
+	if (!is.null(con0)) df1 = df1 + nrow(con0)
 	cat("\n***** Fitting full model... *****\n")
 	realfit = fosr(Y = Y, fdobj = fdobj, X = X, con = con, argvals = argvals, lambda = lambda, multi.sp = multi.sp, ...)
 	lambda.real = realfit$lambda
@@ -19,7 +22,7 @@ function(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL, argvals 
 		realfit0 = fosr(Y = Y, fdobj = fdobj, X = X0, con = con0, argvals = argvals, lambda = lambda0, multi.sp = multi.sp, ...)
 	    lambda0.real = realfit0$lambda
     }
-    
+
     if (realfit$resp.typ == "fd"){
         ymat = eval.fd(argvals, fdobj)
         yhatmat = eval.fd(argvals, realfit$yhat)
@@ -29,7 +32,7 @@ function(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL, argvals 
     	yhatmat = t(realfit$yhat)
     	n = nrow(Y)
     }
-    
+
     if (is.null(X0)) F = (apply(yhatmat, 1, var) / df1) / (apply((ymat - yhatmat)^2, 1, mean) / df2)
     else {
     	yhatmat0 = if (realfit$resp.type == "fd") eval.fd(argvals, realfit0$yhat) else t(realfit0$yhat)
@@ -55,7 +58,7 @@ function(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL, argvals 
     			else Y.perm <- realfit0$yhat + realfit0$resid[sample(n), ]
     			fdobj.perm = NULL
     		}
-    	    lambda.prelim[ee, ] = fosr(Y = Y.perm, fdobj = fdobj.perm , X = X, con = con, argvals=argvals, multi.sp=multi.sp, ...)$lambda 
+    	    lambda.prelim[ee, ] = fosr(Y = Y.perm, fdobj = fdobj.perm , X = X, con = con, argvals=argvals, multi.sp=multi.sp, ...)$lambda
     	    if (!is.null(X0)) lambda0.prelim[ee, ] = fosr(Y = Y.perm, fdobj = fdobj.perm, X = X0, con = con0, argvals=argvals, multi.sp=multi.sp, ...)$lambda
     	    if (ee==1) {
     	    	elapsed.time <- max(proc.time() - begin.prelim, na.rm = TRUE)
@@ -66,13 +69,13 @@ function(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL, argvals 
     	if (!is.null(X0)) lambda0 = apply(lambda0.prelim, 2, median)
         cat("***** Computing time for preliminary permutations:", max(proc.time() - begin.prelim, na.rm = TRUE), "seconds *****\n")
     }
-    
+
     F.perm = matrix(NA, nperm, length(argvals))
     lambda.perm = matrix(NA, nperm, ncol(X)^multi.sp)
     lambda0.perm = if (!is.null(X0)) matrix(NA, nperm, ncol(X0)^multi.sp) else NULL
 
     cat("\n***** Main permutations... *****\n")
-    begin.perm = proc.time()    
+    begin.perm = proc.time()
 	for (i in 1:nperm) {
 		if (i/20==floor(i/20)) cat('Permutation', i, '\n')
 		if(realfit$resp.type == "fd"){
@@ -92,7 +95,7 @@ function(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL, con0 = NULL, argvals 
 	    if (!is.null(X0)) lambda0.perm[i, ] = fit.perm0$lambda
 	    if (realfit$resp.type == "fd"){
 	        ymat.perm = eval.fd(argvals, fdobj.perm)
-            yhatmat.perm = eval.fd(argvals, fit.perm$yhat)   	
+            yhatmat.perm = eval.fd(argvals, fit.perm$yhat)
 	    } else {
 	    	ymat.perm = t(Y.perm)
 	    	yhatmat.perm = t(fit.perm$yhat)

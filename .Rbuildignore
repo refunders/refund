@@ -4,3 +4,7 @@
 ^\.gitignore$
 ^\.travis\.yml$
 .git-tricks.md
+refund.Rproj
+^NEWS\.md$
+^cran-comments\.md$
+^README\.md$

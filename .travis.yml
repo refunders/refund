@@ -1,5 +1,24 @@
-# see http://docs.travis-ci.com/user/languages/r/
 language: r
+sudo: required
 
-# Be strict when checking our package
-warnings_are_errors: true
+r:
+  - oldrel
+  - release
+  - devel
+cache: packages
+
+# need this for current nlme:
+r_packages:
+  - nlme
+
+
+after_failure:
+  - ./travis-tool.sh dump_logs
+
+notifications:
+  email:
+    recipients:
+      - huangracer@gmail.com
+      - fabian.scheipl@stat.uni-muenchen.de
+    on_success: change
+    on_failure: always

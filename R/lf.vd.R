@@ -1,267 +1,352 @@
 #' Construct a VDFR regression term
-#' 
+#'
 #' This function defines the a variable-domain functional regression term
-#' for inclusion in an \code{mgcv::gam-formula} (or \code{bam} or
-#' \code{gamm} or \code{gamm4:::gamm}) as constructed by \code{\link{fgam}}.
-#' The default is the ``untransformed" term,\eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
+#' for inclusion in an \code{\link[mgcv]{gam}}-formula (or \code{\link[mgcv]{bam}} or
+#' \code{\link[mgcv]{gamm}} or \code{gamm4::gamm} as constructed by
+#' \code{\link{pfr}}. These are functional predictors for which each function is
+#' observed over a domain of different width.
+#' The default is the term \eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
 #' where \eqn{X_i(t)} is a functional predictor of length \eqn{T_i} and \eqn{\beta(t,T_i)}
-#' is an unknown bivariate coefficient function. Lagged-domain and
-#' standardized-domain models are also allowed. For the standardized-domain
-#' model, the interaction between \eqn{t} and \eqn{T_i} could be nonparametric, linear,
-#' quadratic, or not present at all. Basis choice is fully custiomizable using
-#' the options of \code{mgcv::s} and \code{mgcv::te}, though tensor-product
-#' bases are not allowed except in the standardized-domain case.
+#' is an unknown bivariate coefficient function. Various domain transformations
+#' are available, such as lagging or domain-standardizing the coordinates, or
+#' parameterizing the interactions; these often result in improved model fit.
+#' Basis choice is fully custiomizable using the options of
+#' \code{\link[mgcv]{s}} and \code{\link[mgcv]{te}}.
 #' 
 #' @param X matrix containing variable-domain functions. Should be \eqn{N x J},
 #'    where \eqn{N} is the number of subjects and \eqn{J} is the maximum number of time
 #'    points per subject. Most rows will have \code{NA} values in the right-most
 #'    columns, corresponding to unobserved time points.
-#' @param tind matrix (or vector) containing the time indices of evaluations of
-#'    \eqn{X_i(t)}. If a matrix, it must be the same dimensionality as \code{X}; if a
-#'    vector, must be of length \code{ncol(X)}.
-#' @param Tind vector of values of \eqn{T_i}. Defaults to the \code{tind} value
-#'    corresponding to the last observation of \eqn{X_i(t)}.
-#' @param T.trans optional function applied to \code{Tind} to allow the interaction
-#'    to occur on a transformed scale, e.g. the log or quantile scale.
-#' @param domain defines the domain for each function \eqn{X_i(t)}; see Details.
-#' @param interaction defines the type of interaction between \eqn{t} and \eqn{T_i};
-#'    see Details. Must be nonparametric if \code{domain} is not ``standardized."
-#' @param integration method used for numerical integration. Defaults to
-#'    ``\code{simpson}"'s rule. Alternatively and for non-equidistant grids,
-#'    ``\code{trapezoidal}" or ``\code{riemann}".
-#' @param basistype type of bivariate basis used. Corresponds to either \code{mgcv::s}
-#'    or \code{mgcv::te}. ``\code{te}" option is only allowed when
-#'    \code{domain="standardized"} and \code{interaction="nonparametric"}.
-#' @param rescale.unit logical, indicating whether the \code{tind} and {Tind}
-#'    indices should be rescaled to go from 0 to 1. Rescaling occurs after
-#'    \code{T.trans} is applied.
-#' @param splinepars optional arguments specifying options for representing
-#'    and penalizing the functional coefficient. These are passed directly to
-#'    \code{mgcv::s} or \code{mgcv::te}. Defaults to the default choices
-#'    of the associated \code{basistype}. See \code{\link{s}} or \code{\link{te}}
-#'    in \code{mgcv} for details.
-#' @details The default (``untransformed") variable-domain functional regression
-#'    model uses the term \eqn{\frac1{T_i}\int_0^{T_i}X_i(t)\beta(t,T_i)dt} to
-#'    incorporate the functional predictor. This term imposes
+#' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
+#'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
+#'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
+#'   as a matrix allows for different observations times for each subject.
+#' @param vd vector of values of containing the variable-domain width (\eqn{T_i}
+#'    above). Defaults to the \code{argvals} value corresponding to the last
+#'    non-\code{NA} element of \eqn{X_i(t)}.
+#' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule
+#'   for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
+#'   \code{"trapezoidal"} or \code{"riemann"}.
+#' @param L an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
+#'   integration over \code{t}. If present, overrides \code{integration}.
+#' @param basistype character string indicating type of bivariate basis used.
+#'    Options include \code{"s"} (the default), \code{"te"}, and \code{"t2"},
+#'    which correspond to \code{mgcv::s}, \code{mgcv::te}, and \code{mgcv::t2}.
+#' @param transform character string indicating an optional basis transformation;
+#'    see Details for options.
+#' @param mp for \code{transform=="linear"} or \code{transform=="quadratic"},
+#'    \code{TRUE} to use multiple penalties for the smooth (one for each marginal
+#'    basis). If \code{FALSE}, penalties are concatonated into a single
+#'    block-diagonal penalty matrix (with one smoothing parameter).
+#' @param ... optional arguments for basis and penalization to be passed to the
+#'   function indicated by \code{basistype}. These could include, for example,
+#'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
+#'   \code{\link{s}} for details.
+#'    
+#' @details The variable-domain functional regression model uses the term
+#'    \eqn{\frac1{T_i}\int_0^{T_i}X_i(t)\beta(t,T_i)dt} to incorporate a
+#'    functional predictor with subject-specific domain width. This term imposes
 #'    a smooth (nonparametric) interaction between \eqn{t} and \eqn{T_i}. The domain
 #'    of the coefficient function is the triangular (or trapezoidal) surface
-#'    defined by \eqn{{t,T_i: 0\le t\le T_i}}. Tensor product smooths
-#'    (\code{basistype="te"}) are not allowed, but any bivariate basis
-#'    allowed by \code{mgcv::s} is supported, such as thin-plate regression splines
-#'    (the default).
+#'    defined by \eqn{{t,T_i: 0\le t\le T_i}}. The default basis uses
+#'    bivariate thin-plate regression splines.
 #'    
-#'    The ``lagged" VDFR model is similar to the ``untransformed" model, but
-#'    each function is aligned according to their final measurement of
-#'    \eqn{X_i(t)} as opposed to their first. This model is equivalent to
-#'    the untransformed model, up to the assumptions imposed by the basis
-#'    choice and smoothness.
+#'    Different basis tranformations can result in different properties; see
+#'    Gellar, et al. (2014) for a more complete description. We make five basis
+#'    transformations easily accessable using the \code{transform} argument.
+#'    This argument is a character string that can take one of the following
+#'    values:
+#'    \enumerate{
+#'      \item \code{"lagged"}: transforms \code{argvals} to \code{argvals - vd}
+#'      \item \code{"standardized"}: transforms \code{argvals} to \code{argvals/vd},
+#'        and then rescales \code{vd} linearly so it ranges from 0 to 1
+#'      \item \code{"linear"}: first transforms the domain as in
+#'        \code{"standardized"}, then parameterizes the interaction with
+#'        \code{"vd"} to be linear
+#'      \item \code{"quadratic"}: first transforms the domain as in
+#'        \code{"standardized"}, then parameterizes the interaction with
+#'        \code{"vd"} to be quadratic
+#'      \item \code{"noInteraction"}: first transforms the domain as in
+#'        \code{"standardized"}, then reduces the bivariate basis to univariate
+#'        with no effect of \code{vd}. This would be equivalent to using
+#'        \code{\link{lf}} on the domain-standardized predictor functions.
+#'    }
 #'    
-#'    The ``standardized" models apply the subject-specific domain transformation
-#'    \eqn{s = t/T_i}, which linearly stretches (or compresses) each function to
-#'    the domain \eqn{[0,1]}. For nonparametric interactions, the functional
-#'    predictor is incorporated into the model by the term
-#'    \eqn{\int_0^1 X*_i(s)\beta*(s,T_i) dt}, where \eqn{X*_i(s) = X_i(sT_i)}
-#'    are the rescaled functional predictors. Because we still allow the coefficient
-#'    function \eqn{\beta*(s,T_i)} to change with \eqn{T_i}, this model is
-#'    equivalent to the untransformed model, up to the assumptions imposed by the
-#'    numerical integration, basis choice, and smoothness. Practically, results differ
-#'    primarily due to the smoothness assumptions. Because smoothness is imposed on the
-#'    rescaled domain \eqn{{s,T_i: 0\le s\le 1, 0\le T_i\le max_i(T_i)}}, when transformed
-#'    back to the original time domain \eqn{t}, the resulting coefficient function can be
-#'    less smooth (across \eqn{t}) for smaller values of \eqn{T_i} than for larger values.
+#'    The practical effect of using the \code{"lagged"} basis is to increase
+#'    smoothness along the right (diagonal) edge of the resultant estimate.
+#'    The practical effect of using a \code{"standardized"} basis is to allow
+#'    for greater smoothness at high values of \eqn{T_i} compared to lower
+#'    values.
 #'    
-#'    Since the domain of the standardized coefficient function is rectangular, tensor product
-#'    bases are allowed. This form also allows us to easily parameterize the interaction
-#'    between \eqn{t} and \eqn{T_i}. The software supports three different parameterizations
-#'    of this interaction: ``linear" implies \eqn{\beta*(s,T_i) = \beta_1(s) + T_i\beta_2(s)},
-#'    ``quadratic" implies \eqn{\beta*(s,T_i) = \beta_1(s) + T_i\beta_2(s) + T_i^2\beta_3(s)},
-#'    and ``none" implies \eqn{\beta*(s,T_i) = \beta(s)}. Note that this last parameterization
-#'    implies no interaction at all, and is equivalent to \code{lf()} using the standardized
-#'    functional predictors.
+#'    These basis transformations rely on the basis constructors
+#'    available in the \code{mgcvTrans} package. For more specific control over
+#'    the transformations, you can use \code{bs="dt"} and/or \code{bs="pi"};
+#'    see \code{\link{smooth.construct.dt.smooth.spec}} or
+#'    \code{\link{smooth.construct.pi.smooth.spec}} for an explanation of the
+#'    options (entered through the \code{xt} argument of \code{lf.vd}/\code{s}).
+#'    
+#'    Note that tensor product bases are only recommended when a standardized
+#'    transformation is used. Without this transformation, just under half of
+#'    the "knots" used to define the basis will fall outside the range of the
+#'    data and have no data available to estimate them. The penalty allows
+#'    the corresponding coefficients to be estiamted, but results may be
+#'    unstable.
+#'    
 #' @return a list with the following entries
 #'    \item{call}{a \code{call} to \code{s} or \code{te}, using the appropriately constructed
 #'      weight matrices}
 #'    \item{data}{data used by the \code{call}, which includes the matrices indicated
-#'      by \code{tindname}, \code{Tindname}, and \code{LXname}}
+#'      by \code{argname}, \code{Tindname}, and \code{LXname}}
 #'    \item{L}{the matrix of weights used for the integration}
-#'    \item{tindname}{the name used for the \code{tind} variable in the \code{formula}
+#'    \item{argname}{the name used for the \code{argvals} variable in the \code{formula}
 #'      used by \code{mgcv::gam}}
 #'    \item{Tindname}{the name used for the \code{Tind} variable in the \code{formula}
 #'      used by \code{mgcv::gam}}
 #'    \item{LXname}{the name of the \code{by} variable used by \code{s} or \code{te}
 #'      in the \code{formula} for \code{mgcv::gam}}
 #' @export
-#' @author Jonathan E. Gellar <jgellar1@@jhu.edu>
-#' @references Gellar, Jonathan E., Colantuoni, Elizabeth, Needham, Dale M., and
-#'    Crainiceanu, Ciprian M (May 2014). Variable-Domain Functional Regression for Modeling
-#'    ICU Data. Johns Hopkins University, Dept. of Biostatistics
-#'    Working Papers. Working Paper 261. http://biostats.bepress.com/jhubiostat/paper261
-#' @seealso \code{\link{fgam}}, \code{\link{lf}}, mgcv's
-#'    \code{\link{linear.functional.terms}}, \code{\link{fgam}} for examples.
+#' @author Jonathan E. Gellar <JGellar@@mathematica-mpr.com>
+#' @references Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
+#'    Ciprian M. Crainiceanu. Variable-Domain Functional Regression for Modeling
+#'    ICU Data. Journal of the American Statistical Association,
+#'    109(508):1425-1439, 2014.
+#' @examples
+#' \dontrun{
+#'   data(sofa)
+#'   fit.vd1 <- pfr(death ~ lf.vd(SOFA) + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd2 <- pfr(death ~ lf.vd(SOFA, transform="lagged") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd3 <- pfr(death ~ lf.vd(SOFA, transform="standardized") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd4 <- pfr(death ~ lf.vd(SOFA, transform="standardized",
+#'                                basistype="te") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd5 <- pfr(death ~ lf.vd(SOFA, transform="linear", bs="ps") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd6 <- pfr(death ~ lf.vd(SOFA, transform="quadratic", bs="ps") + age + los,
+#'                  family="binomial", data=sofa)
+#'   fit.vd7 <- pfr(death ~ lf.vd(SOFA, transform="noInteraction", bs="ps") + age + los,
+#'                  family="binomial", data=sofa)
+#'   
+#'   ests <- lapply(1:7, function(i) {
+#'     c.i <- coef(get(paste0("fit.vd", i)), n=173, n2=173) 
+#'     c.i[(c.i$SOFA.arg <= c.i$SOFA.vd),]
+#'   })
+#'   
+#'   # Try plotting for each i
+#'   i <- 1
+#'   lims <- c(-2,8)
+#'   if (requireNamespace("ggplot2", quietly = TRUE) &
+#'       requireNamespace("RColorBrewer", quietly = TRUE)) {
+#'         est <- ests[[i]]
+#'         est$value[est$value<lims[1]] <- lims[1]
+#'         est$value[est$value>lims[2]] <- lims[2]
+#'         ggplot2::ggplot(est, ggplot2::aes(SOFA.arg, SOFA.vd)) +
+#'           ggplot2::geom_tile(ggplot2::aes(colour=value, fill=value)) +
+#'           ggplot2::scale_fill_gradientn(  name="", limits=lims,
+#'                     colours=rev(RColorBrewer::brewer.pal(11,"Spectral"))) +
+#'           ggplot2::scale_colour_gradientn(name="", limits=lims,
+#'                     colours=rev(RColorBrewer::brewer.pal(11,"Spectral"))) +
+#'           ggplot2::scale_y_continuous(expand = c(0,0)) +
+#'           ggplot2::scale_x_continuous(expand = c(0,0)) +
+#'           ggplot2::theme_bw()
+#'   }
+#' }
+#'   
+#' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's
+#'    \code{\link{linear.functional.terms}}.
 
-lf.vd <- function(X, tind = seq(0, 1, l = ncol(X)), Tind=NULL,
-	T.trans=identity,
-	domain=c("untransformed", "lagged", "standardized"),
-	interaction=c("nonparametric", "none", "linear", "quadratic"),
-	integration = c("simpson", "trapezoidal", "riemann"),
-	# demean=FALSE,
-	# presmooth = TRUE,
-	basistype=c("s","te","t2"),
-	rescale.unit = TRUE,
-	splinepars = NULL) {
-	# splinepars = list(bs = "ps", k = min(ceiling(n/4), 40), m = c(2, 2))){
-	
-	n = nrow(X)
+lf.vd <- function(X, argvals = seq(0, 1, l = ncol(X)), vd=NULL,
+                  integration = c("simpson", "trapezoidal", "riemann"), L=NULL,
+                  basistype=c("s","te","t2"),
+                  transform=NULL, mp=TRUE, ...
+) {
+  
+  integration <- match.arg(integration)
+  basistype <- match.arg(basistype)
+  
+  # Set up functions
+  n = nrow(X)
   J = ncol(X)
-	J.i <- apply(X, 1, function(x) max(which(!is.na(x))))
-	domain <- match.arg(domain)
-	interaction <- match.arg(interaction)
-	integration <- match.arg(integration)
-	basistype <- match.arg(basistype)
-	tindname <- paste(deparse(substitute(X)), ".tmat", sep = "")
-	Tindname <- paste(deparse(substitute(X)), ".Tmat", sep = "")
-	LXname <- paste("L.", deparse(substitute(X)), sep = "")
-	splinefun <- as.symbol(basistype)
-	frmls <- if (is.null(splinepars)) {
-		NULL
-	} else {
-		frmls <- formals(getFromNamespace(deparse(splinefun), ns = "mgcv"))
-		modifyList(frmls[names(frmls) %in% names(splinepars)], 
-	        splinepars)
-	}
-	
-	# Check domain/interaction/basis compatability
-	if (domain %in% c("untransformed","lagged")) {
-		if (interaction!="nonparametric") {
-			stop("Untransformed and lagged domains require nonparametric interactions.")
-		} else if (basistype %in% c("te","ti","t2")) {
-			stop("Tensor product smooths are not supported for non-rectangular domains.")
-		} else if (!is.null(splinepars)) {
-			if (!is.null(splinepars$bs)) {
-				if (!(splinepars$bs %in% c("ts","tp"))) {
-					stop("Basis not supported for non-rectangular domains.")
-				}
-			}
-		}
-	} else if (interaction!="nonparametric" & basistype %in% c("te","ti","t2")) {
-		stop("Tensor product smooths are not allowed for parametric interactions.")
-	}
-	
-	# Create index matrices
-	if (is.null(dim(tind))) {
-		tind <- t(tind)
-		stopifnot(ncol(tind) == J)
-		if (nrow(tind) == 1) {
-			tind <- matrix(as.vector(tind), nrow = n, ncol = J, 
-				byrow = T)
-		}
-		stopifnot(nrow(tind) == n)
-	}
-	if (is.null(Tind)) 
-		Tind <- sapply(1:nrow(X), function(i) tind[i,max(which(!is.na(X[i,])))])
-	Tind <- T.trans(Tind)
-  if (is.null(dim(Tind))) {
-		Tind <- t(Tind)
-		stopifnot(ncol(Tind) == n)
-		if (nrow(Tind) == 1) {
-			Tind <- matrix(as.vector(Tind), nrow = n, ncol = J)
-		}
-		stopifnot(nrow(tind) == n)
-	}
-	if (rescale.unit) {
-		tind <- (tind-min(tind))/(max(tind)-min(tind))
-		Tind <- (Tind-min(Tind))/(max(Tind)-min(Tind))
-	}
-	
-	# Process functional predictor
-	if (domain=="standardized") {
-		X <- t(apply(X, 1, function(x) {
-			J.i <- sum(!is.na(x))
-			if (J.i==1) {
-				rep(x[1], J)
-			} else {
-				approx(x=seq(0,1,length=J.i), y=x[1:J.i],
-							xout=seq(0,1,length=J))$y
-			}
-		}))
-		L <- getL(tind, integration=integration)
-		LX <- L*X
-	} else {
-		L <- getL(tind, integration=integration, n.int=J.i)
-		LX <- L*X
-		if (domain=="lagged") {
-			LX <- t(apply(LX, 1, function(x) {
-				c(rep(NA,sum(is.na(x))), x[!is.na(x)])
-			}))
-		}
-		LX[is.na(LX)] <- 0
-	}
-	
-	if (interaction=="nonparametric") {
-		data <- list(tind, Tind, LX)
-		names(data) <- c(tindname, Tindname, LXname)
-		call <- as.call(c(list(splinefun),
-						as.symbol(substitute(tindname)),
-						as.symbol(substitute(Tindname)),
-						by=as.symbol(substitute(LXname)), frmls))
-	} else {
-		data <- list(tind, LX)
-		names(data) <- c(tindname, LXname)
-		call <- as.call(c(list(splinefun), as.symbol(substitute(tindname)),
-						by=as.symbol(substitute(LXname)), frmls))		
-		if (interaction %in% c("linear","quadratic")) {
-			LX.lin <- LX * Tind
-			LXname.lin <- paste0(LXname, ".lin")
-			data[[LXname.lin]] <- LX.lin
-			call <- call("+", call, as.call(c(list(splinefun), as.symbol(substitute(tindname)),
-						by=as.symbol(substitute(LXname.lin)), frmls)))
-		}
-		if (interaction == "quadratic") {
-			LX.qud <- LX * Tind^2
-			LXname.qud <- paste0(LXname, ".qud")
-			data[[LXname.qud]] <- LX.qud
-			call <- call("+", call, as.call(c(list(splinefun), as.symbol(substitute(tindname)),
-						by=as.symbol(substitute(LXname.qud)), frmls)))
-		}
-	}
-	
-	res <- list(call = call, data = data, L = L,
-              tindname = tindname, Tindname=Tindname, LXname = LXname)
-	return(res)
+  J.i <- apply(X, 1, function(x) max(which(!is.na(x))))
+  
+  # Create coordinate matrices
+  if (is.null(dim(argvals))) {
+    argvals <- t(argvals)
+    stopifnot(ncol(argvals) == J)
+    if (nrow(argvals) == 1) {
+      argvals <- matrix(as.vector(argvals), nrow = n, ncol = J, byrow = T)
+    }
+    stopifnot(nrow(argvals) == n)
+  }
+  if (is.null(vd)) 
+    # Defaults to the last non-NA value of argvals for that function
+    vd <- sapply(1:nrow(X), function(i) argvals[i,J.i[i]])
+  if (is.null(dim(vd))) {
+    vd <- t(vd)
+    stopifnot(ncol(vd) == n)
+    if (nrow(vd) == 1) {
+      vd <- matrix(as.vector(vd), nrow = n, ncol = J)
+    }
+    stopifnot(nrow(vd) == n)
+  }
+  
+  # Process Functional Predictor
+  if (!is.null(L)) {
+    stopifnot(nrow(L) == n, ncol(L) == J)
+  } else {
+    L <- getL(argvals, integration=integration, n.int=J.i)
+  }
+  LX <- L*X
+  
+  # Zero-out unused coordinates. For argvals and vd, this means we set them to
+  # any other (used) coordinate combination. This ensures they won't affect the
+  # range of values used to set up the basis.
+  # For LX, we set the weight to 0.
+  argvals[is.na(LX)] <- argvals[!is.na(LX)][1]
+  vd[is.na(LX)]      <- vd[!is.na(LX)][1]
+  LX[is.na(LX)]      <- 0
+  
+  # Term names for basis construction
+  argname <- paste(deparse(substitute(X)), ".arg", sep = "")
+  vdname  <- paste(deparse(substitute(X)), ".vd",  sep = "")
+  LXname <- paste("L.", deparse(substitute(X)), sep = "")
+  
+  # Set up transformations
+  dots <- list(...)
+  bs0 <- dots$bs
+  xt0 <- dots$xt
+  if (!is.null(transform)) {
+    # Set up dt basis call
+    dots$bs <- "dt"
+    if (transform=="lagged") {
+      dots$xt <- list(tf=list("s-t"))
+      if (!is.null(bs0)) dots$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt=xt0
+    } else if (transform=="standardized") {
+      dots$xt <- list(tf=list("s/t", "linear01"))
+      if (!is.null(bs0)) dots$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt=xt0
+    } else if (transform=="noInteraction") {
+      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="none"))
+      if (!is.null(bs0)) dots$xt$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt$xt=xt0
+    } else if (transform=="linear") {
+      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="linear", mp=mp))
+      if (!is.null(bs0)) dots$xt$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt$xt=xt0
+    } else if (transform=="quadratic") {
+      dots$xt <- list(tf="s/t", bs="pi", xt=list(g="quadratic", mp=mp))
+      if (!is.null(bs0)) dots$xt$xt$bs=bs0
+      if (!is.null(xt0)) dots$xt$xt$xt=xt0
+    }
+    if (basistype!="s") {
+      # dt basis call must go through s to allow bivariate transformations
+      # (te would split the coordinates up)
+      dots$xt$basistype <- basistype
+      basistype <- "s"
+    }
+  }
+  
+  # Set up basis
+  data <- list(argvals, vd, LX)
+  names(data) <- c(argname, vdname, LXname)
+  #splinefun <- as.symbol(basistype)
+  call <- as.call(c(list(as.symbol(basistype)),
+                    as.symbol(substitute(argname)),
+                    as.symbol(substitute(vdname)),
+                    by=as.symbol(substitute(LXname)), 
+                    dots
+  ))
+  
+  res <- list(call = call, data = data, L = L,
+              argname = argname, vdname=vdname, LXname = LXname)
+  return(res)
 }
 
 
-#' Get the weight matrix for a linear functional term
-#' 
+#' @importFrom stats filter
 #' @keywords internal
-
+# Get the weight matrix for a linear functional term
 getL <- function(tind, integration, n.int=NULL) {
-	nt <- ncol(tind)
-	if (is.null(n.int)) {n.int=rep(nt,nrow(tind))}
-	L <- t(sapply(1:nrow(tind), function(i) {
-	# L <- t(sapply(1:2, function(i) {
-		nt.i <- n.int[i]
-		if (nt.i==1) {
-			c(1,rep(0,nt-1))
-		} else {
-			tind.i <- tind[i,1:nt.i]
-			L.i <- switch(integration, simpson = {
-					((tind.i[nt.i] - tind.i[1])/nt.i)/3 * c(1, rep(c(4, 
-					2), length = nt.i - 2), 1)
-			}, trapezoidal = {
-				diffs <- diff(tind.i)
-				if (length(diffs)>1) {
-					0.5 * c(diffs[1], filter(diffs, filter=c(1,1))[-(nt.i-1)],
-							diffs[(nt.i-1)])
-				} else {
-					rep(0.5*diffs,2)
-				}
-			}, riemann = {
-				diffs <- diff(tind.i)
-				c(mean(diffs), diffs)
-			})
-			c(L.i, rep(0,nt-nt.i))/sum(L.i)
-		}
-	}))
-	L
+  nt <- ncol(tind)
+  if (is.null(n.int)) {n.int=rep(nt,nrow(tind))}
+  L <- t(sapply(1:nrow(tind), function(i) {
+    # L <- t(sapply(1:2, function(i) {
+    nt.i <- n.int[i]
+    if (nt.i==1) {
+      c(1,rep(0,nt-1))
+    } else {
+      tind.i <- tind[i,1:nt.i]
+      L.i <- switch(integration, simpson = {
+        ((tind.i[nt.i] - tind.i[1])/nt.i)/3 * c(1, rep(c(4, 
+                                                         2), length = nt.i - 2), 1)
+      }, trapezoidal = {
+        diffs <- diff(tind.i)
+        if (length(diffs)>1) {
+          0.5 * c(diffs[1], filter(diffs, filter=c(1,1))[-(nt.i-1)],
+                  diffs[(nt.i-1)])
+        } else {
+          rep(0.5*diffs,2)
+        }
+      }, riemann = {
+        diffs <- diff(tind.i)
+        c(mean(diffs), diffs)
+      })
+      c(L.i, rep(0,nt-nt.i))/sum(L.i)
+    }
+  }))
+  L
 }
+
+#' SOFA (Sequential Organ Failure Assessment) Data
+#' 
+#' A dataset containing the SOFA scores (Vincent et al, 1996). for 520 patients,
+#' hospitalized in the intensive care unit (ICU) with Acute Lung Inury. Daily
+#' measurements are available for as long as each one remains in the ICU. This is an
+#' example of variable-domain functional data, as described by Gellar et al. (2014).
+#' 
+#' The data was collected as part of the Improving Care of ALI Patients (ICAP)
+#' study (Needham et al., 2006). If you use this dataset as an example in
+#' written work, please cite the study protocol.
+#' 
+#' @format A data frame with 520 rows (subjects) and 7 variables:
+#' \describe{
+#'   \item{death}{binary indicator that the subject died in the ICU}
+#'   \item{SOFA}{520 x 173 matrix in variable-domain format (a ragged array). 
+#'     Each column represents an ICU day. Each row contains the SOFA scores for
+#'     a subject, one per day, for as long as the subject remained in the ICU.
+#'     The remaining cells of each row are padded with \code{NA}s. SOFA scores
+#'     range from 0 to 24, increasing with severity of organ failure. Missing
+#'     values during one's ICU stay have been imputed using LOCF.}
+#'   \item{SOFA_raw}{Identical to the \code{SOFA} element, except that it contains
+#'     some missing values during one's hospitalization. These missing values
+#'     arise when a subject leaves the ICU temporarily, only to be re-admitted.
+#'     SOFA scores are not monitored outside the ICU.}
+#'   \item{los}{ICU length of stay, i.e., the number of days the patient remained
+#'     in the ICU prior to death or final discharge.}
+#'   \item{age}{Patient age}
+#'   \item{male}{Binay indicator for male gender}
+#'   \item{Charlson}{Charlson co-morbidity index, a measure of baseline health
+#'     status (before hospitalization and ALI).}
+#' }
+#' 
+#' @references 
+#'    Vincent, JL, Moreno, R, Takala, J, Willatts, S, De Mendonca, A,
+#'    Bruining, H, Reinhart, CK, Suter, PM, Thijs, LG (1996). The SOFA ( Sepsis
+#'    related Organ Failure Assessment) score to describe organ
+#'    dysfunction/failure. Intensive Care Medicine, 22(7): 707-710.
+#'    
+#'    Needham, D. M., Dennison, C. R., Dowdy, D. W., Mendez-Tellez, P. A.,
+#'    Ciesla, N., Desai, S. V., Sevransky, J., Shanholtz, C., Scharfstein, D.,
+#'    Herridge, M. S., and Pronovost, P. J. (2006). Study protocol: The
+#'    Improving Care of Acute Lung Injury Patients (ICAP) study. Critical Care
+#'    (London, England), 10(1), R9.
+#'    
+#'    Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
+#'    Ciprian M. Crainiceanu. Variable-Domain Functional Regression for Modeling
+#'    ICU Data. Journal of the American Statistical Association,
+#'    109(508):1425-1439, 2014.
+#'    
+"sofa"

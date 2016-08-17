@@ -1,5 +1,174 @@
+##' Likelihood Ratio Test and Restricted Likelihood Ratio Test for inference of
+##' functional predictors
+##'
+##' NOTE: this function is designed to work with pfr_old() rather than pfr().
+##' Given a pfr object of family="gaussian", tests whether the function is
+##' identically equal to its mean (constancy), or whether the functional
+##' predictor significantly improves the model (inclusion).  Based on
+##' zero-variance-component work of Crainiceanu et al. (2004), Scheipl et al.
+##' (2008), and Swihart et al. (2012).
+##'
+##' A Penalized Functional Regression of family="gaussian" can be represented
+##' as a linear mixed model dependent on variance components. Testing whether
+##' certain variance components and (potentially) fixed effect coefficients are
+##' 0 correspond to tests of constancy and inclusion of functional predictors.
+##'
+##' For rlrt.pfr, Restricted Likelihood Ratio Test is preferred for the
+##' constancy test as under the special B-splines implementation of pfr for the
+##' coefficient function basis the test involves only the variance component.
+##' Therefore, the constancy test is best for pfr objects with method="REML";
+##' if the method was something else, a warning is printed and the model refit
+##' with "REML" and a test is then conducted.
+##'
+##' For rlrt.pfr, the Likelihood Ratio Test is preferred for the inclusion test
+##' as under the special B-splines implementation of pfr for the coefficient
+##' function basis the test involves both the variance component and a fixed
+##' effect coefficient in the linear mixed model representation. Therefore, the
+##' inclusion test is best for pfr objects with method="ML"; if the method was
+##' something else, a warning is printed and the model refit with "ML" and a
+##' test is then conducted.
+##'
+##' @param pfr.obj an object returned by pfr_old()
+##' @param test "constancy" will test functional form of the coefficient
+##' function of the last function listed in funcs in pfr.obj against the null
+##' of a constant line: the average of the functional predictor.  "inclusion"
+##' will test functional form of the coefficient function of the last function
+##' listed in funcs in pfr.obj against the null of 0: that is, whether the
+##' functional predictor should be included in the model.
+##' @param ... additional arguments
+##' @return \item{p.val }{the p-value for the full model (alternative) against
+##' the null specified by the test} \item{test.stat }{the test statistic, see
+##' Scheipl et al. 2008 and Swihart et al 2012}
+##'
+##' \item{ma }{the alternative model as fit with mgcv::gam} \item{m0 }{the null
+##' model as fit with mgcv::gam} \item{m }{the model containing only the
+##' parameters being tested as fit with mgcv::gam}
+##' @author Jeff Goldsmith <jeff.goldsmith@@columbia.edu> and Bruce Swihart
+##' <bswihart@@jhsph.edu>
+##' @seealso \code{\link{pfr}}, \code{\link{predict.pfr}}, package
+##' \code{RLRsim}
+##' @export
+##' @importFrom RLRsim RLRTSim LRTSim
+##' @importFrom mgcv summary.gam gam
+##' @references Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich,
+##' D. (2011). Penalized functional regression. \emph{Journal of Computational
+##' and Graphical Statistics}, 20(4), 830--851.
+##'
+##' Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012).
+##' Longitudinal penalized functional regression for cognitive outcomes on
+##' neuronal tract measurements. \emph{Journal of the Royal Statistical
+##' Society: Series C}, 61(3), 453--469.
+##'
+##' Crainiceanu, C. and Ruppert, D. (2004) Likelihood ratio tests in linear
+##' mixed models with one variance component. \emph{Journal of the Royal
+##' Statistical Society: Series B}, 66, 165--185.
+##'
+##' Scheipl, F. (2007) Testing for nonparametric terms and random effects in
+##' structured additive regression. Diploma thesis.\
+##' http://www.statistik.lmu.de/~scheipl/downloads/DIPLOM.zip.
+##'
+##' Scheipl, F., Greven, S. and Kuechenhoff, H (2008) Size and power of tests
+##' for a zero random effect variance or polynomial regression in additive and
+##' linear mixed models.  \emph{Computational Statistics & Data Analysis},
+##' 52(7), 3283--3299.
+##'
+##' Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (2012).
+##' Testing for functional effects. Johns Hopkins University Dept. of
+##' Biostatistics Working Paper 247. Available at
+##' \url{http://biostats.bepress.com/jhubiostat/paper247}
+##' @examples
+##'
+##' \dontrun{
+##' ##################################################################
+##' #########               DTI Data Example                 #########
+##' ##################################################################
+##'
+##' ##################################################################
+##' # For more about this example, see Swihart et al. 2012
+##' # Testing for Functional Effects
+##' ##################################################################
+##'
+##' ## load and reassign the data;
+##' data(DTI2)
+##' O  <- DTI2$pasat ## PASAT outcome
+##' id <- DTI2$id    ## subject id
+##' W1 <- DTI2$cca   ## Corpus Callosum
+##' W2 <- DTI2$rcst  ## Right corticospinal
+##' V  <- DTI2$visit ## visit
+##'
+##' ## prep scalar covariate
+##' visit.1.rest <- matrix(as.numeric(V > 1), ncol=1)
+##' covar.in <- visit.1.rest
+##'
+##'
+##' ## note there is missingness in the functional predictors
+##' apply(is.na(W1), 2, mean)
+##' apply(is.na(W2), 2, mean)
+##'
+##' ## fit two univariate models, then one model with both functional predictors
+##' pfr.obj.t1 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W1),     subj = id, kz = 10, kb = 50)
+##' pfr.obj.t2 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W2),     subj = id, kz = 10, kb = 50)
+##' pfr.obj.t3 <- pfr_old(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = id, kz = 10, kb = 50)
+##'
+##' ## plot the coefficient function and bounds
+##' dev.new()
+##' par(mfrow=c(2,2))
+##' ran <- c(-2,.5)
+##' matplot(cbind(pfr.obj.t1$BetaHat[[1]], pfr.obj.t1$Bounds[[1]]),
+##'   type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat",
+##'   main = "CCA", xlab="Location", ylim=ran)
+##' abline(h=0, col="blue")
+##' matplot(cbind(pfr.obj.t2$BetaHat[[1]], pfr.obj.t2$Bounds[[1]]),
+##'   type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat",
+##'   main = "RCST", xlab="Location", ylim=ran)
+##' abline(h=0, col="blue")
+##' matplot(cbind(pfr.obj.t3$BetaHat[[1]], pfr.obj.t3$Bounds[[1]]),
+##'   type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat",
+##'   main = "CCA  - mult.", xlab="Location", ylim=ran)
+##' abline(h=0, col="blue")
+##' matplot(cbind(pfr.obj.t3$BetaHat[[2]], pfr.obj.t3$Bounds[[2]]),
+##'   type = 'l', lty = c(1,2,2), col = c(1,2,2), ylab = "BetaHat",
+##'   main = "RCST - mult.", xlab="Location", ylim=ran)
+##' abline(h=0, col="blue")
+##'
+##' ## do some testing
+##' t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
+##' t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
+##' t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
+##'
+##' t1$test.stat
+##' t1$p.val
+##'
+##' t2$test.stat
+##' t2$p.val
+##'
+##' t3$test.stat
+##' t3$p.val
+##'
+##'
+##' ## do some testing with rlrt.pfr(); same as above but subj = NULL
+##' pfr.obj.t1 <- pfr(Y = O, covariates=covar.in, funcs = list(W1),     subj = NULL, kz = 10, kb = 50)
+##' pfr.obj.t2 <- pfr(Y = O, covariates=covar.in, funcs = list(W2),     subj = NULL, kz = 10, kb = 50)
+##' pfr.obj.t3 <- pfr(Y = O, covariates=covar.in, funcs = list(W1, W2), subj = NULL, kz = 10, kb = 50)
+##'
+##' t1 <- rlrt.pfr(pfr.obj.t1, "constancy")
+##' t2 <- rlrt.pfr(pfr.obj.t2, "constancy")
+##' t3 <- rlrt.pfr(pfr.obj.t3, "inclusion")
+##'
+##' t1$test.stat
+##' t1$p.val
+##'
+##' t2$test.stat
+##' t2$p.val
+##'
+##' t3$test.stat
+##' t3$p.val
+##' }
 rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
 {
+  
+  warning("rlrt.pfr() is designed to be used with pfr_old() rather than pfr(). ")
+  
   if(is.null(test) || !(test %in% c("constancy","inclusion")) ){
     print("test must be 'constancy' or 'inclusion'")
     break;
@@ -33,8 +202,7 @@ rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
     BetaHat.ma <- list()
     if(fit$method!="REML"){
 
-      print("warning: test 'constancy' is a RLRT for bsplines and a refit of the full (alternative) model")
-      print("was completed with method = 'REML'")
+      warning("warning: test 'constancy' is a RLRT for bsplines and a refit of the full (alternative) model was completed with method = 'REML'")
 
       ## (re)fit alternative under method="ML"
       ma = gam(Y ~ X - 1, paraPen = list(X = D), method = "REML", family = family)#, ...)
@@ -110,8 +278,7 @@ rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
     ## inclusion is a LRT.  Refit full model under method=ML if necessary
     if(fit$method=="REML"){
 
-      print("warning: test 'confounding' is a LRT and a refit of the full (alternative) model")
-      print("was completed with method = 'ML'")
+      warning("test 'confounding' is a LRT and a refit of the full (alternative) model was completed with method = 'ML'")
 
       ## (re)fit alternative under method="ML"
       ma = gam(Y ~ X - 1, paraPen = list(X = D), method = "ML", family = family)#, ...)
