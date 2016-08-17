@@ -244,5 +244,6 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
   }
   ret = lapply(1:length(ret.objects), function(u) get(ret.objects[u]))
   names(ret) = ret.objects
-  return(ret)      	                	
+  return(ret) 
+  
 }
