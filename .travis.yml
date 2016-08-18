@@ -18,7 +18,6 @@ after_failure:
 notifications:
   email:
     recipients:
-      - huangracer@gmail.com
-      - fabian.scheipl@stat.uni-muenchen.de
+     
     on_success: change
     on_failure: always
