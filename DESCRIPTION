@@ -2,7 +2,7 @@ Package: refundDevel
 Type: Package
 Title: Regression with Functional Data (Developer Version)
 Version: 0.1-17
-Date: 2016-06-20
+Date: 2016-08-18
 Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@gmail.com"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
@@ -19,11 +19,13 @@ Authors@R: c(person("Lei", "Huang", role = c("aut","cre"), email = "huangracer@g
     person(c("Madan", "Gopal"), "Kundu", role="ctb"),
     person("Julia", "Wrobel", role="ctb", email="jw3134@cumc.columbia.edu"),
     person("So Young", "Park", role="ctb", email="spark13@ncsu.edu"),
-    person(c("David", "L."), "Miller", role="ctb", email="dave@ninepointeightone.net"))
+    person(c("David", "L."), "Miller", role="ctb", email="dave@ninepointeightone.net"),
+    person("Cai", "Li", role="ctb", email="cli9@ncsu.edu"))
 Depends:
     R (>= 2.14.0)
 Imports:
     fda,
+    face,
     Matrix,
     lattice,
     boot,

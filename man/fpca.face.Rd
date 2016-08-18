@@ -8,7 +8,11 @@ fpca.face(Y = NULL, ydata = NULL, Y.pred = NULL, argvals = NULL,
   pve = 0.99, npc = NULL, var = FALSE, simul = FALSE,
   sim.alpha = 0.95, center = TRUE, knots = 35, p = 3, m = 2,
   lambda = NULL, alpha = 1, search.grid = TRUE, search.length = 100,
-  method = "L-BFGS-B", lower = -20, upper = 20, control = NULL)
+  method = "L-BFGS-B", lower = -20, upper = 20, control = NULL,
+  integration = "trapezoidal", newdata = NULL, argvals.new = NULL,
+  spar.knots = 10, spar.knots.option = "quantile", lambda_mean = NULL,
+  spar.search.length = 14, spar.lower = -3, spar.upper = 10,
+  spar.lower2 = -1, spar.upper2 = 5, calculate.scores = FALSE)
 }
 \arguments{
 \item{Y, ydata}{the user must supply either \code{Y}, a matrix of functions
@@ -64,6 +68,43 @@ Otherwise, \code{\link[stats]{optim}} is used}
 \item{upper}{see \code{\link[stats]{optim}}}
 
 \item{control}{see \code{\link[stats]{optim}}}
+
+\item{integration}{quadrature method for numerical integration; only
+\code{'trapezoidal'} is currently supported}
+
+\item{newdata}{of the same strucutre as \code{ydata}; 
+defaults to NULL, then no prediction}
+
+\item{argvals.new}{a vector of observation time points to evaluate mean 
+function, covariance function, error variance and etc. If NULL, then 100 
+equidistant points in the range of \code{ydata$argvals}}
+
+\item{spar.knots}{a vector of interior knots or the number of knots for 
+B-spline basis functions to be used for sparse data; defaults to 10}
+
+\item{spar.knots.option}{if \code{spar.knots} specifies the number of knots, 
+then \code{spar.knots.option} will be used for sparse data. Default "quantile": quantiles of 
+the observed time points will be selected. Alternatively "equally-spaced", then 
+equally-spaced knots in the range of observed time points will be selected}
+
+\item{lambda_mean}{the value of the smoothing parameter for mean smoothing; defaults to NULL}
+
+\item{spar.search.length}{the number of equidistant (log scale) smoothing 
+parameters to search for sparse data; defaults to 14}
+
+\item{spar.lower}{lower bounds for log smoothing parameter for first step of 
+estimation for sparse data; defaults are -3}
+
+\item{spar.upper}{upper bounds for log smoothing parameter for first step of 
+estimation for sparse data; defaults are 10}
+
+\item{spar.lower2}{lower bounds for log smoothing parameter for second step of 
+estimation for sparse data; defaults are -1}
+
+\item{spar.upper2}{upper bounds for log smoothing parameter for second step of 
+estimation for sparse data; defaults are 5}
+
+\item{calculate.scores}{if TRUE, scores will be calculated for sparse data}
 }
 \value{
 A list with components
@@ -140,9 +181,28 @@ for(k in 1:N){
   
   lines(t[seq],phi[seq,k],lwd = 2, col = "black")
 }
+
+##################################################
+########     CD4 Data Example (Sparse Data) ######
+##################################################
+data(cd4)
+n <- nrow(cd4)
+T <- ncol(cd4)
+id <- rep(1:n,each=T)
+t <- rep(-18:42,times=n)
+y <- as.vector(t(cd4))
+sel <- which(is.na(y))
+## organize data and apply fpca.face
+data <- data.frame(y=log(y[-sel]),argvals = t[-sel],subj = id[-sel])
+data <- data[data$y>4.5,]
+tnew <- seq(-18,42)
+tnew <- tnew[!tnew==0]
+fit_face <- fpca.face(ydata=data,argvals.new=tnew,var=TRUE)
+
+
 }
 \author{
-Luo Xiao
+Luo Xiao, Cai Li \email{cli9@ncsu.edu}
 }
 \references{
 Xiao, L., Li, Y., and Ruppert, D. (2013).
@@ -153,6 +213,9 @@ Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C. (2016).
 Fast covariance estimation for high-dimensional functional data.  
 \emph{Statistics and Computing}, 26, 409-421.
 DOI: 10.1007/s11222-014-9485-x.
+
+Xiao, L., Li, C., Checkley, W., and Crainiceanu, C. (2016) 
+Fast covariance estimation for sparse functional data, manuscript.
 }
 \seealso{
 \code{\link{fpca.sc}}  for another covariance-estimate based

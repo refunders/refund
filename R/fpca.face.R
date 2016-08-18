@@ -56,29 +56,29 @@
 #' @param control see \code{\link[stats]{optim}}
 #' @param integration quadrature method for numerical integration; only
 #' \code{'trapezoidal'} is currently supported
-#' @param newdata; of the same strucutre as \code{ydata}; 
+#' @param newdata of the same strucutre as \code{ydata}; 
 #' defaults to NULL, then no prediction
-#' @param argvals.new; a vector of observation time points to evaluate mean 
+#' @param argvals.new a vector of observation time points to evaluate mean 
 #' function, covariance function, error variance and etc. If NULL, then 100 
 #' equidistant points in the range of \code{ydata$argvals}
-#' @param spar.knots; a vector of interior knots or the number of knots for 
+#' @param spar.knots a vector of interior knots or the number of knots for 
 #' B-spline basis functions to be used for sparse data; defaults to 10
-#' @param spar.knots.option; if \code{spar.knots} specifies the number of knots, 
+#' @param spar.knots.option if \code{spar.knots} specifies the number of knots, 
 #' then \code{spar.knots.option} will be used for sparse data. Default "quantile": quantiles of 
 #' the observed time points will be selected. Alternatively "equally-spaced", then 
 #' equally-spaced knots in the range of observed time points will be selected
-#' @param lambda_mean; the value of the smoothing parameter for mean smoothing; defaults to NULL
-#' @param spar.search.length; the number of equidistant (log scale) smoothing 
+#' @param lambda_mean the value of the smoothing parameter for mean smoothing; defaults to NULL
+#' @param spar.search.length the number of equidistant (log scale) smoothing 
 #' parameters to search for sparse data; defaults to 14
-#' @param spar.lower; lower bounds for log smoothing parameter for first step of 
+#' @param spar.lower lower bounds for log smoothing parameter for first step of 
 #' estimation for sparse data; defaults are -3  
-#' @param spar.upper; upper bounds for log smoothing parameter for first step of 
+#' @param spar.upper upper bounds for log smoothing parameter for first step of 
 #' estimation for sparse data; defaults are 10
-#' @param spar.lower2; lower bounds for log smoothing parameter for second step of 
+#' @param spar.lower2 lower bounds for log smoothing parameter for second step of 
 #' estimation for sparse data; defaults are -1  
-#' @param spar.upper2; upper bounds for log smoothing parameter for second step of 
+#' @param spar.upper2 upper bounds for log smoothing parameter for second step of 
 #' estimation for sparse data; defaults are 5 
-#' @param calculate.scores; if TRUE, scores will be calculated for sparse data
+#' @param calculate.scores if TRUE, scores will be calculated for sparse data
 #' @return A list with components
 #' \enumerate{
 #' \item \code{Yhat} - If \code{Y.pred} is specified, the smooth version of
@@ -189,7 +189,7 @@
 #' @importFrom splines spline.des
 #' @import face 
 
-fpca.face2 <-
+fpca.face <-
 function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, 
          npc  = NULL, var = FALSE, simul = FALSE, sim.alpha = 0.95,
          center=TRUE,knots=35,p=3,m=2,lambda=NULL,alpha = 1,
