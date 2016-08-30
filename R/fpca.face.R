@@ -1,8 +1,12 @@
 #' Functional principal component analysis with fast covariance estimation
 #'
 #' A fast implementation of the sandwich smoother (Xiao et al., 2013)
-#' for covariance matrix smoothing. Pooled generalized cross validation
-#' at the data level is used for selecting the smoothing parameter. 
+#' for covariance matrix smoothing. Two options are provided, when input is a data
+#' matrix of dense or regular design, the bivariate smoother is specifically
+#' designed for the covariance matrix of high dimension, pooled generalized 
+#' cross validation at the data level is used for selecting the smoothing parameter; 
+#' when input is a triplet list of sparse or irregular design, the bivariate smoother 
+#' can be used for sparse functional or longitudinal data.
 #' @param Y,ydata the user must supply either \code{Y}, a matrix of functions
 #' observed on a regular grid, or a data frame \code{ydata} representing
 #' irregularly observed functions. See Details.
@@ -98,7 +102,7 @@
 #' \item \code{crit.val} - list of estimated quantiles; only returned if
 #' \code{simul == TRUE}
 #' }
-#' @author Luo Xiao, Cai Li \email{cli9@ncsu.edu}
+#' @author Luo Xiao \email{lxiao5@ncsu.edu}, Cai Li \email{cli9@ncsu.edu}
 #' @seealso   \code{\link{fpca.sc}}  for another covariance-estimate based
 #' smoothing of \code{Y}; \code{\link{fpca2s}} and \code{\link{fpca.ssvd}}
 #' for two SVD-based smoothings.  
@@ -111,7 +115,7 @@
 #' \emph{Statistics and Computing}, 26, 409-421.
 #' DOI: 10.1007/s11222-014-9485-x.
 #' 
-#' Xiao, L., Li, C., Checkley, W., and Crainiceanu, C. (2016) 
+#' Xiao, L., Li, C., Checkley, W., and Crainiceanu, C. (2016). 
 #' Fast covariance estimation for sparse functional data, manuscript.
 #' 
 #' @examples
@@ -237,6 +241,7 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99,
     argvals <- fit$argvals.new
   }else{
     stopifnot(is.matrix(Y))
+    if(sum(is.na(Y))/length(Y) >= 0.3) stop("Too many missing values, provide ydata!")
     data_dim <- dim(Y)
     I <- data_dim[1] ## number of subjects
     J <- data_dim[2] ## number of obs per function

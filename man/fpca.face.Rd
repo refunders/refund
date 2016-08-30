@@ -129,8 +129,12 @@ subject
 }
 \description{
 A fast implementation of the sandwich smoother (Xiao et al., 2013)
-for covariance matrix smoothing. Pooled generalized cross validation
-at the data level is used for selecting the smoothing parameter.
+for covariance matrix smoothing. Two options are provided, when input is a data
+matrix of dense or regular design, the bivariate smoother is specifically
+designed for the covariance matrix of high dimension, pooled generalized 
+cross validation at the data level is used for selecting the smoothing parameter; 
+when input is a triplet list of sparse or irregular design, the bivariate smoother 
+can be used for sparse functional or longitudinal data.
 }
 \examples{
 #### settings
@@ -202,7 +206,7 @@ fit_face <- fpca.face(ydata=data,argvals.new=tnew,var=TRUE)
 
 }
 \author{
-Luo Xiao, Cai Li \email{cli9@ncsu.edu}
+Luo Xiao \email{lxiao5@ncsu.edu}, Cai Li \email{cli9@ncsu.edu}
 }
 \references{
 Xiao, L., Li, Y., and Ruppert, D. (2013).
@@ -214,7 +218,7 @@ Fast covariance estimation for high-dimensional functional data.
 \emph{Statistics and Computing}, 26, 409-421.
 DOI: 10.1007/s11222-014-9485-x.
 
-Xiao, L., Li, C., Checkley, W., and Crainiceanu, C. (2016) 
+Xiao, L., Li, C., Checkley, W., and Crainiceanu, C. (2016). 
 Fast covariance estimation for sparse functional data, manuscript.
 }
 \seealso{
