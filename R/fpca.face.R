@@ -18,21 +18,21 @@
 #' @param var logical; should an estimate of standard error be returned?
 #' @param simul logical; if \code{TRUE} curves will we simulated using
 #' Monte Carlo to obtain an estimate of the \code{sim.alpha} quantile at each
-#' \code{argval}; ignored if \code{var == FALSE}
+#' \code{argval}; ignored if \code{var == FALSE}.
 #' @param sim.alpha numeric; if \code{simul==TRUE}, quantile to estimate at
-#' each \code{argval}; ignored if \code{var == FALSE}
+#' each \code{argval}; ignored if \code{var == FALSE}.
 #' @param npc how many smooth SVs to try to extract, if \code{NA} (the
 #' default) the hard thresholding rule of Gavish and Donoho (2014) is used (see
 #' Details, References).
 #' @param center logical; center \code{Y} so that its column-means are 0? Defaults to
-#' \code{TRUE}
-#' @param p integer; the degree of B-splines functions to use
-#' @param m integer; the order of difference penalty to use
-#' @param knots number of knots to use or the vectors of knots; defaults to 35
+#' \code{TRUE}.
+#' @param p integer; the degree of B-splines functions to use.
+#' @param m integer; the order of difference penalty to use.
+#' @param knots number of knots to use or the vectors of knots; defaults to 35.
 #' @param lambda smoothing parameter; if not specified smoothing parameter is
-#' chosen using \code{\link[stats]{optim}} or a grid search
+#' chosen using \code{\link[stats]{optim}} or a grid search.
 #' @param alpha numeric; tuning parameter for GCV; see parameter \code{gamma}
-#' in \code{\link[mgcv]{gam}}
+#' in \code{\link[mgcv]{gam}}.
 ## @param maxiter how many iterations of the power algorithm to perform at
 ## most (defaults to 15)
 ## @param tol convergence tolerance for power algorithm (defaults to 1e-4)
@@ -51,56 +51,59 @@
 ## @param score.method character; method to use to estimate scores; one of
 ## \code{"blup"} or \code{"int"} (default)
 #' @param search.grid logical; should a grid search be used to find \code{lambda}?
-#'  Otherwise, \code{\link[stats]{optim}} is used
+#'  Otherwise, \code{\link[stats]{optim}} is used.
 #' @param search.length integer; length of grid to use for grid search for
-#' \code{lambda}; ignored if \code{search.grid} is \code{FALSE}
-#' @param method method to use; see \code{\link[stats]{optim}}
-#' @param lower see \code{\link[stats]{optim}}
-#' @param upper see \code{\link[stats]{optim}}
-#' @param control see \code{\link[stats]{optim}}
+#' \code{lambda}; ignored if \code{search.grid} is \code{FALSE}.
+#' @param method method to use; see \code{\link[stats]{optim}}.
+#' @param lower see \code{\link[stats]{optim}}.
+#' @param upper see \code{\link[stats]{optim}}.
+#' @param control see \code{\link[stats]{optim}}.
 #' @param integration quadrature method for numerical integration; only
-#' \code{'trapezoidal'} is currently supported
+#' \code{'trapezoidal'} is currently supported.
 #' @param newdata of the same strucutre as \code{ydata}; 
-#' defaults to NULL, then no prediction
+#' defaults to NULL, then no prediction.
 #' @param argvals.new a vector of observation time points to evaluate mean 
 #' function, covariance function, error variance and etc. If NULL, then 100 
-#' equidistant points in the range of \code{ydata$argvals}
+#' equidistant points in the range of \code{ydata$argvals}.
 #' @param spar.knots a vector of interior knots or the number of knots for 
-#' B-spline basis functions to be used for sparse data; defaults to 10
+#' B-spline basis functions to be used for sparse data; defaults to 10.
 #' @param spar.knots.option if \code{spar.knots} specifies the number of knots, 
 #' then \code{spar.knots.option} will be used for sparse data. Default "quantile": quantiles of 
 #' the observed time points will be selected. Alternatively "equally-spaced", then 
-#' equally-spaced knots in the range of observed time points will be selected
-#' @param lambda_mean the value of the smoothing parameter for mean smoothing; defaults to NULL
+#' equally-spaced knots in the range of observed time points will be selected.
+#' @param lambda_mean the value of the smoothing parameter for mean smoothing; defaults to NULL.
 #' @param spar.search.length the number of equidistant (log scale) smoothing 
-#' parameters to search for sparse data; defaults to 14
+#' parameters to search for sparse data; defaults to 14.
 #' @param spar.lower lower bounds for log smoothing parameter for first step of 
-#' estimation for sparse data; defaults are -3  
+#' estimation for sparse data; defaults are -3.  
 #' @param spar.upper upper bounds for log smoothing parameter for first step of 
-#' estimation for sparse data; defaults are 10
+#' estimation for sparse data; defaults are 10.
 #' @param spar.lower2 lower bounds for log smoothing parameter for second step of 
-#' estimation for sparse data; defaults are -1  
+#' estimation for sparse data; defaults are -1.  
 #' @param spar.upper2 upper bounds for log smoothing parameter for second step of 
-#' estimation for sparse data; defaults are 5 
-#' @param calculate.scores if TRUE, scores will be calculated for sparse data
+#' estimation for sparse data; defaults are 5 .
+#' @param calculate.scores if TRUE, scores will be calculated for sparse data.
 #' @return A list with components
 #' \enumerate{
 #' \item \code{Yhat} - If \code{Y.pred} is specified, the smooth version of
 #' \code{Y.pred}.   Otherwise, if \code{Y.pred=NULL}, the smooth version of \code{Y}.
-#' \item \code{scores} - matrix of scores
-#' \item \code{mu} - mean function
-#' \item \code{npc} - number of principal components
-#' \item \code{efunctions} - matrix of eigenvectors
-#' \item \code{evalues} - vector of eigenvalues
+#' \item \code{Y} - the observed data.
+#' \item \code{scores} - matrix of scores.
+#' \item \code{mu} - mean function.
+#' \item \code{npc} - number of principal components.
+#' \item \code{efunctions} - matrix of eigenvectors.
+#' \item \code{evalues} - vector of eigenvalues.
+#' \item \code{argvals} - the argument values of the function evaluations in Y.
 #' }
 #' if \code{var == TRUE} additional components are returned
 #' \enumerate{
-#' \item \code{sigma2} - estimate of the error variance
+#' \item \code{sigma2} - estimate of the error variance.
 #' \item \code{VarMats} - list of covariance function estimate for each
-#' subject
-#' \item \code{diag.var} - matrix containing the diagonals of each matrix in
+#' subject.
+#' \item \code{diag.var} - diagonal elements of the covariance matrices 
+#' for each estimated curve.
 #' \item \code{crit.val} - list of estimated quantiles; only returned if
-#' \code{simul == TRUE}
+#' \code{simul == TRUE}.
 #' }
 #' @author Luo Xiao \email{lxiao5@ncsu.edu}, Cai Li \email{cli9@ncsu.edu}
 #' @seealso   \code{\link{fpca.sc}}  for another covariance-estimate based
@@ -219,9 +222,28 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99,
   # source("pspline.setting.R") # comment out
 
   stopifnot((!is.null(Y) && is.null(ydata)) || (is.null(Y) && !is.null(ydata)))
-  
+
   # if data.frame version of ydata is provided
   sparseOrNongrid <- !is.null(ydata)
+  if(!sparseOrNongrid){
+    stopifnot(is.matrix(Y))
+    if(sum(is.na(Y))/length(Y) >= 0.3) {
+      cat("Too many missing values (>= 30%), Y matrix converted to ydata!")
+      data_dim <- dim(Y)
+      I <- data_dim[1] ## number of subjects
+      J <- data_dim[2] ## number of obs per function
+      if(is.null(argvals))  {
+        argvals.new <- (1:J)/J-1/2/J ## if NULL, assume equally spaced
+      }else{
+        argvals.new <- argvals
+      }
+      na.idx <- which(is.na(t(Y)))
+      ydata <- data.frame(y = c(t(Y))[-na.idx],
+                          argvals = rep(argvals,I)[-na.idx],
+                          subj = c(sapply(1:I,function(x) rep(x,J)))[-na.idx])
+      sparseOrNongrid <- TRUE
+    }
+  }
   if(sparseOrNongrid){
     fit <- face.sparse(ydata, newdata = newdata,
                        center = center, argvals.new = argvals.new,
@@ -231,17 +253,36 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99,
                        lower = spar.lower, upper = spar.upper, 
                        lower2 = spar.lower2, upper2 = spar.upper2,
                        calculate.scores = calculate.scores, pve = pve)
-    Yhat <- fit$y.pred
+
+    if(!is.null(fit$y.pred)){
+      Yhat <- fit$y.pred
+    }else{
+      I <- max(ydata$subj)
+      J <- length(fit$argvals.new)
+      argvals <- fit$argvals.new
+      Yhat <- matrix(NaN,I,J)
+      for(i in 1:I){
+        sel <- ydata$subj==i
+        dati <- ydata[sel,]
+
+        k <- length(argvals)
+        dati_pred <- data.frame(y = rep(NA,nrow(dati) + k),
+                                argvals = c(rep(NA,nrow(dati)),argvals),
+                                subj = rep(dati$subj[1],nrow(dati) + k))
+
+        dati_pred[1:nrow(dati),] <- dati
+        Yhat[i,] <- predict(fit,dati_pred)$y.pred[-(1:nrow(dati))]
+      }
+    }
     Y <- ydata
     scores <- fit$scores
     mu <- fit$mu.new
     efunctions <- fit$eigenfunctions
     evalues <- fit$eigenvalues
     npc <- fit$npc
-    argvals <- fit$argvals.new
+    
   }else{
-    stopifnot(is.matrix(Y))
-    if(sum(is.na(Y))/length(Y) >= 0.3) stop("Too many missing values, provide ydata!")
+    
     data_dim <- dim(Y)
     I <- data_dim[1] ## number of subjects
     J <- data_dim[2] ## number of obs per function
