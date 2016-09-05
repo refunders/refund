@@ -35,96 +35,99 @@ Details, References).}
 
 \item{simul}{logical; if \code{TRUE} curves will we simulated using
 Monte Carlo to obtain an estimate of the \code{sim.alpha} quantile at each
-\code{argval}; ignored if \code{var == FALSE}}
+\code{argval}; ignored if \code{var == FALSE}.}
 
 \item{sim.alpha}{numeric; if \code{simul==TRUE}, quantile to estimate at
-each \code{argval}; ignored if \code{var == FALSE}}
+each \code{argval}; ignored if \code{var == FALSE}.}
 
 \item{center}{logical; center \code{Y} so that its column-means are 0? Defaults to
-\code{TRUE}}
+\code{TRUE}.}
 
-\item{knots}{number of knots to use or the vectors of knots; defaults to 35}
+\item{knots}{number of knots to use or the vectors of knots; defaults to 35.}
 
-\item{p}{integer; the degree of B-splines functions to use}
+\item{p}{integer; the degree of B-splines functions to use.}
 
-\item{m}{integer; the order of difference penalty to use}
+\item{m}{integer; the order of difference penalty to use.}
 
 \item{lambda}{smoothing parameter; if not specified smoothing parameter is
-chosen using \code{\link[stats]{optim}} or a grid search}
+chosen using \code{\link[stats]{optim}} or a grid search.}
 
 \item{alpha}{numeric; tuning parameter for GCV; see parameter \code{gamma}
-in \code{\link[mgcv]{gam}}}
+in \code{\link[mgcv]{gam}}.}
 
 \item{search.grid}{logical; should a grid search be used to find \code{lambda}?
-Otherwise, \code{\link[stats]{optim}} is used}
+Otherwise, \code{\link[stats]{optim}} is used.}
 
 \item{search.length}{integer; length of grid to use for grid search for
-\code{lambda}; ignored if \code{search.grid} is \code{FALSE}}
+\code{lambda}; ignored if \code{search.grid} is \code{FALSE}.}
 
-\item{method}{method to use; see \code{\link[stats]{optim}}}
+\item{method}{method to use; see \code{\link[stats]{optim}}.}
 
-\item{lower}{see \code{\link[stats]{optim}}}
+\item{lower}{see \code{\link[stats]{optim}}.}
 
-\item{upper}{see \code{\link[stats]{optim}}}
+\item{upper}{see \code{\link[stats]{optim}}.}
 
-\item{control}{see \code{\link[stats]{optim}}}
+\item{control}{see \code{\link[stats]{optim}}.}
 
 \item{integration}{quadrature method for numerical integration; only
-\code{'trapezoidal'} is currently supported}
+\code{'trapezoidal'} is currently supported.}
 
 \item{newdata}{of the same strucutre as \code{ydata}; 
-defaults to NULL, then no prediction}
+defaults to NULL, then no prediction.}
 
 \item{argvals.new}{a vector of observation time points to evaluate mean 
 function, covariance function, error variance and etc. If NULL, then 100 
-equidistant points in the range of \code{ydata$argvals}}
+equidistant points in the range of \code{ydata$argvals}.}
 
 \item{spar.knots}{a vector of interior knots or the number of knots for 
-B-spline basis functions to be used for sparse data; defaults to 10}
+B-spline basis functions to be used for sparse data; defaults to 10.}
 
 \item{spar.knots.option}{if \code{spar.knots} specifies the number of knots, 
 then \code{spar.knots.option} will be used for sparse data. Default "quantile": quantiles of 
 the observed time points will be selected. Alternatively "equally-spaced", then 
-equally-spaced knots in the range of observed time points will be selected}
+equally-spaced knots in the range of observed time points will be selected.}
 
-\item{lambda_mean}{the value of the smoothing parameter for mean smoothing; defaults to NULL}
+\item{lambda_mean}{the value of the smoothing parameter for mean smoothing; defaults to NULL.}
 
 \item{spar.search.length}{the number of equidistant (log scale) smoothing 
-parameters to search for sparse data; defaults to 14}
+parameters to search for sparse data; defaults to 14.}
 
 \item{spar.lower}{lower bounds for log smoothing parameter for first step of 
-estimation for sparse data; defaults are -3}
+estimation for sparse data; defaults are -3.}
 
 \item{spar.upper}{upper bounds for log smoothing parameter for first step of 
-estimation for sparse data; defaults are 10}
+estimation for sparse data; defaults are 10.}
 
 \item{spar.lower2}{lower bounds for log smoothing parameter for second step of 
-estimation for sparse data; defaults are -1}
+estimation for sparse data; defaults are -1.}
 
 \item{spar.upper2}{upper bounds for log smoothing parameter for second step of 
-estimation for sparse data; defaults are 5}
+estimation for sparse data; defaults are 5 .}
 
-\item{calculate.scores}{if TRUE, scores will be calculated for sparse data}
+\item{calculate.scores}{if TRUE, scores will be calculated for sparse data.}
 }
 \value{
 A list with components
 \enumerate{
 \item \code{Yhat} - If \code{Y.pred} is specified, the smooth version of
 \code{Y.pred}.   Otherwise, if \code{Y.pred=NULL}, the smooth version of \code{Y}.
-\item \code{scores} - matrix of scores
-\item \code{mu} - mean function
-\item \code{npc} - number of principal components
-\item \code{efunctions} - matrix of eigenvectors
-\item \code{evalues} - vector of eigenvalues
+\item \code{Y} - the observed data.
+\item \code{scores} - matrix of scores.
+\item \code{mu} - mean function.
+\item \code{npc} - number of principal components.
+\item \code{efunctions} - matrix of eigenvectors.
+\item \code{evalues} - vector of eigenvalues.
+\item \code{argvals} - the argument values of the function evaluations in Y.
 }
 if \code{var == TRUE} additional components are returned
 \enumerate{
-\item \code{sigma2} - estimate of the error variance
+\item \code{sigma2} - estimate of the error variance.
 \item \code{VarMats} - list of covariance function estimate for each
-subject
-\item \code{diag.var} - matrix containing the diagonals of each matrix in
+subject.
+\item \code{diag.var} - diagonal elements of the covariance matrices 
+for each estimated curve.
 \item \code{crit.val} - list of estimated quantiles; only returned if
-\code{simul == TRUE}
+\code{simul == TRUE}.
 }
 }
 \description{
