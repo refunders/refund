@@ -131,13 +131,16 @@ for each estimated curve.
 }
 }
 \description{
-A fast implementation of the sandwich smoother (Xiao et al., 2013)
-for covariance matrix smoothing. Two options are provided, when input is a data
-matrix of dense or regular design, the bivariate smoother is specifically
-designed for the covariance matrix of high dimension, pooled generalized 
+A unified function contains: 1. a fast implementation of the sandwich 
+smoother (Xiao et al., 2013) for covariance matrix smoothing;
+2. a new fast covariance estimation method (Xiao et al., 2016).
+Two options are provided, when input is a data
+matrix of dense or regular design, the sandwich smoother (Xiao et al., 2013) is 
+specifically designed for the covariance matrix of high dimension, pooled generalized 
 cross validation at the data level is used for selecting the smoothing parameter; 
-when input is a triplet list of sparse or irregular design, the bivariate smoother 
-can be used for sparse functional or longitudinal data.
+when input is a triplet list of sparse or irregular design, the new fast 
+covariance estimation method (Xiao et al., 2016) can be used for sparse 
+functional or longitudinal data.
 }
 \examples{
 #### settings
@@ -161,8 +164,8 @@ if(case==2) phi <- cbind(rep(1,J),sqrt(3)*(2*t-1),
 ########     Generate Data            #############
 ###################################################
 xi <- matrix(rnorm(I*N),I,N);
-xi <- xi\\\%*\\\%diag(sqrt(lambdaTrue))
-X <- xi\\\%*\\\%t(phi); # of size I by J
+xi <- xi\%*\%diag(sqrt(lambdaTrue))
+X <- xi\%*\%t(phi); # of size I by J
 Y <- X + sigma*matrix(rnorm(I*J),I,J)
 
 results <- fpca.face(Y,center = TRUE, argvals=t,knots=100,pve=0.99)
@@ -173,7 +176,7 @@ Phi <- results$efunctions
 eigenvalues <- results$evalues
 
 for(k in 1:N){
-  if(Phi[,k]\\\%*\\\%phi[,k]< 0) 
+  if(Phi[,k]\%*\%phi[,k]< 0) 
     Phi[,k] <- - Phi[,k]
 }
 
