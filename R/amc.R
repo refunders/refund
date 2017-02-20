@@ -32,23 +32,32 @@
 ##' @importFrom MASS ginv
 amc <- function(y, Xmat, S, gam.method='REML', C=NULL, lambda=NULL, ...) {
   n.p = length(S)
+  stopifnot( is.null(lambda) | length(lambda)==n.p )
   if (!is.null(C)) {
     # The following is based on Wood (2006), p. 186
     n.con = dim(C)[1]
     Z. = qr.Q(qr(t(C)), complete=TRUE)[ , -(1:n.con)]
     Xmat. = Xmat %*% Z.
     S. = vector("list", n.p)
-    for (i in 1:n.p) S.[[i]] = crossprod(Z., S[[i]] %*% Z.)
-  }
-  else {
+    for (i in 1:n.p) {
+        if(is.null(lambda)) {
+          S.[[i]] = list(crossprod(Z., S[[i]] %*% Z.))
+        } else {
+          S.[[i]] = list(crossprod(Z., S[[i]] %*% Z.), sp = lambda[i])
+        }
+    }
+  } else {
     Z. = diag(ncol(Xmat))
     Xmat. = Xmat
-    S. = S
+    if (is.null(lambda)) {
+       S. = list(list(S[[1]]))
+    } else {
+       S. = list(list(S[[1]], sp = lambda[1]))
+    }
   }
 
   fitter = if (length(y) > 10000) bam else gam
-  if (is.null(lambda)) fitobj = fitter(y ~ Xmat.-1, method=gam.method, paraPen=list(Xmat.=S.), ...)
-  else fitobj = fitter(y ~ Xmat.-1, paraPen=list(Xmat.=S.), sp=lambda, ...)
+  fitobj = fitter(y ~ Xmat.-1, paraPen=list(Xmat.=S.[[1]]), ...)
 
   lambdavec = if (!is.null(fitobj$full.sp)) fitobj$full.sp else fitobj$sp
   fullpen = 0
