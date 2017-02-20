@@ -545,7 +545,7 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
                 X <- PredictMat(trm, d)
 
                 if(is.pcre){
-                    #sloppy, buit effective: temporarily overwrite offending entries
+                    #sloppy, but effective: temporarily overwrite offending entries
                     trm$dim <- 2
                     trm$term[2] <- paste0(object$pffr$yindname, ".vec")
                 }
