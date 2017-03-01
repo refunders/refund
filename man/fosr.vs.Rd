@@ -73,9 +73,6 @@ plot(fit.fosr.vs)
 
 
 }
-\author{
-Yakuan Chen \email{yc2641@cumc.columbia.edu}
-}
 \references{
 Chen, Y., Goldsmith, J., and Ogden, T. (2016).
 Variable selection in function-on-scalar regression. \emph{Stat} 5 88-101
@@ -83,4 +80,6 @@ Variable selection in function-on-scalar regression. \emph{Stat} 5 88-101
 \seealso{
 \code{\link{grpreg}}
 }
-
+\author{
+Yakuan Chen \email{yc2641@cumc.columbia.edu}
+}

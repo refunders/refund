@@ -46,9 +46,6 @@ Any additional options for the pre-smoothing basis (e.g. \code{k}, \code{m},
   etc.) can be supplied in the corresponding elements of \code{object}.
   See \code{\link[mgcv]{s}} for a full list of options.
 }
-\author{
-Jonathan Gellar \email{JGellar@mathematica-mpr.com}
-}
 \references{
 Reiss, P. T., and Ogden, R. T. (2007). Functional principal component
 regression and functional partial least squares. \emph{Journal of the
@@ -57,4 +54,6 @@ American Statistical Association}, 102, 984-996.
 \seealso{
 \code{\link{fpcr}}
 }
-
+\author{
+Jonathan Gellar \email{JGellar@mathematica-mpr.com}
+}

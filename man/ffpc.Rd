@@ -97,4 +97,3 @@ ffpcplot(m.pc)
 \author{
 Fabian Scheipl
 }
-

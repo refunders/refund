@@ -90,12 +90,11 @@ newdata <- list(x=x[5], z=z[3])
 pred3 <- predict(est, newdata=newdata)$fitted.values
 all.equal(as.numeric(pred3), as.numeric(est$Yhat[5,3]))
 }
-\author{
-Luo Xiao \email{lxiao@jhsph.edu}
-}
 \references{
 Xiao, L., Li, Y., and Ruppert, D. (2013). Fast bivariate
 \emph{P}-splines: the sandwich smoother. \emph{Journal of the Royal
 Statistical Society: Series B}, 75(3), 577--599.
 }
-
+\author{
+Luo Xiao \email{lxiao@jhsph.edu}
+}

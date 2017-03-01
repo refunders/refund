@@ -28,10 +28,9 @@ functional coefficients as well as any smooths of scalar covariates. The
 function dispatches to \code{pfr_plot.gam}, which is our local copy of
 \code{\link[mgcv]{plot.gam}} with some minor changes.
 }
-\author{
-Jonathan Gellar
-}
 \seealso{
 \code{\link{af}}, \code{\link{pfr}}
 }
-
+\author{
+Jonathan Gellar
+}

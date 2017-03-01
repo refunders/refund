@@ -141,9 +141,6 @@ plot(Fit1)
 }
 
 }
-\author{
-Madan Gopal Kundu \email{mgkundu@iupui.edu}
-}
 \references{
 Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012).
 Longitudinal functional models with structured penalties (arXiv:1211.4763
@@ -156,4 +153,6 @@ functional linear models - partially empirical eigenvectors for regression.
 \seealso{
 \code{lpeer}, \code{plot.peer}
 }
-
+\author{
+Madan Gopal Kundu \email{mgkundu@iupui.edu}
+}

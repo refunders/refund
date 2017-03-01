@@ -37,10 +37,9 @@ Prior to using functions \code{X} as predictors in a scalar-on-function regressi
 necessary to presmooth curves to remove measurement error or interpolate to a common grid. This
 function creates a function to do this preprocessing depending on the method specified.
 }
-\author{
-Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
-}
 \seealso{
 \code{\link{pfr}}, \code{\link{fpca.sc}}, \code{\link{fpca.face}}, \code{\link{fpca.ssvd}}
 }
-
+\author{
+Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
+}

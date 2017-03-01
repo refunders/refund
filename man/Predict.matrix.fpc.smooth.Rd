@@ -22,4 +22,3 @@ mgcv-style constructor for prediction of FPC terms
 \author{
 Jonathan Gellar
 }
-

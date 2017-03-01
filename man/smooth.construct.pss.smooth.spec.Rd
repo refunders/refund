@@ -27,11 +27,10 @@ and \eqn{\nu_m} is the smallest non-zero eigenvalue. See reference for the
 original idea, implementation follows that in the 'ts' and 'cs' constructors
 (see \code{\link[mgcv]{smooth.terms}}).
 }
-\author{
-Fabian Scheipl;  adapted from 'ts' and 'cs' constructors by S.N. Wood.
-}
 \references{
 Marra, G., & Wood, S. N. (2011). Practical variable selection for generalized additive models.
 \emph{Computational Statistics & Data Analysis}, 55(7), 2372-2387.
 }
-
+\author{
+Fabian Scheipl;  adapted from 'ts' and 'cs' constructors by S.N. Wood.
+}

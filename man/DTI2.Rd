@@ -47,4 +47,3 @@ Likelihood  Ratio Tests for Functional Effects in the Functional Linear Model.
 \emph{Technometrics}, 56, 483--493.
 }
 \keyword{datasets}
-

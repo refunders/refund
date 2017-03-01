@@ -25,4 +25,3 @@ calls \code{\link[mgcv]{summary.gam}}.
 \author{
 Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Fabian Scheipl
 }
-

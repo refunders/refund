@@ -97,10 +97,6 @@ plot(fit.decomp)
 
 
 }
-\author{
-Jonathan Gellar \email{JGellar@mathematica-mpr.com} and
-        Madan Gopal Kundu \email{mgkundu@iupui.edu}
-}
 \references{
 Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
 functional linear models - partially empirical eigenvectors for regression.
@@ -112,4 +108,7 @@ functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 \seealso{
 \code{\link{pfr}}, \code{\link{smooth.construct.peer.smooth.spec}}
 }
-
+\author{
+Jonathan Gellar \email{JGellar@mathematica-mpr.com} and
+        Madan Gopal Kundu \email{mgkundu@iupui.edu}
+}

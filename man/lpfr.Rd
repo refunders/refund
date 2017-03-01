@@ -109,13 +109,12 @@ matplot(cbind(fit.cca.rcst$BetaHat[[2]], fit.cca.rcst$Bounds[[2]]),
   main = "RCST")
 }
 }
-\author{
-Jeff Goldsmith <jeff.goldsmith@columbia.edu>
-}
 \references{
 Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D.
 (2012). Longitudinal penalized functional regression for cognitive outcomes
 on neuronal tract measurements. \emph{Journal of the Royal Statistical
 Society: Series C}, 61(3), 453--469.
 }
-
+\author{
+Jeff Goldsmith <jeff.goldsmith@columbia.edu>
+}

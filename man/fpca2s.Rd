@@ -103,9 +103,6 @@ Note that \code{fpca2s} computes smoothed orthonormal eigenvectors
       lines(t[seq],phi[seq,k],lwd = 2, col = 'black')
       }
 }
-\author{
-Luo Xiao \email{lxiao@jhsph.edu}, Fabian Scheipl
-}
 \references{
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013), Fast
 covariance estimation for high-dimensional functional data. (submitted)
@@ -119,4 +116,6 @@ singular values is 4/sqrt(3).  \emph{IEEE Transactions on Information Theory}, 6
 on smoothing a covariance estimate; \code{\link{fpca.ssvd}} for another
 SVD-based approach.
 }
-
+\author{
+Luo Xiao \email{lxiao@jhsph.edu}, Fabian Scheipl
+}

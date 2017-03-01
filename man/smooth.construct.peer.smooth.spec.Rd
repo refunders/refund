@@ -46,9 +46,6 @@ The smooth specification object, defined using \code{s()}, should
     \eqn{L}, supplied by \code{xt$L}.
 }
 }
-\author{
-Madan Gopal Kundu \email{mgkundu@iupui.edu} and Jonathan Gellar
-}
 \references{
 Randolph, T. W., Harezlak, J, and Feng, Z. (2012). Structured penalties for
 functional linear models - partially empirical eigenvectors for regression.
@@ -57,4 +54,6 @@ functional linear models - partially empirical eigenvectors for regression.
 \seealso{
 \code{\link{peer}}
 }
-
+\author{
+Madan Gopal Kundu \email{mgkundu@iupui.edu} and Jonathan Gellar
+}

@@ -20,4 +20,3 @@ mgcv-style constructor for prediction of PC-basis functional random effects
 \author{
 Fabian Scheipl;  adapted from 'Predict.matrix.random.effect' by S.N. Wood.
 }
-

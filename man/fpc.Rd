@@ -92,6 +92,7 @@ Unlike \code{\link{fpcr}}, \code{fpc} within a \code{pfr} formula does
 not automatically decorrelate the functional predictors from additional
 scalar covariates.
 }
+
 \examples{
 data(gasoline)
 par(mfrow=c(3,1))
@@ -118,11 +119,6 @@ lines(value ~ X.argvals, col=2, data=est2)
 lines(value ~ X.argvals, col=3, data=est3)
 
 }
-\author{
-Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Phil Reiss
-  \email{phil.reiss@nyumc.org}, Lan Huo \email{lan.huo@nyumc.org}, and
-  Lei Huang \email{huangracer@gmail.com}
-}
 \references{
 Reiss, P. T. (2006). Regression with signals and images as predictors. Ph.D.
 dissertation, Department of Biostatistics, Columbia University. Available
@@ -138,4 +134,8 @@ with images as predictors. \emph{Biometrics}, 66, 61-69.
 \seealso{
 \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
 }
-
+\author{
+Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Phil Reiss
+  \email{phil.reiss@nyumc.org}, Lan Huo \email{lan.huo@nyumc.org}, and
+  Lei Huang \email{huangracer@gmail.com}
+}

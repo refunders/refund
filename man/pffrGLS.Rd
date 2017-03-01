@@ -55,10 +55,10 @@ The danger is especially big if the number of functional observations is smaller
 Please see \code{\link[refund]{pffr}} for details on model specification and
 implementation. \cr THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
 }
-\author{
-Fabian Scheipl
-}
+
 \seealso{
 \code{\link[refund]{pffr}}, \code{\link[refund]{fpca.sc}}
 }
-
+\author{
+Fabian Scheipl
+}

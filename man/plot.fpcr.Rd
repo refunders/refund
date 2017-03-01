@@ -33,9 +33,6 @@ None; only a plot is produced.
 Inputs an object created by \code{\link{fpcr}}, and plots the estimated
 coefficient function.
 }
-\author{
-Philip Reiss \email{phil.reiss@nyumc.org}
-}
 \references{
 Wood, S. N. (2006). \emph{Generalized Additive Models: An
 Introduction with R}. Boca Raton, FL: Chapman & Hall.
@@ -43,4 +40,6 @@ Introduction with R}. Boca Raton, FL: Chapman & Hall.
 \seealso{
 \code{\link{fpcr}}, which includes an example.
 }
-
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org}
+}

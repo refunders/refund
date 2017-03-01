@@ -47,4 +47,3 @@ Convenience function for graphical summaries of \code{ffpc}-terms from a
 \author{
 Fabian Scheipl
 }
-

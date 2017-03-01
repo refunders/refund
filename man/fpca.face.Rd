@@ -141,9 +141,6 @@ for(k in 1:N){
   lines(t[seq],phi[seq,k],lwd = 2, col = "black")
 }
 }
-\author{
-Luo Xiao
-}
 \references{
 Xiao, L., Li, Y., and Ruppert, D. (2013).
 Fast bivariate \emph{P}-splines: the sandwich smoother,
@@ -159,4 +156,6 @@ DOI: 10.1007/s11222-014-9485-x.
 smoothing of \code{Y}; \code{\link{fpca2s}} and \code{\link{fpca.ssvd}}
 for two SVD-based smoothings.
 }
-
+\author{
+Luo Xiao
+}

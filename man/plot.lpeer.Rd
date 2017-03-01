@@ -31,9 +31,6 @@ fit.cca.lpeer1 = lpeer(Y=DTI$pasat, t=DTI$visit, subj=DTI$ID, funcs = cca)
 plot(fit.cca.lpeer1)
 }
 }
-\author{
-Madan Gopal Kundu \email{mgkundu@iupui.edu}
-}
 \references{
 Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012).
 Longitudinal functional models with structured penalties. (Please contact
@@ -46,4 +43,6 @@ functional linear models - partially empirical eigenvectors for regression.
 \seealso{
 \code{peer}, \code{lpeer}, \code{plot.peer}
 }
-
+\author{
+Madan Gopal Kundu \email{mgkundu@iupui.edu}
+}

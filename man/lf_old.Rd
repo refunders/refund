@@ -57,11 +57,10 @@ is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic B-
 second-order difference penalties for estimating \eqn{\beta(t)}.  The functional predictor must
 be fully observed on a regular grid.
 }
-\author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
-}
 \seealso{
 \code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}},
 \code{\link{fgam}} for examples
 }
-
+\author{
+Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
+}

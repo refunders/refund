@@ -89,10 +89,6 @@ names(fits) <- c("none", "fpca.sc", "fpca.face", "fpca.ssvd", "bspline", "interp
 pairs(fits)
 
 }
-\author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,
-  and Jonathan Gellar
-}
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 Penalized functional regression. \emph{Journal of Computational and Graphical
@@ -107,4 +103,7 @@ measurements. \emph{Journal of the Royal Statistical Society: Series C},
 \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
  and \code{\link{linear.functional.terms}}; \code{\link{pfr}} for additonal examples
 }
-
+\author{
+Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,
+  and Jonathan Gellar
+}

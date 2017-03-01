@@ -64,9 +64,6 @@ vec\eqn{(Y_i(t))} is then given by a block-diagonal matrix with \eqn{n} copies o
 This block-diagonal matrix is used to construct the "meat" of a sandwich covariance estimator, similar to Chen et al. (2012),
 see reference below.
 }
-\author{
-Fabian Scheipl
-}
 \references{
 Chen, H., Wang, Y., Paik, M.C., and Choi, A. (2013).
 A marginal approach to reduced-rank penalized spline smoothing with application to multilevel functional data.
@@ -76,4 +73,6 @@ A marginal approach to reduced-rank penalized spline smoothing with application 
 \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
   based on.
 }
-
+\author{
+Fabian Scheipl
+}

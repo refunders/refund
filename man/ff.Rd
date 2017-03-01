@@ -86,9 +86,6 @@ of eigenvalues accounting for at least 0.995 of the total variance in
 \eqn{X_i(s)}) is lower than 4. If \eqn{X_i(s)} is of very low rank,
 \code{\link{ffpc}}-term may be preferable.
 }
-\author{
-Fabian Scheipl, Sonja Greven
-}
 \references{
 For background on \code{check.ident}:\cr Scheipl, F., Greven,
   S. (2016). Identifiability in penalized function-on-function regression
@@ -98,4 +95,6 @@ For background on \code{check.ident}:\cr Scheipl, F., Greven,
 \seealso{
 \code{mgcv}'s \code{\link[mgcv]{linear.functional.terms}}
 }
-
+\author{
+Fabian Scheipl, Sonja Greven
+}

@@ -20,4 +20,3 @@ Utility function for numerical integration.
 \author{
 Clara Happ, with modifications by Philip Reiss
 }
-

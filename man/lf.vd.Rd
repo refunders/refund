@@ -170,9 +170,6 @@ The variable-domain functional regression model uses the term
 }
   
 }
-\author{
-Jonathan E. Gellar <JGellar@mathematica-mpr.com>
-}
 \references{
 Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
    Ciprian M. Crainiceanu. Variable-Domain Functional Regression for Modeling
@@ -183,4 +180,6 @@ Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
 \code{\link{pfr}}, \code{\link{lf}}, mgcv's
    \code{\link{linear.functional.terms}}.
 }
-
+\author{
+Jonathan E. Gellar <JGellar@mathematica-mpr.com>
+}
