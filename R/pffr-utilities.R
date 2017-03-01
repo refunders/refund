@@ -34,7 +34,7 @@ expand.call <-
         return(call)
       }
     }
-    frmls <- formals(safeDeparse(this_function))
+    frmls <- formals(this_function)
     #remove formal args with no presets:
     frmls <- frmls[!sapply(frmls, is.symbol)]
     add <- which(!(names(frmls) %in% names(ans)))
