@@ -24,11 +24,19 @@ expand.call <-
     #given args:
     ans <- as.list(call)
 
-    #possible args:
-    frmls <- formals(safeDeparse(ans[[1]]))
+    this_function <- ans[[1]]
+    # rm namespace operators so that function finding works (mlr-org/mlr/#1559)
+    if (grepl(":", deparse(this_function))) {
+      this_function <- gsub("(^[^:]+:+)(.+$)", "\\2", deparse(this_function))
+      if (!exists(this_function)) {
+        warning("expand.call couldn't find ", this_function,
+          " and returned unchanged call:\n <", call, ">")
+        return(call)
+      }
+    }
+    frmls <- formals(safeDeparse(this_function))
     #remove formal args with no presets:
     frmls <- frmls[!sapply(frmls, is.symbol)]
-
     add <- which(!(names(frmls) %in% names(ans)))
     return(as.call(c(ans, frmls[add])))
 }
