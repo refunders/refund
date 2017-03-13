@@ -61,7 +61,7 @@ amc <- function(y, Xmat, S, gam.method='REML', C=NULL, lambda=NULL, ...) {
 
   lambdavec = if (!is.null(fitobj$full.sp)) fitobj$full.sp else fitobj$sp
   fullpen = 0
-  for (i in 1:n.p) fullpen = lambdavec[i] * S.[[i]]
+  for (i in 1:n.p) fullpen = lambdavec[i] * S.[[i]][[1]]
   GinvXT <- try(Z. %*% solve(crossprod(Xmat.) + fullpen, t(Xmat.)), silent=TRUE)
   if (inherits(GinvXT, "try-error")) {
     warning(" 'X'X + penalty' is numerically rank-deficient.")
