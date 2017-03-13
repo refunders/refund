@@ -99,7 +99,7 @@ test_that("ff limits arg works", {
   t <- attr(data, "yindex")
   s <- attr(data, "xindex")
   m.l <- pffr(Y ~ ff(X1, xind = s, limits = "s<t"), yind = t, data = data)
-  m.leq <- pffr(Y ~ ff(X1, xind = s, limits = "s< = t"), yind = t, data = data)
+  m.leq <- pffr(Y ~ ff(X1, xind = s, limits = "s<=t"), yind = t, data = data)
   m.fun <- pffr(Y ~ ff(X1, xind = s, limits = function(s, t) s < t), yind = t, data = data)
   expect_equal(fitted(m.l), fitted(m.fun))
   expect_true(

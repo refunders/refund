@@ -224,7 +224,7 @@ pffrSim <- function(
     etaTerms$xfactor <-  2* as.numeric(data$xfactor) +
       sin(2 * outer(as.numeric(data$xfactor), t))
     if ("2factor" %in% scenario) {
-      data$x2factor <- sample(gl(3, n/3), rep = TRUE)
+      data$x2factor <- sample(gl(3, n/3), replace = TRUE)
       etaTerms$x2factor <-  2 * as.numeric(data$x2factor) +
         cos(2 * outer(as.numeric(data$x2factor), t))
     }
