@@ -8,7 +8,7 @@ Predict.matrix.pco.smooth <- function(object, data){
 }
 #' Faster multi-dimensional scaling
 #'
-#' This is a modified version of \code{\link{cmdscale}} that uses the Lanczos procedure (\code{\link[mgcv]{slanczos}}) instead of \code{eigen}. Called by \code{\link{smooth.construct.pco.smooth.spec}}. 
+#' This is a modified version of \code{\link{cmdscale}} that uses the Lanczos procedure (\code{\link[mgcv]{slanczos}}) instead of \code{eigen}. Called by \code{\link{smooth.construct.pco.smooth.spec}}.
 #'
 #' @param d a distance structure as returned by \code{\link{dist}}, or a full symmetric matrix of distances or dissimilarities.
 #' @param k the maximum dimension of the space which the data are to be represented in; must be in \code{\{1, 2, ..., n-1\}}.
@@ -20,8 +20,9 @@ Predict.matrix.pco.smooth <- function(object, data){
 #' @author David L Miller, based on code by R Core.
 #' @seealso \code{\link{smooth.construct.pco.smooth.spec}}
 #' @importFrom mgcv slanczos
+#' @export
 #' @references
-#' Cailliez, F. (1983). The analytical solution of the additive constant problem. 
+#' Cailliez, F. (1983). The analytical solution of the additive constant problem.
 #' \emph{Psychometrika}, 48, 343-349.
 cmdscale_lanczos <- function(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE){
 
@@ -202,7 +203,7 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #' @section Details:
 #' The constructor is not normally called directly, but is rather used internally by \code{\link{gam}}.
 #'
-#' In a \code{\link[mgcv]{gam}} term of the above form \code{s(dummy, bs="pco", k, xt)}, 
+#' In a \code{\link[mgcv]{gam}} term of the above form \code{s(dummy, bs="pco", k, xt)},
 #' \itemize{
 #'	\item \code{dummy} is an arbitrary vector (or name of a column in \code{data}) whose length is the number of observations. This is not actually used, but is required as part of the input to \code{\link[mgcv]{s}}. Note that if multiple \code{pco} terms are used in the model, there must be multiple unique term names (e.g., "\code{dummy1}", "\code{dummy2}", etc).
 #'	\item \code{k} is the number of principal coordinates (e.g., \code{k=9} will give a 9-dimensional projection of the data).
