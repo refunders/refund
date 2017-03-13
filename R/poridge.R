@@ -27,8 +27,10 @@ Predict.matrix.pco.smooth <- function(object, data){
 #' @author David L Miller, based on code by R Core.
 #' @seealso \code{\link{smooth.construct.pco.smooth.spec}}
 #' @importFrom mgcv slanczos
-#' @references Cailliez, F. (1983). The analytical solution of the additive
-#' constant problem. \emph{Psychometrika}, 48, 343-349.
+#' @export
+#' @references
+#' Cailliez, F. (1983). The analytical solution of the additive constant problem.
+#' \emph{Psychometrika}, 48, 343-349.
 cmdscale_lanczos <- function(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE){
 
   if (anyNA(d))
