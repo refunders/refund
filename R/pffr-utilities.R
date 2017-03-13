@@ -220,7 +220,7 @@ pffrSim <- function(
     data$xsmoo <- I(rnorm(n))
     etaTerms$xsmoo <- outer(drop(scale(cos(data$xsmoo))), (t-.5), "*")
 
-    data$xfactor <- sample(gl(3, n/3), rep = TRUE)
+    data$xfactor <- sample(gl(3, n/3), replace = TRUE)
     etaTerms$xfactor <-  2* as.numeric(data$xfactor) +
       sin(2 * outer(as.numeric(data$xfactor), t))
     if ("2factor" %in% scenario) {
