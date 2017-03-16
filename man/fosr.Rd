@@ -157,10 +157,6 @@ glsmod = fosr(fdobj = Temp.fd, X = modmat, con = constraints, method="GLS")
 plot(glsmod, 1)
 }
 }
-\author{
-Philip Reiss \email{phil.reiss@nyumc.org}, Lan Huo, and Fabian
-Scheipl
-}
 \references{
 Ledoit, O., and Wolf, M. (2002). Some hypothesis tests for the
 covariance matrix when the dimension is large compared to the sample size.
@@ -181,4 +177,7 @@ Biostatistics}, 6(1), article 28.  Available at
 \seealso{
 \code{\link{plot.fosr}}
 }
-
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org}, Lan Huo, and Fabian
+Scheipl
+}

@@ -36,4 +36,3 @@ Statistical Society, Series B}, 71(2), 505--523.
 \code{\link{fpcr}}
 }
 \keyword{datasets}
-

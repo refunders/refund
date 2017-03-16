@@ -20,4 +20,3 @@ Obtain model matrix for a pffr fit
 \author{
 Fabian Scheipl
 }
-

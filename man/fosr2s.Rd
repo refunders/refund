@@ -82,9 +82,6 @@ for (k in 1:2) {
 }
 
 }
-\author{
-Philip Reiss \email{phil.reiss@nyumc.org} and Lan Huo
-}
 \references{
 Fan, J., and Zhang, J.-T. (2000). Two-step estimation of
 functional linear models with applications to longitudinal data.
@@ -93,4 +90,6 @@ functional linear models with applications to longitudinal data.
 \seealso{
 \code{\link{fosr}}, \code{\link{pffr}}
 }
-
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org} and Lan Huo
+}

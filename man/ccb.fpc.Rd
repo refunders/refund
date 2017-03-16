@@ -96,12 +96,11 @@ legend("topright", c("IV Est", "IV PW Int", "IV Simul Int",
     col = c("red","red","red","blue","blue","blue"))
 }
 }
-\author{
-Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}
-}
 \references{
 Goldsmith, J., Greven, S., and Crainiceanu, C. (2013).
 Corrected confidence bands for functional data using principal components.
 \emph{Biometrics}, 69(1), 41--51.
 }
-
+\author{
+Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}
+}

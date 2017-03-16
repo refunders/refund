@@ -85,4 +85,3 @@ basis of dimension 15 over \code{x}.
 \author{
 Fabian Scheipl and Jonathan Gellar
 }
-

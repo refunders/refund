@@ -22,4 +22,3 @@ mgcv-style constructor for prediction of PEER terms
 \author{
 Jonathan Gellar
 }
-

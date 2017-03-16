@@ -235,9 +235,6 @@ Fit5<- lpeer(Y=Y, subj=id, t=t, covariates=cbind(t), comm.pen=FALSE, funcs=W,
 }
 
 }
-\author{
-Madan Gopal Kundu \email{mgkundu@iupui.edu}
-}
 \references{
 Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012).
 Longitudinal functional models with structured penalties (arXiv:1211.4763
@@ -250,4 +247,6 @@ functional linear models - partially empirical eigenvectors for regression.
 \seealso{
 \code{peer}, \code{plot.lpeer}
 }
-
+\author{
+Madan Gopal Kundu \email{mgkundu@iupui.edu}
+}

@@ -22,4 +22,3 @@ See \code{\link[mgcv]{random.effects}} in \pkg{mgcv}.
 \seealso{
 \code{\link[mgcv]{random.effects}}
 }
-

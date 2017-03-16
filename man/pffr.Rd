@@ -183,6 +183,7 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   define a spline basis along the index of the response, i.e., a smooth
   variance function over $t$ for responses $Y(t)$.
 }
+
 \examples{
 ###############################################################################
 # univariate model:
@@ -232,9 +233,6 @@ summary(m3.sparse)
 plot(m3.sparse, pers=TRUE, pages=1)
 }
 }
-\author{
-Fabian Scheipl, Sonja Greven
-}
 \references{
 Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2015).
   Penalized function-on-function regression. Computational Statistics,
@@ -252,4 +250,6 @@ Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2015).
 \code{\link[mgcv]{smooth.terms}} for details of \code{mgcv} syntax
   and available spline bases and penalties.
 }
-
+\author{
+Fabian Scheipl, Sonja Greven
+}

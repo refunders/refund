@@ -38,6 +38,7 @@ with a scalar (but not necessarily continuous) response Y, and link function g
 
 Binomial responses should be specified as a numeric vector rather than as a matrix or a factor.
 }
+
 \examples{
 data(DTI)
 ## only consider first visit and cases (no PASAT scores for controls)
@@ -99,9 +100,6 @@ fit <- fgam(y ~ s(z1, k = 10) + af(X_2, splinepars = list(k=c(7,7), m = list(c(2
 plot(fit)
 vis.fgam(fit,af.term='X_2',plot.type='contour')
 }
-\author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
-}
 \references{
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
@@ -110,4 +108,6 @@ pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982
 \seealso{
 \code{\link{af}}, \code{\link{lf}}, \code{\link{predict.fgam}}, \code{\link{vis.fgam}}
 }
-
+\author{
+Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
+}

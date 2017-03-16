@@ -82,9 +82,6 @@ vis.pfr(fit, deriv2=FALSE, tval=tval)
 vis.pfr(fit, deriv2=TRUE, xval=xval)
 vis.pfr(fit, deriv2=TRUE, tval=tval)
 }
-\author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com}
-}
 \references{
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23(1)},
@@ -100,4 +97,6 @@ Royal Statistical Society, Series B}, \bold{45(1)}, pp. 133--150.
 \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{pfr}}, \code{\link{persp}},
   \code{\link{levelplot}}
 }
-
+\author{
+Mathew W. McLean \email{mathew.w.mclean@gmail.com}
+}

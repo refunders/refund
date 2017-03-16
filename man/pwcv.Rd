@@ -78,9 +78,6 @@ box()
 axis(2)
 axisIntervals(1)
 }
-\author{
-Philip Reiss \email{phil.reiss@nyumc.org}
-}
 \references{
 Reiss, P. T., Huang, L., and Mennes, M. (2010).  Fast
 function-on-scalar regression with penalized basis expansions.
@@ -90,4 +87,6 @@ at \url{http://works.bepress.com/phil_reiss/16/}
 \seealso{
 \code{\link{fosr}}, \code{\link{lofocv}}
 }
-
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org}
+}

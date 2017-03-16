@@ -17,4 +17,3 @@ Corrected confidence bands for functional data using principal components.
 \emph{Biometrics}, 69(1), 41--51.
 }
 \keyword{datasets}
-

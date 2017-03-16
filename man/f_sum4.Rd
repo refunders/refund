@@ -25,4 +25,3 @@ Internal function used compute a sum in FPCA-based covariance updates
 \author{
 Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
 }
-

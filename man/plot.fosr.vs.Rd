@@ -55,10 +55,9 @@ plot(fit.mcp)
 
 
 }
-\author{
-Yakuan Chen \email{yc2641@cumc.columbia.edu}
-}
 \seealso{
 \code{\link{fosr.vs}}
 }
-
+\author{
+Yakuan Chen \email{yc2641@cumc.columbia.edu}
+}

@@ -10,4 +10,3 @@ getTF(fname, nterm)
 Get recognized transformation function
 }
 \keyword{internal}
-

@@ -20,10 +20,9 @@ An object of mode "\code{\link[base]{call}}".
 \description{
 Return a call in which all of the arguments which were supplied or have presets are specified by their full names and their supplied or default values.
 }
-\author{
-Fabian Scheipl
-}
 \seealso{
 \code{\link[base]{match.call}}
 }
-
+\author{
+Fabian Scheipl
+}

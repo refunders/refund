@@ -60,10 +60,9 @@ preds <- predict(fit,newdata=list(nir=nir[test,]),type='response')
 plot(preds,y[test])
 abline(a=0,b=1)
 }
-\author{
-Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
-}
 \seealso{
 \code{\link{pfr}}, \code{\link[mgcv]{predict.gam}}
 }
-
+\author{
+Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl
+}

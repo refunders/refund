@@ -33,4 +33,3 @@ pffr.check(b, old.style = FALSE, type = c("deviance", "pearson",
 \description{
 This is simply a wrapper for \code{\link[mgcv]{gam.check}()}.
 }
-

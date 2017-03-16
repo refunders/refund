@@ -620,7 +620,7 @@ pffr <- function(
     }
     xnew[[length(xnew)+1]] <- yindvecname
     this.bs.yindex <- if("bs.yindex" %in% names(x)){
-      x$bs.yindex
+      eval(x$bs.yindex)
     } else bs.yindex
     xnew <- xnew[names(xnew) != "bs.yindex"]
 
@@ -659,17 +659,18 @@ pffr <- function(
     #defaults to 8 basis functions
     xnew$k <- if("k" %in% names(x)){
       if("k" %in% names(this.bs.yindex)){
-        c(xnew$k, this.bs.yindex$k)
+        c(eval(xnew$k), eval(this.bs.yindex$k))
       } else {
-        c(xnew$k, 8)
+        c(eval(xnew$k), 8)
       }
     } else {
       if("k" %in% names(this.bs.yindex)){
-        c(pmax(8, 5^head(xnew$d, -1)), this.bs.yindex$k)
+        c(pmax(8, 5^head(eval(xnew$d), -1)), eval(this.bs.yindex$k))
       } else {
-        pmax(8, 5^xnew$d)
+        pmax(8, 5^eval(xnew$d))
       }
     }
+    xnew$k <- unlist(xnew$k)
 
     if("xt" %in% names(x)){
 #       # xt has to be supplied as a list, with length(x$d) entries,

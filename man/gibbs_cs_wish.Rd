@@ -46,13 +46,12 @@ Fitting function for function-on-scalar regression for cross-sectional data.
 This function estimates model parameters using a Gibbs sampler and estimates
 the residual covariance surface using a Wishart prior.
 }
-\author{
-Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
-}
 \references{
 Goldsmith, J., Kitago, T. (2016).
 Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
 Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 Series C}, 65 215-236.
 }
-
+\author{
+Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
+}

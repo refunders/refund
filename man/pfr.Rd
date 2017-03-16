@@ -50,6 +50,7 @@ to fit models with a scalar (but not necessarily continuous) response.
   Binomial responses should be specified as a numeric vector rather than as a
   matrix or a factor.
 }
+
 \examples{
 # See lf(), lf.vd(), af(), fpc(), and peer() for additional examples
 
@@ -109,10 +110,6 @@ fit.peer <- pfr(pasat ~ peer(cca, argvals=seq(0,1,length=93),
 plot(fit.peer)
 }
 }
-\author{
-Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Mathew W. McLean,
-Jeff Goldsmith, and Fabian Scheipl
-}
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 Penalized functional regression. \emph{Journal of Computational and Graphical
@@ -144,4 +141,7 @@ American Statistical Association, 109(508): 1425-1439.
 \code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}},
   \code{\link{fpc}}, \code{\link{peer}}, \code{\link{re}}.
 }
-
+\author{
+Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Mathew W. McLean,
+Jeff Goldsmith, and Fabian Scheipl
+}

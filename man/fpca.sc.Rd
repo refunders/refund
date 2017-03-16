@@ -164,12 +164,6 @@ Fit.MM = fpca.sc(ydata=ydata, var = TRUE, simul = FALSE)
 
 }
 }
-\author{
-Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, Sonja Greven
-\email{sonja.greven@stat.uni-muenchen.de}, Lan Huo
-\email{Lan.Huo@nyumc.org}, Lei Huang \email{huangracer@gmail.com}, and
-Philip Reiss \email{phil.reiss@nyumc.org}
-}
 \references{
 Di, C., Crainiceanu, C., Caffo, B., and Punjabi, N. (2009).
 Multilevel functional principal component analysis. \emph{Annals of Applied
@@ -187,4 +181,9 @@ Yao, F., Mueller, H.-G., and Wang, J.-L. (2005). Functional data analysis
 for sparse longitudinal data. \emph{Journal of the American Statistical
 Association}, 100, 577--590.
 }
-
+\author{
+Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, Sonja Greven
+\email{sonja.greven@stat.uni-muenchen.de}, Lan Huo
+\email{Lan.Huo@nyumc.org}, Lei Huang \email{huangracer@gmail.com}, and
+Philip Reiss \email{phil.reiss@nyumc.org}
+}

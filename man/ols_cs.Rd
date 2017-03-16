@@ -29,13 +29,12 @@ using an FPC decomposition of the OLS residual curves; finally, a GLS estimate
 of spline coefficients is estimated. Although this is in the `BayesFoSR` package,
 there is nothing Bayesian about this FoSR.
 }
-\author{
-Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
-}
 \references{
 Goldsmith, J., Kitago, T. (2016).
 Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
 Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 Series C}, 65 215-236.
 }
-
+\author{
+Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
+}

@@ -26,4 +26,3 @@ See \code{\link[mgcv]{print.summary.gam}()} for details.
 \author{
 Fabian Scheipl, adapted from \code{\link[mgcv]{print.summary.gam}()} by Simon Wood, Henric Nilsson
 }
-

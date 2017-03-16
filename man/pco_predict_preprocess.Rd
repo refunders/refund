@@ -24,9 +24,6 @@ Models with \code{\link{pco}} basis terms are fitted by inputting distances amon
 
 An example of how to use this function in practice is shown in \code{\link{smooth.construct.pco.smooth.spec}}.
 }
-\author{
-David L Miller
-}
 \references{
 Gower, J. C. (1968). Adding a point to vector diagrams in multivariate analysis. Biometrika, 55(3), 582-585. \url{http://doi.org/10.2307/2334268}
 
@@ -35,4 +32,6 @@ Miller, D. L. (2012). On smooth models for complex domains and distances. PhD di
 \seealso{
 \code{\link{smooth.construct.pco.smooth.spec}}
 }
-
+\author{
+David L Miller
+}

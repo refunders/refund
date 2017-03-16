@@ -20,4 +20,3 @@ Plot a fitted pffr-object. Simply dispatches to \code{\link[mgcv]{plot.gam}}.
 \author{
 Fabian Scheipl
 }
-

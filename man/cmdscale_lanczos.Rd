@@ -23,9 +23,6 @@ as \code{\link{cmdscale}}
 \description{
 This is a modified version of \code{\link{cmdscale}} that uses the Lanczos procedure (\code{\link[mgcv]{slanczos}}) instead of \code{eigen}. Called by \code{\link{smooth.construct.pco.smooth.spec}}.
 }
-\author{
-David L Miller, based on code by R Core.
-}
 \references{
 Cailliez, F. (1983). The analytical solution of the additive constant problem. 
 \emph{Psychometrika}, 48, 343-349.
@@ -33,4 +30,6 @@ Cailliez, F. (1983). The analytical solution of the additive constant problem.
 \seealso{
 \code{\link{smooth.construct.pco.smooth.spec}}
 }
-
+\author{
+David L Miller, based on code by R Core.
+}

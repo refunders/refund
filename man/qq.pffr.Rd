@@ -35,4 +35,3 @@
 \description{
 This is simply a wrapper for code{\link[mgcv]{qq.gam}()}.
 }
-

@@ -54,10 +54,9 @@ Index variables (i.e., evaluation points) for the functional covariates are reus
  supplied, the function will return predictions on the grid of evaluation points given in
  \code{object$pffr$yind}.
 }
-\author{
-Fabian Scheipl
-}
 \seealso{
 \code{\link[mgcv]{predict.gam}()}
 }
-
+\author{
+Fabian Scheipl
+}

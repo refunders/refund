@@ -30,9 +30,6 @@ correction.
 \examples{
 # See example in peer()
 }
-\author{
-Madan Gopal Kundu \email{mgkundu@iupui.edu}
-}
 \references{
 Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012).
 Longitudinal functional models with structured penalties. (Please contact
@@ -45,4 +42,6 @@ functional linear models - partially empirical eigenvectors for regression.
 \seealso{
 \code{peer}, \code{lpeer}, \code{plot.lpeer}
 }
-
+\author{
+Madan Gopal Kundu \email{mgkundu@iupui.edu}
+}

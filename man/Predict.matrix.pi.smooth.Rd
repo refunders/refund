@@ -22,4 +22,3 @@ Predict.matrix method for pi basis
 \author{
 Jonathan Gellar
 }
-

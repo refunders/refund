@@ -361,9 +361,7 @@ pffrGLS <- function(
     }
     eSigma$vectors%*%diag(1/sqrt(eSigma$values))%*%t(eSigma$vectors)
   }
-
-  hatSigmaname <- deparse(substitute(hatSigmaname))
-  assign(x=deparse(hatSigmaname), value=hatSigma, envir=frmlenv)
+  assign(x=deparse(call$hatSigma), value=hatSigma, envir=frmlenv)
 
 
   originalresponsename <- paste(deparse(responsename),".Original", sep="")
@@ -654,6 +652,8 @@ pffrGLS <- function(
   newcall$formula <- newfrml
   newcall$data <- quote(pffrdata)
   newcall[[1]] <- algorithm
+  newcall$hatSigma <- NULL
+
 
 
   # add appropriate centering constraints for smooth effects
@@ -900,6 +900,7 @@ pffrGLS <- function(
       where.t2=where.t2,
       where.par=where.par
     ),
+    sparseOrNongrid=FALSE,
     ff=ffterms,
     ffpc=ffpcterms)
 

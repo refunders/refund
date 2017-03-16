@@ -37,6 +37,7 @@ Differing from random effects in \code{mgcv}, these effects are estimated under 
 covariance operator for the functional process to be modeled, i.e., they are
 a functional principal components basis.
 }
+
 \examples{
 \dontrun{
 residualfunction <- function(t){
@@ -83,4 +84,3 @@ lines(t, int[1,], col=rgb(1,0,0,.5))
 \author{
 Fabian Scheipl
 }
-

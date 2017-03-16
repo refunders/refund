@@ -52,4 +52,3 @@ if the residuals along the index of the functional response are not i.i.d.
 \author{
 Fabian Scheipl
 }
-

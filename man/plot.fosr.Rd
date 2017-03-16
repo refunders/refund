@@ -32,10 +32,9 @@ Otherwise you may wish to set \code{mfrow} outside the function call.}
 \description{
 Plots the coefficient function estimates produced by \code{fosr()}.
 }
-\author{
-Philip Reiss \email{phil.reiss@nyumc.org}
-}
 \seealso{
 \code{\link{fosr}}, which includes examples.
 }
-
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org}
+}

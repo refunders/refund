@@ -22,4 +22,3 @@ Predict.matrix method for dt basis
 \author{
 Jonathan Gellar
 }
-

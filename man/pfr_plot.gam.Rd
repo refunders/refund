@@ -38,4 +38,3 @@ with some minor changes to allow for plotting \code{pfr} objects.
 \code{\link[mgcv]{plot.gam}}
 }
 \keyword{internal}
-

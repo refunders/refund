@@ -43,11 +43,10 @@ The additive model is fitted using \code{\link[mgcv]{gam}}, unless there
 are more than 10000 responses; in that case \code{\link[mgcv]{bam}} is
 used.
 }
-\author{
-Philip Reiss \email{phil.reiss@nyumc.org}
-}
 \seealso{
 \code{\link{fosr}}
 }
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org}
+}
 \keyword{internal}
-

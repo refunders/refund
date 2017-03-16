@@ -99,6 +99,7 @@ need to be adjusted in application-specific ways.
   Binomial responses should be specified as a numeric vector rather than as a
   matrix or a factor.
 }
+
 \examples{
 \dontrun{
 ##################################################################
@@ -236,10 +237,6 @@ matplot(wavelengths, cbind(fit$BetaHat[[1]], fit$Bounds[[1]]),
         ylab = "Coefficient Function", col=1)
 }
 }
-\author{
-Bruce Swihart \email{bruce.swihart@gmail.com} and 
-Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}
-}
 \references{
 Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 Penalized functional regression. \emph{Journal of Computational and Graphical
@@ -258,4 +255,7 @@ American Statistical Association, 109(508): 1425-1439.
 \seealso{
 \code{\link{rlrt.pfr}}, \code{\link{predict.pfr}}.
 }
-
+\author{
+Bruce Swihart \email{bruce.swihart@gmail.com} and 
+Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}
+}

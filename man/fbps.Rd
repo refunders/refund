@@ -103,12 +103,11 @@ persp(x,z,MY,zlab="f(x,z)",zlim=c(-1,2.5), phi=30,theta=45,expand=0.8,r=4,
 persp(x,z,est$Yhat,zlab="f(x,z)",zlim=c(-1,2.5),phi=30,theta=45,
       expand=0.8,r=4,col="red",main="Estimated surface")
 }
-\author{
-Luo Xiao \email{lxiao@jhsph.edu}
-}
 \references{
 Xiao, L., Li, Y., and Ruppert, D. (2013). Fast bivariate
 \emph{P}-splines: the sandwich smoother. \emph{Journal of the Royal
 Statistical Society: Series B}, 75(3), 577--599.
 }
-
+\author{
+Luo Xiao \email{lxiao@jhsph.edu}
+}

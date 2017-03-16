@@ -188,10 +188,6 @@ image(seq(20,40,5), seq(10,20,5), cv.gas$cv.table, xlab="Basis size",
 
 }
 }
-\author{
-Philip Reiss \email{phil.reiss@nyumc.org}, Lan Huo
-\email{lan.huo@nyumc.org}, and Lei Huang \email{huangracer@gmail.com}
-}
 \references{
 Ormerod, J. T. (2008).  On semiparametric regression and data
 mining.  Ph.D. dissertation, School of Mathematics and Statistics,
@@ -214,4 +210,7 @@ models with images as predictors.  \emph{Biometrics}, 66, 61--69.
 Wood, S. N. (2006). \emph{Generalized Additive Models: An Introduction with
 R}. Boca Raton, FL: Chapman & Hall.
 }
-
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org}, Lan Huo
+\email{lan.huo@nyumc.org}, and Lei Huang \email{huangracer@gmail.com}
+}

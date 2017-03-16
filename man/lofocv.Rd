@@ -36,11 +36,10 @@ This internal function, called by \code{fosr()} when \code{method="OLS"},
 performs efficient leave-one-function-out cross-validation using
 Demmler-Reinsch orthogonalization to choose the smoothing parameter.
 }
-\author{
-Philip Reiss \email{phil.reiss@nyumc.org} and Lei Huang
-}
 \seealso{
 \code{\link{fosr}}, \code{\link{pwcv}}
 }
+\author{
+Philip Reiss \email{phil.reiss@nyumc.org} and Lei Huang
+}
 \keyword{internal}
-

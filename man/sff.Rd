@@ -69,4 +69,3 @@ YOUR OWN RISK.
 Fabian Scheipl, based on Sonja Greven's trick for fitting functional
   responses.
 }
-

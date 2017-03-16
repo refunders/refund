@@ -82,6 +82,7 @@ using numerical integration. Scores in sFPCA step are estimated under a mixed mo
 
 A random effects model is recommended when a set of visit times for all subjects and visits is not dense in its range.
 }
+
 \examples{
   \dontrun{ 
   ########################################
@@ -272,10 +273,9 @@ A random effects model is recommended when a set of visit times for all subjects
           lwd=1, lty=1)
   }
 }
-\author{
-So Young Park \email{spark13@ncsu.edu}, Ana-Maria Staicu
-}
 \references{
 Park, S.Y. and Staicu, A.M. (2015). Longitudinal functional data analysis. Stat 4 212-226.
 }
-
+\author{
+So Young Park \email{spark13@ncsu.edu}, Ana-Maria Staicu
+}

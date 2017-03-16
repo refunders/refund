@@ -8,20 +8,28 @@ Predict.matrix.pco.smooth <- function(object, data){
 }
 #' Faster multi-dimensional scaling
 #'
-#' This is a modified version of \code{\link{cmdscale}} that uses the Lanczos procedure (\code{\link[mgcv]{slanczos}}) instead of \code{eigen}. Called by \code{\link{smooth.construct.pco.smooth.spec}}. 
+#' This is a modified version of \code{\link{cmdscale}} that uses the Lanczos
+#' procedure (\code{\link[mgcv]{slanczos}}) instead of \code{eigen}. Called by
+#' \code{\link{smooth.construct.pco.smooth.spec}}.
 #'
-#' @param d a distance structure as returned by \code{\link{dist}}, or a full symmetric matrix of distances or dissimilarities.
-#' @param k the maximum dimension of the space which the data are to be represented in; must be in \code{\{1, 2, ..., n-1\}}.
+#' @param d a distance structure as returned by \code{\link{dist}}, or a full
+#'   symmetric matrix of distances or dissimilarities.
+#' @param k the maximum dimension of the space which the data are to be
+#'   represented in; must be in \code{\{1, 2, ..., n-1\}}.
 #' @param eig logical indicating whether eigenvalues should be returned.
-#' @param add logical indicating if the additive constant of Cailliez (1983) should be computed, and added to the non-diagonal dissimilarities such that the modified dissimilarities are Euclidean.
-#' @param x.ret indicates whether the doubly centred symmetric distance matrix should be returned.
+#' @param add logical indicating if the additive constant of Cailliez (1983)
+#'   should be computed, and added to the non-diagonal dissimilarities such that
+#'   the modified dissimilarities are Euclidean.
+#' @param x.ret indicates whether the doubly centred symmetric distance matrix
+#'   should be returned.
 #' @return as \code{\link{cmdscale}}
 #'
 #' @author David L Miller, based on code by R Core.
 #' @seealso \code{\link{smooth.construct.pco.smooth.spec}}
 #' @importFrom mgcv slanczos
+#' @export
 #' @references
-#' Cailliez, F. (1983). The analytical solution of the additive constant problem. 
+#' Cailliez, F. (1983). The analytical solution of the additive constant problem.
 #' \emph{Psychometrika}, 48, 343-349.
 cmdscale_lanczos <- function(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE){
 
@@ -101,23 +109,47 @@ cmdscale_lanczos <- function(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE){
 }
 #' Make predictions using pco basis terms
 #'
-#' This function performs the necessary preprocessing for making predictions with \code{\link[mgcv]{gam}} models that include \code{\link{pco}} basis terms. The function \code{pco_predict_preprocess} builds a \code{data.frame} (or augments an existing one) to be used with the usual \code{predict} function.
+#' This function performs the necessary preprocessing for making predictions
+#' with \code{\link[mgcv]{gam}} models that include \code{\link{pco}} basis
+#' terms. The function \code{pco_predict_preprocess} builds a \code{data.frame}
+#' (or augments an existing one) to be used with the usual \code{predict}
+#' function.
 #'
-#' Models with \code{\link{pco}} basis terms are fitted by inputting distances among the observations and then regressing (with a ridge penalty) on leading principal coordinates arising from these distances. To perform prediction, we must input the distances from the new data points to the original points, and then "insert" the former into the principal coordinate space by the interpolation method of Gower (1968) (see also Miller, 2012).
+#' Models with \code{\link{pco}} basis terms are fitted by inputting distances
+#' among the observations and then regressing (with a ridge penalty) on leading
+#' principal coordinates arising from these distances. To perform prediction, we
+#' must input the distances from the new data points to the original points, and
+#' then "insert" the former into the principal coordinate space by the
+#' interpolation method of Gower (1968) (see also Miller, 2012).
 #'
-#' An example of how to use this function in practice is shown in \code{\link{smooth.construct.pco.smooth.spec}}.
+#' An example of how to use this function in practice is shown in
+#' \code{\link{smooth.construct.pco.smooth.spec}}.
 #'
-#' @param model a fitted \code{\link[mgcv]{gam}} model with at least one term of class "\code{pco.smooth}".
-#' @param newdata data frame including the new values for any non-\code{\link{pco}} terms in the original fit. If there were none, this can be left as \code{NULL}.
-#' @param dist_list a list of \code{n} \eqn{\times} \code{n*} matrices, one per \code{\link{pco}} term in the model, giving the distances from the \code{n*} prediction points to the \code{n} design points (original observations). List entry names should correspond to the names of the terms in the model (e.g., if the model includes a \code{s(x)} term, \code{dist_list} must include an element named "\code{x}").
+#' @param model a fitted \code{\link[mgcv]{gam}} model with at least one term of
+#'   class "\code{pco.smooth}".
+#' @param newdata data frame including the new values for any
+#'   non-\code{\link{pco}} terms in the original fit. If there were none, this
+#'   can be left as \code{NULL}.
+#' @param dist_list a list of \code{n} \eqn{\times} \code{n*} matrices, one per
+#'   \code{\link{pco}} term in the model, giving the distances from the
+#'   \code{n*} prediction points to the \code{n} design points (original
+#'   observations). List entry names should correspond to the names of the terms
+#'   in the model (e.g., if the model includes a \code{s(x)} term,
+#'   \code{dist_list} must include an element named "\code{x}").
 #'
-#' @return a \code{\link{data.frame}} with the coordinates for the new data inserted into principal coordinate space, in addition to the supplied \code{newdata} if this was non-\code{NULL}. This can be used as the \code{newdata} argument in a call to \code{\link[mgcv]{predict.gam}}.
+#' @return a \code{\link{data.frame}} with the coordinates for the new data
+#'   inserted into principal coordinate space, in addition to the supplied
+#'   \code{newdata} if this was non-\code{NULL}. This can be used as the
+#'   \code{newdata} argument in a call to \code{\link[mgcv]{predict.gam}}.
 #' @author David L Miller
 #' @export
-#' @references
-#' Gower, J. C. (1968). Adding a point to vector diagrams in multivariate analysis. Biometrika, 55(3), 582-585. \url{http://doi.org/10.2307/2334268}
+#' @references Gower, J. C. (1968). Adding a point to vector diagrams in
+#' multivariate analysis. Biometrika, 55(3), 582-585.
+#' \url{http://doi.org/10.2307/2334268}
 #'
-#' Miller, D. L. (2012). On smooth models for complex domains and distances. PhD dissertation, Department of Mathematical Sciences, University of Bath. Available at \url{http://opus.bath.ac.uk/31800/}
+#' Miller, D. L. (2012). On smooth models for complex domains and distances. PhD
+#' dissertation, Department of Mathematical Sciences, University of Bath.
+#' Available at \url{http://opus.bath.ac.uk/31800/}
 #' @seealso \code{\link{smooth.construct.pco.smooth.spec}}
 pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 
@@ -185,39 +217,59 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
   return(newdata)
 }
 
-#' Principal coordinate ridge regression
+#'Principal coordinate ridge regression
 #'
-#' Smooth constructor function for principal coordinate ridge regression fitted by \code{\link[mgcv]{gam}}. When the principal coordinates are defined by a relevant distance among functional predictors, this is a form of nonparametric scalar-on-function regression. Reiss et al. (2016) describe the approach and apply it to dynamic time warping distances among functional predictors.
+#'Smooth constructor function for principal coordinate ridge regression fitted
+#'by \code{\link[mgcv]{gam}}. When the principal coordinates are defined by a
+#'relevant distance among functional predictors, this is a form of nonparametric
+#'scalar-on-function regression. Reiss et al. (2016) describe the approach and
+#'apply it to dynamic time warping distances among functional predictors.
 #'
-#' @aliases pco smooth.construct.pco.smooth.spec Predict.matrix.pco.smooth poridge
-#' @export
-#' @importFrom stats cmdscale
+#'@aliases pco smooth.construct.pco.smooth.spec Predict.matrix.pco.smooth
+#'  poridge
+#'@export
+#'@importFrom stats cmdscale
 #'
-#' @param object a smooth specification object, usually generated by a term of the form \code{s(dummy, bs="pco", k, xt)}; see Details.
-#' @param data a list containing just the data.
-#' @param knots IGNORED!
+#'@param object a smooth specification object, usually generated by a term of
+#'  the form \code{s(dummy, bs="pco", k, xt)}; see Details.
+#'@param data a list containing just the data.
+#'@param knots IGNORED!
 #'
-#' @return An object of class \code{pco.smooth}. The resulting object has an \code{xt} element which contains details of the multidimensional scaling, which may be interesting.
+#'@return An object of class \code{pco.smooth}. The resulting object has an
+#'  \code{xt} element which contains details of the multidimensional scaling,
+#'  which may be interesting.
 #'
-#' @section Details:
-#' The constructor is not normally called directly, but is rather used internally by \code{\link{gam}}.
+#'@section Details: The constructor is not normally called directly, but is
+#'  rather used internally by \code{\link{gam}}.
 #'
-#' In a \code{\link[mgcv]{gam}} term of the above form \code{s(dummy, bs="pco", k, xt)}, 
-#' \itemize{
-#'	\item \code{dummy} is an arbitrary vector (or name of a column in \code{data}) whose length is the number of observations. This is not actually used, but is required as part of the input to \code{\link[mgcv]{s}}. Note that if multiple \code{pco} terms are used in the model, there must be multiple unique term names (e.g., "\code{dummy1}", "\code{dummy2}", etc).
-#'	\item \code{k} is the number of principal coordinates (e.g., \code{k=9} will give a 9-dimensional projection of the data).
-#'	\item \code{xt} is a list supplying the distance information, in one of two ways. (i) A matrix \code{Dmat} of distances can be supplied directly via \code{xt=list(D=Dmat,\dots)}. (ii) Alternatively, one can use \code{xt=list(realdata=\dots, dist_fn=\dots, \dots)} to specify a data matrix \code{realdata} and distance function \code{dist_fn}, whereupon a distance matrix \code{dist_fn(realdata)} is created.
-#'}
-#' The list \code{xt} also has the following optional elements:
-#' \itemize{
-#'   \item \code{add}: Passed to \code{\link{cmdscale}} when performing multidimensional scaling; for details, see the help for that function. (Default \code{FALSE}.)\cr
-#' \item \code{fastcmd}: if \code{TRUE}, multidimensional scaling is performed by \code{\link{cmdscale_lanczos}}, which uses Lanczos iteration to eigendecompose the distance matrix; if \code{FALSE}, MDS is carried out by \code{\link{cmdscale}}. Default is \code{FALSE}, to use \code{cmdscale}.
-#' }
+#'  In a \code{\link[mgcv]{gam}} term of the above form \code{s(dummy, bs="pco",
+#'  k, xt)}, \itemize{ \item \code{dummy} is an arbitrary vector (or name of a
+#'  column in \code{data}) whose length is the number of observations. This is
+#'  not actually used, but is required as part of the input to
+#'  \code{\link[mgcv]{s}}. Note that if multiple \code{pco} terms are used in
+#'  the model, there must be multiple unique term names (e.g., "\code{dummy1}",
+#'  "\code{dummy2}", etc). \item \code{k} is the number of principal coordinates
+#'  (e.g., \code{k=9} will give a 9-dimensional projection of the data). \item
+#'  \code{xt} is a list supplying the distance information, in one of two ways.
+#'  (i) A matrix \code{Dmat} of distances can be supplied directly via
+#'  \code{xt=list(D=Dmat,\dots)}. (ii) Alternatively, one can use
+#'  \code{xt=list(realdata=\dots, dist_fn=\dots, \dots)} to specify a data
+#'  matrix \code{realdata} and distance function \code{dist_fn}, whereupon a
+#'  distance matrix \code{dist_fn(realdata)} is created. } The list \code{xt}
+#'  also has the following optional elements: \itemize{ \item \code{add}: Passed
+#'  to \code{\link{cmdscale}} when performing multidimensional scaling; for
+#'  details, see the help for that function. (Default \code{FALSE}.)\cr \item
+#'  \code{fastcmd}: if \code{TRUE}, multidimensional scaling is performed by
+#'  \code{\link{cmdscale_lanczos}}, which uses Lanczos iteration to
+#'  eigendecompose the distance matrix; if \code{FALSE}, MDS is carried out by
+#'  \code{\link{cmdscale}}. Default is \code{FALSE}, to use \code{cmdscale}. }
 #'
-#' @author David L Miller, based on code from Lan Huo and Phil Reiss
+#'@author David L Miller, based on code from Lan Huo and Phil Reiss
 #'
-#' @references
-#' Reiss, P. T., Miller, D. L., Wu, P.-S., and Wen-Yu Hua, W.-Y. Penalized nonparametric scalar-on-function regression via principal coordinates. Under revision. Available at \url{https://works.bepress.com/phil_reiss/42/}.
+#'@references Reiss, P. T., Miller, D. L., Wu, P.-S., and Wen-Yu Hua, W.-Y.
+#'Penalized nonparametric scalar-on-function regression via principal
+#'coordinates. Under revision. Available at
+#'\url{https://works.bepress.com/phil_reiss/42/}.
 #'
 #' @examples
 #' # a simulated example

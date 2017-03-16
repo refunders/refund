@@ -112,10 +112,10 @@ strange to refer to a variable that is not one of the arguments, but the
 \code{"dt"} constructor explicity places these variables in the environment
 of the transformation function to make them available.
 }
-\author{
-Jonathan Gellar
-}
+
 \seealso{
 \code{\link[mgcv]{smooth.construct}}
 }
-
+\author{
+Jonathan Gellar
+}

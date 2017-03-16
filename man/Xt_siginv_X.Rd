@@ -24,4 +24,3 @@ in cross-sectional VB algorithm and Gibbs sampler
 \author{
 Jeff Goldsmith \email{ajg2202@cumc.columbia.edu}
 }
-

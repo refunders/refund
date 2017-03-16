@@ -83,9 +83,6 @@ Described in Di et al. (2009) and Goldsmith et al. (2013).
  mfpca.DTI =  mfpca.sc(Y=Y, id = id, twoway = TRUE)
  }
 }
-\author{
-Julia Wrobel \email{jw3134@cumc.columbia.edu}, Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, and Chongzhi Di
-}
 \references{
 Di, C., Crainiceanu, C., Caffo, B., and Punjabi, N. (2009).
 Multilevel functional principal component analysis. \emph{Annals of Applied
@@ -98,4 +95,6 @@ Goldsmith, J., Greven, S., and Crainiceanu, C. (2013). Corrected confidence
 bands for functional data using principal components. \emph{Biometrics},
 69(1), 41--51.
 }
-
+\author{
+Julia Wrobel \email{jw3134@cumc.columbia.edu}, Jeff Goldsmith \email{jeff.goldsmith@columbia.edu}, and Chongzhi Di
+}

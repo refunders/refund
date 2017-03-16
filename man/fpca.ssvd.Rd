@@ -113,9 +113,6 @@ Note that \code{fpca.ssvd} computes smoothed orthonormal eigenvectors
  matplot(1:m, t(smoothSV$Yhat), xlab="", ylab="",
          type="l", lty=1,col=clrs, main="estimated smooth Y", bty="n")
 }
-\author{
-Fabian Scheipl
-}
 \references{
 Huang, J. Z., Shen, H., and Buja, A. (2008). Functional principal
  components analysis via penalized rank one approximation. \emph{Electronic
@@ -130,4 +127,6 @@ Huang, J. Z., Shen, H., and Buja, A. (2008). Functional principal
  smoothing a covariance estimate; \code{\link{fpca2s}} for a faster SVD-based
  approach.
 }
-
+\author{
+Fabian Scheipl
+}
