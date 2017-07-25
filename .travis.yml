@@ -18,6 +18,8 @@ after_failure:
 notifications:
   email:
     recipients:
+      - jw3134@cumc.columbia.edu
+      - fabian.scheipl@stat.uni-muenchen.de
       - jeff.goldsmith@columbia.edu
     on_success: change
     on_failure: always
