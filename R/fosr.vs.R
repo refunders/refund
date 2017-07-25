@@ -89,9 +89,14 @@ fosr.vs <- function(formula, data, nbasis=10, method=c("ls", "grLasso", "grMCP",
 	Y.vec = as.vector(t(Y))
 	ls <- lm(Y.vec~Z+0)
 	a <- matrix(ls$residuals,nrow=N,ncol=D,byrow=T)
-	w <- fpca.sc(a, var=T)
-	b <- Reduce("+", lapply(1:length(w$evalues), function(x) {w$evalues[x] * w$efunctions[,x] %*% t(w$efunctions[,x])})) + w$sigma2 * diag(1,D,D)
+	if(D < 15) { 
+		b = cov(a)
+	} else {
+		w <- fpca.sc(a, var=T)
+		b <- Reduce("+", lapply(1:length(w$evalues), function(x) {w$evalues[x] * w$efunctions[,x] %*% t(w$efunctions[,x])})) + w$sigma2 * diag(1,D,D)
+	}
 	f <- coef(ls)
+	f <- replace(f, which(is.na(f)), 0)
 	d <- rep(0,nbasis*K)
 	num.iter = 0
   
@@ -113,8 +118,13 @@ fosr.vs <- function(formula, data, nbasis=10, method=c("ls", "grLasso", "grMCP",
 	    f <- as.vector(coef(cvlam))[-1]
 	  }
 	  a <- matrix(Y.vec-Z%*%f,nrow=N,ncol=D,byrow=T)
-	  w <- fpca.sc(a, var=T)
-	  b <- Reduce("+", lapply(1:length(w$evalues), function(x) {w$evalues[x] * w$efunctions[,x] %*% t(w$efunctions[,x])})) + w$sigma2 * diag(1,D,D)
+	  
+	  if(D < 15) { 
+	  	b = cov(a)
+	  } else {
+	  	w <- fpca.sc(a, var=T)
+	  	b <- Reduce("+", lapply(1:length(w$evalues), function(x) {w$evalues[x] * w$efunctions[,x] %*% t(w$efunctions[,x])})) + w$sigma2 * diag(1,D,D)
+	  }
     
     if(num.iter %% 10 == 1) cat(".")
     
