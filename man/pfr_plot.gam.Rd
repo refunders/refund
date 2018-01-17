@@ -7,7 +7,7 @@
 \title{Local version of \code{plot.gam}}
 \usage{
 pfr_plot.gam(x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
-  select = NULL, scale = -1, n = 100, n2 = 40, pers = FALSE,
+  select = NULL, scale = -1, n = 100, n2 = 40, n3 = 3, pers = FALSE,
   theta = 30, phi = 30, jit = FALSE, xlab = NULL, ylab = NULL,
   main = NULL, ylim = NULL, xlim = NULL, too.far = 0.1,
   all.terms = FALSE, shade = FALSE, shade.col = "gray80", shift = 0,
@@ -24,9 +24,9 @@ pfr_plot.gam(x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
 
 \method{plot}{random.effect}(x, P = NULL, data = NULL, label = "",
   se1.mult = 1, se2.mult = 2, partial.resids = FALSE, rug = TRUE,
-  se = TRUE, scale = -1, n = 100, n2 = 40, pers = FALSE, theta = 30,
-  phi = 30, jit = FALSE, xlab = NULL, ylab = NULL, main = NULL,
-  ylim = NULL, xlim = NULL, too.far = 0.1, shade = FALSE,
+  se = TRUE, scale = -1, n = 100, n2 = 40, n3 = 3, pers = FALSE,
+  theta = 30, phi = 30, jit = FALSE, xlab = NULL, ylab = NULL,
+  main = NULL, ylim = NULL, xlim = NULL, too.far = 0.1, shade = FALSE,
   shade.col = "gray80", shift = 0, trans = I, by.resids = FALSE,
   scheme = 0, ...)
 }
