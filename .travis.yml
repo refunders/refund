@@ -11,6 +11,7 @@ cache: packages
 r_packages:
   - nlme
   - mgcv
+  - devtools
 
 
 after_failure:
