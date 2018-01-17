@@ -13,6 +13,9 @@ r_packages:
   - mgcv
   - devtools
 
+#need this for nloptr?
+apt_packages:
+  - libnlopt-dev
 
 after_failure:
   - ./travis-tool.sh dump_logs
