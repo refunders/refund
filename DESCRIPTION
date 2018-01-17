@@ -4,7 +4,7 @@ Title: Regression with Functional Data (Developer Version)
 Version: 0.1-20
 Date: 2018-01-17
 Authors@R: c(
-    person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
+    person("Jeff", "Goldsmith", role = c("aut", "cre"), email = "jeff.goldsmith@columbia.edu"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
     person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"),
     person("Jaroslaw", "Harezlak", role="aut"),

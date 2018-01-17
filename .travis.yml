@@ -7,9 +7,10 @@ r:
   - devel
 cache: packages
 
-# need this for current nlme:
+# need this for current nlme, mgcv:
 r_packages:
   - nlme
+  - mgcv
 
 
 after_failure:
