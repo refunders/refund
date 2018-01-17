@@ -7,24 +7,31 @@
 cmdscale_lanczos(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
 }
 \arguments{
-\item{d}{a distance structure as returned by \code{\link{dist}}, or a full symmetric matrix of distances or dissimilarities.}
+\item{d}{a distance structure as returned by \code{\link{dist}}, or a full
+symmetric matrix of distances or dissimilarities.}
 
-\item{k}{the maximum dimension of the space which the data are to be represented in; must be in \code{\{1, 2, ..., n-1\}}.}
+\item{k}{the maximum dimension of the space which the data are to be
+represented in; must be in \code{\{1, 2, ..., n-1\}}.}
 
 \item{eig}{logical indicating whether eigenvalues should be returned.}
 
-\item{add}{logical indicating if the additive constant of Cailliez (1983) should be computed, and added to the non-diagonal dissimilarities such that the modified dissimilarities are Euclidean.}
+\item{add}{logical indicating if the additive constant of Cailliez (1983)
+should be computed, and added to the non-diagonal dissimilarities such that
+the modified dissimilarities are Euclidean.}
 
-\item{x.ret}{indicates whether the doubly centred symmetric distance matrix should be returned.}
+\item{x.ret}{indicates whether the doubly centred symmetric distance matrix
+should be returned.}
 }
 \value{
 as \code{\link{cmdscale}}
 }
 \description{
-This is a modified version of \code{\link{cmdscale}} that uses the Lanczos procedure (\code{\link[mgcv]{slanczos}}) instead of \code{eigen}. Called by \code{\link{smooth.construct.pco.smooth.spec}}.
+This is a modified version of \code{\link{cmdscale}} that uses the Lanczos
+procedure (\code{\link[mgcv]{slanczos}}) instead of \code{eigen}. Called by
+\code{\link{smooth.construct.pco.smooth.spec}}.
 }
 \references{
-Cailliez, F. (1983). The analytical solution of the additive constant problem. 
+Cailliez, F. (1983). The analytical solution of the additive constant problem.
 \emph{Psychometrika}, 48, 343-349.
 }
 \seealso{
