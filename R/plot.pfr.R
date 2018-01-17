@@ -53,7 +53,7 @@ plot.pfr <- function(x, Qtransform=FALSE, ...) {
 #' @seealso \code{\link[mgcv]{plot.gam}}
 #' @keywords internal
 pfr_plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
-                         select = NULL, scale = -1, n = 100, n2 = 40, pers = FALSE,
+                         select = NULL, scale = -1, n = 100, n2 = 40, n3=3, pers = FALSE,
                          theta = 30, phi = 30, jit = FALSE, xlab = NULL, ylab = NULL,
                          main = NULL, ylim = NULL, xlim = NULL, too.far = 0.1, all.terms = FALSE,
                          shade = FALSE, shade.col = "gray80", shift = 0, trans = I,

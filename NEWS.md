@@ -1,4 +1,12 @@
-# refundDevel
+# refundDevel 0.1-20
+
+* updates for compatibility with mgcv 1.8-23  (#69 etc.)
+
+* fixed fpcr for scalar covariates (#76)
+
+* now re-exports cmdscale_lanczos
+
+# refund 0.1-15
 
 * homogenized inputs/outputs to most fpca.XXX functions
 
