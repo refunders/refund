@@ -272,11 +272,12 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #'\url{https://works.bepress.com/phil_reiss/42/}.
 #'
 #' @examples
+#' \dontrun{
 #' # a simulated example
 #' library(refundDevel)
-#' library(mgcv)
-#' require(dtw)
-#'
+#' library(mgcv
+#' library(dtw)
+#' 
 #' ## First generate the data
 #' Xnl <- matrix(0, 30, 101)
 #' set.seed(813)
@@ -344,6 +345,8 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #'
 #' # check that these are the same as the corresponding fitted values
 #' print(cbind(fitted(m)[ c(1:5,10:15)],p))
+#' 
+#' }
 smooth.construct.pco.smooth.spec <- function(object, data, knots){
 
   ## test what we got given

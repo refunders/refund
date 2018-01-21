@@ -57,10 +57,11 @@ apply it to dynamic time warping distances among functional predictors.
 }
 
 \examples{
+\dontrun{
 # a simulated example
 library(refundDevel)
-library(mgcv)
-require(dtw)
+library(mgcv
+library(dtw)
 
 ## First generate the data
 Xnl <- matrix(0, 30, 101)
@@ -129,6 +130,8 @@ p <- predict(m, pred_data)
 
 # check that these are the same as the corresponding fitted values
 print(cbind(fitted(m)[ c(1:5,10:15)],p))
+
+}
 }
 \references{
 Reiss, P. T., Miller, D. L., Wu, P.-S., and Wen-Yu Hua, W.-Y.
