@@ -276,7 +276,7 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #' # a simulated example
 #' library(refundDevel)
 #' library(mgcv
-#' library(dtw)
+#' require(dtw)
 #' 
 #' ## First generate the data
 #' Xnl <- matrix(0, 30, 101)

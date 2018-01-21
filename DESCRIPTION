@@ -45,8 +45,7 @@ Imports:
 Suggests:
     RColorBrewer,
     reshape2,
-    testthat,
-    dtw
+    testthat
 Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to

@@ -61,7 +61,7 @@ apply it to dynamic time warping distances among functional predictors.
 # a simulated example
 library(refundDevel)
 library(mgcv
-library(dtw)
+require(dtw)
 
 ## First generate the data
 Xnl <- matrix(0, 30, 101)
