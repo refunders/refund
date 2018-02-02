@@ -274,8 +274,8 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #' @examples
 #' \dontrun{
 #' # a simulated example
-#' library(refundDevel)
-#' library(mgcv
+#' library(refund)
+#' library(mgcv)
 #' require(dtw)
 #' 
 #' ## First generate the data

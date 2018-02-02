@@ -59,8 +59,8 @@ apply it to dynamic time warping distances among functional predictors.
 \examples{
 \dontrun{
 # a simulated example
-library(refundDevel)
-library(mgcv
+library(refund)
+library(mgcv)
 require(dtw)
 
 ## First generate the data

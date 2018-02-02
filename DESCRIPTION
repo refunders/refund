@@ -1,4 +1,4 @@
-Package: refundDevel
+Package: refund
 Type: Package
 Title: Regression with Functional Data (Developer Version)
 Version: 0.1-20
