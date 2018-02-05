@@ -19,6 +19,8 @@ flip_efunctions <- function(ef1, ef2) {
 }
 
 test_that("all fpca functions agree on toy example", {
+  skip_on_cran()
+
   sc <- fpca.sc(Y)
   face <- fpca.face(Y)
   ssvd <- fpca.ssvd(Y)
@@ -48,6 +50,8 @@ test_that("all fpca functions agree on toy example", {
 })
 
 test_that("fpca.sc options work", {
+  skip_on_cran()
+
   sc <- fpca.sc(Y)
   sc_cov1 <- fpca.sc(Y, cov.est.method = 1)
   sc_sym <- fpca.sc(Y, useSymm = TRUE)
@@ -60,6 +64,8 @@ test_that("fpca.sc options work", {
 
 
 test_that("fpca.ssvd options work", {
+  skip_on_cran()
+
   expect_error(fpca.ssvd(Y = 1:10, ydata=data.frame()), "irregular data")
   expect_warning(fpca.ssvd(Y = Y, argvals=sqrt(t)), "non-equidistant")
   ssvd <- fpca.ssvd(Y)
@@ -71,6 +77,8 @@ test_that("fpca.ssvd options work", {
 })
 
 test_that("fpca2s options work", {
+  skip_on_cran()
+
   expect_error(fpca2s(Y = 1:10, ydata=data.frame()), "irregular data")
   expect_warning(fpca2s(Y = Y, argvals=sqrt(t)), "non-equidistant")
   twos <- fpca2s(Y)

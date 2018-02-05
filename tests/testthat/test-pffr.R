@@ -1,7 +1,7 @@
 context("Testing pffr")
 
 set.seed(9312)
-data2 <- pffrSim(scenario = "all", n = 200)
+data2 <- pffrSim(scenario = "all", n = 100)
 argvals <- attr(data2, "yindex")
 s <- attr(data2, "xindex")
 m2 <- pffr(Y ~
