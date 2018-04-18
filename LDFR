@@ -37,7 +37,7 @@
 #'                obtain full response trajectory (if asked) adjusting for it. Varying scalar
 #'                covariate ("Varying) can also be used. If full information all all time points is not available,
 #'                we proceed to obtain trajectory without it
-#'@param nbf      number of basis functions used to represent temporal non-parametric smooth functions
+#'@param nbf      number of basis functions used to represent temporal smooth functions
 #'@param method   smoothing parameter selection criteria; default is REML
 #'@param pve      pre-specified proportion of variance explained; default value is 0.95
 #'@param Yerror   type of dependence structure for responses; "CS" for subject-specific random
@@ -93,139 +93,105 @@
 #'
 #' @examples
 #' \dontrun{
+#' 
+#' ## -------------------------------------------- Illustration with real data -------------------------------------------- ##
+#' ##---------------------------------------------------------------------------------------------------------------------- ##
+#' 
+#' data(DTI)
+#' MS <- subset(DTI, case == 1)                                                           # subset data with multiple sclerosis (MS) case
+#' index.na.cca <- which(is.na(MS$cca)); index.na.rcst <- which(is.na(MS$rcst)) # CCA and RCST
+#' funcs <- list();
+#' cca <- MS$cca; cca[index.na.cca] <- fpca.sc(cca)$Yhat[index.na.cca]; sum(is.na(cca)); funcs[[1]] <- cca         # imputing missing values
+#' rcst <- MS$rcst; rcst[index.na.rcst] <- fpca.sc(rcst)$Yhat[index.na.rcst]; sum(is.na(rcst)); funcs[[2]] <- rcst # imputing missing values
+#' subj <- MS$ID; I <- length(unique(subj))                                               # number of subject
+#' subj <- unlist(lapply(seq_len(I), function(ii) rep(ii, length(which(subj == unique(subj)[ii]))))) # renaming id as 1,1,1,1,1,2,2,...
+#' Yij <- MS$pasat                                                                        # PASAT score (continuous scalar response)
+#' Tij <- MS$visit.time / max(MS$visit.time) # visit times
 #'
-#' ## ---------------------- Function to simulate data ----------------------- ##
+#' fit0 <- LDFR(I = I, IW = NULL, subj = subj, group = NULL, Tij = Tij, Yij = Yij, funcs = funcs, covariate = NULL, covariate.type = NULL, 
+#'       nbf = 8, method = "REML", pve = 0.95, Yerror = "CS", family = gaussian, pred.interval = FALSE, alpha = 0.05, plot = FALSE, 
+#'       subj.id = NULL, subj.id.X = NULL)
 #'
-#' onesubj <- function (A, i, TT, ss, Yerror, delta){
-#'  set.seed (A)
-#'  J <- length(TT)
-#'  SS <- length(ss)
-#'  Si.i11 <- rnorm (1, mean = 0, sd = sqrt(3.5))
-#'  Si.i12 <- rnorm (1, mean = 0, sd = sqrt(2))
-#'  Si.i21 <- rnorm(1, mean = 0, sd = sqrt(3))
-#'  Si.i22 <- rnorm(1, mean = 0, sd = sqrt(1.5))
-#'  zetai1 <- Si.i11 * cos(2 * pi * TT) + Si.i12 *  sin(2 * pi * TT)
-#'  zetai2 <- Si.i21 * cos(4 * pi * TT) + Si.i22 *  sin(4 * pi * TT)
-#'  MU.Xi <- do.call(rbind, lapply(TT, function(cc) as.vector(1 + 2 * ss + 3 * cc + 4 * ss * cc)))
-#'  phi1 <- sqrt(2) * cos (2 * pi * ss)
-#'  phi2 <- sqrt(2) * sin (2 * pi * ss)
-#'  true.alpha <- 7 * sin(3 * pi * TT)
-#'  true.beta1  <- exp (- TT * delta)
-#'  true.beta2 <- delta * TT * sin ( delta * TT)
-#'
-#'  ### ------------------------ defining true functional predictors ----------------------###
-#'
-#'  true.func.cov <- MU.Xi + do.call(rbind, lapply(zetai2, function (feb)
-#'    feb * phi2)) + do.call(rbind, lapply(zetai1, function (jan) jan * phi1))
-#'
-#'  ### ----------------------- defining error structure for response -------------------- ###
-#'  if (Yerror == "IS"){
-#'    meanYij3 <- rep(0, J)
-#'    Z <- cbind(1, TT)
-#'    D <- matrix(c(1, 0.1, 0.1, 0.5), 2, 2)
-#'    varYij3 <- (Z %*% D) %*% t(Z) + diag(0.5, J)
-#'    Randi <-  mvrnorm(1, meanYij3, varYij3)
-#'    blockid <- 0}
-#'  else if (Yerror == "CS") {
-#'    meanYij3 <- rep(0, J)
-#'    varYij3 <- diag(0.5, J) + matrix(1, nrow = J, ncol = J)
-#'    Randi <- mvrnorm(1, meanYij3, varYij3)
-#'    blockid <- 0}
-#'  else if (Yerror == "CSG"){
-#'   gk <- rnorm(20, 1, 2)      # group effect
-#'  meanYij3 <- rep(0, J)
-#'  bid <- sample(1 : 20, 1)
-#'  blockid <- rep(bid, J)      # block membership
-#'  varYij3 <- diag(0.5, J) + matrix(1, nrow = J, ncol = J)
-#'  Randi <- mvrnorm(1, meanYij3, varYij3) + rep(gk[bid], J)}
-#'  rng <- max(TT) -  min(TT)
-#'  au <- runif(1, 1, 6)
-#'  cov <- rep(au, J)            # covariate
-#'
-#'  ### --------------------------------- Generating responses -------------------------- ###
-#'  Yi.r <-  apply(true.func.cov, 1, function(v){mean(v * phi2) * rng }) * (true.beta2) +
-#'    apply(true.func.cov, 1, function(v){mean(v * phi1 ) * rng }) * (true.beta1)  +
-#'    true.alpha + cov * 0.5 + Randi
-#'
-#'  ### ---------------- defining error structure for observed predictors --------------- ###
-#'  e1 <- rnorm(J, mean = 0, sd = sqrt(0.3))
-#'  e2 <- rnorm(J, mean = 0, sd = sqrt(0.7))
+#' par(mfrow = c(2, 2))
+#' for(r in 1 : 16){                                                                      # plot predicted PASAT score for 16 random subjects
+#'  si <- sample(1 : I, 1)
+#'  plot(Tij[which(subj == unique(subj)[si])], Yij[which(subj == unique(subj)[si])], type = "b", lwd = 2, ylab = "Score", 
+#'       xlab = "Visit time", col = "blue", ylim = c(-5, 65), main = "")
+#'  lines(Tij[which(subj == unique(subj)[si])], fit0$fitted_vals[which(subj == unique(subj)[si])], type = "b", col = "red")
+#'  legend(0, 10, legend=c("PASAT", "Predicted PASAT"), col = c("blue", "red"), lty = c(1, 1), lwd = c(1, 1), cex = 0.8)
+#'}
+#' 
+#' ## ----------------------------------------- Illustration with simulated data ------------------------------------------- ##
+#' ##----------------------------------------------------------------------------------------------------------------------- ##
+#' 
+#'  onesubj <- function (A, i, TT, ss, Yerror, delta){
+#'  set.seed (A); J <- length(TT); SS <- length(ss)
+#'  Si.i11 <- rnorm (1, mean = 0, sd = sqrt(3.5)); Si.i12 <- rnorm (1, mean = 0, sd = sqrt(2))
+#'  Si.i21 <- rnorm(1, mean = 0, sd = sqrt(3)); Si.i22 <- rnorm(1, mean = 0, sd = sqrt(1.5))
+#'  zetai1 <- Si.i11 * cos(2 * pi * TT) + Si.i12 *  sin(2 * pi * TT);  zetai2 <- Si.i21 * cos(4 * pi * TT) + Si.i22 * sin(4 * pi * TT);
+#'  phi1 <- sqrt(2) * cos (2 * pi * ss); phi2 <- sqrt(2) * sin (2 * pi * ss)
+#'  true.alpha <- 7 * sin(3 * pi * TT); true.beta1  <- exp (- TT * delta); true.beta2 <- delta * TT * sin ( delta * TT)
+#'  true.func.cov <- do.call(rbind, lapply(TT, function(cc) as.vector(1 + 2 * ss + 3 * cc + 4 * ss * cc))) + 
+#'                    do.call(rbind, lapply(zetai2, function (feb) feb * phi2)) + do.call(rbind, lapply(zetai1, function (jan) jan * phi1))
+#'    
+#'  if (Yerror == "IS"){ Z <- cbind(1, TT); D <- matrix(c(1, 0.1, 0.1, 0.5), 2, 2);
+#'    varYij3 <- (Z %*% D) %*% t(Z) + diag(0.5, J); Randi <-  mvrnorm(1, rep(0, J), varYij3); blockid <- 0
+#'  }
+#'  else if (Yerror == "CS"){varYij3 <- diag(0.5, J) + matrix(1, nrow = J, ncol = J); Randi <- mvrnorm(1, rep(0, J), varYij3); blockid <- 0
+#'  }
+#'  else if (Yerror == "CSG"){ gk <- rnorm(20, 1, 2); bid <- sample(1 : 20, 1); blockid <- rep(bid, J);    
+#'    varYij3 <- diag(0.5, J) + matrix(1, nrow = J, ncol = J); Randi <- mvrnorm(1, rep(0, J), varYij3) + rep(gk[bid], J)
+#'  }
+#'  rng <- max(TT) -  min(TT); au <- runif(1, 1, 6); cov <- rep(au, J)          
+#'  Yi.r <-  apply(true.func.cov, 1, function(v){mean(v * phi2) * rng }) * (true.beta2) + 
+#'           apply(true.func.cov, 1, function(v){mean(v * phi1 ) * rng }) * (true.beta1)  + true.alpha + cov * 0.5 + Randi
+#'  e1 <- rnorm(J, mean = 0, sd = sqrt(0.3)); e2 <- rnorm(J, mean = 0, sd = sqrt(0.7))
 #'  e3 <- matrix(rnorm(J * SS , mean = 0, sd = sqrt(1)), nrow = J, byrow = T)
-#'  errorX <- do.call(rbind, lapply(e1, function (d) d * phi1)) + do.call(rbind,
-#'                                      lapply(e2, function (d) d * phi2)) + e3
+#'  errorX <- do.call(rbind, lapply(e1, function (d) d * phi1)) + do.call(rbind, lapply(e2, function (d) d * phi2)) + e3
 #'  obs.func.cov <- true.func.cov +  errorX
-#'  data <- cbind(i = rep(i, J), Tij = TT, Yij = Yi.r, cov = cov, obs.func.cov = obs.func.cov,
-#'  blockid = blockid)}
+#'  data <- cbind(i = rep(i, J), Tij = TT, Yij = Yi.r, cov = cov, obs.func.cov = obs.func.cov, blockid = blockid)}
 #'
-#' ### ------------------ Sparse data set generated from full data set ------------------- ###
-#' sparsefun <- function (A, i, TT, data){
-#'  set.seed (A)
-#'  J <- length(TT)
-#'  mi <- sample(15 : 25, size = 1)
-#'  ith <- sort (sample(1 : J, size = mi), decreasing = FALSE)
-#'  ith.data <- data [which(data$i == i ), ]
-#'  k1 <- ith.data [ith, ]
-#'  k1}
+#'  sparsefun <- function (A, i, TT, data){ set.seed (A); J <- length(TT); mi <- sample(15 : 25, size = 1); 
+#'  ith <- sort (sample(1 : J, size = mi), decreasing = FALSE); ith.data <- data [which(data$i == i ), ]; k1 <- ith.data [ith, ]; k1}
 #'
-#' A = 10004              # seed number
-#' TT <- seq(0, 1, length.out = 41)  # grid in t-direction
-#' ss <- seq(0, 1, length.out = 101) # grid in s-direction
-#' I <- 200               # existing subject
-#' IW <- 300              # new subject + existing subject
-#' delta <- NULL          # intensity at which predictor evolves over time
+#'  TT <- seq(0, 1, length.out = 41)                 # grid in t-direction
+#'  ss <- seq(0, 1, length.out = 101)                # grid in s-direction
+#'  I <- 200; IW = 300                               # subjects
 #'
-#' ## --------------------------------------------------------------------------------------- ##
-#' ## ------- Illustration : 1 Responses have compound-symmetric covariance structure ------- ##
-#' ## ---- Here we have covariate information for both observed & new subjects -------------- ##
+#' ## -------------------------------------------------------------------------------------------------------------------------------- ##
+#' ## -------------------------- Illustration : 1 Responses have compound-symmetric covariance structure ----------------------------- ##
+#' ## ---------------------------- Here we have covariate information for both observed & new subjects ------------------------------- ##
 #'
-#' dat.full <- data.frame(do.call(rbind, lapply(seq_len(IW), function(i)
-#'                                onesubj (A = i + A, i, TT, ss, Yerror = "CS", delta = 5))))
+#' A <- 5005;   # seed
+#' dat.full <- data.frame(do.call(rbind, lapply(seq_len(IW), function(i) onesubj (A = i + A, i, TT, ss, Yerror = "CS", delta = 2.5))))
+#' dat.obs <- do.call(rbind, lapply(seq_len(IW), function(i) sparsefun(A = i + A , i, TT, data = dat.full)))
 #'
-#' dat.obs <- do.call(rbind, lapply(seq_len(IW), function(i)
-#'                                    sparsefun(A = i + A , i, TT, data = dat.full)))
+#' EX <- which(dat.obs[, 1] > I) # EX is an indexing variable. First I-subjects are the observed subjects while the rest (IW - I) are new subjects 
+#' Yij <- dat.obs[- EX, 3]; subj <- dat.obs[, 1]; Tij <- dat.obs[, 2]; funcs <- covariate <- list(); covariate[[1]] <- dat.obs[, 4]; 
+#' funcs[[1]] <- as.matrix(dat.obs [, c(5 : 105)]) 
 #'
-#' EX <- which(dat.obs[, 1] > I)
-#' # EX is an indexing variable. First I-subjects are the observed subjects while the rest (IW - I)
-#' # are new subjects for which responses are missing. We recover population-level full trajectory
-#' # for this (IW -I) subjects.
+#' fit1 <- LDFR(I = I, IW = IW, subj = subj, group = NULL, Tij = Tij, Yij = Yij, funcs = funcs, covariate = covariate, 
+#'     covariate.type = "Constant", nbf = 15, method = "REML", pve = 0.95, Yerror = "CS", family = gaussian, pred.interval = TRUE, 
+#'     alpha = 0.05, plot = TRUE, subj.id = c(10, 50, 120, 190), subj.id.X = c(220, 290, 250, 280))
 #'
-#' Yij <- dat.obs[- EX, 3]        # scalar response
-#' subj <- dat.obs[, 1];          # subject identification
-#' Tij <- dat.obs[, 2];           # visit times
-#' funcs <- covariate <- list()
-#' covariate[[1]] <- dat.obs[, 4] # scalar covariate
-#' funcs[[1]] <- as.matrix(dat.obs [, c(5 : 105)]) # Functional predictor
+#' ## ------------------------------------------------------------------------------------------------------------------------------- ##
+#' ## ---------------- Illustration : 2 Responses are generated using subject-specific intercept and slope. ------------------------- ##
+#' ## ----------------------------- Here we have covariate information for observed subjects ---------------------------------------- ##
 #'
-#' fit1 <- LDFR(I = I, IW = IW, subj = subj, group = NULL, Tij = Tij, Yij = Yij, funcs = funcs,
-#'    covariate = covariate, covariate.type = "Constant", nbf = 15, method = "REML", pve = 0.95,
-#'    Yerror = "CS", family = gaussian, pred.interval = TRUE, alpha = 0.05,
-#'    plot = TRUE, subj.id = c(10, 50, 120, 190), subj.id.X = c(220, 290, 250, 280))
-#'
-#' ## -------------------------------------------------------------------------------------------- ##
-#' ## --- Illustration : 2 Responses are generated using subject-specific intercept and slope. --- ##
-#' ## ------------ Here we have only covariate information for observed subjects ----------------- ##
-#'
-#' dat.full <- data.frame(do.call(rbind, lapply(seq_len(I), function(i)
-#'                                onesubj (A = i + A, i, TT, ss, Yerror = "IS", delta = 5))))
-#'
-#' dat.obs <- do.call(rbind, lapply(seq_len(I), function(i)
-#'                                sparsefun(A = i + A , i, TT, data = dat.full)))
-#'
-#' Yij <- dat.obs[, 3]          # scalar response
-#' subj <- dat.obs[, 1]          # subject identification
-#' Tij <- dat.obs[, 2]           # visit times
-#' funcs <- covariate <- list()
-#' covariate[[1]] <- dat.obs[, 4]                      # scalar covariate
-#' funcs[[1]] <- as.matrix(dat.obs [, c(5 : 105)])     # functional predictor
-#'
-#' fit2 <- LDFR(I = I, IW = NULL, subj = subj, group = NULL, Tij = Tij, Yij = Yij, funcs = funcs,
-#'    covariate = covariate, covariate.type = "Constant", nbf = 15, method = "REML", pve = 0.95,
-#'    Yerror = "IS", family = gaussian, pred.interval = TRUE, alpha = 0.05,
-#'    plot = TRUE, subj.id = c(111, 77, 11, 44), subj.id.X = NULL)
+#' A = 10004   # seed
+#' dat.full <- data.frame(do.call(rbind, lapply(seq_len(I), function(i) onesubj (A = i + A, i, TT, ss, Yerror = "IS", delta = 5))))
+#' dat.obs <- do.call(rbind, lapply(seq_len(I), function(i) sparsefun(A = i + A , i, TT, data = dat.full)))
+#' 
+#' Yij <- dat.obs[, 3]; subj <- dat.obs[, 1]; Tij <- dat.obs[, 2]; funcs <- covariate <- list(); covariate[[1]] <- dat.obs[, 4]  
+#' funcs[[1]] <- as.matrix(dat.obs [, c(5 : 105)])    
+#'  
+#' fit2 <- LDFR(I = I, IW = NULL, subj = subj, group = NULL, Tij = Tij, Yij = Yij, funcs = funcs, covariate = covariate, 
+#'     covariate.type = "Constant", nbf = 15, method = "REML", pve = 0.95, Yerror = "IS", family = gaussian, pred.interval = TRUE, 
+#'     alpha = 0.05, plot = TRUE, subj.id = c(111, 77, 11, 44), subj.id.X = NULL)
 #'
 #'}  # Illustration ends
-## ----------------------------------------------------------------------------------------- ##
-## ----------------------------------------------------------------------------------------- ##
+## ---------------------------------------------------------------------------------------------------------------------------------- ##
+## ---------------------------------------------------------------------------------------------------------------------------------- ##
 
 LDFR <- function(I, IW = NULL, subj, group = NULL, Tij, Yij, funcs, covariate = NULL, covariate.type = NULL,
                  nbf, method, pve, Yerror, family, pred.interval = TRUE, alpha, plot = FALSE, subj.id = NULL,
@@ -287,7 +253,7 @@ LDFR <- function(I, IW = NULL, subj, group = NULL, Tij, Yij, funcs, covariate = 
   
   obs.func.cov <- length.grid <- grid <- fbps.fit <- MU.X <- deM.X <- covsmooth <- phi.hat <-
     K.hat <- zetaw.hat <- mu <-  eigenvalues <- fit2 <- zetaw.hatE <- zetaw.hatF <- zetaw.hatN<-
-    zetaw.hatX <-  fMU.X <- MU.gam <- list()
+    zetaw.hatX <- list()
   
   for(n in 1  : length(funcs)){
     obs.func.cov <- funcs[[n]]
@@ -296,19 +262,9 @@ LDFR <- function(I, IW = NULL, subj, group = NULL, Tij, Yij, funcs, covariate = 
     grid[[n]] <- seq(0, 1, length.out = length.grid[[n]]);
     ss <- grid[[n]]
     fbps.fit[[n]] <-  fbps(data = obs.func.cov, covariates = c(Tij, ss))
-    muhat0 <- matrix(0, nrow = J, ncol = SS)
-    muhat.dat <- do.call(rbind, lapply(seq_len(J), function(de){
-      t1 <- TT[de]
-      r1 <- as.vector(which(Tij == t1))[1]
-      muhat0[de,] <- fbps.fit[[n]]$Yhat[r1, ]}))
-    newmu.dat <- data.frame (y = as.vector(t(muhat.dat)), x1 = rep(ss, J), x2 = rep(TT, SS))
-    MU.gam[[n]] <- gam (y ~ te(x1, x2, k = c(10, 5), bs = "cr"), data = newmu.dat, method = method)
-    MU.gam.dat <- data.frame(x1 = rep(ss, ln), x2 = rep(Tij, SS) )
-    MU.X[[n]] <- matrix(predict.gam(MU.gam[[n]], newdata = MU.gam.dat), nrow = ln, ncol = SS, byrow = T)
-    
     ### -------------------- demeaning functional predictor ---------------------- ###
-    
-    deM.X[[n]] <- obs.func.cov - fbps.fit[[n]]$Yhat
+    MU.X[[n]] <- fbps.fit[[n]]$Yhat
+    deM.X[[n]] <- obs.func.cov - MU.X[[n]]
     
     ### --------  finding the eigen-components of covariance  operator ----------- ###
     covsmooth[[n]] <- fpca.face (Y = deM.X[[n]], pve = pve, var =  TRUE)
@@ -830,7 +786,7 @@ LDFR <- function(I, IW = NULL, subj, group = NULL, Tij, Yij, funcs, covariate = 
   if (Yerror == "IS"){
     rand_int <- coefs[c(1 : I)]
     rand_grp <- NULL
-    rand_slp <- coefs[c((I + 1) : (2 * I))]}
+    rand_slp <- coefs[c((I + 1) : (2 * I) )]}
   
   ### -------------------------- Functional coefficient ----------------------------- ###
   
@@ -903,9 +859,9 @@ LDFR <- function(I, IW = NULL, subj, group = NULL, Tij, Yij, funcs, covariate = 
     
     if(IW == I){
       boundXF <- 9999999} # Not available
-    if(pred.interval == FALSE){
-      boundYF <- boundXF <- 9999999} # Not available
   }
+  if(pred.interval == FALSE){
+    boundYF <- boundXF <- 9999999} # Not available
   
   ### -------------------------------- plot ------------------------------------------ ###
   if(plot == TRUE){
@@ -987,31 +943,21 @@ LDFR <- function(I, IW = NULL, subj, group = NULL, Tij, Yij, funcs, covariate = 
     
     if(pred.interval == TRUE){
       par(mfrow = c(2, 2))
-      
       if(is.null(subj.id) == TRUE){subj.id <- sample(unique(IDFN), 1, replace = FALSE)}
-      
       for(ii in 1 : length(subj.id)){
-        
         plot(TT, NY.pred[which(IDFN == subj.id[ii])], type = "b", lty = 1, col = "black", lwd = 2,
              ylab = "", xlab = "Time", main = paste0("Prediction for observed subject ", subj.id[ii], ""))
-        
         polygon(x = c(TT, rev(TT)), y = c(boundYF[which(IDFN == subj.id[ii]), 1],
                                           rev(boundYF[which(IDFN == subj.id[ii]), 2])), col = 'grey80', border = NA)
-        
         lines(TT, NY.pred[which(IDFN == subj.id[ii])], type = "b", lty = 1, col = "black", lwd = 2)
       }
-      
       if(IW != I){
         if(is.null(subj.id.X) == TRUE){subj.id.X <- sample(unique(IDFX), 1, replace = FALSE)}
-        
         for(ii in 1 : length(subj.id.X)){
-          
           plot(TT, NY.pred.X[which(IDFX == subj.id.X[ii])], type = "b", lty = 1, col = "black", lwd = 2,
                ylab = "", xlab = "Time", main = paste0("Prediction for new subject ", subj.id.X[ii], ""))
-          
           polygon(x = c(TT, rev(TT)), y = c(boundXF[which(IDFX == subj.id.X[ii]), 1],
                                             rev(boundXF[which(IDFX == subj.id.X[ii]), 2])), col = 'grey80', border = NA)
-          
           lines(TT, NY.pred.X[which(IDFX == subj.id.X[ii])], type = "b", lty = 1, col = "black", lwd = 2)}
       }}}
   
@@ -1029,12 +975,10 @@ LDFR <- function(I, IW = NULL, subj, group = NULL, Tij, Yij, funcs, covariate = 
                 scores_hat = zetaw.hat,
                 scores_hat_traj = zetaw.hatF,
                 scores_pseudo = zetaw.hatN,
-                
                 ranef_intercept = rand_int,
                 ranef_slope = rand_slp,
                 ranef_group =  rand_grp,
-                Mean_X_obs  = fbps.fit$Yhat,
-                
+                Mean_X_obs  = MU.X,      
                 gamma = gammaE,
                 covariate_effect = cov.effect,
                 beta = beta,
