@@ -171,7 +171,7 @@ rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
   
   if(is.null(test) || !(test %in% c("constancy","inclusion")) ){
     print("test must be 'constancy' or 'inclusion'")
-    break;
+    return(NULL)
   }
   ## parse pfr.obj and pfr.obj$fit slots so that code works
   Y <- pfr.obj$Y
