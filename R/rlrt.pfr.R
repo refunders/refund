@@ -170,8 +170,7 @@ rlrt.pfr <- function (pfr.obj=pfr.obj, test=NULL, ...)
   warning("rlrt.pfr() is designed to be used with pfr_old() rather than pfr(). ")
   
   if(is.null(test) || !(test %in% c("constancy","inclusion")) ){
-    print("test must be 'constancy' or 'inclusion'")
-    return(NULL)
+    stop("test must be 'constancy' or 'inclusion'")
   }
   ## parse pfr.obj and pfr.obj$fit slots so that code works
   Y <- pfr.obj$Y
