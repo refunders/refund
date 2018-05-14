@@ -10,7 +10,7 @@
 #' is an unknown bivariate coefficient function. Various domain transformations
 #' are available, such as lagging or domain-standardizing the coordinates, or
 #' parameterizing the interactions; these often result in improved model fit.
-#' Basis choice is fully custiomizable using the options of
+#' Basis choice is fully customizable using the options of
 #' \code{\link[mgcv]{s}} and \code{\link[mgcv]{te}}.
 #' 
 #' @param X matrix containing variable-domain functions. Should be \eqn{N x J},
@@ -51,9 +51,9 @@
 #'    defined by \eqn{{t,T_i: 0\le t\le T_i}}. The default basis uses
 #'    bivariate thin-plate regression splines.
 #'    
-#'    Different basis tranformations can result in different properties; see
+#'    Different basis transformations can result in different properties; see
 #'    Gellar, et al. (2014) for a more complete description. We make five basis
-#'    transformations easily accessable using the \code{transform} argument.
+#'    transformations easily accessible using the \code{transform} argument.
 #'    This argument is a character string that can take one of the following
 #'    values:
 #'    \enumerate{
@@ -89,7 +89,7 @@
 #'    transformation is used. Without this transformation, just under half of
 #'    the "knots" used to define the basis will fall outside the range of the
 #'    data and have no data available to estimate them. The penalty allows
-#'    the corresponding coefficients to be estiamted, but results may be
+#'    the corresponding coefficients to be estimated, but results may be
 #'    unstable.
 #'    
 #' @return a list with the following entries
@@ -303,7 +303,7 @@ getL <- function(tind, integration, n.int=NULL) {
 #' SOFA (Sequential Organ Failure Assessment) Data
 #' 
 #' A dataset containing the SOFA scores (Vincent et al, 1996). for 520 patients,
-#' hospitalized in the intensive care unit (ICU) with Acute Lung Inury. Daily
+#' hospitalized in the intensive care unit (ICU) with Acute Lung Injury. Daily
 #' measurements are available for as long as each one remains in the ICU. This is an
 #' example of variable-domain functional data, as described by Gellar et al. (2014).
 #' 
@@ -327,7 +327,7 @@ getL <- function(tind, integration, n.int=NULL) {
 #'   \item{los}{ICU length of stay, i.e., the number of days the patient remained
 #'     in the ICU prior to death or final discharge.}
 #'   \item{age}{Patient age}
-#'   \item{male}{Binay indicator for male gender}
+#'   \item{male}{Binary indicator for male gender}
 #'   \item{Charlson}{Charlson co-morbidity index, a measure of baseline health
 #'     status (before hospitalization and ALI).}
 #' }

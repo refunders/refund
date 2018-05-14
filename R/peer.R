@@ -2,7 +2,7 @@
 #'
 #' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in a
 #' \code{\link{pfr}} formula, where \eqn{\beta(t)} is estimated with
-#' structured penalties (Randloph et al., 2012).
+#' structured penalties (Randolph et al., 2012).
 #'
 #' @param X functional predictors, typically expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of

@@ -390,7 +390,7 @@ smooth.construct.pco.smooth.spec <- function(object, data, knots){
   # what do cmdscale options mean?!
   # k     - dimension of MDS projection
   # eig   - return eigenvalues
-  # x.ret - return (double centred distance matrix)
+  # x.ret - return (double centered distance matrix)
   # add   - add a constant so D is Euclidean (cov() gives -ve
   #         values, which is not a property of a distance.
   if(xt$fastcmd){

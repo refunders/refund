@@ -72,7 +72,7 @@ where \eqn{X_i(t)} is a functional predictor of length \eqn{T_i} and \eqn{\beta(
 is an unknown bivariate coefficient function. Various domain transformations
 are available, such as lagging or domain-standardizing the coordinates, or
 parameterizing the interactions; these often result in improved model fit.
-Basis choice is fully custiomizable using the options of
+Basis choice is fully customizable using the options of
 \code{\link[mgcv]{s}} and \code{\link[mgcv]{te}}.
 }
 \details{
@@ -84,9 +84,9 @@ The variable-domain functional regression model uses the term
    defined by \eqn{{t,T_i: 0\le t\le T_i}}. The default basis uses
    bivariate thin-plate regression splines.
    
-   Different basis tranformations can result in different properties; see
+   Different basis transformations can result in different properties; see
    Gellar, et al. (2014) for a more complete description. We make five basis
-   transformations easily accessable using the \code{transform} argument.
+   transformations easily accessible using the \code{transform} argument.
    This argument is a character string that can take one of the following
    values:
    \enumerate{
@@ -122,7 +122,7 @@ The variable-domain functional regression model uses the term
    transformation is used. Without this transformation, just under half of
    the "knots" used to define the basis will fall outside the range of the
    data and have no data available to estimate them. The penalty allows
-   the corresponding coefficients to be estiamted, but results may be
+   the corresponding coefficients to be estimated, but results may be
    unstable.
 }
 \examples{

@@ -19,7 +19,7 @@
 #' non-tensor-product smooths, this will be a list with the following elements:
 #' \enumerate{
 #'   \item \code{tf} (required): a function or character string (or list of functions
-#'   and/or character strings) defining the coordinate transormations; see
+#'   and/or character strings) defining the coordinate transformations; see
 #'   further details below.
 #'   \item \code{bs} (optional): character string indicating the \code{bs} for
 #'   the basis applied to the transformed coordinates; if empty, the appropriate
@@ -75,7 +75,7 @@
 #' 
 #' Some transformations rely on a fixed "pivot point" based on the data used to
 #' fit the model, e.g. quantiles (such as the min or max) of this data.
-#' When making predictions based on these transformaitons, the transformation
+#' When making predictions based on these transformations, the transformation
 #' function will need to know what the pivot points are, based on the original
 #' (not prediction) data. In order to accomplish this, we allow the user to
 #' specify that they want their transformation function to refer to the original
@@ -93,7 +93,7 @@
 #' By refering to \code{x0} instead of \code{x}, you are indicating that you
 #' want to use the original data instead of the current data. This may seem
 #' strange to refer to a variable that is not one of the arguments, but the
-#' \code{"dt"} constructor explicity places these variables in the environment
+#' \code{"dt"} constructor explicitly places these variables in the environment
 #' of the transformation function to make them available.
 #' 
 #' @return An object of class "dt.smooth". This will contain all the elements

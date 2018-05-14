@@ -20,7 +20,7 @@
   \item{los}{ICU length of stay, i.e., the number of days the patient remained
     in the ICU prior to death or final discharge.}
   \item{age}{Patient age}
-  \item{male}{Binay indicator for male gender}
+  \item{male}{Binary indicator for male gender}
   \item{Charlson}{Charlson co-morbidity index, a measure of baseline health
     status (before hospitalization and ALI).}
 }}
@@ -29,7 +29,7 @@ sofa
 }
 \description{
 A dataset containing the SOFA scores (Vincent et al, 1996). for 520 patients,
-hospitalized in the intensive care unit (ICU) with Acute Lung Inury. Daily
+hospitalized in the intensive care unit (ICU) with Acute Lung Injury. Daily
 measurements are available for as long as each one remains in the ICU. This is an
 example of variable-domain functional data, as described by Gellar et al. (2014).
 }

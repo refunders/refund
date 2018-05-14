@@ -2,7 +2,7 @@
 % Please edit documentation in R/predict.fbps.R
 \name{predict.fbps}
 \alias{predict.fbps}
-\title{Prediction for fast bivarate \emph{P}-spline (fbps)}
+\title{Prediction for fast bivariate \emph{P}-spline (fbps)}
 \usage{
 \method{predict}{fbps}(object, newdata, ...)
 }
@@ -10,7 +10,7 @@
 \item{object}{an object returned by \code{\link{fbps}}}
 
 \item{newdata}{a data frame or list consisting of x and z values for which predicted values are desired. 
-vecotrs of x and z need to be of the same length.}
+vectors of x and z need to be of the same length.}
 
 \item{...}{additional arguments.}
 }

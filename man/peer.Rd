@@ -43,7 +43,7 @@ an error.}
 \description{
 Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in a
 \code{\link{pfr}} formula, where \eqn{\beta(t)} is estimated with
-structured penalties (Randloph et al., 2012).
+structured penalties (Randolph et al., 2012).
 }
 \details{
 \code{peer} is a wrapper for \code{\link{lf}}, which defines linear
