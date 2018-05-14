@@ -1,0 +1,17 @@
+face-package	face-package
+check.data	internals
+construct.knots	internals
+cor.face	cor.face
+covZ	internals
+face	face-package
+face.sparse	face.sparse
+face.sparse.inner	internals
+kr	internals
+matrix.multiply	internals
+predict.face.sparse	predict.face.sparse
+predict.pspline.face	predict.pspline.face
+pspline	pspline
+pspline.setting	internals
+raw.construct	internals
+select.knots	select.knots
+weight.construct	internals

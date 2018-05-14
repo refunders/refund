@@ -1,0 +1,56 @@
+%Xc%                    Constrained row tensor product
+FDboost                 Model-based Gradient Boosting for Functional
+                        Response
+FDboost-package         FDboost: Boosting Functional Regression Models
+FDboostLSS              Model-based Gradient Boosting for Functional
+                        GAMLSS
+[.hmatrix               Extract or replace parts of a hmatrix-object
+anisotropic_Kronecker   Kronecker product or row tensor product of two
+                        base-learners with anisotropic penalty
+applyFolds              Cross-Validation and Bootstrapping over Curves
+bbsc                    Constrained Base-learners for Scalar Covariates
+bhistx                  Base-learners for Functional Covariates
+bootstrapCI             Function to compute bootstrap confidence
+                        intervals
+bsignal                 Base-learners for Functional Covariates
+coef.FDboost            Coefficients of boosted functional regression
+                        model
+cvrisk.FDboostLSS       Cross-validation for FDboostLSS
+emotion                 EEG and EMG recordings in a computerised
+                        gambling study
+extract.blg             Extract information of a base-learner
+fitted.FDboost          Fitted values of a boosted functional
+                        regression model
+fuelSubset              Spectral data of fossil fuels
+funMRD                  Functional MRD
+funMSE                  Functional MSE
+funRsquared             Functional R-squared
+funplot                 Plot functional data with linear interpolation
+                        of missing values
+getTime                 Generic functions to asses attributes of
+                        functional data objects
+getTime.hmatrix         Extract attributes of hmatrix
+hmatrix                 A S3 class for univariate functional data on a
+                        common grid
+integrationWeights      Functions to compute integration weights
+is.hmatrix              Test to class of hmatrix
+mstop.validateFDboost   Methods for objects of class validateFDboost
+o_control               Function to control estimation of smooth offset
+plot.FDboost            Plot the fit or the coefficients of a boosted
+                        functional regression model
+plot.bootstrapCI        Methods for objects of class bootstrapCI
+predict.FDboost         Prediction for boosted functional regression
+                        model
+residuals.FDboost       Residual values of a boosted functional
+                        regression model
+reweightData            Function to Reweight Data
+stabsel.FDboost         Stability Selection
+subset_hmatrix          Subsets hmatrix according to an index
+summary.FDboost         Print and summary of a boosted functional
+                        regression model
+truncateTime            Function to truncate time in functional data
+update.FDboost          Function to update FDboost objects
+validateFDboost         Cross-Validation and Bootstrapping over Curves
+viscosity               Viscosity of resin over time
+wide2long               Transform id and time of wide format into long
+                        format

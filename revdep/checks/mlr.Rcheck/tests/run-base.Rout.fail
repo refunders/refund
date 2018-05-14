@@ -1,0 +1,762 @@
+
+R version 3.5.0 (2018-04-23) -- "Joy in Playing"
+Copyright (C) 2018 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+> test_check("mlr", filter = "base_")
+Loading required package: mlr
+Loading required package: ParamHelpers
+
+Attaching package: 'rex'
+
+The following object is masked from 'package:testthat':
+
+    matches
+
+
+Attaching package: 'BBmisc'
+
+The following object is masked from 'package:base':
+
+    isFALSE
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m1. Error: clustering performance (@test_base_clustering.R#15) [39m [31m─────────────────────────────────[39m
+For learner cluster.SimpleKMeans please install the following packages: RWeka
+1: makeLearner("cluster.SimpleKMeans") at testthat/test_base_clustering.R:15
+2: do.call(constructor, list())
+3: (function () 
+   {
+       makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+           default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), 
+           makeLogicalLearnerParam(id = "fast", default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, 
+               lower = 1L), makeIntegerLearnerParam(id = "init", default = 0L, lower = 0L, upper = 3L), 
+           makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+               default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+           makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+               default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+               default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+           makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+           makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+               default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", 
+           short.name = "simplekmeans", callees = c("SimpleKMeans", "Weka_control"))
+   })()
+4: makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+       default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), makeLogicalLearnerParam(id = "fast", 
+       default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, lower = 1L), makeIntegerLearnerParam(id = "init", 
+       default = 0L, lower = 0L, upper = 3L), makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+       default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+       makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+           default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+           default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+       makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+       makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+           default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", short.name = "simplekmeans", 
+       callees = c("SimpleKMeans", "Weka_control"))
+5: addClasses(makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, 
+       note, callees), c(cl, "RLearnerCluster"))
+6: makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, note, 
+       callees)
+7: requirePackages(package, why = stri_paste("learner", id, sep = " "), default.method = "load")
+8: stopf("For %s please install the following packages: %s", why, ps)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m2. Error: clustering performance with missing clusters (@test_base_clustering.R#27) [39m [31m───────────[39m
+For learner cluster.SimpleKMeans please install the following packages: RWeka
+1: makeLearner("cluster.SimpleKMeans") at testthat/test_base_clustering.R:27
+2: do.call(constructor, list())
+3: (function () 
+   {
+       makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+           default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), 
+           makeLogicalLearnerParam(id = "fast", default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, 
+               lower = 1L), makeIntegerLearnerParam(id = "init", default = 0L, lower = 0L, upper = 3L), 
+           makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+               default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+           makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+               default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+               default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+           makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+           makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+               default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", 
+           short.name = "simplekmeans", callees = c("SimpleKMeans", "Weka_control"))
+   })()
+4: makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+       default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), makeLogicalLearnerParam(id = "fast", 
+       default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, lower = 1L), makeIntegerLearnerParam(id = "init", 
+       default = 0L, lower = 0L, upper = 3L), makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+       default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+       makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+           default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+           default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+       makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+       makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+           default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", short.name = "simplekmeans", 
+       callees = c("SimpleKMeans", "Weka_control"))
+5: addClasses(makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, 
+       note, callees), c(cl, "RLearnerCluster"))
+6: makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, note, 
+       callees)
+7: requirePackages(package, why = stri_paste("learner", id, sep = " "), default.method = "load")
+8: stopf("For %s please install the following packages: %s", why, ps)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m3. Error: clustering resample (@test_base_clustering.R#41) [39m [31m────────────────────────────────────[39m
+For learner cluster.SimpleKMeans please install the following packages: RWeka
+1: makeLearner("cluster.SimpleKMeans") at testthat/test_base_clustering.R:41
+2: do.call(constructor, list())
+3: (function () 
+   {
+       makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+           default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), 
+           makeLogicalLearnerParam(id = "fast", default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, 
+               lower = 1L), makeIntegerLearnerParam(id = "init", default = 0L, lower = 0L, upper = 3L), 
+           makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+               default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+           makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+               default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+               default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+           makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+           makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+               default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", 
+           short.name = "simplekmeans", callees = c("SimpleKMeans", "Weka_control"))
+   })()
+4: makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+       default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), makeLogicalLearnerParam(id = "fast", 
+       default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, lower = 1L), makeIntegerLearnerParam(id = "init", 
+       default = 0L, lower = 0L, upper = 3L), makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+       default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+       makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+           default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+           default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+       makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+       makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+           default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", short.name = "simplekmeans", 
+       callees = c("SimpleKMeans", "Weka_control"))
+5: addClasses(makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, 
+       note, callees), c(cl, "RLearnerCluster"))
+6: makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, note, 
+       callees)
+7: requirePackages(package, why = stri_paste("learner", id, sep = " "), default.method = "load")
+8: stopf("For %s please install the following packages: %s", why, ps)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m4. Error: clustering benchmark (@test_base_clustering.R#52) [39m [31m───────────────────────────────────[39m
+For learner cluster.SimpleKMeans please install the following packages: RWeka
+1: lapply(learner.names, makeLearner) at testthat/test_base_clustering.R:52
+2: FUN(X[[i]], ...)
+3: do.call(constructor, list())
+4: (function () 
+   {
+       makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+           default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), 
+           makeLogicalLearnerParam(id = "fast", default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, 
+               lower = 1L), makeIntegerLearnerParam(id = "init", default = 0L, lower = 0L, upper = 3L), 
+           makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+               default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+           makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+               default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+               default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+           makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+           makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+               default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", 
+           short.name = "simplekmeans", callees = c("SimpleKMeans", "Weka_control"))
+   })()
+5: makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+       default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), makeLogicalLearnerParam(id = "fast", 
+       default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, lower = 1L), makeIntegerLearnerParam(id = "init", 
+       default = 0L, lower = 0L, upper = 3L), makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+       default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+       makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+           default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+           default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+       makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+       makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+           default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", short.name = "simplekmeans", 
+       callees = c("SimpleKMeans", "Weka_control"))
+6: addClasses(makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, 
+       note, callees), c(cl, "RLearnerCluster"))
+7: makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, note, 
+       callees)
+8: requirePackages(package, why = stri_paste("learner", id, sep = " "), default.method = "load")
+9: stopf("For %s please install the following packages: %s", why, ps)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m5. Error: clustering tune (@test_base_clustering.R#65) [39m [31m────────────────────────────────────────[39m
+For learner cluster.SimpleKMeans please install the following packages: RWeka
+1: makeLearner("cluster.SimpleKMeans") at testthat/test_base_clustering.R:65
+2: do.call(constructor, list())
+3: (function () 
+   {
+       makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+           default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), 
+           makeLogicalLearnerParam(id = "fast", default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, 
+               lower = 1L), makeIntegerLearnerParam(id = "init", default = 0L, lower = 0L, upper = 3L), 
+           makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+               default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+           makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+               default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+               default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+           makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+           makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+               default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", 
+           short.name = "simplekmeans", callees = c("SimpleKMeans", "Weka_control"))
+   })()
+4: makeRLearnerCluster(cl = "cluster.SimpleKMeans", package = "RWeka", par.set = makeParamSet(makeUntypedLearnerParam(id = "A", 
+       default = "weka.core.EuclideanDistance"), makeLogicalLearnerParam(id = "C", default = FALSE), makeLogicalLearnerParam(id = "fast", 
+       default = FALSE), makeIntegerLearnerParam(id = "I", default = 100L, lower = 1L), makeIntegerLearnerParam(id = "init", 
+       default = 0L, lower = 0L, upper = 3L), makeLogicalLearnerParam(id = "M", default = FALSE), makeIntegerLearnerParam(id = "max-candidates", 
+       default = 100L, lower = 1L), makeIntegerLearnerParam(id = "min-density", default = 2L, lower = 1L), 
+       makeIntegerLearnerParam(id = "N", default = 2L, lower = 1L), makeIntegerLearnerParam(id = "num-slots", 
+           default = 1L, lower = 1L), makeLogicalLearnerParam(id = "O", default = FALSE), makeIntegerLearnerParam(id = "periodic-pruning", 
+           default = 10000L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 10L, lower = 0L), 
+       makeNumericLearnerParam(id = "t2", default = -1), makeNumericLearnerParam(id = "t1", default = -1.5), 
+       makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+           default = FALSE, tunable = FALSE)), properties = "numerics", name = "K-Means Clustering", short.name = "simplekmeans", 
+       callees = c("SimpleKMeans", "Weka_control"))
+5: addClasses(makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, 
+       note, callees), c(cl, "RLearnerCluster"))
+6: makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, note, 
+       callees)
+7: requirePackages(package, why = stri_paste("learner", id, sep = " "), default.method = "load")
+8: stopf("For %s please install the following packages: %s", why, ps)
+
+[31m──[39m [31m6. Error: generateCalibrationData (@test_base_generateCalibration.R#14) [39m [31m───────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generateCalibration.R:14
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m7. Error: plotFilterValues (@test_base_generateFilterValuesData.R#68) [39m [31m─────────────────────────[39m
+.onLoad failed in loadNamespace() for 'rJava', details:
+  call: dyn.load(file, DLLpath = DLLpath, ...)
+  error: unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/rJava/libs/rJava.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/rJava/libs/rJava.so, 6): Library not loaded: /Library/Java/JavaVirtualMachines/jdk-9.jdk/Contents/Home/lib/server/libjvm.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/rJava/libs/rJava.so
+  Reason: image not found
+1: generateFilterValuesData(binaryclass.task, method = filter.classif) at testthat/test_base_generateFilterValuesData.R:68
+2: lapply(filter, function(x) {
+       x = do.call(x$fun, c(list(task = task, nselect = nselect), more.args[[x$name]]))
+       missing.score = setdiff(fn, names(x))
+       x[missing.score] = NA_real_
+       x[match(fn, names(x))]
+   })
+3: FUN(X[[i]], ...)
+4: do.call(x$fun, c(list(task = task, nselect = nselect), more.args[[x$name]]))
+5: (function (task, nselect, ...) 
+   {
+       y = FSelector::chi.squared(getTaskFormula(task), data = getTaskData(task))
+       setNames(y[["attr_importance"]], getTaskFeatureNames(task))
+   })(task = structure(list(type = "classif", env = <environment>, weights = NULL, blocking = NULL, coordinates = NULL, 
+       task.desc = structure(list(id = "binary", type = "classif", target = "Class", size = 208L, n.feat = c(numerics = 60L, 
+       factors = 0L, ordered = 0L, functionals = 0L), has.missings = FALSE, has.weights = FALSE, has.blocking = FALSE, 
+           has.coordinates = FALSE, class.levels = c("M", "R"), positive = "M", negative = "R", class.distribution = structure(c(M = 111L, 
+           R = 97L), .Dim = 2L, .Dimnames = structure(list(c("M", "R")), .Names = ""), class = "table")), class = c("ClassifTaskDesc", 
+       "SupervisedTaskDesc", "TaskDesc"))), class = c("ClassifTask", "SupervisedTask", "Task")), nselect = 60L)
+6: FSelector::chi.squared
+7: getExportedValue(pkg, name)
+8: asNamespace(ns)
+9: getNamespace(ns)
+10: tryCatch(loadNamespace(name), error = function(e) stop(e))
+11: tryCatchList(expr, classes, parentenv, handlers)
+12: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+13: value[[3L]](cond)
+
+[31m──[39m [31m8. Error: 1 numeric hyperparam (@test_base_generateHyperParsEffect.R#48) [39m [31m──────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generateHyperParsEffect.R:48
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m9. Error: 1 discrete hyperparam (@test_base_generateHyperParsEffect.R#77) [39m [31m─────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generateHyperParsEffect.R:77
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m10. Error: 1 numeric hyperparam with optimizer failure (@test_base_generateHyperParsEffect.R#106[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generateHyperParsEffect.R:106
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m11. Error: 1 numeric hyperparam with nested cv (@test_base_generateHyperParsEffect.R#137) [39m [31m─────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generateHyperParsEffect.R:137
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m12. Error: 2 hyperparams (@test_base_generateHyperParsEffect.R#167) [39m [31m───────────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generateHyperParsEffect.R:167
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m13. Error: 2 hyperparams nested (@test_base_generateHyperParsEffect.R#236) [39m [31m────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: expect_warning(ggsave(path)) at testthat/test_base_generateHyperParsEffect.R:236
+2: quasi_capture(enquo(object), capture_warnings, label = label)
+3: capture(act$val <- eval_bare(get_expr(quo), get_env(quo)))
+4: withCallingHandlers(code, warning = function(condition) {
+       out$push(condition)
+       invokeRestart("muffleWarning")
+   })
+5: eval_bare(get_expr(quo), get_env(quo))
+6: ggsave(path)
+7: dev(file = filename, width = dim[1], height = dim[2], ...)
+8: svglite::svglite
+9: getExportedValue(pkg, name)
+10: asNamespace(ns)
+11: getNamespace(ns)
+12: tryCatch(loadNamespace(name), error = function(e) stop(e))
+13: tryCatchList(expr, classes, parentenv, handlers)
+14: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+15: value[[3L]](cond)
+
+[31m──[39m [31m14. Error: 2+ hyperparams (@test_base_generateHyperParsEffect.R#290) [39m [31m──────────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generateHyperParsEffect.R:290
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m15. Error: generateLearningCurve (@test_base_generateLearningCurve.R#11) [39m [31m──────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generateLearningCurve.R:11
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m16. Error: generatePartialDependenceData (@test_base_generatePartialDependence.R#19) [39m [31m──────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_generatePartialDependence.R:19
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m17. Error: generateThreshVsPerfData (@test_base_generateThreshVsPerf.R#12) [39m [31m────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggplot2::ggsave(path) at testthat/test_base_generateThreshVsPerf.R:12
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m18. Error: getFeatureImportance (@test_base_getFeatureImportance.R#33) [39m [31m────────────────────────[39m
+For learner regr.gbm.filtered please install the following packages: FSelector
+1: train(lrn, regr.task) at testthat/test_base_getFeatureImportance.R:33
+2: requireLearnerPackages(learner)
+3: requirePackages(learner$package, why = stri_paste("learner", learner$id, sep = " "), default.method = "load")
+4: stopf("For %s please install the following packages: %s", why, ps)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m19. Error: getOOBPreds (@test_base_getOOBPreds.R#14) [39m [31m──────────────────────────────────────────[39m
+For learner classif.randomForest.filtered please install the following packages: FSelector
+1: train(lrn, task) at testthat/test_base_getOOBPreds.R:14
+2: requireLearnerPackages(learner)
+3: requirePackages(learner$package, why = stri_paste("learner", learner$id, sep = " "), default.method = "load")
+4: stopf("For %s please install the following packages: %s", why, ps)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m20. Error: hyperpars (@test_base_hyperpars.R#12) [39m [31m──────────────────────────────────────────────[39m
+For learner classif.J48 please install the following packages: RWeka
+1: makeLearner("classif.J48", C = 0.5) at testthat/test_base_hyperpars.R:12
+2: do.call(constructor, list())
+3: (function () 
+   {
+       makeRLearnerClassif(cl = "classif.J48", package = "RWeka", par.set = makeParamSet(makeLogicalLearnerParam(id = "U", 
+           default = FALSE), makeLogicalLearnerParam(id = "O", default = FALSE), makeNumericLearnerParam(id = "C", 
+           default = 0.25, lower = .Machine$double.eps, upper = 1 - .Machine$double.eps, requires = quote(!U && 
+               !R)), makeIntegerLearnerParam(id = "M", default = 2L, lower = 1L), makeLogicalLearnerParam(id = "R", 
+           default = FALSE, requires = quote(!U)), makeIntegerLearnerParam(id = "N", default = 3L, lower = 2L, 
+           requires = quote(!U && R)), makeLogicalLearnerParam(id = "B", default = FALSE), makeLogicalLearnerParam(id = "S", 
+           default = FALSE, requires = quote(!U)), makeLogicalLearnerParam(id = "L", default = FALSE), 
+           makeLogicalLearnerParam(id = "A", default = FALSE), makeLogicalLearnerParam(id = "J", default = FALSE), 
+           makeIntegerLearnerParam(id = "Q", tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", 
+               default = FALSE, tunable = FALSE)), properties = c("twoclass", "multiclass", "missings", 
+           "numerics", "factors", "prob"), name = "J48 Decision Trees", short.name = "j48", note = "NAs are directly passed to WEKA with `na.action = na.pass`.", 
+           callees = c("J48", "Weka_control"))
+   })()
+4: makeRLearnerClassif(cl = "classif.J48", package = "RWeka", par.set = makeParamSet(makeLogicalLearnerParam(id = "U", 
+       default = FALSE), makeLogicalLearnerParam(id = "O", default = FALSE), makeNumericLearnerParam(id = "C", 
+       default = 0.25, lower = .Machine$double.eps, upper = 1 - .Machine$double.eps, requires = quote(!U && 
+           !R)), makeIntegerLearnerParam(id = "M", default = 2L, lower = 1L), makeLogicalLearnerParam(id = "R", 
+       default = FALSE, requires = quote(!U)), makeIntegerLearnerParam(id = "N", default = 3L, lower = 2L, 
+       requires = quote(!U && R)), makeLogicalLearnerParam(id = "B", default = FALSE), makeLogicalLearnerParam(id = "S", 
+       default = FALSE, requires = quote(!U)), makeLogicalLearnerParam(id = "L", default = FALSE), makeLogicalLearnerParam(id = "A", 
+       default = FALSE), makeLogicalLearnerParam(id = "J", default = FALSE), makeIntegerLearnerParam(id = "Q", 
+       tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", default = FALSE, tunable = FALSE)), 
+       properties = c("twoclass", "multiclass", "missings", "numerics", "factors", "prob"), name = "J48 Decision Trees", 
+       short.name = "j48", note = "NAs are directly passed to WEKA with `na.action = na.pass`.", callees = c("J48", 
+           "Weka_control"))
+5: addClasses(makeRLearnerInternal(cl, "classif", package, par.set, par.vals, properties, name, short.name, 
+       note, callees), c(cl, "RLearnerClassif"))
+6: makeRLearnerInternal(cl, "classif", package, par.set, par.vals, properties, name, short.name, note, 
+       callees)
+7: requirePackages(package, why = stri_paste("learner", id, sep = " "), default.method = "load")
+8: stopf("For %s please install the following packages: %s", why, ps)
+
+[31m──[39m [31m21. Error: db with single cluster doesn't give warnings (@test_base_measures.R#99) [39m [31m────────────[39m
+Please install the following packages: clusterSim
+1: expect_warning(crossval("cluster.kmeans", mtcars.task), NA) at testthat/test_base_measures.R:99
+2: quasi_capture(enquo(object), capture_warnings, label = label)
+3: capture(act$val <- eval_bare(get_expr(quo), get_env(quo)))
+4: withCallingHandlers(code, warning = function(condition) {
+       out$push(condition)
+       invokeRestart("muffleWarning")
+   })
+5: eval_bare(get_expr(quo), get_env(quo))
+6: crossval("cluster.kmeans", mtcars.task)
+7: resample(learner, task, rdesc, measures = measures, models = models, keep.pred = keep.pred, show.info = show.info)
+8: parallelMap(doResampleIteration, seq_len(rin$desc$iters), level = "mlr.resample", more.args = more.args)
+9: mapply(fun2, ..., MoreArgs = more.args, SIMPLIFY = FALSE, USE.NAMES = FALSE)
+10: (function (learner, task, rin, i, measures, weights, model, extract, show.info) 
+   {
+       setSlaveOptions()
+       train.i = rin$train.inds[[i]]
+       test.i = rin$test.inds[[i]]
+       calculateResampleIterationResult(learner = learner, task = task, i = i, train.i = train.i, test.i = test.i, 
+           measures = measures, weights = weights, rdesc = rin$desc, model = model, extract = extract, 
+           show.info = show.info)
+   })(dots[[1L]][[2L]], learner = structure(list(id = "cluster.kmeans", type = "cluster", package = c("stats", 
+   "clue"), properties = c("numerics", "prob"), par.set = structure(list(pars = list(centers = structure(list(
+       id = "centers", type = "untyped", len = 1L, lower = NULL, upper = NULL, values = NULL, cnames = NULL, 
+       allow.inf = FALSE, has.default = FALSE, default = NULL, trafo = NULL, requires = NULL, tunable = TRUE, 
+       special.vals = list(), when = "train"), class = c("LearnerParam", "Param")), iter.max = structure(list(
+       id = "iter.max", type = "integer", len = 1L, lower = 1L, upper = Inf, values = NULL, cnames = NULL, 
+       allow.inf = FALSE, has.default = TRUE, default = 10L, trafo = NULL, requires = NULL, tunable = TRUE, 
+       special.vals = list(), when = "train"), class = c("LearnerParam", "Param")), nstart = structure(list(
+       id = "nstart", type = "integer", len = 1L, lower = 1L, upper = Inf, values = NULL, cnames = NULL, 
+       allow.inf = FALSE, has.default = TRUE, default = 1L, trafo = NULL, requires = NULL, tunable = TRUE, 
+       special.vals = list(), when = "train"), class = c("LearnerParam", "Param")), algorithm = structure(list(
+       id = "algorithm", type = "discrete", len = 1L, lower = NULL, upper = NULL, values = list(`Hartigan-Wong` = "Hartigan-Wong", 
+           Lloyd = "Lloyd", Forgy = "Forgy", MacQueen = "MacQueen"), cnames = NULL, allow.inf = FALSE, 
+       has.default = TRUE, default = "Hartigan-Wong", trafo = NULL, requires = NULL, tunable = TRUE, special.vals = list(), 
+       when = "train"), class = c("LearnerParam", "Param")), trace = structure(list(id = "trace", type = "logical", 
+       len = 1L, lower = NULL, upper = NULL, values = list(`TRUE` = TRUE, `FALSE` = FALSE), cnames = NULL, 
+       allow.inf = FALSE, has.default = FALSE, default = NULL, trafo = NULL, requires = NULL, tunable = FALSE, 
+       special.vals = list(), when = "train"), class = c("LearnerParam", "Param"))), forbidden = NULL), class = c("LearnerParamSet", 
+   "ParamSet")), par.vals = list(centers = 2L), predict.type = "response", name = "K-Means", short.name = "kmeans", 
+       note = "The `predict` method uses `cl_predict` from the `clue` package to compute the cluster memberships for new data. The default `centers = 2` is added so the method runs without setting parameters, but this must in reality of course be changed by the user.", 
+       callees = c("kmeans", "cl_predict"), help.list = list(centers = "Argument of: stats::kmeans\n\neither the number of clusters, say k, or a set of initial (distinct) cluster centres.  If a number, a random set of (distinct) rows in x is chosen as the initial centres.", 
+           iter.max = "Argument of: stats::kmeans\n\nthe maximum number of iterations allowed.", nstart = "Argument of: stats::kmeans\n\nif centers is a number, how many random sets should be chosen?", 
+           algorithm = "Argument of: stats::kmeans\n\ncharacter: may be abbreviated.  Note that \"Lloyd\" and \"Forgy\" are alternative names for one algorithm.", 
+           trace = "Argument of: stats::kmeans\n\nlogical or integer number, currently only used in the default method (\"Hartigan-Wong\"): if positive (or true), tracing information on the progress of the algorithm is produced.  Higher values may produce more tracing information."), 
+       config = list(), fix.factors.prediction = FALSE), class = c("cluster.kmeans", "RLearnerCluster", 
+   "RLearner", "Learner")), task = structure(list(type = "cluster", env = <environment>, weights = NULL, 
+       blocking = NULL, coordinates = NULL, task.desc = structure(list(id = "mtcars-example", type = "cluster", 
+           target = character(0), size = 32L, n.feat = c(numerics = 11L, factors = 0L, ordered = 0L, functionals = 0L
+           ), has.missings = FALSE, has.weights = FALSE, has.blocking = FALSE, has.coordinates = FALSE), class = c("ClusterTaskDesc", 
+       "UnsupervisedTaskDesc", "TaskDesc"))), class = c("ClusterTask", "UnsupervisedTask", "Task")), rin = structure(list(
+       desc = structure(list(id = "cross-validation", iters = 10L, predict = "test", stratify = FALSE), class = c("CVDesc", 
+       "ResampleDesc")), size = 32L, train.inds = list(c(23L, 25L, 1L, 14L, 22L, 6L, 9L, 27L, 4L, 10L, 
+       32L, 24L, 3L, 5L, 21L, 13L, 30L, 31L, 28L, 2L, 15L, 11L, 26L, 12L, 7L, 17L, 19L, 29L, 16L), c(23L, 
+       25L, 1L, 14L, 22L, 9L, 27L, 4L, 10L, 32L, 8L, 24L, 5L, 21L, 18L, 30L, 31L, 28L, 2L, 15L, 11L, 26L, 
+       12L, 7L, 17L, 19L, 29L, 20L, 16L), c(23L, 25L, 1L, 14L, 22L, 6L, 9L, 4L, 10L, 32L, 8L, 24L, 3L, 
+       5L, 21L, 18L, 13L, 30L, 31L, 28L, 15L, 11L, 26L, 12L, 17L, 19L, 29L, 20L, 16L), c(23L, 25L, 1L, 
+       14L, 22L, 6L, 9L, 27L, 10L, 32L, 8L, 24L, 3L, 5L, 21L, 18L, 13L, 30L, 31L, 28L, 2L, 15L, 11L, 26L, 
+       12L, 7L, 19L, 29L, 20L), c(23L, 25L, 1L, 14L, 22L, 6L, 9L, 27L, 4L, 10L, 32L, 8L, 24L, 3L, 21L, 
+       18L, 13L, 31L, 28L, 2L, 15L, 11L, 26L, 12L, 7L, 17L, 29L, 20L, 16L), c(25L, 1L, 14L, 22L, 6L, 9L, 
+       27L, 4L, 10L, 32L, 8L, 24L, 3L, 5L, 21L, 18L, 13L, 30L, 31L, 2L, 11L, 26L, 12L, 7L, 17L, 19L, 29L, 
+       20L, 16L), c(23L, 25L, 1L, 14L, 6L, 27L, 4L, 10L, 32L, 8L, 3L, 5L, 21L, 18L, 13L, 30L, 31L, 28L, 
+       2L, 15L, 11L, 26L, 12L, 7L, 17L, 19L, 29L, 20L, 16L), c(23L, 1L, 14L, 22L, 6L, 9L, 27L, 4L, 10L, 
+       32L, 8L, 24L, 3L, 5L, 21L, 18L, 13L, 30L, 31L, 28L, 2L, 15L, 11L, 12L, 7L, 17L, 19L, 20L, 16L), 
+           c(23L, 25L, 22L, 6L, 9L, 27L, 4L, 10L, 8L, 24L, 3L, 5L, 18L, 13L, 30L, 31L, 28L, 2L, 15L, 11L, 
+           26L, 12L, 7L, 17L, 19L, 29L, 20L, 16L), c(23L, 25L, 1L, 14L, 22L, 6L, 9L, 27L, 4L, 32L, 8L, 
+           24L, 3L, 5L, 21L, 18L, 13L, 30L, 28L, 2L, 15L, 26L, 7L, 17L, 19L, 29L, 20L, 16L)), test.inds = list(
+           c(8L, 18L, 20L), c(3L, 6L, 13L), c(2L, 7L, 27L), c(4L, 16L, 17L), c(5L, 19L, 30L), c(15L, 23L, 
+           28L), c(9L, 22L, 24L), c(25L, 26L, 29L), c(1L, 14L, 21L, 32L), c(10L, 11L, 12L, 31L)), group = structure(integer(0), .Label = character(0), class = "factor")), class = "ResampleInstance"), 
+       weights = NULL, measures = list(structure(list(id = "db", minimize = TRUE, properties = c("cluster", 
+       "req.pred", "req.feats"), fun = function (task, model, pred, feats, extra.args) 
+       {
+           if (length(unique(pred$data$response)) > 1L) {
+               requirePackages("clusterSim", default.method = "load")
+               r = as.integer(as.factor(pred$data$response))
+               clusterSim::index.DB(feats, r)$DB
+           }
+           else {
+               NA
+           }
+       }, extra.args = list(), best = 0, worst = Inf, name = "Davies-Bouldin cluster separation measure", 
+           note = "Ratio of the within cluster scatter, to the between cluster separation, averaged over the clusters. See `?clusterSim::index.DB`.", 
+           aggr = structure(list(id = "test.mean", name = "Test mean", fun = function (task, perf.test, 
+               perf.train, measure, group, pred) 
+           mean(perf.test), properties = "req.test"), class = "Aggregation")), class = "Measure")), model = FALSE, 
+       extract = function (model) 
+       {
+       }, show.info = FALSE)
+11: calculateResampleIterationResult(learner = learner, task = task, i = i, train.i = train.i, test.i = test.i, 
+       measures = measures, weights = weights, rdesc = rin$desc, model = model, extract = extract, show.info = show.info)
+12: performance(task = task, model = m, pred = pred.test, measures = measures)
+13: vnapply(measures, doPerformanceIteration, pred = pred, task = task, model = model, td = NULL, feats = feats)
+14: vapply(X = x, FUN = fun, ..., FUN.VALUE = NA_real_, USE.NAMES = use.names)
+15: FUN(X[[i]], ...)
+16: measure$fun(task, model, pred, feats, m$extra.args)
+17: requirePackages("clusterSim", default.method = "load")
+18: stopf("Please install the following packages: %s", ps)
+
+Unable to find any JVMs matching version "(null)".
+No Java runtime present, try --request to install.
+[31m──[39m [31m22. Error: check measure calculations (@test_base_measures.R#206) [39m [31m─────────────────────────────[39m
+For learner cluster.EM please install the following packages: RWeka
+1: makeLearner("cluster.EM") at testthat/test_base_measures.R:206
+2: do.call(constructor, list())
+3: (function () 
+   {
+       makeRLearnerCluster(cl = "cluster.EM", package = "RWeka", par.set = makeParamSet(makeIntegerLearnerParam(id = "I", 
+           default = 100L, lower = 1L), makeNumericLearnerParam(id = "ll-cv", default = 1e-06, lower = 1e-06), 
+           makeNumericLearnerParam(id = "ll-iter", default = 1e-06, lower = 1e-06), makeNumericLearnerParam(id = "M", 
+               default = 1e-06, lower = 1e-06), makeIntegerLearnerParam(id = "max", default = -1L, lower = -1L), 
+           makeIntegerLearnerParam(id = "N", default = -1L, lower = -1L), makeIntegerLearnerParam(id = "num-slots", 
+               default = 1L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 100L, lower = 0L), 
+           makeIntegerLearnerParam(id = "X", default = 10L, lower = 1L), makeIntegerLearnerParam(id = "K", 
+               default = 10L, lower = 1L), makeLogicalLearnerParam(id = "V", default = FALSE, tunable = FALSE), 
+           makeLogicalLearnerParam(id = "output-debug-info", default = FALSE, tunable = FALSE)), properties = "numerics", 
+           name = "Expectation-Maximization Clustering", short.name = "em", callees = c("make_Weka_clusterer", 
+               "Weka_control"))
+   })()
+4: makeRLearnerCluster(cl = "cluster.EM", package = "RWeka", par.set = makeParamSet(makeIntegerLearnerParam(id = "I", 
+       default = 100L, lower = 1L), makeNumericLearnerParam(id = "ll-cv", default = 1e-06, lower = 1e-06), 
+       makeNumericLearnerParam(id = "ll-iter", default = 1e-06, lower = 1e-06), makeNumericLearnerParam(id = "M", 
+           default = 1e-06, lower = 1e-06), makeIntegerLearnerParam(id = "max", default = -1L, lower = -1L), 
+       makeIntegerLearnerParam(id = "N", default = -1L, lower = -1L), makeIntegerLearnerParam(id = "num-slots", 
+           default = 1L, lower = 1L), makeIntegerLearnerParam(id = "S", default = 100L, lower = 0L), makeIntegerLearnerParam(id = "X", 
+           default = 10L, lower = 1L), makeIntegerLearnerParam(id = "K", default = 10L, lower = 1L), makeLogicalLearnerParam(id = "V", 
+           default = FALSE, tunable = FALSE), makeLogicalLearnerParam(id = "output-debug-info", default = FALSE, 
+           tunable = FALSE)), properties = "numerics", name = "Expectation-Maximization Clustering", short.name = "em", 
+       callees = c("make_Weka_clusterer", "Weka_control"))
+5: addClasses(makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, 
+       note, callees), c(cl, "RLearnerCluster"))
+6: makeRLearnerInternal(cl, "cluster", package, par.set, par.vals, properties, name, short.name, note, 
+       callees)
+7: requirePackages(package, why = stri_paste("learner", id, sep = " "), default.method = "load")
+8: stopf("For %s please install the following packages: %s", why, ps)
+
+[31m──[39m [31m23. Error: BenchmarkResult (@test_base_plotBMRBoxplots.R#12) [39m [31m──────────────────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_plotBMRBoxplots.R:12
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m24. Error: plotBMRRanksAsBarChart (@test_base_plotBMRRanksAsBarChart.R#19) [39m [31m────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_plotBMRRanksAsBarChart.R:19
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m25. Error: BenchmarkSummary (@test_base_plotBMRSummary.R#18) [39m [31m──────────────────────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_plotBMRSummary.R:18
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m26. Error: plotLearnerPrediction (@test_base_plotLearnerPrediction.R#20) [39m [31m──────────────────────[39m
+Please install the following packages: clusterSim
+1: plotLearnerPrediction("cluster.kmeans", noclass.task, gridsize = gs) at testthat/test_base_plotLearnerPrediction.R:20
+2: performance(pred.train, task = task, measures = measures)
+3: vnapply(measures, doPerformanceIteration, pred = pred, task = task, model = model, td = NULL, feats = feats)
+4: vapply(X = x, FUN = fun, ..., FUN.VALUE = NA_real_, USE.NAMES = use.names)
+5: FUN(X[[i]], ...)
+6: measure$fun(task, model, pred, feats, m$extra.args)
+7: requirePackages("clusterSim", default.method = "load")
+8: stopf("Please install the following packages: %s", ps)
+
+[31m──[39m [31m27. Error: plotResiduals with prediction object (@test_base_plotResiduals.R#11) [39m [31m───────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_plotResiduals.R:11
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+[31m──[39m [31m28. Error: plotResiduals with BenchmarkResult (@test_base_plotResiduals.R#46) [39m [31m─────────────────[39m
+unable to load shared object '/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so':
+  dlopen(/private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so, 6): Library not loaded: /opt/X11/lib/libcairo.2.dylib
+  Referenced from: /private/var/folders/tc/b641qs0x3_zd7lgt0xxdxnd80000gp/T/RtmpcTPWwa/R-lib/gdtools/libs/gdtools.so
+  Reason: image not found
+1: ggsave(path) at testthat/test_base_plotResiduals.R:46
+2: dev(file = filename, width = dim[1], height = dim[2], ...)
+3: svglite::svglite
+4: getExportedValue(pkg, name)
+5: asNamespace(ns)
+6: getNamespace(ns)
+7: tryCatch(loadNamespace(name), error = function(e) stop(e))
+8: tryCatchList(expr, classes, parentenv, handlers)
+9: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+10: value[[3L]](cond)
+
+══ testthat results  ══════════════════════════════════════════════════════════════════════════════
+OK: 3178 SKIPPED: 0 FAILED: 28
+1. Error: clustering performance (@test_base_clustering.R#15) 
+2. Error: clustering performance with missing clusters (@test_base_clustering.R#27) 
+3. Error: clustering resample (@test_base_clustering.R#41) 
+4. Error: clustering benchmark (@test_base_clustering.R#52) 
+5. Error: clustering tune (@test_base_clustering.R#65) 
+6. Error: generateCalibrationData (@test_base_generateCalibration.R#14) 
+7. Error: plotFilterValues (@test_base_generateFilterValuesData.R#68) 
+8. Error: 1 numeric hyperparam (@test_base_generateHyperParsEffect.R#48) 
+9. Error: 1 discrete hyperparam (@test_base_generateHyperParsEffect.R#77) 
+1. ...
+
+Error: testthat unit tests failed
+Execution halted

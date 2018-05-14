@@ -1,0 +1,351 @@
+
+\documentclass{article}
+\usepackage{amstext}
+\usepackage{amsfonts}
+\usepackage{hyperref}
+\usepackage[round]{natbib}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{authblk}
+\usepackage[left=25mm, right=25mm, top=20mm, bottom=20mm]{geometry}
+%\usepackage[nolists]{endfloat}
+
+%\VignetteEngine{knitr::knitr}
+%\VignetteDepends{FDboost, fda, fields, maps, mapdata}
+%\VignetteIndexEntry{FDboost FLAM viscosity}
+
+\newcommand{\Rpackage}[1]{{\normalfont\fontseries{b}\selectfont #1}}
+\newcommand{\Robject}[1]{\texttt{#1}}
+\newcommand{\Rclass}[1]{\textit{#1}}
+\newcommand{\Rcmd}[1]{\texttt{#1}}
+\newcommand{\Roperator}[1]{\texttt{#1}}
+\newcommand{\Rarg}[1]{\texttt{#1}}
+\newcommand{\Rlevel}[1]{\texttt{#1}}
+
+\newcommand{\RR}{\textsf{R}}
+\renewcommand{\S}{\textsf{S}}
+\newcommand{\df}{\mbox{df}}
+
+\RequirePackage[T1]{fontenc}
+\RequirePackage{graphicx,ae,fancyvrb}
+\IfFileExists{upquote.sty}{\RequirePackage{upquote}}{}
+\usepackage{relsize}
+
+\renewcommand{\baselinestretch}{1}
+\setlength\parindent{0pt}
+
+
+\hypersetup{%
+  pdftitle = {FLAM canada},
+  pdfsubject = {package vignette},
+  pdfauthor = {Sarah Brockhaus},
+%% change colorlinks to false for pretty printing
+  colorlinks = {true},
+  linkcolor = {blue},
+  citecolor = {blue},
+  urlcolor = {red},
+  hyperindex = {true},
+  linktocpage = {true},
+}
+
+\begin{document}
+
+\setkeys{Gin}{width=\textwidth}
+
+\title{Canadian climate: function-on-function regression}
+\author{Sarah Brockhaus 
+\thanks{E-mail: sarah.brockhaus@stat.uni-muenchen.de}}
+\affil{\textit{Institut f\"ur Statistik, \\
+Ludwig-Maximilians-Universit\"at M\"unchen, \\ 
+Ludwigstra{\ss}e 33, D-80539 M\"unchen, Germany.}}
+\date{}
+\maketitle
+
+The results of this vignette together with more explanations can be found in Brockhaus et al. (2015). 
+
+<<ops, echo=FALSE>>=
+knitr::opts_chunk$set(comment=NA, warning=FALSE, message=FALSE)
+@
+
+\section{Descriptive analysis}
+
+Load FDboost package and write useful functions for plotting.
+<<pkg-attach, echo = FALSE>>=
+library(FDboost)
+
+## function based on funplot() to plot values on logscale with nice labels
+## for viscosity data
+funplotLogscale <- function(x, y, ylim = NULL, col=1, add=FALSE, ...){
+  
+  dots <- list(...)
+  if(!add){
+    if(is.null(ylim)) ylim <- range(y, na.rm=TRUE)
+    
+    plot(x, rep(1, length(x)), col = "white", ylim = ylim, yaxt = "n",
+         ylab = "", xlab = "",...)
+    
+    mtext("time [s]", 1, line=2)#, cex=1.5)
+    mtext("viscosity [mPas]", 2, line=2)#, cex=1.5)
+    
+    abline(h = log(1*10^(0:9)), col="gray")
+    axis(2, at = log(1*10^(0:9)), labels=1*10^(0:9))
+    
+    #axis(4, at=log(0.001*10^(0:9)), labels=FALSE)
+    
+    axis(2, at=log(2*10^(0:9)), labels=FALSE)
+    axis(2, at=log(3*10^(0:9)), labels=FALSE)
+    axis(2, at=log(4*10^(0:9)), labels=FALSE)
+    axis(2, at=log(5*10^(0:9)), labels=FALSE)
+    axis(2, at=log(6*10^(0:9)), labels=FALSE)
+    axis(2, at=log(7*10^(0:9)), labels=FALSE)
+    axis(2, at=log(8*10^(0:9)), labels=FALSE)
+    axis(2, at=log(9*10^(0:9)), labels=FALSE)
+    
+    #axis(4, at=seq(0, 30, by=5))
+    if(diff(ylim) > 5) axis(4, at=seq(-20, 20, by=2))
+    if(diff(ylim) > 2 & diff(ylim) < 5) axis(4, at=seq(-10, 10, by=1))
+    if(diff(ylim) > 1 & diff(ylim) < 2) axis(4, at=seq(-10, 10, by=0.5))  
+    if(diff(ylim) < 1) axis(4, at=seq(-10, 10, by=0.25))
+  }
+  
+  funplot(x, y, add=TRUE, col=col, type="l", ...) 
+  
+}
+
+# function to color-code according to a factor
+getCol2 <- function(x, cols = rainbow(18)[1:length(table(x))]){
+  ret <- c()
+  for(i in 1:length(cols)){
+    ret[x==names(table(x))[i]] <- cols[i] 
+  }
+  return(ret)
+}
+@
+
+Load data and choose the time-interval.
+<<load-data, echo = TRUE>>=
+# load("viscosity.RData")
+data(viscosity)
+str(viscosity)
+
+## set time-interval that should be modeled
+interval <- "509"
+
+## model time until "interval"
+end <- which(viscosity$timeAll==as.numeric(interval))
+viscosity$vis <- log(viscosity$visAll[,1:end])
+viscosity$time <- viscosity$timeAll[1:end]
+
+## set up interactions by hand
+vars <- c("T_C", "T_A", "T_B", "rspeed", "mflow")
+for(v in 1:length(vars)){
+  for(w in v:length(vars))
+  viscosity[[paste(vars[v], vars[w], sep="_")]] <- factor(
+    (viscosity[[vars[v]]]:viscosity[[vars[w]]]=="high:high")*1)
+}
+
+#str(viscosity)
+names(viscosity)
+@
+
+Plot the data
+
+<<plot-data, echo=TRUE, fig.width=4, fig.height=3, fig.cap='Viscostiy over time with temperature of tools ($T_C$) and temerature of resin ($T_A$) color coded.', fig.align='center'>>=
+par(mfrow=c(1,1), mar=c(3, 3, 1, 2))#, cex=1.5)
+mycol <- gray(seq(0, 0.8, l=4), alpha=0.8)[c(1,3,2,4)]
+int_T_CA <- with(viscosity, paste(T_C,"-", T_A, sep=""))
+with(viscosity, funplotLogscale(time, vis, 
+                                col=getCol2(int_T_CA, cols=mycol[4:1])))
+legend("bottomright", fill=mycol, 
+       legend=c("T_C low, T_A low", "T_C low, T_A high", 
+                "T_C high, T_A low", "T_C high, T_A high"), cex = 0.8)
+@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+
+\section{Model with all main effects and interactions of first order}
+
+Fit model with all main effects and interactions. 
+
+<<complete-model, echo = TRUE, eval=FALSE>>=
+set.seed(1911)
+modAll <- FDboost(vis ~ 1 
+                  + bols(T_C) # main effects
+                  + bols(T_A)
+                  + bols(T_B)
+                  + bols(rspeed)
+                  + bols(mflow)
+                  + bols(T_C_T_A) # interactions T_WZ
+                  + bols(T_C_T_B)
+                  + bols(T_C_rspeed)
+                  + bols(T_C_mflow)
+                  + bols(T_A_T_B) # interactions T_A
+                  + bols(T_A_rspeed)
+                  + bols(T_A_mflow) 
+                  + bols(T_B_rspeed) # interactions T_B
+                  + bols(T_B_mflow)
+                  + bols(rspeed_mflow), # interactions rspeed
+                  timeformula=~bbs(time, lambda=100), 
+                  numInt="Riemann", family=QuantReg(), 
+                  offset=NULL, offset_control = o_control(k_min = 10),
+                  data=viscosity, check0=FALSE, 
+                  control=boost_control(mstop = 100, nu = 0.2))
+@
+
+Get optimal stopping iteration using bootstrap over curves.
+<<cv-complete, echo = TRUE, eval=FALSE>>=
+set.seed(1911)
+folds <- cv(weights=rep(1, modAll$ydim[1]), type="bootstrap", B=10)
+cvmAll <- suppressWarnings(validateFDboost(modAll, folds = folds, 
+                                  getCoefCV=FALSE,  
+                                  grid=seq(10, 500, by=10), mc.cores=10))
+mstop(cvmAll) # 180
+# modAll <- modAll[mstop(cvmAll)]
+# summary(modAll)
+# cvmAll
+@
+
+% \begin{figure}
+% \begin{center}
+% <<cv-plot-complete, echo = TRUE, fig = TRUE, width=10, heigth=5, eval=FALSE>>=
+%  par(mfrow=c(1,2))
+%  plot(cvmAll)
+%@
+% \end{center}
+% \caption{Optimal stopping iteration for model with all main effects and interactions of first order.}
+% \end{figure}
+
+
+Do model selection using stability selection.
+<<stabsel1, echo = TRUE, eval=FALSE>>=
+set.seed(1911)
+folds <- cvMa(ydim=modAll$ydim, weights=model.weights(modAll), 
+              type = "subsampling", B = 50)
+
+stabsel_parameters(q=5, PFER=2, p=16, sampling.type = "SS")
+sel1 <- stabsel(modAll, q=5, PFER=2, folds=folds, grid=1:100, 
+                sampling.type="SS", mc.cores=10)
+sel1
+# selects effects T_C, T_A, T_C_T_A
+@
+The effects $T_A$, $T_C$ and their interaction are selected into the model. 
+
+
+% <<stabsel2, echo = TRUE>>=
+% set.seed(1911)
+% folds <- cvMa(ydim=modAll$ydim, weights=model.weights(modAll), 
+%               type = "subsampling", B = 50)
+% 
+% stabsel_parameters(q=3, PFER=1, p=16, sampling.type = "SS")
+% sel2 <- stabsel(modAll, q=3, PFER=1, folds=folds, grid=1:100, 
+%                 sampling.type="SS", mc.cores=10)
+% sel2
+% # selects effects of T_C, T_A
+% @
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+
+\section{Model with selected effects}
+
+Estimate the model containig only the selected effects $T_C$, $T_A$, and their interaction.
+<<selected-model, echo = TRUE>>=
+set.seed(1911)
+mod1 <- FDboost(vis ~ 1 + bols(T_C) + bols(T_A) + bols(T_C_T_A),
+                timeformula = ~bbs(time, lambda = 100),  
+                numInt = "Riemann", family = QuantReg(), check0 = FALSE, 
+                offset = NULL, offset_control = o_control(k_min = 10),
+                data = viscosity, control = boost_control(mstop = 200, nu = 0.2))
+@
+
+<<cv-selected-model0, echo = TRUE>>=
+mod1 <- mod1[430]
+@
+
+Find the optimal stopping iteration.
+<<cv-selected-model, echo = TRUE, eval=FALSE>>=
+set.seed(1911)
+folds <- cv(weights = rep(1, mod1$ydim[1]), type = "bootstrap", B = 10)
+cvm1 <- validateFDboost(mod1, folds = folds, getCoefCV = FALSE, 
+                        grid = seq(10, 500, by = 10), mc.cores = 10)
+mstop(cvm1) # 430
+mod1 <- mod1[mstop(cvm1)]
+# summary(mod1)
+@
+
+% \begin{figure}
+% \begin{center}
+% <<cv-plot-selected-model, echo = TRUE, fig = TRUE, width=10, heigth=5, eval=FALSE>>=
+%  par(mfrow=c(1,2))
+%   plot(cvm1) 
+% @
+% \end{center}
+% \caption{Optimal stopping iteration for model with selected effects.}
+% \end{figure}
+
+
+Center all coefficient functions at each timepoint, yielding the following model: 
+\[\mbox{median} \{  \log( \mbox{vis}_i(t)) | x_i  \}  = \beta_0(t) + T_{Ai} \beta_A(t)  + T_{Ci} \beta_C(t) +  T_{ACi} \beta_{AC}(t), \]
+where $\mbox{vis}_i(t)$ is the viscosity of observation $i$ at time $t$, $T_{Ai}$ and $T_{Ci}$ are the temperatures of resin and of tools, respectively, each coded as -1 for the lower and 1 for the higher temperature. The interaction $T_{ACi}$ is 1 if both temperatures are in the higher category and -1 otherwise.
+<<coefs-selected-model, echo = TRUE>>=
+# set up dataframe containing systematically all variable combinations
+newdata <- list(T_C=factor(c(1,1,2,2), levels=1:2, labels=c("low","high")) ,  
+             T_A=factor(c(1, 2, 1, 2), levels=1:2, labels=c("low","high")), 
+             T_C_T_A=factor(c(1, 1, 1, 2)), time=mod1$yind)
+intercept <- 0
+
+## effect of T_C
+pred2 <- predict(mod1, which=2, newdata=newdata)
+intercept <- intercept + colMeans(pred2)
+pred2 <- t(t(pred2)-intercept)
+
+## effect of T_A
+pred3 <- predict(mod1, which=3, newdata=newdata)
+intercept <- intercept + colMeans(pred3)
+pred3 <- t(t(pred3)-colMeans(pred3))
+
+## interaction effect T_C_T_A
+pred4 <- predict(mod1, which=4, newdata=newdata)
+intercept <- intercept + colMeans(pred4[3:4,])
+pred4 <- t(t(pred4)-colMeans(pred4[3:4,]))
+
+# offset+intercept 
+smoothIntercept <- mod1$predictOffset(newdata$time) + intercept 
+@
+
+Plot the centered coefficient functions.
+<<plot-selected-model, echo = 11:16, fig.cap='Viscosity over time and estimated coefficient functions. On the left hand side the viscosity measures are plotted over time with temperature of tools ($T_C$) and temperature of resin ($T_A$) color-coded. On the right hand side the estimated coefficient functions are plotted.', fig.height=4, fig.width=10>>=
+par(mfrow=c(1,2), mar=c(3, 3, 1, 2))#, cex=1.5)
+
+mycol <- gray(seq(0, 0.8, l=4), alpha=0.8)[c(1,3,2,4)]
+int_T_CA <- with(viscosity, paste(T_C,"-", T_A, sep=""))
+with(viscosity, funplotLogscale(time, vis, 
+                                col=getCol2(int_T_CA, cols=mycol[4:1])))
+legend("bottomright", fill=mycol, 
+       legend=c("T_C low, T_A low", "T_C low, T_A high", 
+                "T_C high, T_A low", "T_C high, T_A high"))
+
+mycol <- gray(seq(0, 0.5, l=3), alpha=0.8)
+funplotLogscale(mod1$yind, pred2[3:4,], col=mycol[1], ylim=c(-0.5,6), lty=2, lwd=2)
+lines(mod1$yind, pred3[2,], col=mycol[2], lty=3, lwd=2)
+lines(mod1$yind, pred4[4,], col=mycol[3], lty=4, lwd=2)
+legend("topright", lty=2:4, lwd=2, col=mycol,
+       legend=c("effect T_C high", "effect T_A high", "effect T_C, T_A high"))
+
+@
+
+\section*{References}
+\begin{itemize}
+\item[] Brockhaus S, Scheipl, F., Hothor, T., and Greven, S. (2015), The functional linear array model, 
+        \textit{Statistical Modelling}, 15(3), 279--300. 
+\end{itemize}
+
+
+\end{document}

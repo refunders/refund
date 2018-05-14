@@ -1,0 +1,11 @@
+cor.face                Extraction of correlation and mean from a
+                        'face.sparse' object
+face-package            face
+face.sparse             Fast covariance estimation for sparse
+                        functional data
+kr                      Internal functions for face package
+predict.face.sparse     Subject-specific curve prediction from a
+                        face.sparse fit
+predict.pspline.face    Mean prediction from a P-spline smoothing fit
+pspline                 Univariate P-spline smoothing
+select.knots            Knots selection for P-spline smoothing

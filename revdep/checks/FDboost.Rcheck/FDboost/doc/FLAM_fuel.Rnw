@@ -1,0 +1,234 @@
+
+\documentclass{article}
+\usepackage{amstext}
+\usepackage{amsfonts}
+\usepackage{hyperref}
+\usepackage[round]{natbib}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{rotating}
+\usepackage{authblk}
+\usepackage[left=25mm, right=25mm, top=20mm, bottom=20mm]{geometry}
+%\usepackage[nolists]{endfloat}
+
+%\VignetteEngine{knitr::knitr}
+%\VignetteDepends{FDboost, fda, fields, maps, mapdata}
+%\VignetteIndexEntry{FDboost FLAM fuel}
+
+\newcommand{\Rpackage}[1]{{\normalfont\fontseries{b}\selectfont #1}}
+\newcommand{\Robject}[1]{\texttt{#1}}
+\newcommand{\Rclass}[1]{\textit{#1}}
+\newcommand{\Rcmd}[1]{\texttt{#1}}
+\newcommand{\Roperator}[1]{\texttt{#1}}
+\newcommand{\Rarg}[1]{\texttt{#1}}
+\newcommand{\Rlevel}[1]{\texttt{#1}}
+
+\newcommand{\RR}{\textsf{R}}
+\renewcommand{\S}{\textsf{S}}
+\newcommand{\df}{\mbox{df}}
+
+\RequirePackage[T1]{fontenc}
+\RequirePackage{graphicx,ae,fancyvrb}
+\IfFileExists{upquote.sty}{\RequirePackage{upquote}}{}
+\usepackage{relsize}
+
+\renewcommand{\baselinestretch}{1}
+\setlength\parindent{0pt}
+
+
+\hypersetup{%
+  pdftitle = {FLAM canada},
+  pdfsubject = {package vignette},
+  pdfauthor = {Sarah Brockhaus},
+%% change colorlinks to false for pretty printing
+  colorlinks = {true},
+  linkcolor = {blue},
+  citecolor = {blue},
+  urlcolor = {red},
+  hyperindex = {true},
+  linktocpage = {true},
+}
+
+\begin{document}
+
+\setkeys{Gin}{width=\textwidth}
+
+\title{Canadian climate: function-on-function regression}
+\author{Sarah Brockhaus 
+\thanks{E-mail: sarah.brockhaus@stat.uni-muenchen.de}}
+\affil{\textit{Institut f\"ur Statistik, \\
+Ludwig-Maximilians-Universit\"at M\"unchen, \\ 
+Ludwigstra{\ss}e 33, D-80539 M\"unchen, Germany.}}
+\date{}
+\maketitle
+
+The dataset was originally analyzed by Fuchs et al. (2015). 
+The results of this vignette together with more explanations can be found in Brockhaus et al. (2015).  
+
+<<ops, echo=FALSE>>=
+knitr::opts_chunk$set(comment=NA, warning=FALSE, message=FALSE)
+@
+
+
+\section{Load and plot data}
+Load FDboost package.
+<<pkg-attach, echo = FALSE, warning=FALSE, message=FALSE>>=
+library(FDboost)
+@
+
+Load data and compute the first derivative.
+<<load-data, echo = TRUE>>=
+data(fuelSubset)
+fuel <- fuelSubset
+str(fuel)
+
+# # normalize the wavelength to 0-1
+# fuel$nir.lambda0 <- (fuel$nir.lambda - min(fuel$nir.lambda)) / 
+#   (max(fuel$nir.lambda) - min(fuel$nir.lambda)) 
+# fuel$uvvis.lambda0 <- (fuel$uvvis.lambda - min(fuel$uvvis.lambda)) / 
+#   (max(fuel$uvvis.lambda) - min(fuel$uvvis.lambda))
+
+# compute first derivatives as first order differences
+fuel$dUVVIS <- t(apply(fuel$UVVIS, 1, diff))
+fuel$dNIR <- t(apply(fuel$NIR, 1, diff)) 
+
+# get the wavelength for the derivatives
+fuel$duvvis.lambda <- fuel$uvvis.lambda[-1]
+fuel$dnir.lambda <- fuel$nir.lambda[-1]
+# fuel$duvvis.lambda0 <- fuel$uvvis.lambda0[-1]
+# fuel$dnir.lambda0 <- fuel$nir.lambda0[-1]
+@
+
+Compute the model to predict humidity. 
+The predicted humidity is contained already in the dataset \emph{fuel}.
+
+\section{Model to predict humidity}
+
+We consider the following regression model to predict the humidity.
+\[
+E(Y_i) = \int \mbox{NIR}_i(s_1)\beta_1(s_1)ds_1 + \int \mbox{UVVIS}_i(s_2)\beta_2(s_2)ds_2
+ + \int \mbox{dNIR}_i(s_3)\beta_1(s_3)ds_3 + \int \mbox{dUVVIS}_i(s_4)\beta_2(s_4)ds_4,
+\]
+with $Y_i$ being the humidity and NIR, UVVIS are the spectra and dNIR, dUVVIS the respective derivatives, measured over $s_1,\ldots, s_4$ respectively.
+The optimal stopping iteration is determined by 10-fold bootstrap.
+
+<<humidity-model, echo = TRUE, eval=FALSE>>=
+modH2O <- FDboost(h2o ~ bsignal(UVVIS, uvvis.lambda, knots=40, df=4) 
+                    + bsignal(NIR, nir.lambda, knots=40, df=4)
+                    + bsignal(dUVVIS, duvvis.lambda, knots=40, df=4) 
+                    + bsignal(dNIR, dnir.lambda, knots=40, df=4), 
+                    timeformula=~bols(1), data=fuel)
+
+set.seed(212)
+cvmH2O <- suppressWarnings(cvrisk(modH2O, grid=seq(100, 5000, by=100), 
+                              folds=cv( model.weights(modH2O), 
+                              type = "bootstrap", B = 10), mc.cores=10))
+
+par(mfrow=c(1,2))
+plot(cvmH2O)
+
+modH2O[mstop(cvmH2O)]
+#modH2O[2400]
+  
+#### create new variable of predicted h2o
+h2o.fit <- modH2O$fitted()
+  
+plot(fuel$h2o, h2o.fit)
+abline(0,1)
+@
+
+
+%' \section{Plot of data}
+%' <<plot-data, echo=TRUE, fig = FALSE>>=
+%' # pdf("NIR_UVVIS.pdf", width=7, height=7)
+%' jpeg("NIR_UVVIS.jpg", width=1500, height=1500)
+%' par(mfrow=c(2,2), mar=c(4, 4, 1, 1), cex=1.5)
+%' 
+%' # generate colors depending on heat value for equidistant cuts
+%' quants <- seq(from=min(fuel$heatan), to=max(fuel$heatan), l=11) 
+%' cats <- cut(fuel$heatan, quants, include.lowest = TRUE)
+%' pall <- heat.colors(12, alpha = 0.5)[1:10]
+%' cols <- pall[cats]
+%' 
+%' ## plot heatan
+%' with(fuel, hist(heatan, breaks=quants, col=pall, 
+%'                 xlab="heat value [MJ]", main=""))
+%' 
+%' ## plot heat values versus predicted humidity
+%' with(fuel, plot(heatan~h2o, col=cols, pch=20, lwd=2,
+%'                 xlab="predicted humidity [%]", ylab="heat value [MJ]"))
+%' with(fuel, points(heatan~h2o, col=1))
+%' 
+%' ## plot the two spectra
+%' with(fuel, matplot(uvvis.lambda, t(UVVIS), col=cols,
+%'       lwd=1, lty=1, ylab="UV-VIS", xlab="wavelength [nm]", type="l"))
+%' with(fuel, matplot(nir.lambda, t(NIR), col=cols,
+%'       lwd=1, lty=1, ylab="NIR", xlab="wavelength [nm]", type="l"))
+%' dev.off()
+%' @
+%' 
+%' \begin{figure}[h]
+%' \begin{center}
+%' \includegraphics[width=1\textwidth]{NIR_UVVIS}
+%' \caption{The coloring of all plots is according to the heat value  in mega Joule (mJ), with red meaning low heat value and yellow meaning high heat value. The histogram at the top left can be used as a legend. The scatter plot at the top right shows the heat value depending on the predicted humidity. The lower panel shows the UVVIS and the NIR spectra. }
+%' \end{center}
+%' \end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Model to predict heat value}
+
+We consider the following regression model to predict the heat values.
+\[ 
+E(Y_i) = \int \mbox{NIR}_i(s_1)\beta_1(s_1)ds_1 + \int \mbox{UVVIS}_i(s_2)\beta_2(s_2)ds_2,
+\]
+with $Y_i$ being the heat value and NIR and UVVIS are the spectra, measured over $s_1$ and $s_2$ respectively. 
+
+<<model-spec, echo=TRUE>>=
+formula <- formula(heatan ~ bsignal(UVVIS, uvvis.lambda, knots=40, df=4.41) 
+                   + bsignal(NIR, nir.lambda, knots=40, df=4.41))
+
+## do a model fit:
+mod <- FDboost(formula, timeformula=~bols(1), data=fuel)
+mod <- mod[198]
+@
+
+The optimal stopping iteration is determined by 50-fold bootstrap. We compute in each bootstrap-sample the coefficient functions to get an idea of the variability of the estimates.
+<<cv-model-spec, echo=TRUE, eval=FALSE>>=
+## get optimal mstop and do bootstrapping for coefficient estimates
+set.seed(2703)
+val <- validateFDboost(mod, 
+                       folds=cv(model.weights(mod), type = "bootstrap", B = 50),
+                       grid = 10:500, mc.cores=10)
+
+mopt <- val$grid[which.min(colMeans(val$oobrisk))]
+print(mopt)
+
+## use optimal mstop
+mod <- mod[mopt] # 198
+@
+
+Plot the coefficient functions.
+
+<<model-spec-plot, echo=TRUE, fig.cap='Coefficient estimates for the effects of the two spectra.', fig.height=4, fig.width=10>>=
+par(mfrow=c(1,2))
+plot(mod, which=1, lwd=2, lty=5, rug=FALSE,
+     ylab="", xlab="wavelength [nm]")
+
+plot(mod, which=2, lwd=2, lty=5, rug=FALSE, 
+     ylab="", xlab="wavelength [nm]")
+@
+
+% The gray lines show the estimates in the 50 bootstrap folds, the black line gives the mean estimated coefficient function over the bootstrap folds, the dashed red lines point-wise 5\% and 95\% values, the dotdashed blue lines give the estimated coefficients for the model on the whole dataset.
+
+\section*{References}
+\begin{itemize}
+\item[] Brockhaus S, Scheipl, F., Hothor, T., and Greven, S. (2015), The functional linear array model, 
+        \textit{Statistical Modelling}, 15(3), 279--300. 
+\item[] Fuchs, K., Scheipl, F., and Greven, S. (2015), 
+        Penalized scalar-on-functions regression with interaction term,  
+        \textit{Computational Statistics and Data Analysis}, 81, 38--51.
+\end{itemize}
+
+
+\end{document}

@@ -1,0 +1,37 @@
+Package: FDboost
+Type: Package
+Title: Boosting Functional Regression Models
+Version: 0.3-1
+Date: 2018-05-10
+Authors@R: c(person("Sarah", "Brockhaus", role = c("aut", "cre"),
+		            email = "Sarah.Brockhaus@stat.uni-muenchen.de"), 
+			 person("David", "Ruegamer", role = "aut", 
+			        email = "david.ruegamer@stat.uni-muenchen.de"),
+			 person("Torsten", "Hothorn", role = "ctb"), 
+			 person("with contributions by many others", "(see inst/CONTRIBUTIONS)", role = "ctb"))
+Description: Regression models for functional data, i.e., scalar-on-function,
+    function-on-scalar and function-on-function regression models, are fitted
+    by a component-wise gradient boosting algorithm.
+Depends: R (>= 3.2.0), methods, mboost (>= 2.8-0)
+Imports: graphics, grDevices, utils, stats, Matrix, gamboostLSS (>=
+        2.0-0), stabs, mgcv, MASS, zoo
+Suggests: fda, fields, ggplot2, maps, mapdata, knitr, refund, testthat
+License: GPL-2
+Packaged: 2018-05-10 20:51:50 UTC; Sarah
+Collate: 'aaa.R' 'FDboost-package.R' 'FDboost.R' 'baselearners.R'
+        'baselearnersX.R' 'bootstrapCIs.R' 'constrainedX.R'
+        'crossvalidation.R' 'FDboostLSS.R' 'hmatrix.R' 'methods.R'
+        'stabsel.R' 'utilityFunctions.R'
+RoxygenNote: 6.0.1
+BugReports: https://github.com/boost-R/FDboost/issues
+URL: https://github.com/boost-R/FDboost
+VignetteBuilder: knitr
+NeedsCompilation: no
+Author: Sarah Brockhaus [aut, cre],
+  David Ruegamer [aut],
+  Torsten Hothorn [ctb],
+  with contributions by many others (see inst/CONTRIBUTIONS) [ctb]
+Maintainer: Sarah Brockhaus <Sarah.Brockhaus@stat.uni-muenchen.de>
+Repository: CRAN
+Date/Publication: 2018-05-10 21:18:52 UTC
+Built: R 3.5.0; ; 2018-05-14 19:47:55 UTC; unix
