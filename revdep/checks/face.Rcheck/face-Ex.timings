@@ -1,7 +1,0 @@
-name	user	system	elapsed
-cor.face	0.000	0.000	0.001	
-face.sparse	0.003	0.000	0.003	
-predict.face.sparse	0.000	0.000	0.001	
-predict.pspline.face	0.001	0.000	0.001	
-pspline	1.696	0.216	1.917	
-select.knots	0.001	0.000	0.001	
