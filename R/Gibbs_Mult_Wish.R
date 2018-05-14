@@ -206,7 +206,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     ###############################################################
 
     resid.cur = Y - ranef.cur
-    inv.sig = rWishart(1, v + IJ, solve(Psi + t(resid.cur) %*% resid.cur))
+    inv.sig = rWishart(1, v + IJ, solve(Psi + t(resid.cur) %*% resid.cur))[,,1]
 
     ###############################################################
     ## update variance components
@@ -281,10 +281,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
   class(ret) = "fosr"
   ret
 
-
-
 }
-
 
 ###############################################################
 ###############################################################

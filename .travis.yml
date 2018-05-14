@@ -7,10 +7,15 @@ r:
   - devel
 cache: packages
 
-# need this for current nlme:
+# need this for current nlme, mgcv:
 r_packages:
   - nlme
+  - mgcv
+  - devtools
 
+#need this for nloptr?
+apt_packages:
+  - libnlopt-dev
 
 after_failure:
   - ./travis-tool.sh dump_logs
@@ -18,11 +23,9 @@ after_failure:
 notifications:
   email:
     recipients:
-      - huangracer@gmail.com
+      - jw3134@cumc.columbia.edu
       - fabian.scheipl@stat.uni-muenchen.de
       - jeff.goldsmith@columbia.edu
-      - jgellar1@jhu.edu
-      - mathew.w.mclean@gmail.com
     on_success: change
     on_failure: always
 

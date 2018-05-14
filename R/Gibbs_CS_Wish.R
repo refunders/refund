@@ -158,7 +158,7 @@ gibbs_cs_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 5000
     ###############################################################
 
     resid.cur = Y - W.des %*% beta.cur
-    inv.sig = rWishart(1, v + I, solve(Psi + t(resid.cur) %*% resid.cur))
+    inv.sig = rWishart(1, v + I, solve(Psi + t(resid.cur) %*% resid.cur))[,,1]
 
     ###############################################################
     ## update variance components

@@ -317,7 +317,8 @@ gibbs_mult_fpca = function(formula, Kt=5, Kp = 2, data=NULL, verbose = TRUE, N.i
   ret = list(beta.pm, beta.UB, beta.LB, fixef.pm + ranef.pm, ranef.pm, mt_fixed, data, psi.pm)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "ranef", "terms", "data", "psi.pm")
   class(ret) = "fosr"
-
+  ret
+  
 }
 
 

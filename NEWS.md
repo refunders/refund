@@ -1,4 +1,9 @@
+# refund 0.1-20
+
+* fix minor bug in rlrt.pfr.R
+
 # refund 0.1-19
+
 
 * updates for compatibility with mgcv 1.8-23  (#69 etc.)
 
