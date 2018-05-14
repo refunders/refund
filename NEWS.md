@@ -2,6 +2,8 @@
 
 * fix minor bug in rlrt.pfr.R
 
+* change maintainer from Rayman Huang to Julia Wrobel 
+
 # refund 0.1-19
 
 
