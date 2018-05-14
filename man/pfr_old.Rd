@@ -60,7 +60,7 @@ fit the regression model.}
 \item{D }{penalty matrix used in the model fit}
 \item{phi }{list of B-spline bases for the coefficient functions}
 \item{psi }{list of principal components basis for the functional predictors}
-\item{C }{stacked row-specific prinicipal component scores}
+\item{C }{stacked row-specific principal component scores}
 \item{J }{transpose of psi matrix multiplied by phi}
 \item{CJ }{C matrix multiplied J}
 \item{Z1 }{design matrix of random intercepts}

@@ -21,12 +21,12 @@
 #' @param newdata an optional data frame providing predictors (i for subject id / Ltime for visit time) with which prediction is desired; defaults to NULL
 #' 
 #' @param fbps.knots list of two vectors of knots or number of equidistanct knots for all dimensions
-#'                   for a fast bivariate \emph{P}-spline smoothing (fbps) method used to estimate a bivariate, smooth mean function; defauls to c(5,10); see \command{fbps} 
+#'                   for a fast bivariate \emph{P}-spline smoothing (fbps) method used to estimate a bivariate, smooth mean function; defaults to c(5,10); see \command{fbps} 
 #' @param fbps.p integer;degrees of B-spline functions to use for a fbps method; defaults to 3; see \command{fbps} 
 #' @param fbps.m integer;order of differencing penalty to use for a fbps method; defaults to 2; see \command{fbps} 
 #' 
 #' @param mFPCA.pve proportion of variance explained for a mFPCA step; used to choose the number of principal components (PCs); defaults to 0.95; see \command{fpca.face} 
-#' @param mFPCA.knots number of knots to use or the vectors of knots in a mFPCA step; used for obtain a smooth estimate of a covarance function; defaults to 35; see \command{fpca.face} 
+#' @param mFPCA.knots number of knots to use or the vectors of knots in a mFPCA step; used for obtain a smooth estimate of a covariance function; defaults to 35; see \command{fpca.face} 
 #' @param mFPCA.p integer; the degree of B-spline functions to use in a mFPCA step; defaults to 3; see \command{fpca.face} 
 #' @param mFPCA.m integer;order of differencing penalty to use in a mFPCA step; defaults to 2; see \command{fpca.face} 
 #' @param mFPCA.npc pre-specified value for the number of principal components; if given, it overrides \code{pve}; defaults to NULL; see \command{fpca.face}
@@ -46,7 +46,7 @@
 #' \item{predicted.values }{predicted values for variables provided in newdata}
 #' \item{bivariateSmoothMeanFunc }{estimated bivariate smooth mean function}
 #' \item{mFPCA.efunctions }{estimated eigenfunction in a mFPCA step} \item{mFPCA.evalues }{estimated eigenvalues in a mFPCA step}
-#' \item{mFPCA.npc }{number of principal components selected with pre-specified pve in a mFPCA step} \item{mFPCA.scree.eval }{estiamted eigenvalues obtained with pre-specified pve = 0.9999; for scree plot}
+#' \item{mFPCA.npc }{number of principal components selected with pre-specified pve in a mFPCA step} \item{mFPCA.scree.eval }{estimated eigenvalues obtained with pre-specified pve = 0.9999; for scree plot}
 #' \item{sFPCA.xiHat.bySubj }{a list of which each component consists of a subject's predicted score functions evaluated at equidistanced grid in direction of visit time, T} 
 #' \item{sFPCA.npc}{a vector of numbers of principal components selected in a sFPCA step with pre-specified pve; length of mFPCA.npc}
 #' \item{mFPCA.covar }{estimated marginal covariance} \item{sFPCA.longDynCov.k }{a list of estimated covariance of score function; length of mFPCA.npc}

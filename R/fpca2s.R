@@ -6,7 +6,7 @@
 ##'
 ##' Note that \code{fpca2s} computes smoothed orthonormal eigenvectors
 #'  of the supplied function evaluations (and associated scores), not (!)
-#'  evaluations of the smoothed orthormal eigenfunctions. The smoothed
+#'  evaluations of the smoothed orthonormal eigenfunctions. The smoothed
 #'  orthonormal eigenvectors are then rescaled by the length of the domain
 #'  defined by \code{argvals} to have a quadratic integral approximately equal
 #'  to one (instead of crossproduct equal to one), so they approximate the behavior

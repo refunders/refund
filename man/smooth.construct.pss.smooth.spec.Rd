@@ -7,7 +7,7 @@
 \method{smooth.construct}{pss.smooth.spec}(object, data, knots)
 }
 \arguments{
-\item{object}{see \code{\link[mgcv]{smooth.construct}}. The shrinkage factor can be speficied via \code{object$xt$shrink}}
+\item{object}{see \code{\link[mgcv]{smooth.construct}}. The shrinkage factor can be specified via \code{object$xt$shrink}}
 
 \item{data}{see \code{\link[mgcv]{smooth.construct}}.}
 

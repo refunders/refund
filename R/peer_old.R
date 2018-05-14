@@ -1,6 +1,6 @@
 ##' Functional Models with Structured Penalties
 ##'
-##' Implements functional model with structured penalties (Randloph et al.,
+##' Implements functional model with structured penalties (Randolph et al.,
 ##' 2012) with scalar outcome and single functional predictor through mixed
 ##' model equivalence.
 ##'

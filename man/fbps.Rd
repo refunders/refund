@@ -15,7 +15,7 @@ fbps(data, subj = NULL, covariates = NULL, knots = 35,
 
 \item{subj}{vector of subject id (corresponding to the columns of data); defaults to NULL}
 
-\item{covariates}{list of two vectors of covariates of lengthes n1 and n2;
+\item{covariates}{list of two vectors of covariates of lengths n1 and n2;
 if NULL, then generates equidistant covariates}
 
 \item{knots}{list of two vectors of knots or number of equidistant knots
@@ -31,7 +31,7 @@ for all dimensions; defaults to 35}
 
 \item{lambda}{user-specified smoothing parameters; defaults to NULL}
 
-\item{selection}{selection of smoothing paramter; defaults to "GCV"}
+\item{selection}{selection of smoothing parameter; defaults to "GCV"}
 
 \item{search.grid}{logical; defaults to TRUE, if FALSE, uses
 \command{optim}}

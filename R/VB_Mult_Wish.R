@@ -13,8 +13,8 @@
 #' called.
 #' @param alpha tuning parameter balancing second-derivative penalty and
 #' zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)
-#' @param min.iter minimum number of interations of VB algorithm
-#' @param max.iter maximum number of interations of VB algorithm
+#' @param min.iter minimum number of iterations of VB algorithm
+#' @param max.iter maximum number of iterations of VB algorithm
 #' @param Az hyperparameter for inverse gamma controlling variance of spline terms
 #' for subject-level effects
 #' @param Bz hyperparameter for inverse gamma controlling variance of spline terms

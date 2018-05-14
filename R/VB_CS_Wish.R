@@ -12,8 +12,8 @@
 #' called.
 #' @param alpha tuning parameter balancing second-derivative penalty and
 #' zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)
-#' @param min.iter minimum number of interations of VB algorithm
-#' @param max.iter maximum number of interations of VB algorithm
+#' @param min.iter minimum number of iterations of VB algorithm
+#' @param max.iter maximum number of iterations of VB algorithm
 #' @param Aw hyperparameter for inverse gamma controlling variance of spline terms
 #' for population-level effects; if \code{NULL}, defaults to \code{Kt/2}.
 #' @param Bw hyperparameter for inverse gamma controlling variance of spline terms
