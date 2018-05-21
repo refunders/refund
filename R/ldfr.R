@@ -1,0 +1,579 @@
+#' Longitudinal Dynamic Functional Regression
+#'
+#'  It implements longitudinal dynamic functional regression (Islam et al. (2018)) model for longitudinally 
+#'  observed scalar responses and functional predictors, where responses belong to an exponential family 
+#'  distribution. The methodology accommodates single/multiple functional predictors with or without 
+#'  single/multiple scalar predictors. The current version fits the model using three different covariance 
+#'  structures for responses: (1) subject-specific random intercept, (2) subject-specific random intercept 
+#'  and slope, (3) random block and subject-specific intercept effect. The method uses orthonormal eigenbases 
+#'  obtained from the covariance operator of a functional predictor by FPCA to model both functional 
+#'  measurements and bivariate coefficient function. Using orthonormality of bases, it casts the model 
+#'  into a time-varying coefficient model where scores play the role of regressors. The estimation of 
+#'  scores is done in 2-steps: (1) using numerical integration, it obtains  pseudo scores at the observed 
+#'  time pointsor visit times and (2) applying another FPCA on the covariance of pseudo scores and 
+#'  predicting scores for all visit times using Yao et al. (2005). Parameters are estimated using a 
+#'  mixed model framework.
+#'
+#' @section Details :
+#'   LDFR model can be fitted with either \command{lme} function from \command{nlme}, 
+#'   \command{gamm4} or \command{gam} function from \command{mgcv} \command{R} package. We illustarte 
+#'   the method using \command{bam} function currently.
+#'
+#'@param I        total number of subjects
+#'@param IW       total number of (new + existing) subjects; new subject is (IW - I). Note that
+#'                profile information must be available for each IW. Default is NULL
+#'@param subj     subject identification (id) for each response; e.g., (1, 1, 1, 2, 2, 3, 3, ...).
+#'                If IW is NOT null, then ID is the vector of subject for both existing and new
+#'                subjects. Otherwise, this contains id's only for existing subjects
+#'@param group    Group identification if there is a block effect needed. Default is NULL
+#'@param Tij      sparse/dense time-points corresponding to each response; if IW is NOT null,
+#'                Tij is the vector of actual visit times at which profiles are recorded for both
+#'                existing and new subjects. Otherwise, Tij contains time-points only for
+#'                existing subjects. Assume compact set [0,1] for its domain
+#'@param Yij      scalar responses at observed Tij's for existing subjects
+#'@param funcs    a list of  observed functional predictors; if IW is NOT null then funcs is
+#'                row-concatenation of profiles for new and existing subjects in, say funcs[[1]].
+#'                If IW is null, then funcs[[1]] consists of profiles only for existing subjects
+#'@param covariate scalar covariate; default is NULL
+#'@param covariate.type Whether scalar covariate information varies at each time; e.g., gender
+#'                remains constant for all time points; default is "Constant". In such case, it is
+#'                possible to impute covariate information at unobserved time points and
+#'                obtain full response trajectory (if asked) adjusting for it. Varying scalar
+#'                covariate ("Varying) can also be used. If full information at all time points is 
+#'                not available, we proceed to obtain trajectory without it
+#'@param nbf      number of basis functions 
+#'@param method   smoothing parameter selection criteria; default is REML
+#'@param pve      pre-specified proportion of variance explained; default value is 0.95
+#'@param Yerror   type of dependence structure for responses; "CS" for subject-specific random
+#'                intercept, "IS" for both subject-specific random intercept and slope, "CSG" for
+#'                subject-specific random intercept and random group effect
+#'@param family   exponential family distribution
+#'@param pred.interval  Logical argument. Default is TRUE to generate prediction trajectory interval
+#'@param alpha    level of significance at which prediction interval is desired; e.g. 0.01 or 0.05
+#'
+#'@return
+#' \item{fit}{a gam fitted object}
+#' \item{fitted_vals}{predicted responses for observed time-points}
+#' \item{full_fitted_vals_obs}{predicted responses for all time-points}
+#' \item{full_fitted_vals_unobs}{predicted responses for all time-points for unobserved subjects}
+#' \item{error}{prediction error at observed time points for observed subjects}
+#' \item{npc}{number of fPCs}
+#' \item{phi}{empirical basis functions}
+#' \item{evalues}{empirical eigenvalues}
+#' \item{scores_hat}{time-varying coefficients for each k at observed time-points}
+#' \item{scores_hat_traj}{full trajectory of time-varying coefficients for each k}
+#' \item{scores_pseudo}{raw time-varying loadings}
+#' \item{ranef_intercept}{prediction of subject-specific random intercept effect}
+#' \item{ranef_slope}{prediction of subject-specific random slope effect if Yerror = "IS"}
+#' \item{ranef_group}{prediction of random group effects}
+#' \item{Mean_X_obs}{mean of functional predictor for observed time points (visits)}
+#' \item{gamma}{estimates of smooth coefficient}
+#' \item{covariate_effect}{parameter estimates of scalar covariate(s)}
+#' \item{beta}{estimates of dynamic parameters}
+#' \item{beta0}{estimates of smooth intercept}
+#' \item{Bounds}{confidence interval for smooth estimates}
+#' \item{BoundYF}{prediction band for observed response trajectory}
+#' \item{BoundXF}{prediction band for unobserved response trajectory}
+#' \item{mFPCA}{fpca.face fitted object which primarily gives raw scores}
+#' \item{sFPCA}{fpca.sc fitted object which is used on estimating full trajectory of scores}
+#' @author Md Nazmul Islam \email{mnislam@ncsu.edu}, Ana-Maria Staicu
+#' @export
+#' @references Islam, Md Nazmul, Staicu, A.M., and Heugten, Eric-Van. Longitudinal Dynamic Functional 
+#' Regression. Journal of Royal Statistical Society, Series C (under revision)
+#' @importFrom mgcv bam 
+#' @examples
+#' \dontrun{
+#' # ------------------------- Illustration with real data ---------------------------------- #
+#' data(DTI)
+#' MS <- subset(DTI, case == 1)                     # subset data with multiple sclerosis (MS) case
+#' index.na.cca <- which(is.na(MS$cca)); index.na.rcst <- which(is.na(MS$rcst))      # CCA and RCST
+#' funcs <- list();
+#' cca <- MS$cca; cca[index.na.cca] <- fpca.sc(cca)$Yhat[index.na.cca]; sum(is.na(cca)); 
+#' funcs[[1]] <- cca                                                      # imputing missing values
+#' rcst <- MS$rcst; rcst[index.na.rcst] <- fpca.sc(rcst)$Yhat[index.na.rcst]; sum(is.na(rcst)); 
+#' funcs[[2]] <- rcst                                                     # imputing missing values
+#' subj <- MS$ID; I <- length(unique(subj))                               # number of subject
+#' # renaming id as 1,1,1,1,1,2,2,...
+#' subj <- unlist(lapply(seq_len(I), function(ii) rep(ii, length(which(subj == unique(subj)[ii]))))) 
+#' Yij <- MS$pasat                                                        # PASAT score (response)
+#' Tij <- MS$visit.time / max(MS$visit.time)                              # visit times
+#'
+#' fit0 <- ldfr(I = I, IW = NULL, subj = subj, group = NULL, Tij = Tij, Yij = Yij, funcs = funcs, 
+#'              covariate = NULL, covariate.type = NULL, nbf = 8, method = "REML", pve = 0.95, 
+#'              Yerror = "CS", family = gaussian, pred.interval = FALSE, alpha = 0.05)
+#' # ------------------------------------------------------------------------------------------ #
+#' par(mfrow = c(2, 2))
+#' for(r in 1 : 16){                      # plot predicted PASAT scores for 16 random subjects
+#' si <- sample(1 : I, 1)
+#' plot(Tij[which(subj == unique(subj)[si])], Yij[which(subj == unique(subj)[si])], type = "b", 
+#'      lwd = 2, ylab = "Score", xlab = "Visit time", col = "blue", ylim = c(-5, 65), main = "")
+#' lines(Tij[which(subj == unique(subj)[si])], fit0$fitted_vals[which(subj == unique(subj)[si])], 
+#'      type = "b", col = "red")
+#' legend(0, 10, legend=c("PASAT", "Predicted PASAT"), col = c("blue", "red"), lty = c(1, 1), 
+#'      lwd = c(1, 1), cex = 0.8)}
+#' # ---------------------- Illustration with simulated data ---------------------------------- #
+#'  TT <- seq(0, 1, length.out = 41)                              # grid in t-direction
+#'  ss <- seq(0, 1, length.out = 101)                             # grid in s-direction
+#'  I <- 200; IW = 300                                            # subjects
+#'  A <- 5005; J <- length(TT); SS <- length(ss); delta = 2.5
+#'  dat.full <- data.frame(do.call(rbind, lapply(seq_len(IW), function(i){
+#'  set.seed (A + i); 
+#'  Si.i11 <- rnorm (1, mean = 0, sd = sqrt(3.5)); Si.i12 <- rnorm (1, mean = 0, sd = sqrt(2))
+#'  Si.i21 <- rnorm(1, mean = 0, sd = sqrt(3)); Si.i22 <- rnorm(1, mean = 0, sd = sqrt(1.5))
+#'  zetai1 <- Si.i11 * cos(2 * pi * TT) + Si.i12 *  sin(2 * pi * TT);  
+#'  zetai2 <- Si.i21 * cos(4 * pi * TT) + Si.i22 * sin(4 * pi * TT);
+#'  phi1 <- sqrt(2) * cos (2 * pi * ss); phi2 <- sqrt(2) * sin (2 * pi * ss)
+#'  true.alpha <- 7 * sin(3 * pi * TT); true.beta1  <- exp (- TT * delta); 
+#'  true.beta2 <- delta * TT * sin ( delta * TT)
+#'  true.func.cov <- do.call(rbind, lapply(TT, function(cc) as.vector(1 +2*ss + 3*cc + 4 * ss * cc)))+ 
+#'                    do.call(rbind, lapply(zetai2, function (feb) feb * phi2)) + 
+#'                    do.call(rbind, lapply(zetai1, function (jan) jan * phi1))
+#'  varYij3 <- diag(0.5, J) + matrix(1, nrow = J, ncol = J); blockid <- 0 
+#'  Randi <- mvrnorm(1, rep(0, J), varYij3); 
+#'  rng <- max(TT) -  min(TT); au <- runif(1, 1, 6); cov <- rep(au, J)          
+#'  Yi.r <-  apply(true.func.cov, 1, function(v){ mean(v * phi2) * rng }) * (true.beta2) + 
+#'           apply(true.func.cov, 1, function(v){ mean(v * phi1 ) * rng }) * (true.beta1) + 
+#'           true.alpha + cov * 0.5 + Randi
+#'  e1 <- rnorm(J, mean = 0, sd = sqrt(0.3)); e2 <- rnorm(J, mean = 0, sd = sqrt(0.7))
+#'  e3 <- matrix(rnorm(J * SS , mean = 0, sd = sqrt(1)), nrow = J, byrow = T)
+#'  errorX <- do.call(rbind, lapply(e1, function (d) d * phi1)) + 
+#'  do.call(rbind, lapply(e2, function (d) d * phi2)) + e3
+#'  obs.func.cov <- true.func.cov +  errorX
+#'  data <- cbind(i = rep(i, J), Tij = TT, Yij = Yi.r, cov = cov, obs.func.cov = obs.func.cov, blockid = blockid)
+#'  } )))
+#'  dat.obs <- do.call(rbind, lapply(seq_len(IW), function(i) {
+#'    set.seed(i + A); mi <- sample(15 : 25, size = 1); 
+#'    ith <- sort (sample(1 : J, size = mi), decreasing = FALSE); 
+#'    ith.data <- dat.full[which(dat.full$i == i), ]; k1 <- ith.data [ith, ]; return(k1)
+#'  }))
+#' EX <- which(dat.obs[, 1] > I) # EX is indexing variable. First I-subjects are observed subjects 
+#'                               # while the rest (IW - I) are new subjects 
+#' Yij <- dat.obs[- EX, 3]; subj <- dat.obs[, 1]; Tij <- dat.obs[, 2]; funcs <- covariate <- list() 
+#' covariate[[1]] <- dat.obs[, 4]; funcs[[1]] <- as.matrix(dat.obs [, c(5 : 105)]) 
+#'
+#' fit1 <- ldfr(I = I, IW = IW, subj = subj, group = NULL, Tij = Tij, Yij = Yij, funcs = funcs, 
+#'       covariate = covariate, covariate.type = "Constant", nbf = 15, method = "REML", pve = 0.95, 
+#'       Yerror = "CS", family = gaussian, pred.interval = TRUE, alpha = 0.05)
+#'}  # Illustration ends
+# ---------------------------------------------------------------------------------------------- #
+ldfr <- function(I, IW = NULL, subj, group = NULL, Tij, Yij, funcs, covariate = NULL, 
+          covariate.type = NULL, nbf, method, pve, Yerror, family, pred.interval = TRUE, alpha){
+  # ------------------------ Sanity check ------------------------ #
+  if(is.list(funcs) == FALSE){
+    stop("funcs needs to be in a list; e.g., funcs[[1]] corresponds to first functional predictor")
+  }
+  if(is.null(covariate) == FALSE && is.list(covariate) == FALSE){
+    stop("covariate needs to be in a list; covariate[[1]] corresponds to first scalar covariate")
+  }
+  if(is.null(covariate) == FALSE && is.list(covariate) == TRUE){
+    covariate.mat <- do.call(cbind, lapply(seq_len(length(covariate)), function(ii) covariate[[ii]]))
+  }
+  if(is.null(IW) == TRUE){IW = I}
+  # --------------------------------  Extract data -------------------------------------- #
+  ID =  subj; ln <- length(Tij); TT <- sort(unique(Tij)); J <- length(TT)
+  if(is.null(group) == FALSE) {G <- length(unique(group))}
+  IDF <- unlist(lapply(seq_len(IW), function(gh) rep(gh, J))) # ID generation for all visit times
+  TijF <- rep(TT, IW)                                         # All visit times in domain
+  allseq <- seq_len(IW * J)
+  out_subj <- unlist(lapply(seq_len(IW), function(ii) allseq[which(IDF == ii)]
+                            [match(Tij[which(subj == ii)], TT)]))
+  # indexing variable that determines the positions of each response across existing subjects
+  V <- unlist(lapply(seq_len(IW), function(ii) match(Tij[which(subj == ii)], TT)))
+  # position of each response within each subject in the domain of time
+  if(length(IW) != 0){freq <- unlist(lapply(seq_len(IW), function(ii) length(which(ID == ii))))}
+  if(length(IW) == 0){freq <- unlist(lapply(seq_len(I), function(ii) length(which(ID == ii))))}
+  # -----  generating variables for ID and Time for all subjects at all J time-points ----- #
+  if(is.null(covariate) == FALSE &&  covariate.type == "Constant"){
+    cov.obs.all <- matrix(0, nrow = (IW * J), ncol = ncol(covariate.mat))
+    for(nn in 1 : ncol(covariate.mat)){
+      cov.obs.all[, nn] <- unlist(lapply(seq_len(IW), function(ii)
+        rep(covariate.mat[which(ID == ii)[1], nn], J)))}}
+  
+  if(is.null(covariate) == FALSE &&  covariate.type == "Varying" && nrow(covariate.mat) == (I * J)){
+    print("CAUTION : Full response trajectory is based on functional predictor(s) only as scalar covariate
+          information is missing at unobserved visit times.") 
+    cov.obs.all <- NULL}
+  # ------------------------ estimating mean function --------------------------- #
+  obs.func.cov <- length.grid <- grid <- fbps.fit <- MU.X <- deM.X <- covsmooth <- phi.hat <- K.hat <- 
+    zetaw.hat <- eigenvalues <- fit2 <- zetaw.hatE <- zetaw.hatF <- zetaw.hatN <- zetaw.hatX <- list()
+  for(n in 1  : length(funcs)){
+    obs.func.cov <- funcs[[n]]; length.grid[[n]] <- dim(obs.func.cov)[2]; SS <-  length.grid[[n]]
+    grid[[n]] <- seq(0, 1, length.out = length.grid[[n]]); ss <- grid[[n]]
+    fbps.fit[[n]] <-  fbps(data = obs.func.cov, covariates = c(Tij, ss))
+    
+    # -------------------- demeaning functional predictor ---------------------- #
+    MU.X[[n]] <- fbps.fit[[n]]$Yhat
+    deM.X[[n]] <- obs.func.cov - MU.X[[n]]
+    
+    # --------  finding the eigen-components of covariance  operator ----------- #
+    covsmooth[[n]] <- fpca.face (Y = deM.X[[n]], pve = pve, var =  TRUE)
+    phi.mat <- covsmooth[[n]]$efunctions; phi.hat[[n]] <- phi.mat * sqrt(SS)
+    K.hat[[n]] <- covsmooth[[n]]$npc; zetaw.hat[[n]] <- covsmooth[[n]]$scores / sqrt (SS)
+    eigenvalues[[n]] <- covsmooth[[n]]$evalues / SS; 
+    eigenvalues[[n]][which(eigenvalues[[n]] < 0)] <- 0
+    
+    # --------- predicting the time-varying loadings (un)observed) ------------- #
+    if(length(IW) == 0){IW <- I}    # implying no new subjects
+    xi.hat0 <- list()
+    for(k in seq_len(K.hat[[n]])){
+      xihat0.vec <- zetaw.hat[[n]][, k]
+      xi.hat0[[ k ]]<- t(sapply( seq_len(IW), function(i) {
+        xi.subj <- matrix(nrow = 1, ncol = J)
+        xi.subj[V[which(ID == i)]] <- xihat0.vec[which(ID == i)]; return(xi.subj)}))}
+    # ----------------------------------------------------------------------------------- #
+    fit2[[n]] <- lapply(xi.hat0, function(a) try(fpca.sc(Y = a, pve = pve, var = TRUE)))
+    xi.hat <- lapply(fit2[[n]], function(a) a$Yhat)
+    zetaw.hatF[[n]] <- do.call(cbind, lapply(xi.hat, function(gg) as.vector(t(gg))))
+    
+    if(length(out_subj) == 1){ if(nrow(zetaw.hatF[[n]]) != (I * J)){
+      stop("Time-varying scores are not recovered for all visit times for each subject")}
+    } else{ if(nrow(zetaw.hatF[[n]]) != (IW * J))
+      stop("Time-varying scores are not recovered for all visit times for each subject")}}
+  
+  if(IW == I){ Ind <- seq_len(dim(zetaw.hatF[[1]])[1])
+  Index <- unlist(lapply(seq_len(IW), function(ui) Ind[which(IDF == ui)][V[which(ID == ui)]]))
+  # index for time-points at which profiles are available
+  for(n in 1  : length(funcs)){
+    zetaw.hatN[[n]] <- do.call (cbind, lapply(xi.hat, function(gg) as.vector(t(gg))[Index]))
+    zetaw.hatE[[n]] <- zetaw.hatF[[n]]}
+  if(is.null(covariate) == FALSE){cov.obs <-  covariate.mat
+  } else{cov.obs <- NULL}
+  TijFN <- TijF; IDFN <- groupFN <- IDF; Yij <- Yij; Tij <- Tij; ID <- ID
+  if(is.null(group) == FALSE){
+    group <- group
+    grpmember <- lapply(seq_len(IW), function(ii) group[which(ID == unique(ID)[ii])][1])
+    for(ii in 1 : IW){
+      groupFN[which(IDFN == unique(ID)[ii])] <- grpmember[[ii]]}}
+  }
+  # ----------------------------------------------------------------------------------- #
+  if(IW != I){ index0 <- seq_len(I * J); index1 <-  out_subj[- which(ID > I)]
+  index2 <- seq_len(IW * J)[- c(index0)]
+  for(n in 1  : length(funcs)){
+    zetaw.hatE[[n]] <- do.call (cbind, lapply ( xi.hat, function(gg) as.vector(t(gg))[index0]))
+    # predicted scores for observed subjects at each time-points
+    zetaw.hatN[[n]] <- do.call (cbind, lapply ( xi.hat, function(gg) as.vector(t(gg))[index1]))
+    # predicted scores for observed subjects at observed time points
+    zetaw.hatX[[n]] <- do.call (cbind, lapply ( xi.hat, function(gg) as.vector(t(gg))[index2]))
+    # redicted scores for unobserved subjects at each time-points
+  }
+  Yij <- Yij; V <- V[-which(ID > I)]; Tij <- Tij[-which(ID > I)]
+  if(is.null(covariate) == FALSE){cov.obs <-  covariate.mat[-which(ID > I), ]} else{cov.obs <- NULL}
+  TijFN <- TijF[- c(which(IDF > I))]; TijFX <- TijF[ c(which(IDF > I))]
+  IDFN <- groupFN <- IDF[- c(which(IDF > I))]; IDFX <- groupFX <- IDF[ c(which(IDF > I))]
+  if(is.null(group) == FALSE){ group <- group[-which(ID > I)]
+  grpmember <- lapply(seq_len(I), function(ii) group[which(ID[- which(ID > I)] ==
+                                                             unique(ID[-which(ID > I)])[ii])][1])
+  for(ii in 1 : I){
+    groupFN[which(IDFN == unique(ID[-which(ID > I)])[ii])] <- grpmember[[ii]]
+    groupFX[which(IDFX == unique(ID[which(ID > I)])[ii])] <- grpmember[[ii]]}}
+  # ----------------------------------------------------------------------------------- #   
+  ID <- ID[- which(ID > I)]
+  if(length(Yij) != length(Tij)){
+    stop("number of observed responses does not match with number of observed time-points")}
+  }
+  # ---------------- creating design matrix for SS random effects  --------------------- #
+  if(Yerror == "CS"){ # --------- Observed subjects  + Observed time-points  --------------- #
+    Z1 <- matrix(0, nrow = length(Yij), ncol = I)
+    for (i in 1 : I) {Z1[which(ID == unique(ID)[i]), i] = 1}
+    fZ <- cbind(Z1)
+    # -------------------- Observed subjects  + All time-points  -------------------------- #
+    Z1F <- matrix(0, nrow = length(TijFN), ncol = length(unique(IDFN)))
+    for (i in 1 : I) {Z1F[which(IDFN == sort(unique(IDFN))[i]), i] = 1}
+    fZF <- cbind(Z1F)
+    # ----------------------------------------------------------------------------------- #
+    if(IW != I){
+      # ---------------------- Unobserved subjects  + All time-points  --------------------- #
+      Z1FX <- matrix(0, nrow = length(TijFX), ncol = length(unique(IDFX)))
+      for (i in 1 : (IW - I)) {Z1FX[which(IDFX == sort(unique(IDFX))[i]), i] = 1}
+      fZFX <- cbind(Z1FX)}}
+  # ----------------------------------------------------------------------------------- #
+  if(Yerror == "CSG"){ # --------- Observed subjects  + Observed time-points  --------- #
+    Z1 = matrix(0, nrow = length(Yij), ncol = I)
+    Z2 = matrix(0, nrow = length(group), ncol = G)
+    for (i in 1 : I){Z1[which(ID == unique(ID)[i]), i] = 1}
+    for (g in 1 : G){Z2[which(group == unique(group)[g]), unique(group)[g]] = 1}
+    fZ <- cbind(Z1, Z2)
+    # -------------------- Observed subjects  + All time-points  ---------------------- #
+    Z1F <- matrix(0, nrow = length(TijFN), ncol = length(unique(IDFN)))
+    Z2F <- matrix(0, nrow = length(TijFN), ncol = G)
+    for (i in 1 : I){Z1F[which(IDFN == unique(IDFN)[i]), i] = 1}
+    for (g in 1 : G){Z2F[which(groupFN == unique(groupFN)[g]), unique(groupFN)[g]] = 1}
+    fZF <- cbind(Z1F, Z2F)
+    # ----------------------------------------------------------------------------------- #  
+    if(IW != I){
+      if(length(unique(groupFX)) != G){stop("CAUTION New subjects are not classified to all groups. 
+                                We recommend using I = IW or different covaraince structure.")}
+      # ---------------------- Unobserved subjects  + All time-points  --------------------- #
+      Z1FX <- matrix(0, nrow = length(TijFX), ncol = length(unique(IDFX)))
+      Z2FX <- matrix(0, nrow = length(groupFX), ncol = G)
+      for (i in 1 : (IW - I)) { Z1FX[which(IDFX == sort(unique(IDFX))[i]), i] = 1}
+      for(g in 1 : G){ Z2FX[which(groupFX == unique(groupFX)[g]), unique(groupFN)[g]] = 1}
+      fZFX <- cbind(Z1FX, Z2FX)}}
+  # --------------------------------------------------------------------------------- #
+  if(Yerror == "IS"){ # ---- Observed subjects  + Observed time-points  ---- #
+    Z1 = matrix(0, nrow = length(Yij), ncol = length(unique(ID)))
+    Z2 = matrix(0, nrow = length(Yij), ncol = length(unique(ID)))
+    for(i in 1 : I){ Z1[which(ID == unique(ID)[i]), i] = 1
+    Z2[which(ID == unique(ID)[i]), i] = Tij[which(ID == unique(ID)[i])]}
+    fZ <- cbind(Z1, Z2)
+    # -------------------- Observed subjects  + All time-points  -------------------------- #
+    Z1F <- matrix(0, nrow = length(TijFN), ncol = length(unique(IDFN)))
+    Z2F <- matrix(0, nrow = length(TijFN), ncol = length(unique(IDFN)))
+    for (i in 1 : I){ Z1F[which(IDFN == unique(IDFN)[i]), i] = 1
+    Z2F[which(IDFN == unique(IDFN)[i]), i] = TijFN[which(IDFN == unique(IDFN)[i])]}
+    fZF <- cbind(Z1F, Z2F)
+    # --------------------------------------------------------------------------------- #
+    if(IW != I){ # ------------- Unobserved subjects  + All time-points  --------------- #
+      Z1FX <- matrix(0, nrow = length(TijFX), ncol = length(unique(IDFX)))
+      Z2FX <- matrix(0, nrow = length(TijFX), ncol = length(unique(IDFX)))
+      for (i in 1 : (IW - I)) { Z1FX[which(IDFX == sort(unique(IDFX))[i]), i] = 1
+      Z2FX[which(IDFX == sort(unique(IDFX))[i]), i] = TijFX[which(IDFX == sort(unique(IDFX))[i])]}
+      fZFX <- cbind(Z1FX, Z2FX)}}
+  
+  # ---------------------------------------------------------------------------------------- #
+  R <- nbf; qtiles <- seq(0, 1, length = R)[- c(1, R)]; knots <- quantile(TT, qtiles)
+  # ------------------- Observed subjects  + Observed time-points  --------------------------- #
+  Z0 <- matrix(as.vector(cbind(sapply(knots, function(tau) ((Tij > tau) * (Tij - tau) )))), 
+               nrow = length(Tij))
+  fZ0 <- cbind(1, Tij, Z0); bigX <- cbind(fZ, fZ0)
+  if(is.null(covariate) == FALSE){bigX <- cbind(fZ, cov.obs, fZ0)}
+  # ---------------------- Observed subjects  + All time-points  --------------------------- #
+  Z0F <- matrix(as.vector(cbind(sapply(knots, function(tau) ((TijFN > tau) *
+                                                               (TijFN - tau) )))), nrow = length(TijFN))
+  fZ0F <- cbind(1, TijFN, Z0F); bigXF <- cbind(fZF, fZ0F)
+  if(is.null(covariate) == FALSE && covariate.type == "Constant"){
+    bigXF <- cbind(fZF,  cov.obs.all[c(1 : (I * J)), ], fZ0F)}
+  # ---------------------------------------------------------------------------------------- #
+  if(IW != I){ # ---- Unobserved subjects  + All time-points  ---- #
+    Z0FX <- matrix(as.vector(cbind(sapply(knots, function(tau) ((TijFX > tau) * (TijFX - tau) )))),
+                   nrow = length(TijFX))
+    fZ0FX <- cbind(1, TijFX, Z0FX)
+    if(is.null(covariate) == TRUE || covariate.type == "Varying"){bigXFX <- cbind(fZ0FX)}
+    if(is.null(covariate) == FALSE && covariate.type == "Constant"){
+      bigXFX <- cbind(cov.obs.all[- c(1 : (I * J)), ], fZ0FX)} # First I*J obs correspond to I subj
+  } 
+  # --------------------------------------------------------------------------------- #
+  if(IW != I && Yerror == "CSG"){ # ---- Unobserved subjects  + All time-points  ---- #
+    Z0FX <- matrix(as.vector(cbind(sapply(knots, function(tau) ((TijFX > tau) * (TijFX - tau) )))),
+                   nrow = length(TijFX))
+    fZ0FX <- cbind(1, TijFX, Z0FX)
+    if(is.null(covariate) == TRUE){bigXFX <- cbind(Z2FX, fZ0FX)}
+    if(is.null(covariate) == FALSE && covariate.type == "Varying"){bigXFX <- cbind(Z2FX, fZ0FX)}
+    if(is.null(covariate) == FALSE && covariate.type == "Constant"){
+      bigXFX <- cbind(Z2FX, cov.obs.all[- c(1 : (I * J)), ], fZ0FX)} 
+  }
+  # ---------------------------------------------------------------------------------------------- #
+  # --- creating design matrix for K smooth time-varying scores using truncated linear splines --- #
+  for(n in 1 : length(funcs)){
+    for(k in 1 : K.hat[[n]]){ 
+      # ------------------ Observed subjects  + Observed time-points  ----------------------- #
+      DD <- paste("fZ",k," <- zetaw.hatN[[", n,"]][,", k,"] * fZ0", sep = "")
+      DD <- eval(parse(text = DD)); bigX <- cbind(bigX, DD)
+      # -------------------------- Observed subjects  + All time-points  -------------------- #
+      DD <- paste("fZF",k," <- zetaw.hatE[[", n,"]][,", k,"] * fZ0F", sep = "")
+      DD <- eval(parse(text = DD)); bigXF <- cbind(bigXF, DD)
+      if(IW != I){ 
+        # --------------- Unobserved subjects  + All time-points  ----------------------------- #
+        DD <- paste("fZFX",k," <- zetaw.hatX[[", n,"]][,", k,"] * fZ0FX", sep = "")
+        DD <- eval(parse(text = DD)); bigXFX <- cbind(bigXFX, DD); rm(DD)}
+    }}
+  if(dim(bigX)[2] > dim(bigX)[1]){stop("n << p")}
+  # ------------------------------ terms to be penalized ------------------------------------- #
+  if(Yerror == "CS"){ E <- IN <- list()
+  if(is.null(covariate) == TRUE){
+    E[[1]] <- diag(rep(0, dim(bigX)[2])); diag(E[[1]])[c(1 : I)] <- 1
+    E[[2]] <- diag(rep(0, dim(bigX)[2])); diag(E[[2]])[c( (I + 3) : (I + 2 + R) )] <- 1
+    R1 <- R
+    for(n in 1 : length(funcs)){ IN[[n]] <- list()
+    for(kk in 1 : K.hat[[n]]){IN[[n]][[kk]] <- c( (I + 3 + R1 + (kk - 1) * R) : (I + R1 + kk * R))}
+    R1 <-  R1 + K.hat[[n]] * R
+    E[[(2 + n)]] <- diag(rep(0, dim(bigX)[2])); diag(E[[(2 + n)]])[unlist(IN[[n]])] <- 1}
+  }
+  if(is.null(covariate) == FALSE){
+    E[[1]] <- diag(rep(0, dim(bigX)[2])); diag(E[[1]])[c(1 : I)] <- 1
+    II <- I + ncol(cov.obs.all) # adjusted for covariate
+    E[[2]] <- diag(rep(0, dim(bigX)[2])); diag(E[[2]])[c( (II + 3) : (II + 2 + R) )] <- 1
+    R1 <- R
+    for(n in 1 : length(funcs)){ IN[[n]] <- list()
+    for(kk in 1 : K.hat[[n]]){ IN[[n]][[kk]] <- c((II + 3 + R1 + (kk - 1) * R):(II + R1 + kk * R))}
+    R1 <-  R1 + K.hat[[n]] * R
+    E[[(2 + n)]] <- diag(rep(0, dim(bigX)[2])); diag(E[[(2 + n)]])[unlist(IN[[n]])] <- 1}
+  }}
+  # --------------------------------------------------------------------------------- #
+  if(Yerror == "CSG"){ E <- IN <- list()
+  if(is.null(covariate) == TRUE){
+    E[[1]] <- diag(rep(0, dim(bigX)[2])); diag(E[[1]])[c(1 : I)] <- 1
+    E[[2]] <- diag(rep(0, dim(bigX)[2])); diag(E[[2]])[ (I + 1) : (I + G) ] <- 1
+    E[[3]] <- diag(rep(0, dim(bigX)[2])); diag(E[[3]])[c((I + G + 3) : (I + G + R))] <- 1
+    R1 <- R
+    for(n in 1 : length(funcs)){ IN[[n]] <- list()
+    for(kk in 1 : K.hat[[n]]){
+      IN[[n]][[kk]] <- c((I + G + 3 + R1 + ((kk - 1) * R)) : (I + G + R1 + (kk * R)))}
+    R1 <-  R1 + K.hat[[n]] * R
+    E[[(3 + n)]] <- diag(rep(0, dim(bigX)[2])); diag(E[[(3 + n)]])[unlist(IN[[n]])] <- 1}
+  }
+  if(is.null(covariate) == FALSE){
+    E[[1]] <- diag(rep(0, dim(bigX)[2])); diag(E[[1]])[c(1 : I)] <- 1
+    E[[2]] <- diag(rep(0, dim(bigX)[2])); diag(E[[2]])[ (I + 1) : (I + G) ] <- 1
+    II <- I + G + ncol(cov.obs.all) # adjusted for covariate
+    E[[3]] <- diag(rep(0, dim(bigX)[2])); diag(E[[3]])[c((II + 3) : ( II + R))] <- 1
+    R1 <- R
+    for(n in 1 : length(funcs)){ IN[[n]] <- list()
+    for(kk in 1 : K.hat[[n]]){
+      IN[[n]][[kk]] <- c((II + 3 + R1 + ((kk - 1) * R)) : (II + R1 + (kk * R)))}
+    R1 <-  R1 + K.hat[[n]] * R
+    E[[(3 + n)]] <- diag(rep(0, dim(bigX)[2])); diag(E[[(3 + n)]])[unlist(IN[[n]])] <- 1}
+  }}
+  # --------------------------------------------------------------------------------- # 
+  if(Yerror == "IS"){ E <- IN <- list()
+  if(is.null(covariate) == TRUE){
+    E[[1]] <- diag(rep(0, dim(bigX)[2])); diag(E[[1]])[c(1 : I)] <- 1
+    E[[2]] <- diag(rep(0, dim(bigX)[2])); diag(E[[2]])[ (I + 1) : (2 * I) ] <- 1
+    E[[3]] <- diag(rep(0, dim(bigX)[2])); diag(E[[3]])[c(((2 * I) + 3) : ((2 * I) + R))] <- 1
+    R1 <- R
+    for(n in 1 : length(funcs)){ IN[[n]] <- list()
+    for(kk in 1 : K.hat[[n]]){
+      IN[[n]][[kk]] <- c(((2 * I) + 3 + R1 + ((kk - 1) * R)) : ((2 * I) + R1 + (kk * R)))}
+    R1 <-  R1 + K.hat[[n]] * R
+    E[[(3 + n)]] <- diag(rep(0, dim(bigX)[2])); diag(E[[(3 + n)]])[unlist(IN[[n]])] <- 1}
+  }
+  # --------------------------------------------------------------------------------- #
+  if(is.null(covariate) == FALSE){
+    E[[1]] <- diag(rep(0, dim(bigX)[2])); diag(E[[1]])[c(1 : I)] <- 1
+    E[[2]] <- diag(rep(0, dim(bigX)[2])); diag(E[[2]])[ (I + 1) : (2 * I) ] <- 1
+    II <- 2 * I + ncol(cov.obs.all) # adjusted for covariate
+    E[[3]] <- diag(rep(0, dim(bigX)[2])); diag(E[[3]])[c((II + 3) : ( II + R))] <- 1
+    R1 <- R
+    for(n in 1 : length(funcs)){ IN[[n]] <- list()
+    for(kk in 1 : K.hat[[n]]){
+      IN[[n]][[kk]] <- c((II + 3 + R1 + ((kk - 1) * R)) : (II + R1 + (kk * R)))}
+    R1 <-  R1 + K.hat[[n]] * R
+    E[[(3 + n)]] <- diag(rep(0, dim(bigX)[2])); diag(E[[(3 + n)]])[unlist(IN[[n]])] <- 1}
+  }}
+  # --------------------------------------------------------------------------------- #
+  time <- system.time(applygam <- bam(Yij ~ bigX - 1, paraPen = list(bigX = E), method = method))[3]
+  coefs = applygam$coef; pred <- as.vector(as.matrix(bigX[, 1 : length(coefs)]) %*% coefs )
+  # -------------- prediction of full trajectory for observed subjects -------------- #
+  if(Yerror == "CS"){ I1 <- I}
+  if(Yerror == "CSG"){ I1 <- I + G}
+  if(Yerror == "IS"){ I1 <- 2 * I}
+  # --------------------------------------------------------------------------------- #
+  if(is.null(covariate) == FALSE){
+    I2 <- I1 + ncol(cov.obs.all); cov.effect <- coefs[c((I1 + 1) : I2)]} else{
+      cov.effect <- NULL; I2 <- I1}
+  # --------------------------------------------------------------------------------- #
+  if(is.null(covariate) == FALSE && covariate.type == "Varying"){
+    NY.pred <- as.vector(as.matrix(bigXF) %*% coefs[-c((I1 + 1) : I2)])} else{
+      NY.pred <- as.vector(as.matrix(bigXF) %*% coefs)}
+  # -------------- prediction of full rajectory for unobserved subjects -------------- #
+  if(IW != I && Yerror == "CSG"){
+    if(is.null(covariate) == FALSE && covariate.type == "Varying"){
+      NY.pred.X <- as.vector(as.matrix(bigXFX) %*% c(coefs[c((I + 1) : (I + G))], coefs[- c(1 : I2)]))
+      # adjusting the block effect
+      if(sum(is.na(NY.pred.X)) != 0) stop("Problem in creating design matrix")} else{
+        NY.pred.X <- as.vector(as.matrix(bigXFX) %*% c(coefs[c((I + 1) : (I + G))], coefs[- c(1 : I1)]))
+      }}
+  # --------------------------------------------------------------------------------- #
+  if(IW != I && Yerror != "CSG"){
+    if(is.null(covariate) == FALSE && covariate.type == "Varying"){
+      NY.pred.X <- as.vector(as.matrix(bigXFX) %*% coefs[- c(1 : I2)])
+      if(sum(is.na(NY.pred.X)) != 0) stop("Problem in creating design matrix")} else{
+        NY.pred.X <- as.vector(as.matrix(bigXFX) %*% coefs[- c(1 : I1)])
+      }}
+  # --------------------------------------------------------------------------------- #
+  if(IW == I){NY.pred.X <- NULL}    
+  # -------------------------- estimation & prediction ------------------------------ #
+  qtiles <- seq(0, 1, length = R)[- c(1, R)]; knots <- quantile(TT, qtiles)
+  Zt <- matrix(as.vector(cbind(sapply(knots, function(tau)((TT>tau)*(TT - tau))))), nrow=length(TT))
+  fZt <- cbind(1, TT, Zt)
+  ### ----------------- time-varying smooth intercept --------------------------------- ###
+  ME <- qnorm(1 - alpha / 2)
+  beta0 <- fZt %*% coefs[c((I2 + 1) : (I2 + R))]
+  varb <- (as.matrix(fZt)) %*%  applygam$Vp[c((I2 + 1) : (I2 + R)),
+                                            c((I2 + 1) : (I2 + R))] %*% t(as.matrix(fZt))
+  Bounds0 <-   cbind(beta0 - ME * sqrt(diag(varb)), beta0 + ME * sqrt(diag(varb)))
+  ### ------------------- time-varying smooth coefficient ----------------------------- ###
+  beta <- gammaE <- IN <- varBeta <- varBetaH <- Bounds <- list(); R1 <- R
+  for(n in 1 : length(funcs)){
+    IN[[n]] <-  beta[[n]] <- varBeta[[n]] <- varBetaH[[n]] <- Bounds[[n]] <- list()
+    for(jj in 1 : K.hat[[n]]){
+      IN[[n]][[jj]] <- c( (I2 + 1 + R1 + (jj - 1) * R) : (I2 + R1 + jj * R))
+      varBeta[[n]][[jj]] <- applygam$Vp[ unlist(IN[[n]][[jj]]), unlist(IN[[n]][[jj]])]
+      beta[[n]][[jj]] <- fZt %*% coefs[IN[[n]][[jj]]]
+      varBetaH[[n]][[jj]] <- (as.matrix(fZt)) %*% varBeta[[n]][[jj]] %*% t(as.matrix(fZt))
+      Bounds[[n]][[jj]] = cbind(beta[[n]][[jj]] - ME * (sqrt(diag(varBetaH[[n]][[jj]]))),
+                                beta[[n]][[jj]] + ME * (sqrt(diag(varBetaH[[n]][[jj]]))))
+    }
+    R1 <-  R1 + K.hat[[n]] * R
+  }
+  # ----------------------------- random effects --------------------------------- #
+  rand_int <- rand_slp <- rand_grp <- NULL
+  if (Yerror == "CS"){ rand_int <- coefs[c(1 : I)]}
+  if (Yerror == "CSG"){ rand_int <- coefs[c(1 : I)]; rand_grp <- coefs[c((I + 1) : (I + G))]}
+  if (Yerror == "IS"){ rand_int <- coefs[c(1 : I)]; rand_slp <- coefs[c((I + 1) : (2 * I))]}
+  # -------------------------- Functional coefficient ----------------------------- #
+  for(n in 1 : length(funcs)){
+    allb <- as.matrix(do.call(cbind, lapply(seq_len(K.hat[[n]]), function(jj) beta[[n]][[jj]])))
+    gammaE[[n]] <- phi.hat[[n]] %*% t(allb)}
+  # --------------------------------------------------------------------------------- #
+  if(pred.interval == TRUE){ # ---- Observed subjects  + All time-points  ---- #
+    if(is.null(covariate) == FALSE && covariate.type == "Varying"){
+      NY.pred <- as.vector(as.matrix(bigXF) %*% coefs[- c((I1 + 1) : I2)])
+      varYF <- bigXF %*% applygam$Vp[- c((I1 + 1) : I2), - c((I1 + 1) : I2)] %*%  t(bigXF) +
+        diag(applygam$reml.scale, dim(bigXF)[1])
+    }else{
+      NY.pred <- as.vector(as.matrix(bigXF) %*% coefs)
+      varYF <- bigXF %*% applygam$Vp %*%  t(bigXF) +  diag(applygam$reml.scale, dim(bigXF)[1])
+    }
+    boundYF <- cbind(NY.pred - ME * sqrt(diag(varYF)), NY.pred + ME * sqrt(diag(varYF)))
+    # --------------------------------------------------------------------------------- #
+    if(IW != I && Yerror == "CS"){ # ---- Unobserved subjects  + All time-points  ---- #
+      if(is.null(covariate) == FALSE && covariate.type == "Varying"){
+        NY.pred.X <- as.vector(as.matrix(bigXFX) %*% coefs[- c(1 : I2)])
+        varXF <- bigXFX %*% applygam$Vp[- (1 : I2), - (1 : I2)] %*% t(bigXFX) +
+          gam.vcomp(applygam)[1] ^ 2 * (fZFX  %*% t(fZFX)) + diag(applygam$reml.scale, dim(bigXFX)[1])
+      } else{
+        NY.pred.X <- as.vector(as.matrix(bigXFX) %*% coefs[- c(1 : I1)])
+        varXF <- bigXFX %*% applygam$Vp[- (1 : I1), - (1 : I1)] %*% t(bigXFX) +
+          gam.vcomp(applygam)[1] ^ 2 * (fZFX  %*% t(fZFX)) + diag(applygam$reml.scale, dim(bigXFX)[1])
+      }
+      boundXF <- cbind(NY.pred.X - ME * sqrt(diag(varXF)),  NY.pred.X + ME * sqrt(diag(varXF)))
+    }
+    # --------------------------------------------------------------------------------- #
+    if(IW != I && Yerror == "IS"){ # ---- Unobserved subjects  + All time-points  ---- #
+      if(is.null(covariate) == FALSE && covariate.type == "Varying"){
+        NY.pred.X <- as.vector(as.matrix(bigXFX) %*% coefs[- c(1 : I2)])
+        varXF <- bigXFX %*% applygam$Vp[- (1 : I2), - (1 : I2)] %*% t(bigXFX) +
+          gam.vcomp(applygam)[1] ^ 2 * (Z1FX  %*% t( Z1FX )) + gam.vcomp(applygam)[2] ^ 2 *
+          (Z2FX  %*% t(Z2FX)) + diag(applygam$reml.scale, dim(bigXFX)[1])
+      } else{
+        NY.pred.X <- as.vector(as.matrix(bigXFX) %*% coefs[- c(1 : I1)])
+        varXF <- bigXFX %*% applygam$Vp[- (1 : I1), - (1 : I1)] %*% t(bigXFX) + 
+          gam.vcomp(applygam)[1] ^ 2 * (Z1FX  %*% t(Z1FX)) + gam.vcomp(applygam)[2] ^ 2 * 
+          (Z2FX  %*% t(Z2FX)) + diag(applygam$reml.scale, dim(bigXFX)[1])
+      }
+      boundXF <- cbind(NY.pred.X - ME * sqrt(diag(varXF)),  NY.pred.X + ME * sqrt(diag(varXF)))
+    }
+    if(IW != I && Yerror == "CSG"){ # ---- Unobserved subjects  + All time-points  ---- #
+      if(is.null(covariate) == FALSE && covariate.type == "Varying"){
+        NY.pred.X <- as.vector(as.matrix(bigXFX) %*% c(coefs[c((I + 1):(I + G))], coefs[- c(1 : I2)]))
+        varXF <- bigXFX %*% applygam$Vp[-c((1 : I), ((I + G + 1) : ((I + G + ncol(cov.obs))))),
+                                        -c((1 : I), ((I + G + 1) : ((I + G + ncol(cov.obs)))))] %*% t(bigXFX) +
+          gam.vcomp(applygam)[1] ^ 2 * (Z1FX  %*% t(Z1FX)) + diag(applygam$reml.scale, dim(bigXFX)[1])
+      } else{
+        NY.pred.X <- as.vector(as.matrix(bigXFX) %*% coefs[- (1 : I)])
+        varXF <- bigXFX %*% applygam$Vp[- (1 : I), - (1 : I)] %*% t(bigXFX) +
+          gam.vcomp(applygam)[1] ^ 2 * (Z1FX  %*% t(Z1FX)) + diag(applygam$reml.scale, dim(bigXFX)[1])
+      }
+      boundXF <- cbind(NY.pred.X - ME * sqrt(diag(varXF)),  NY.pred.X + ME * sqrt(diag(varXF)))
+    }
+    if(IW == I){boundXF <- 9999999}} # Not available
+  if(pred.interval == FALSE){boundYF <- boundXF <- 9999999} # Not available
+  ### -------------------------------- output ------------------------------------------ ###
+  return = list(fit = applygam, fitted_vals = pred, full_fitted_vals_obs = NY.pred,
+          full_fitted_vals_unobs = NY.pred.X, npc = K.hat, phi = phi.hat, evalues = eigenvalues,
+          scores_hat = zetaw.hat, scores_hat_traj = zetaw.hatF, scores_pseudo = zetaw.hatN,
+          ranef_intercept = rand_int, ranef_slope = rand_slp, ranef_group =  rand_grp,
+          Mean_X_obs  = MU.X, gamma = gammaE, covariate_effect = cov.effect, beta = beta, beta0 = beta0, 
+          Bounds =  Bounds, BoundYF = boundYF, BoundXF = boundXF, mFPCA = covsmooth, sFPCA = fit2)
+  }
