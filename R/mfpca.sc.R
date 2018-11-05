@@ -277,7 +277,7 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
   # calculate the measurement error variance
   ###################################################################
   
-  cov.hat = lapply(c("level1", "level2"), function(x) efunctions[[x]] %*% diag(evalues[[x]]) %*% t(efunctions[[x]]))
+  cov.hat = lapply(c("level1", "level2"), function(x) efunctions[[x]] %*% diag(evalues[[x]], npc[[x]], npc[[x]]) %*% t(efunctions[[x]]))
   
   T.len <- argvals[D] - argvals[1]
   T1.min <- min(which(argvals >= argvals[1] + 0.25 * T.len))
@@ -323,13 +323,14 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
     for (j1 in 1:Jm){     
       ## sets diagonal of cov.y matrix
       indices1 = Ti.index[Ti.index$Jm == j1, c("Ti")]
-      cov.y [indices1 , indices1] <- Z1[obs.points[[j1]],] %*% diag( evalues[[1]]) %*%  t( Z1[obs.points[[j1]], ] ) +  Z2[obs.points[[j1]], ] %*% diag( evalues[[2]]) %*%  t( Z2[obs.points[[j1]], ] ) + diag( rep(sigma2, numObs[[j1]]) )
+      cov.y [indices1 , indices1] <- Z1[obs.points[[j1]],] %*% diag( evalues[[1]], npc[[1]], npc[[1]]) %*%  t( Z1[obs.points[[j1]], ] ) +  
+      	Z2[obs.points[[j1]], ] %*% diag( evalues[[2]], npc[[2]], npc[[2]]) %*%  t( Z2[obs.points[[j1]], ] ) + diag( rep(sigma2, numObs[[j1]]) )
       
       if(j1 < Jm && nVisits$numVisits[m] > 1){
         for (j2 in (j1+1):Jm){
           #indices2 = 1:numObs[[j2]] + (j2-1)*numObs[[j2-1]]
           indices2 = Ti.index[Ti.index$Jm == j2, c("Ti")] 
-          cov.y[indices2, indices1] <- Z1[obs.points[[j2]], ] %*% diag( evalues[[1]]) %*%  t( Z1[obs.points[[j1]], ] )
+          cov.y[indices2, indices1] <- Z1[obs.points[[j2]], ] %*% diag( evalues[[1]], npc[[1]], npc[[1]]) %*%  t( Z1[obs.points[[j1]], ] )
           cov.y[indices1, indices2] <- t(cov.y[indices2, indices1])
         }
       }      
@@ -338,8 +339,8 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
     ##the following defines Ai and Bi
     for(j in 1:Jm) { 
       
-      Ai[1:npc[[1]], Ti.index[Ti.index$Jm == j, c("Ti")]] <- diag(evalues[[1]]) %*% t(Z1[obs.points[[j]],])
-      Bi[1:npc[[2]] + npc[[2]] * (j-1), Ti.index[Ti.index$Jm == j, c("Ti")]] <- diag(evalues[[2]]) %*% t(Z2[obs.points[[j]],])
+      Ai[1:npc[[1]], Ti.index[Ti.index$Jm == j, c("Ti")]] <- diag(evalues[[1]], npc[[1]], npc[[1]]) %*% t(Z1[obs.points[[j]],])
+      Bi[1:npc[[2]] + npc[[2]] * (j-1), Ti.index[Ti.index$Jm == j, c("Ti")]] <- diag(evalues[[2]], npc[[2]], npc[[2]]) %*% t(Z2[obs.points[[j]],])
     }
         
     subj.indices = row.ind + 1:Jm
