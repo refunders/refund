@@ -7,7 +7,7 @@
 ##' parameter.
 ##'
 ##' @param data n1 by n2 data matrix without missing data
-##' @param covariates list of two vectors of covariates of lengthes n1 and n2;
+##' @param covariates list of two vectors of covariates of lengths n1 and n2;
 ##' if NULL, then generates equidistant covariates
 ##' @param knots list of two vectors of knots or number of equidistant knots
 ##' for all dimensions; defaults to 35
@@ -25,7 +25,7 @@
 ##' @param subj vector of subject id (corresponding to the columns of data); defaults to NULL
 ##' @param knots.option knot selection method; defaults to "equally-spaced"
 ##' @param periodicity vector of two logical, indicating periodicity in the direction of row and column; defaults to c(FALSE, FALSE)
-##' @param selection selection of smoothing paramter; defaults to "GCV"
+##' @param selection selection of smoothing parameter; defaults to "GCV"
 ##' @return A list with components \item{lambda}{vector of length 2 of selected
 ##' smoothing parameters} \item{Yhat}{fitted data} \item{trace}{trace of the
 ##' overall smoothing matrix} \item{gcv}{value of generalized cross validation}

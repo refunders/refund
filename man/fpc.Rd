@@ -32,7 +32,7 @@ constrained (functional) principal components approaches}
 principal components}
 
 \item{penalize}{if \code{TRUE}, a roughness penalty is applied to the
-functional estimate. Deafults to \code{TRUE} if \code{method=="svd"}
+functional estimate. Defaults to \code{TRUE} if \code{method=="svd"}
 (corresponding to the FPCR_R method of Reiss and Ogden (2007)), and
 \code{FALSE} if \code{method!="svd"} (corresponding to FPCR_C).}
 
@@ -71,7 +71,7 @@ Ogden (2007). Both methods consist of the following steps:
 }
 
 This implementation provides options for each of these steps. The basis
-for in step 1 can be specified using the arguemnts \code{bs} and \code{k},
+for in step 1 can be specified using the arguments \code{bs} and \code{k},
 as well as other options via \code{...}; see \code{\link[mgcv]{s}} for
 these options. The type of PC-decomposition is specified with \code{method}.
 And the FLM can be fit either penalized or unpenalized via \code{penalize}.
@@ -80,7 +80,7 @@ The default is FPCR-R, which uses a b-spline basis, an unconstrained
 principal components decomposition using \code{\link{svd}}, and the FLM
 fit with a second-order difference penalty. FPCR-C can be selected by
 using a different option for \code{method}, indicating a constrained
-("functional") PC decomposition, and by default an unpeanlized fit of the
+("functional") PC decomposition, and by default an unpenalized fit of the
 FLM.
 
 FPCR-R is also implemented in \code{\link{fpcr}}; here we implement the

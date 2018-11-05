@@ -304,7 +304,7 @@ pffrSim <- function(
 #' original idea, implementation follows that in the 'ts' and 'cs' constructors
 #' (see \code{\link[mgcv]{smooth.terms}}).
 #'
-#' @param object see \code{\link[mgcv]{smooth.construct}}. The shrinkage factor can be speficied via \code{object$xt$shrink}
+#' @param object see \code{\link[mgcv]{smooth.construct}}. The shrinkage factor can be specified via \code{object$xt$shrink}
 #' @param data see \code{\link[mgcv]{smooth.construct}}.
 #' @param knots see \code{\link[mgcv]{smooth.construct}}.
 #'

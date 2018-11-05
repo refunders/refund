@@ -48,7 +48,7 @@ constructed using the method in Marra and Wood (2012). See the details.
 \details{
 The confidence bands used when plotting slices of the estimated surface or second derivative
 surface are the ones proposed in Marra and Wood (2012).  These are a generalization of the "Bayesian"
-intevals of Wahba (1983) with an adjustment for the uncertainty about the model intercept. The
+intervals of Wahba (1983) with an adjustment for the uncertainty about the model intercept. The
 estimated covariance matrix of the model parameters is obtained from assuming a particular Bayesian
 model on the parameters.
 }
