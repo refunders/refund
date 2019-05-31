@@ -25,7 +25,7 @@
 ##' @keywords internal
 lofocv <-
 function(Y, X, S1, argvals, lamvec=NULL, constr=NULL, maxlam=NULL) {
-  
+
   nn = nrow(X)
 	N = NROW(Y); K = NCOL(Y)
 	if (N*K!=nn) stop('Number of elements of Y must equal number of rows of X')
@@ -47,22 +47,26 @@ function(Y, X, S1, argvals, lamvec=NULL, constr=NULL, maxlam=NULL) {
 	Rinv = solve(qr.R(qrX))
 	svd211 = svd(crossprod(Rinv, S1. %*% Rinv))  # see p. 211 of Wood
 	QU = qr.Q(qrX) %*% svd211$u
-  
+
   # calculate the weight for the approx. integral using argvals
   vecWeight = diff(argvals, 2)/2
   vecWeight = c((argvals[2]-argvals[1])/2, vecWeight, (argvals[N]-argvals[N-1])/2)
 
 	cvfcn = function(lam) {
-		A = tcrossprod(scale(QU, center=FALSE, scale=1+lam*svd211$d), QU)
-		resmat = t(matrix(y - A %*% y, K))
+		QUty = crossprod(QU, y)
+		Qusc = scale(QU, center=FALSE, scale=1+lam*svd211$d)
+		Ay = Qusc %*% QUty
+	  #A = tcrossprod(scale(QU, center=FALSE, scale=1+lam*svd211$d), QU)
+		resmat = t(matrix(y - Ay, K))
 
 		MSEp = 0
 		for (i in 1:N) {
 			ith = ((i-1)*K+1):(i*K)
+			Ai = tcrossprod(Qusc[ith,], QU[ith,])
       # when no argvals is used
 			# MSEp = MSEp + crossprod(solve(diag(K)-A[ith,ith], resmat[i, ])) / N
       # when new argvals is implemented
-			MSEp = MSEp + crossprod(solve(diag(K)-A[ith,ith], resmat[i, ])) * vecWeight[i]
+			MSEp = MSEp + crossprod(solve(diag(K)-Ai, resmat[i, ])) * vecWeight[i]
 		}
 
 	    MSEp
