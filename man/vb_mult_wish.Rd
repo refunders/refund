@@ -4,9 +4,9 @@
 \alias{vb_mult_wish}
 \title{Multilevel FoSR using Variational Bayes and Wishart prior}
 \usage{
-vb_mult_wish(formula, data = NULL, verbose = TRUE, Kt = 5, alpha = 0.1,
-  min.iter = 10, max.iter = 50, Az = NULL, Bz = NULL, Aw = NULL,
-  Bw = NULL, v = NULL)
+vb_mult_wish(formula, data = NULL, verbose = TRUE, Kt = 5,
+  alpha = 0.1, min.iter = 10, max.iter = 50, Az = NULL,
+  Bz = NULL, Aw = NULL, Bw = NULL, v = NULL)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}

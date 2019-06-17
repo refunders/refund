@@ -4,8 +4,8 @@
 \alias{predict.pfr}
 \title{Prediction from a fitted pfr model}
 \usage{
-\method{predict}{pfr}(object, newdata, type = "response", se.fit = FALSE,
-  terms = NULL, PredOutOfRange = FALSE, ...)
+\method{predict}{pfr}(object, newdata, type = "response",
+  se.fit = FALSE, terms = NULL, PredOutOfRange = FALSE, ...)
 }
 \arguments{
 \item{object}{a fitted \code{pfr} object as produced by \code{\link{pfr}}}

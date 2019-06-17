@@ -7,8 +7,8 @@
 coefboot.pffr(object, n1 = 100, n2 = 40, n3 = 20, B = 100,
   ncpus = getOption("boot.ncpus", 1), parallel = c("no", "multicore",
   "snow"), cl = NULL, conf = c(0.9, 0.95), type = "percent",
-  method = c("resample", "residual", "residual.c"), showProgress = TRUE,
-  ...)
+  method = c("resample", "residual", "residual.c"),
+  showProgress = TRUE, ...)
 }
 \arguments{
 \item{object}{a fitted \code{\link{pffr}}-model}

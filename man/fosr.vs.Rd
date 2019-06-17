@@ -4,8 +4,8 @@
 \alias{fosr.vs}
 \title{Function-on Scalar Regression with variable selection}
 \usage{
-fosr.vs(formula, data, nbasis = 10, method = c("ls", "grLasso", "grMCP",
-  "grSCAD"), epsilon = 1e-05, max.iter_num = 100)
+fosr.vs(formula, data, nbasis = 10, method = c("ls", "grLasso",
+  "grMCP", "grSCAD"), epsilon = 1e-05, max.iter_num = 100)
 }
 \arguments{
 \item{formula}{an object of class "\code{\link{formula}}": an expression of the model to be fitted.}

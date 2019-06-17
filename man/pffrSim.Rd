@@ -4,8 +4,8 @@
 \alias{pffrSim}
 \title{Simulate example data for pffr}
 \usage{
-pffrSim(scenario = "all", n = 100, nxgrid = 40, nygrid = 60, SNR = 10,
-  propmissing = 0, limits = NULL)
+pffrSim(scenario = "all", n = 100, nxgrid = 40, nygrid = 60,
+  SNR = 10, propmissing = 0, limits = NULL)
 }
 \arguments{
 \item{scenario}{see Description}

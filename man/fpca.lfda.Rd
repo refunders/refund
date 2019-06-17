@@ -9,7 +9,8 @@ fpca.lfda(Y, subject.index, visit.index, obsT = NULL, funcArg = NULL,
   fbps.p = 3, fbps.m = 2, mFPCA.pve = 0.95, mFPCA.knots = 35,
   mFPCA.p = 3, mFPCA.m = 2, mFPCA.npc = NULL,
   LongiModel.method = c("fpca.sc", "lme"), sFPCA.pve = 0.95,
-  sFPCA.nbasis = 10, sFPCA.npc = NULL, gam.method = "REML", gam.kT = 10)
+  sFPCA.nbasis = 10, sFPCA.npc = NULL, gam.method = "REML",
+  gam.kT = 10)
 }
 \arguments{
 \item{Y}{a matrix of which each row corresponds to one curve observed on a regular and dense grid 

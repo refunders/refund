@@ -5,8 +5,8 @@
 \title{Construct a FPC regression term}
 \usage{
 fpc(X, argvals = NULL, method = c("svd", "fpca.sc", "fpca.face",
-  "fpca.ssvd"), ncomp = NULL, pve = 0.99, penalize = (method == "svd"),
-  bs = "ps", k = 40, ...)
+  "fpca.ssvd"), ncomp = NULL, pve = 0.99, penalize = (method ==
+  "svd"), bs = "ps", k = 40, ...)
 }
 \arguments{
 \item{X}{functional predictors, typically expressed as an \code{N} by \code{J} matrix,

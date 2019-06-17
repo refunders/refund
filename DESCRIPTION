@@ -8,6 +8,7 @@ Authors@R: c(
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
     person("Lei", "Huang", role = "aut", email = "huangracer@gmail.com"),
     person("Julia", "Wrobel", role = c("aut","cre"), email="jw3134@cumc.columbia.edu"),
+    person("Chongzhi", "Di", role = "aut", email = "cdi@fredhutch.org"),
     person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"),
     person("Jaroslaw", "Harezlak", role="aut"),
     person(c("Mathew", "W."), "McLean", role="aut", email = "mathew.w.mclean@gmail.com"),
@@ -148,4 +149,4 @@ Collate:
     'fpca.lfda.R'
     'predict.fbps.R'
     'select_knots.R'
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
