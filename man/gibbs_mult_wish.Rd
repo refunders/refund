@@ -5,8 +5,8 @@
 \title{Multilevel FoSR using a Gibbs sampler and Wishart prior}
 \usage{
 gibbs_mult_wish(formula, Kt = 5, data = NULL, verbose = TRUE,
-  N.iter = 5000, N.burn = 1000, alpha = 0.1, Az = NULL, Bz = NULL,
-  Aw = NULL, Bw = NULL, v = NULL, SEED = NULL)
+  N.iter = 5000, N.burn = 1000, alpha = 0.1, Az = NULL,
+  Bz = NULL, Aw = NULL, Bw = NULL, v = NULL, SEED = NULL)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}

@@ -4,9 +4,9 @@
 \alias{gibbs_mult_fpca}
 \title{Multilevel FoSR using a Gibbs sampler and FPCA}
 \usage{
-gibbs_mult_fpca(formula, Kt = 5, Kp = 2, data = NULL, verbose = TRUE,
-  N.iter = 5000, N.burn = 1000, sig2.me = 0.01, alpha = 0.1,
-  SEED = NULL)
+gibbs_mult_fpca(formula, Kt = 5, Kp = 2, data = NULL,
+  verbose = TRUE, N.iter = 5000, N.burn = 1000, sig2.me = 0.01,
+  alpha = 0.1, SEED = NULL)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}

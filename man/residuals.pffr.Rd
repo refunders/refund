@@ -3,7 +3,6 @@
 \name{residuals.pffr}
 \alias{residuals.pffr}
 \alias{fitted.pffr}
-\alias{fitted.pffr}
 \title{Obtain residuals and fitted values for a pffr models}
 \usage{
 \method{residuals}{pffr}(object, reformat = TRUE, ...)

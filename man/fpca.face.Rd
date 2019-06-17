@@ -7,8 +7,9 @@
 fpca.face(Y = NULL, ydata = NULL, Y.pred = NULL, argvals = NULL,
   pve = 0.99, npc = NULL, var = FALSE, simul = FALSE,
   sim.alpha = 0.95, center = TRUE, knots = 35, p = 3, m = 2,
-  lambda = NULL, alpha = 1, search.grid = TRUE, search.length = 100,
-  method = "L-BFGS-B", lower = -20, upper = 20, control = NULL)
+  lambda = NULL, alpha = 1, search.grid = TRUE,
+  search.length = 100, method = "L-BFGS-B", lower = -20,
+  upper = 20, control = NULL)
 }
 \arguments{
 \item{Y, ydata}{the user must supply either \code{Y}, a matrix of functions

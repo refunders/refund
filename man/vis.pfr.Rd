@@ -4,8 +4,9 @@
 \alias{vis.pfr}
 \title{Visualization of PFR objects}
 \usage{
-vis.pfr(object, select = 1, xval = NULL, tval = NULL, deriv2 = FALSE,
-  theta = 50, plot.type = "persp", ticktype = "detailed", ...)
+vis.pfr(object, select = 1, xval = NULL, tval = NULL,
+  deriv2 = FALSE, theta = 50, plot.type = "persp",
+  ticktype = "detailed", ...)
 }
 \arguments{
 \item{object}{an \code{pfr} object, produced by \code{\link{pfr}}}

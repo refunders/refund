@@ -5,8 +5,9 @@
 \title{Multilevel functional principal components analysis by smoothed covariance}
 \usage{
 mfpca.sc(Y = NULL, id = NULL, visit = NULL, twoway = FALSE,
-  argvals = NULL, nbasis = 10, pve = 0.99, npc = NULL, makePD = FALSE,
-  center = TRUE, cov.est.method = 2, integration = "trapezoidal")
+  argvals = NULL, nbasis = 10, pve = 0.99, npc = NULL,
+  makePD = FALSE, center = TRUE, cov.est.method = 2,
+  integration = "trapezoidal")
 }
 \arguments{
 \item{Y, }{The user must supply a matrix of functions on a regular grid}

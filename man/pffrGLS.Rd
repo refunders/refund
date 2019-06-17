@@ -5,9 +5,9 @@
 \title{Penalized function-on-function regression with non-i.i.d. residuals}
 \usage{
 pffrGLS(formula, yind, hatSigma, algorithm = NA, method = "REML",
-  tensortype = c("te", "t2"), bs.yindex = list(bs = "ps", k = 5, m = c(2,
-  1)), bs.int = list(bs = "ps", k = 20, m = c(2, 1)), cond.cutoff = 500,
-  ...)
+  tensortype = c("te", "t2"), bs.yindex = list(bs = "ps", k = 5, m =
+  c(2, 1)), bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+  cond.cutoff = 500, ...)
 }
 \arguments{
 \item{formula}{a formula with special terms as for \code{\link[mgcv]{gam}}, with additional special terms \code{\link{ff}()} and \code{c()}. See \code{\link[refund]{pffr}}.}

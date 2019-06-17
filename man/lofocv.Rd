@@ -4,7 +4,8 @@
 \alias{lofocv}
 \title{Leave-one-function-out cross-validation}
 \usage{
-lofocv(Y, X, S1, argvals, lamvec = NULL, constr = NULL, maxlam = NULL)
+lofocv(Y, X, S1, argvals, lamvec = NULL, constr = NULL,
+  maxlam = NULL)
 }
 \arguments{
 \item{Y}{matrix of responses, e.g. with columns corresponding to basis

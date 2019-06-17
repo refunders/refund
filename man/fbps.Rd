@@ -5,10 +5,10 @@
 \title{Sandwich smoother for matrix data}
 \usage{
 fbps(data, subj = NULL, covariates = NULL, knots = 35,
-  knots.option = "equally-spaced", periodicity = c(FALSE, FALSE), p = 3,
-  m = 2, lambda = NULL, selection = "GCV", search.grid = T,
-  search.length = 100, method = "L-BFGS-B", lower = -20, upper = 20,
-  control = NULL)
+  knots.option = "equally-spaced", periodicity = c(FALSE, FALSE),
+  p = 3, m = 2, lambda = NULL, selection = "GCV",
+  search.grid = T, search.length = 100, method = "L-BFGS-B",
+  lower = -20, upper = 20, control = NULL)
 }
 \arguments{
 \item{data}{n1 by n2 data matrix without missing data}
