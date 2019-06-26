@@ -780,7 +780,8 @@ pffr <- function(
         newcall$weights <- dots$weights[stackpattern]
         wtsdone <- TRUE
     }
-    if(!is.null(dim(dots$weights)) && dim(dots$weights) == c(nobs, nyindex)){
+    if (!is.null(dim(dots$weights)) &&
+       all(dim(dots$weights) == c(nobs, nyindex))) {
         newcall$weights <- as.vector(t(dots$weights))
         wtsdone <- TRUE
     }
@@ -795,7 +796,8 @@ pffr <- function(
         newcall$offset <- dots$offset[stackpattern]
         ofstdone <- TRUE
     }
-    if(!is.null(dim(dots$offset)) && dim(dots$offset) == c(nobs, nyindex)){
+    if(!is.null(dim(dots$offset)) &&
+       all(dim(dots$offset) == c(nobs, nyindex))){
         newcall$offset <- as.vector(t(dots$offset))
         ofstdone <- TRUE
     }
@@ -884,7 +886,11 @@ pffr <- function(
 
   }
   # check whether any parametric terms were left out & add them
-  if(any(nalbls <- sapply(labelmap, function(x) any(is.null(x) | (!is.null(x)&&is.na(x)))))){
+  nalbls <- sapply(labelmap,
+                   function(x) {
+                     any(is.null(x)) | any(is.na(x[!is.null(x)]))
+                   })
+  if (any(nalbls)) {
     labelmap[nalbls] <- trmmap[nalbls]
   }
 
