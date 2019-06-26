@@ -149,7 +149,6 @@ cmdscale_lanczos <- function(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE){
 #'
 #' Miller, D. L. (2012). On smooth models for complex domains and distances. PhD
 #' dissertation, Department of Mathematical Sciences, University of Bath.
-#' Available at \url{http://opus.bath.ac.uk/31800/}
 #' @seealso \code{\link{smooth.construct.pco.smooth.spec}}
 pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 
@@ -277,7 +276,7 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #' library(refund)
 #' library(mgcv)
 #' require(dtw)
-#' 
+#'
 #' ## First generate the data
 #' Xnl <- matrix(0, 30, 101)
 #' set.seed(813)
@@ -345,7 +344,7 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #'
 #' # check that these are the same as the corresponding fitted values
 #' print(cbind(fitted(m)[ c(1:5,10:15)],p))
-#' 
+#'
 #' }
 smooth.construct.pco.smooth.spec <- function(object, data, knots){
 

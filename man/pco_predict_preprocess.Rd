@@ -52,7 +52,6 @@ multivariate analysis. Biometrika, 55(3), 582-585.
 
 Miller, D. L. (2012). On smooth models for complex domains and distances. PhD
 dissertation, Department of Mathematical Sciences, University of Bath.
-Available at \url{http://opus.bath.ac.uk/31800/}
 }
 \seealso{
 \code{\link{smooth.construct.pco.smooth.spec}}
