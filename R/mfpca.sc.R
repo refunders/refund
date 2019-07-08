@@ -203,18 +203,19 @@ mfpca.sc <- function(Y = NULL, id=NULL, visit=NULL, twoway = FALSE,
     
     for(m in 1:M) {
       if (Y.df$id[m] %in% ids.KB){ ## check if mth subject has at least 2 visits
-        for(j in 1:(nVisits[m, 2]-1) ) 
+        for(j in 1:(nVisits[m, 2]-1) ) {
           #row.ind1 <- (m-1)*J + j 
           row.ind1 <- row.ind + j
-        obs.points1 = which(!is.na(Y[row.ind1,]))
-        for(k in (j+1):nVisits[m, 2] ) {
-          #row.ind2 <- (m-1)*J + k
-          row.ind2 <- row.ind + k
-          obs.points2 = which(!is.na(Y[row.ind2,]))
-          cov.count[ obs.points1, obs.points2 ] <- cov.count[ obs.points1, obs.points2 ] + 1
-          cov.sum[ obs.points1, obs.points2 ] <- cov.sum[ obs.points1, obs.points2 ] + tcrossprod(Y.tilde[row.ind1, obs.points1], Y.tilde[row.ind2, obs.points2]) 
-          cov.count[ obs.points2, obs.points1 ] <- cov.count[ obs.points2, obs.points1 ] + 1
-          cov.sum[ obs.points2, obs.points1 ] <- cov.sum[ obs.points2, obs.points1 ] +  tcrossprod(Y.tilde[row.ind2, obs.points2], Y.tilde[row.ind1, obs.points1])                                                        
+          obs.points1 = which(!is.na(Y[row.ind1,]))
+          for(k in (j+1):nVisits[m, 2] ) {
+            #row.ind2 <- (m-1)*J + k
+            row.ind2 <- row.ind + k
+            obs.points2 = which(!is.na(Y[row.ind2,]))
+            cov.count[ obs.points1, obs.points2 ] <- cov.count[ obs.points1, obs.points2 ] + 1
+            cov.sum[ obs.points1, obs.points2 ] <- cov.sum[ obs.points1, obs.points2 ] + tcrossprod(Y.tilde[row.ind1, obs.points1], Y.tilde[row.ind2, obs.points2]) 
+            cov.count[ obs.points2, obs.points1 ] <- cov.count[ obs.points2, obs.points1 ] + 1
+            cov.sum[ obs.points2, obs.points1 ] <- cov.sum[ obs.points2, obs.points1 ] +  tcrossprod(Y.tilde[row.ind2, obs.points2], Y.tilde[row.ind1, obs.points1])                                                        
+          }
         }
       }
       row.ind = row.ind + nVisits[m, 2]
