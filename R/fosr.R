@@ -352,7 +352,19 @@ fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, ar
     if (method == "OLS" | max.iter == 0) {
         residvec <- as.vector(t(respmat)) - (X.sc %x% Bmat) %*% firstfit$coef
         covmat = ((ncurve - 1)/ncurve) * cov(t(matrix(residvec, ncol = ncurve)))
-        var.b = firstfit$GinvXT %*% (diag(ncurve) %x% covmat) %*% t(firstfit$GinvXT)
+        ngrid = nrow(covmat)
+        M = ngrid * ncurve
+        # adapted from ?Matrix::bdiag
+        # efficient way to get diag(ncurve) %x% covmat w/o memory overload
+        cov_bdiag = new("dgCMatrix", Dim = c(M, M),
+                        i = as.vector(matrix(0L:(M - 1L),
+                                             nrow = ngrid)[,
+                                                           rep(seq_len(ncurve),
+                                                               each = ngrid)]),
+                        p = ngrid * 0L:M,
+                        x = rep(as.double(covmat), times = ncurve))
+        var.b = as(firstfit$GinvXT %*% cov_bdiag %*% t(firstfit$GinvXT),
+                   "matrix")
     }
     else var.b = newfit$Vp
     se.func = matrix(NA, length(argvals), q)
