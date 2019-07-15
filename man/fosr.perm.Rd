@@ -6,9 +6,6 @@
 \alias{fosr.perm.fit}
 \alias{fosr.perm.test}
 \alias{plot.fosr.perm}
-\alias{fosr.perm.fit}
-\alias{fosr.perm.test}
-\alias{plot.fosr.perm}
 \title{Permutation testing for function-on-scalar regression}
 \usage{
 fosr.perm(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL,
@@ -22,7 +19,8 @@ fosr.perm.fit(Y = NULL, fdobj = NULL, X, con = NULL, X0 = NULL,
 
 fosr.perm.test(x, level = 0.05)
 
-\method{plot}{fosr.perm}(x, level = 0.05, xlabel = "", title = NULL, ...)
+\method{plot}{fosr.perm}(x, level = 0.05, xlabel = "", title = NULL,
+  ...)
 }
 \arguments{
 \item{Y, fdobj}{the functional responses, given as either an \eqn{n\times d}

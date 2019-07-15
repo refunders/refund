@@ -6,9 +6,9 @@
 \usage{
 ff(X, yind = NULL, xind = seq(0, 1, l = ncol(X)), basistype = c("te",
   "t2", "ti", "s", "tes"), integration = c("simpson", "trapezoidal",
-  "riemann"), L = NULL, limits = NULL, splinepars = if (basistype != "s")
-  {     list(bs = "ps", m = list(c(2, 1), c(2, 1)), k = c(5, 5)) } else {    
-  list(bs = "tp", m = NA) }, check.ident = TRUE)
+  "riemann"), L = NULL, limits = NULL, splinepars = if (basistype !=
+  "s") {     list(bs = "ps", m = list(c(2, 1), c(2, 1)), k = c(5, 5)) }
+  else {     list(bs = "tp", m = NA) }, check.ident = TRUE)
 }
 \arguments{
 \item{X}{an n by \code{ncol(xind)} matrix of function evaluations

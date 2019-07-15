@@ -5,8 +5,9 @@
 \title{Penalized flexible functional regression}
 \usage{
 pffr(formula, yind, data = NULL, ydata = NULL, algorithm = NA,
-  method = "REML", tensortype = c("ti", "t2"), bs.yindex = list(bs = "ps",
-  k = 5, m = c(2, 1)), bs.int = list(bs = "ps", k = 20, m = c(2, 1)), ...)
+  method = "REML", tensortype = c("ti", "t2"), bs.yindex = list(bs =
+  "ps", k = 5, m = c(2, 1)), bs.int = list(bs = "ps", k = 20, m = c(2,
+  1)), ...)
 }
 \arguments{
 \item{formula}{a formula with special terms as for \code{\link[mgcv]{gam}},

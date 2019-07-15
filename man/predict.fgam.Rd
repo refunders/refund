@@ -4,8 +4,8 @@
 \alias{predict.fgam}
 \title{Prediction from a fitted FGAM model}
 \usage{
-\method{predict}{fgam}(object, newdata, type = "response", se.fit = FALSE,
-  terms = NULL, PredOutOfRange = FALSE, ...)
+\method{predict}{fgam}(object, newdata, type = "response",
+  se.fit = FALSE, terms = NULL, PredOutOfRange = FALSE, ...)
 }
 \arguments{
 \item{object}{a fitted \code{fgam} object as produced by \code{\link{fgam}}}
