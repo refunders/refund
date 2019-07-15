@@ -140,6 +140,7 @@
 ##' plot(glsmod, 1)
 ##' }
 ##' @importFrom fda create.bspline.basis eval.basis getbasispenalty fd pca.fd is.fd
+##' @importFrom methods new
 ##' @export
 
 fosr <- function (formula=NULL, Y=NULL, fdobj=NULL, data=NULL, X, con = NULL, argvals = NULL,
