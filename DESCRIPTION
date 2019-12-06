@@ -7,7 +7,7 @@ Authors@R: c(
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
     person("Lei", "Huang", role = "aut", email = "huangracer@gmail.com"),
-    person("Julia", "Wrobel", role = c("aut","cre"), email="jw3134@cumc.columbia.edu"),
+    person("Julia", "Wrobel", role = c("aut","cre"), email="julia.wrobel@cuanschutz.edu"),
     person("Chongzhi", "Di", role = "aut", email = "cdi@fredhutch.org"),
     person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"),
     person("Jaroslaw", "Harezlak", role="aut"),
@@ -24,7 +24,7 @@ Authors@R: c(
     person(c("David", "L."), "Miller", role="ctb", email="dave@ninepointeightone.net"),
     person("Ana-Maria", "Staicu", role="ctb", email="ana-maria_staicu@ncsu.edu"))
 Depends:
-    R (>= 2.14.0)
+    R (>= 3.00.0)
 Imports:
     fda,
     Matrix,

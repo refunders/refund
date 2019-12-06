@@ -138,7 +138,7 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   if (class(formula) != "formula") {
     warning(paste0("The interface for pfr() has changed to using a formula ",
                    "argument, with linear functional terms specified by lf(). ",
-                   "See ?pfr for details. The old interface wil be depricated ",
+                   "See ?pfr for details. The old interface will be deprecated ",
                    "in the next refund release."))
     # Call pfr_old()
     call <- sys.call()
