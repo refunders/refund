@@ -122,7 +122,7 @@ fpc <- function(X, argvals=NULL,
                 bs="ps", k=40, ...) {
   method <- match.arg(method)
   
-  if ("fd" %in% class(X)) {
+  if (is(X, "fd")) {
     # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
     if (is.null(argvals))
       argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],
