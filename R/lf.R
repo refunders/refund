@@ -85,6 +85,7 @@
 #' @seealso \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
 #'  and \code{\link{linear.functional.terms}}; \code{\link{pfr}} for additional examples
 #' @importFrom fda eval.fd
+#' @importFrom methods is
 #' @export lf
 
 
@@ -112,7 +113,7 @@ lf <- function(X, argvals = NULL, xind = NULL,
     argvals = xind
   }
   
-  if (class(X)=="fd") {
+  if (is(X, "fd")) {
     # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
     if (is.null(argvals))
       argvals <- argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],

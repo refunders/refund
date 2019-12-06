@@ -72,6 +72,7 @@
 #' @importFrom gamm4 gamm4
 #' @importFrom lme4 lmer
 #' @importFrom stats terms.formula
+#' @importFrom methods is
 #' @export
 #'
 #' @examples
@@ -135,7 +136,7 @@
 
 pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
 
-  if (class(formula) != "formula") {
+  if (!is(formula, "formula")) {
     warning(paste0("The interface for pfr() has changed to using a formula ",
                    "argument, with linear functional terms specified by lf(). ",
                    "See ?pfr for details. The old interface will be deprecated ",

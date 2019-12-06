@@ -136,7 +136,7 @@
 #' @importFrom stats pnorm predict rchisq resid residuals
 #' @importFrom stats rgamma runif sd termplot terms var vcov
 #' @importFrom stats weighted.mean
-#' @importFrom methods as
+#' @importFrom methods as is
 #' @importFrom stats ave
 #' @export
 
@@ -168,7 +168,7 @@ af <- function(X, argvals = NULL, xind = NULL,
         in the next version of refund.")
   }
   
-  if (class(X)=="fd") {
+  if (is(X, "fd")) {
     # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
     if (is.null(argvals))
       argvals <- argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],

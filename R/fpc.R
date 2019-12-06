@@ -88,6 +88,7 @@
 #'   \email{phil.reiss@@nyumc.org}, Lan Huo \email{lan.huo@@nyumc.org}, and
 #'   Lei Huang \email{huangracer@@gmail.com}
 #' 
+#' 
 #' @examples
 #' data(gasoline)
 #' par(mfrow=c(3,1))
@@ -114,6 +115,7 @@
 #' lines(value ~ X.argvals, col=3, data=est3)
 #' 
 #' @seealso \code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
+#' @importFrom methods is
 #' @export
 
 fpc <- function(X, argvals=NULL, 
