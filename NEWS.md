@@ -1,3 +1,18 @@
+# refund 0.1-21
+
+* Fixes a bug in `fpc()` due to release of R 4.0.0 that changes the following:
+
+```
+ R> class(matrix(1 : 4, 2, 2))
+ [1] "matrix" "array" 
+
+(and no longer just "matrix" as before), and that conditions of length
+greater than one in 'if' and 'while' statements executing in the package
+being checked give an error.
+```
+
+* change email address for maintainer
+
 # refund 0.1-20
 
 * fix minor bug in rlrt.pfr.R
