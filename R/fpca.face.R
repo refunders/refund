@@ -107,8 +107,8 @@
 #' ########     Generate Data            #############
 #' ###################################################
 #' xi <- matrix(rnorm(I*N),I,N);
-#' xi <- xi\%*\%diag(sqrt(lambdaTrue))
-#' X <- xi\%*\%t(phi); # of size I by J
+#' xi <- xi %*% diag(sqrt(lambdaTrue))
+#' X <- xi %*% t(phi); # of size I by J
 #' Y <- X + sigma*matrix(rnorm(I*J),I,J)
 #' 
 #' results <- fpca.face(Y,center = TRUE, argvals=t,knots=100,pve=0.99)
@@ -119,7 +119,7 @@
 #' eigenvalues <- results$evalues
 #'
 #' for(k in 1:N){
-#'   if(Phi[,k]\%*\%phi[,k]< 0) 
+#'   if(Phi[,k] %*% phi[,k]< 0) 
 #'     Phi[,k] <- - Phi[,k]
 #' }
 #' 
