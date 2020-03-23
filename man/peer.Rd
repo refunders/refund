@@ -4,8 +4,15 @@
 \alias{peer}
 \title{Construct a PEER regression term in a \code{pfr} formula}
 \usage{
-peer(X, argvals = NULL, pentype = "RIDGE", Q = NULL, phia = 10^3,
-  L = NULL, ...)
+peer(
+  X,
+  argvals = NULL,
+  pentype = "RIDGE",
+  Q = NULL,
+  phia = 10^3,
+  L = NULL,
+  ...
+)
 }
 \arguments{
 \item{X}{functional predictors, typically expressed as an \code{N} by \code{J} matrix,

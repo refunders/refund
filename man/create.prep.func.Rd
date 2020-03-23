@@ -4,9 +4,12 @@
 \alias{create.prep.func}
 \title{Construct a function for preprocessing functional predictors}
 \usage{
-create.prep.func(X, argvals = seq(0, 1, length = ncol(X)),
-  method = c("fpca.sc", "fpca.face", "fpca.ssvd", "bspline",
-  "interpolate"), options = NULL)
+create.prep.func(
+  X,
+  argvals = seq(0, 1, length = ncol(X)),
+  method = c("fpca.sc", "fpca.face", "fpca.ssvd", "bspline", "interpolate"),
+  options = NULL
+)
 }
 \arguments{
 \item{X}{an \code{N} by \code{J=ncol(argvals)} matrix of function evaluations

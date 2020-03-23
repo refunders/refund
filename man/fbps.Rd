@@ -4,11 +4,24 @@
 \alias{fbps}
 \title{Sandwich smoother for matrix data}
 \usage{
-fbps(data, subj = NULL, covariates = NULL, knots = 35,
-  knots.option = "equally-spaced", periodicity = c(FALSE, FALSE),
-  p = 3, m = 2, lambda = NULL, selection = "GCV",
-  search.grid = T, search.length = 100, method = "L-BFGS-B",
-  lower = -20, upper = 20, control = NULL)
+fbps(
+  data,
+  subj = NULL,
+  covariates = NULL,
+  knots = 35,
+  knots.option = "equally-spaced",
+  periodicity = c(FALSE, FALSE),
+  p = 3,
+  m = 2,
+  lambda = NULL,
+  selection = "GCV",
+  search.grid = T,
+  search.length = 100,
+  method = "L-BFGS-B",
+  lower = -20,
+  upper = 20,
+  control = NULL
+)
 }
 \arguments{
 \item{data}{n1 by n2 data matrix without missing data}
@@ -91,8 +104,8 @@ Y <- MY + sigma*rnorm(n1*n2,0,1)
 
 est <- fbps(Y,list(x=x,z=z))
 mse <- mean((est$Yhat-MY)^2)
-cat("mse of fbps is",mse,"\\n")
-cat("The smoothing parameters are:",est$lambda,"\\n")
+cat("mse of fbps is",mse,"\n")
+cat("The smoothing parameters are:",est$lambda,"\n")
 ########################################################################
 ########## Compare the estimated surface with the true surface #########
 ########################################################################

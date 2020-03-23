@@ -4,8 +4,7 @@
 \alias{predict.pffr}
 \title{Prediction for penalized function-on-function regression}
 \usage{
-\method{predict}{pffr}(object, newdata, reformat = TRUE, type = "link",
-  se.fit = FALSE, ...)
+\method{predict}{pffr}(object, newdata, reformat = TRUE, type = "link", se.fit = FALSE, ...)
 }
 \arguments{
 \item{object}{a fitted \code{pffr}-object}

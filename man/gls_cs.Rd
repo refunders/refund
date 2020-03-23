@@ -4,8 +4,15 @@
 \alias{gls_cs}
 \title{Cross-sectional FoSR using GLS}
 \usage{
-gls_cs(formula, data = NULL, Kt = 5, basis = "bs", sigma = NULL,
-  verbose = TRUE, CI.type = "pointwise")
+gls_cs(
+  formula,
+  data = NULL,
+  Kt = 5,
+  basis = "bs",
+  sigma = NULL,
+  verbose = TRUE,
+  CI.type = "pointwise"
+)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}

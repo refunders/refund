@@ -4,8 +4,15 @@
 \alias{fosr2s}
 \title{Two-step function-on-scalar regression}
 \usage{
-fosr2s(Y, X, argvals = seq(0, 1, , ncol(Y)), nbasis = 15, norder = 4,
-  pen.order = norder - 2, basistype = "bspline")
+fosr2s(
+  Y,
+  X,
+  argvals = seq(0, 1, , ncol(Y)),
+  nbasis = 15,
+  norder = 4,
+  pen.order = norder - 2,
+  basistype = "bspline"
+)
 }
 \arguments{
 \item{Y}{the functional responses, given as an \eqn{n\times d} matrix.}

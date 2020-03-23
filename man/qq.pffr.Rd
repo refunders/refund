@@ -4,9 +4,17 @@
 \alias{qq.pffr}
 \title{QQ plots for pffr model residuals}
 \usage{
-\method{qq}{pffr}(object, rep = 0, level = 0.9, s.rep = 10,
-  type = c("deviance", "pearson", "response"), pch = ".", rl.col = 2,
-  rep.col = "gray80", ...)
+\method{qq}{pffr}(
+  object,
+  rep = 0,
+  level = 0.9,
+  s.rep = 10,
+  type = c("deviance", "pearson", "response"),
+  pch = ".",
+  rl.col = 2,
+  rep.col = "gray80",
+  ...
+)
 }
 \arguments{
 \item{object}{a fitted \code{\link{pffr}}-object}
@@ -22,7 +30,7 @@
 \item{s.rep}{how many times to randomize uniform quantiles to data under direct computation.}
 
 \item{type}{what sort of residuals should be plotted?  See
-  \code{\link{residuals.gam}}.}
+  \code{\link[mgcv]{residuals.gam}}.}
 
 \item{pch}{plot character to use. 19 is good.}
 

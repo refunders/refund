@@ -4,11 +4,29 @@
 \alias{fpcr}
 \title{Functional principal component regression}
 \usage{
-fpcr(y, xfuncs = NULL, fdobj = NULL, ncomp = NULL, pve = 0.99,
-  nbasis = NULL, basismat = NULL, penmat = NULL, argvals = NULL,
-  covt = NULL, mean.signal.term = FALSE, spline.order = NULL,
-  family = "gaussian", method = "REML", sp = NULL, pen.order = 2,
-  cv1 = FALSE, nfold = 5, store.cv = FALSE, store.gam = TRUE, ...)
+fpcr(
+  y,
+  xfuncs = NULL,
+  fdobj = NULL,
+  ncomp = NULL,
+  pve = 0.99,
+  nbasis = NULL,
+  basismat = NULL,
+  penmat = NULL,
+  argvals = NULL,
+  covt = NULL,
+  mean.signal.term = FALSE,
+  spline.order = NULL,
+  family = "gaussian",
+  method = "REML",
+  sp = NULL,
+  pen.order = 2,
+  cv1 = FALSE,
+  nfold = 5,
+  store.cv = FALSE,
+  store.gam = TRUE,
+  ...
+)
 }
 \arguments{
 \item{y}{scalar outcome vector.}

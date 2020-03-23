@@ -4,8 +4,7 @@
 \alias{bayes_fosr}
 \title{Bayesian Function-on-scalar regression}
 \usage{
-bayes_fosr(formula, data = NULL, est.method = "VB",
-  cov.method = "FPCA", ...)
+bayes_fosr(formula, data = NULL, est.method = "VB", cov.method = "FPCA", ...)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model. 

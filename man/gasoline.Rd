@@ -4,12 +4,14 @@
 \name{gasoline}
 \alias{gasoline}
 \title{Octane numbers and NIR spectra of gasoline}
-\format{A data frame comprising \describe{
+\format{
+A data frame comprising \describe{
 \item{octane}{a numeric
 vector of octane numbers for the 60 samples.}
 \item{NIR}{a 60 x 401
 matrix of NIR spectra.}
-}}
+}
+}
 \source{
 Kalivas, John H. (1997).  Two data sets of near infrared spectra.
 \emph{Chemometrics and Intelligent Laboratory Systems}, 37, 255--259.

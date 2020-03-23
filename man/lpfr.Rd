@@ -4,8 +4,18 @@
 \alias{lpfr}
 \title{Longitudinal penalized functional regression}
 \usage{
-lpfr(Y, subj, covariates = NULL, funcs, kz = 30, kb = 30,
-  smooth.cov = FALSE, family = "gaussian", method = "REML", ...)
+lpfr(
+  Y,
+  subj,
+  covariates = NULL,
+  funcs,
+  kz = 30,
+  kb = 30,
+  smooth.cov = FALSE,
+  family = "gaussian",
+  method = "REML",
+  ...
+)
 }
 \arguments{
 \item{Y}{vector of all outcomes over all visits}

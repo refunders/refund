@@ -4,9 +4,16 @@
 \alias{lf}
 \title{Construct an FLM regression term}
 \usage{
-lf(X, argvals = NULL, xind = NULL, integration = c("simpson",
-  "trapezoidal", "riemann"), L = NULL, presmooth = NULL,
-  presmooth.opts = NULL, ...)
+lf(
+  X,
+  argvals = NULL,
+  xind = NULL,
+  integration = c("simpson", "trapezoidal", "riemann"),
+  L = NULL,
+  presmooth = NULL,
+  presmooth.opts = NULL,
+  ...
+)
 }
 \arguments{
 \item{X}{functional predictors, typically expressed as an \code{N} by \code{J} matrix,

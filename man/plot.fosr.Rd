@@ -4,8 +4,15 @@
 \alias{plot.fosr}
 \title{Default plotting of function-on-scalar regression objects}
 \usage{
-\method{plot}{fosr}(x, split = NULL, titles = NULL, xlabel = "",
-  ylabel = "Coefficient function", set.mfrow = TRUE, ...)
+\method{plot}{fosr}(
+  x,
+  split = NULL,
+  titles = NULL,
+  xlabel = "",
+  ylabel = "Coefficient function",
+  set.mfrow = TRUE,
+  ...
+)
 }
 \arguments{
 \item{x}{an object of class \code{"\link{fosr}"}.}

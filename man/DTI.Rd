@@ -4,7 +4,8 @@
 \name{DTI}
 \alias{DTI}
 \title{Diffusion Tensor Imaging: tract profiles and outcomes}
-\format{A data frame made up of \describe{
+\format{
+A data frame made up of \describe{
 \item{cca}{A 382 x 93
 matrix of fractional anisotropy tract profiles from the corpus
 callosum;}
@@ -23,7 +24,8 @@ for each subject;}
 
 \item{pasat}{Numeric vector containing the PASAT score at
 each visit.}
-}}
+}
+}
 \description{
 Fractional anisotropy (FA) tract profiles for the corpus callosum (cca) and
 the right corticospinal tract (rcst). Accompanying the tract profiles are

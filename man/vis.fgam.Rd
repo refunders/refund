@@ -4,8 +4,17 @@
 \alias{vis.fgam}
 \title{Visualization of FGAM objects}
 \usage{
-vis.fgam(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE,
-  theta = 50, plot.type = "persp", ticktype = "detailed", ...)
+vis.fgam(
+  object,
+  af.term,
+  xval = NULL,
+  tval = NULL,
+  deriv2 = FALSE,
+  theta = 50,
+  plot.type = "persp",
+  ticktype = "detailed",
+  ...
+)
 }
 \arguments{
 \item{object}{an \code{fgam} object, produced by \code{\link{fgam}}}

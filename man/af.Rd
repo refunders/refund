@@ -4,10 +4,19 @@
 \alias{af}
 \title{Construct an FGAM regression term}
 \usage{
-af(X, argvals = NULL, xind = NULL, basistype = c("te", "t2", "s"),
-  integration = c("simpson", "trapezoidal", "riemann"), L = NULL,
-  presmooth = NULL, presmooth.opts = NULL, Xrange = range(X, na.rm =
-  T), Qtransform = FALSE, ...)
+af(
+  X,
+  argvals = NULL,
+  xind = NULL,
+  basistype = c("te", "t2", "s"),
+  integration = c("simpson", "trapezoidal", "riemann"),
+  L = NULL,
+  presmooth = NULL,
+  presmooth.opts = NULL,
+  Xrange = range(X, na.rm = T),
+  Qtransform = FALSE,
+  ...
+)
 }
 \arguments{
 \item{X}{functional predictors, typically expressed as an \code{N} by \code{J} matrix,

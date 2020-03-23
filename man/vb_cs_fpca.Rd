@@ -4,9 +4,19 @@
 \alias{vb_cs_fpca}
 \title{Cross-sectional FoSR using Variational Bayes and FPCA}
 \usage{
-vb_cs_fpca(formula, data = NULL, verbose = TRUE, Kt = 5, Kp = 2,
-  alpha = 0.1, Aw = NULL, Bw = NULL, Apsi = NULL, Bpsi = NULL,
-  argvals = NULL)
+vb_cs_fpca(
+  formula,
+  data = NULL,
+  verbose = TRUE,
+  Kt = 5,
+  Kp = 2,
+  alpha = 0.1,
+  Aw = NULL,
+  Bw = NULL,
+  Apsi = NULL,
+  Bpsi = NULL,
+  argvals = NULL
+)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}

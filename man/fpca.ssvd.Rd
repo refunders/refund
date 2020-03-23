@@ -4,10 +4,22 @@
 \alias{fpca.ssvd}
 \title{Smoothed FPCA via iterative penalized rank one SVDs.}
 \usage{
-fpca.ssvd(Y = NULL, ydata = NULL, argvals = NULL, npc = NA,
-  center = TRUE, maxiter = 15, tol = 1e-04, diffpen = 3,
-  gridsearch = TRUE, alphagrid = 1.5^(-20:40), lower.alpha = 1e-05,
-  upper.alpha = 1e+07, verbose = FALSE, integration = "trapezoidal")
+fpca.ssvd(
+  Y = NULL,
+  ydata = NULL,
+  argvals = NULL,
+  npc = NA,
+  center = TRUE,
+  maxiter = 15,
+  tol = 1e-04,
+  diffpen = 3,
+  gridsearch = TRUE,
+  alphagrid = 1.5^(-20:40),
+  lower.alpha = 1e-05,
+  upper.alpha = 1e+07,
+  verbose = FALSE,
+  integration = "trapezoidal"
+)
 }
 \arguments{
 \item{Y}{data matrix (rows: observations; columns: grid of eval. points)}

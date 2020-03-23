@@ -4,8 +4,15 @@
 \alias{vb_mult_fpca}
 \title{Multilevel FoSR using Variational Bayes and FPCA}
 \usage{
-vb_mult_fpca(formula, data = NULL, verbose = TRUE, Kt = 5, Kp = 2,
-  alpha = 0.1, argvals = NULL)
+vb_mult_fpca(
+  formula,
+  data = NULL,
+  verbose = TRUE,
+  Kt = 5,
+  Kp = 2,
+  alpha = 0.1,
+  argvals = NULL
+)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}

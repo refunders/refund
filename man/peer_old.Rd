@@ -4,8 +4,17 @@
 \alias{peer_old}
 \title{Functional Models with Structured Penalties}
 \usage{
-peer_old(Y, funcs, argvals = NULL, pentype = "Ridge", L.user = NULL,
-  Q = NULL, phia = 10^3, se = FALSE, ...)
+peer_old(
+  Y,
+  funcs,
+  argvals = NULL,
+  pentype = "Ridge",
+  L.user = NULL,
+  Q = NULL,
+  phia = 10^3,
+  se = FALSE,
+  ...
+)
 }
 \arguments{
 \item{Y}{vector of all outcomes}

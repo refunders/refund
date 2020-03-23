@@ -4,9 +4,16 @@
 \alias{sff}
 \title{Construct a smooth function-on-function regression term}
 \usage{
-sff(X, yind, xind = seq(0, 1, l = ncol(X)), basistype = c("te", "t2",
-  "s"), integration = c("simpson", "trapezoidal"), L = NULL,
-  limits = NULL, splinepars = list(bs = "ps", m = c(2, 2, 2)))
+sff(
+  X,
+  yind,
+  xind = seq(0, 1, l = ncol(X)),
+  basistype = c("te", "t2", "s"),
+  integration = c("simpson", "trapezoidal"),
+  L = NULL,
+  limits = NULL,
+  splinepars = list(bs = "ps", m = c(2, 2, 2))
+)
 }
 \arguments{
 \item{X}{an n by \code{ncol(xind)} matrix of function evaluations

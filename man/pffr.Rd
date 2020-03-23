@@ -4,10 +4,18 @@
 \alias{pffr}
 \title{Penalized flexible functional regression}
 \usage{
-pffr(formula, yind, data = NULL, ydata = NULL, algorithm = NA,
-  method = "REML", tensortype = c("ti", "t2"), bs.yindex = list(bs =
-  "ps", k = 5, m = c(2, 1)), bs.int = list(bs = "ps", k = 20, m = c(2,
-  1)), ...)
+pffr(
+  formula,
+  yind,
+  data = NULL,
+  ydata = NULL,
+  algorithm = NA,
+  method = "REML",
+  tensortype = c("ti", "t2"),
+  bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+  bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+  ...
+)
 }
 \arguments{
 \item{formula}{a formula with special terms as for \code{\link[mgcv]{gam}},
@@ -188,7 +196,7 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
 \examples{
 ###############################################################################
 # univariate model:
-# Y(t) = f(t)  + \\int X1(s)\\beta(s,t)ds + eps
+# Y(t) = f(t)  + \int X1(s)\beta(s,t)ds + eps
 set.seed(2121)
 data1 <- pffrSim(scenario="ff", n=40)
 t <- attr(data1, "yindex")
@@ -200,8 +208,8 @@ plot(m1, pers=TRUE, pages=1)
 \dontrun{
 ###############################################################################
 # multivariate model:
-# E(Y(t)) = \\beta_0(t)  + \\int X1(s)\\beta_1(s,t)ds + xlin \\beta_3(t) +
-#        f_1(xte1, xte2) + f_2(xsmoo, t) + \\beta_4 xconst
+# E(Y(t)) = \beta_0(t)  + \int X1(s)\beta_1(s,t)ds + xlin \beta_3(t) +
+#        f_1(xte1, xte2) + f_2(xsmoo, t) + \beta_4 xconst
 data2 <- pffrSim(scenario="all", n=200)
 t <- attr(data2, "yindex")
 s <- attr(data2, "xindex")

@@ -4,9 +4,21 @@
 \alias{gibbs_cs_wish}
 \title{Cross-sectional FoSR using a Gibbs sampler and Wishart prior}
 \usage{
-gibbs_cs_wish(formula, Kt = 5, data = NULL, verbose = TRUE,
-  N.iter = 5000, N.burn = 1000, alpha = 0.1, min.iter = 10,
-  max.iter = 50, Aw = NULL, Bw = NULL, v = NULL, SEED = NULL)
+gibbs_cs_wish(
+  formula,
+  Kt = 5,
+  data = NULL,
+  verbose = TRUE,
+  N.iter = 5000,
+  N.burn = 1000,
+  alpha = 0.1,
+  min.iter = 10,
+  max.iter = 50,
+  Aw = NULL,
+  Bw = NULL,
+  v = NULL,
+  SEED = NULL
+)
 }
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}

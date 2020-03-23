@@ -4,8 +4,14 @@
 \alias{fpca2s}
 \title{Functional principal component analysis by a two-stage method}
 \usage{
-fpca2s(Y = NULL, ydata = NULL, argvals = NULL, npc = NA,
-  center = TRUE, smooth = TRUE)
+fpca2s(
+  Y = NULL,
+  ydata = NULL,
+  argvals = NULL,
+  npc = NA,
+  center = TRUE,
+  smooth = TRUE
+)
 }
 \arguments{
 \item{Y}{data matrix (rows: observations; columns: grid of eval. points)}

@@ -4,9 +4,13 @@
 \alias{plot.peer}
 \title{Plotting of estimated regression functions obtained through \code{peer()}}
 \usage{
-\method{plot}{peer}(x, conf = 0.95,
-  ylab = "Estimated regression function", main = expression(gamma),
-  ...)
+\method{plot}{peer}(
+  x,
+  conf = 0.95,
+  ylab = "Estimated regression function",
+  main = expression(gamma),
+  ...
+)
 }
 \arguments{
 \item{x}{object of class \code{"\link{peer}"}.}

@@ -4,13 +4,28 @@
 \alias{fosr}
 \title{Function-on-scalar regression}
 \usage{
-fosr(formula = NULL, Y = NULL, fdobj = NULL, data = NULL, X,
-  con = NULL, argvals = NULL, method = c("OLS", "GLS", "mix"),
+fosr(
+  formula = NULL,
+  Y = NULL,
+  fdobj = NULL,
+  data = NULL,
+  X,
+  con = NULL,
+  argvals = NULL,
+  method = c("OLS", "GLS", "mix"),
   gam.method = c("REML", "ML", "GCV.Cp", "GACV.Cp", "P-REML", "P-ML"),
-  cov.method = c("naive", "mod.chol"), lambda = NULL, nbasis = 15,
-  norder = 4, pen.order = 2, multi.sp = ifelse(method == "OLS",
-  FALSE, TRUE), pve = 0.99, max.iter = 1, maxlam = NULL,
-  cv1 = FALSE, scale = FALSE)
+  cov.method = c("naive", "mod.chol"),
+  lambda = NULL,
+  nbasis = 15,
+  norder = 4,
+  pen.order = 2,
+  multi.sp = ifelse(method == "OLS", FALSE, TRUE),
+  pve = 0.99,
+  max.iter = 1,
+  maxlam = NULL,
+  cv1 = FALSE,
+  scale = FALSE
+)
 }
 \arguments{
 \item{formula}{Formula for fitting fosr. If used, data argument must not be null.}

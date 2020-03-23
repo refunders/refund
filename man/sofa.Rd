@@ -4,7 +4,8 @@
 \name{sofa}
 \alias{sofa}
 \title{SOFA (Sequential Organ Failure Assessment) Data}
-\format{A data frame with 520 rows (subjects) and 7 variables:
+\format{
+A data frame with 520 rows (subjects) and 7 variables:
 \describe{
   \item{death}{binary indicator that the subject died in the ICU}
   \item{SOFA}{520 x 173 matrix in variable-domain format (a ragged array). 
@@ -23,7 +24,8 @@
   \item{male}{Binary indicator for male gender}
   \item{Charlson}{Charlson co-morbidity index, a measure of baseline health
     status (before hospitalization and ALI).}
-}}
+}
+}
 \usage{
 sofa
 }

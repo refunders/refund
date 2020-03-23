@@ -4,9 +4,19 @@
 \alias{coef.pffr}
 \title{Get estimated coefficients from a pffr fit}
 \usage{
-\method{coef}{pffr}(object, raw = FALSE, se = TRUE, freq = FALSE,
-  sandwich = FALSE, seWithMean = TRUE, n1 = 100, n2 = 40,
-  n3 = 20, Ktt = NULL, ...)
+\method{coef}{pffr}(
+  object,
+  raw = FALSE,
+  se = TRUE,
+  freq = FALSE,
+  sandwich = FALSE,
+  seWithMean = TRUE,
+  n1 = 100,
+  n2 = 40,
+  n3 = 20,
+  Ktt = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{a fitted \code{pffr}-object}

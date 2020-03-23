@@ -4,8 +4,14 @@
 \alias{pwcv}
 \title{Pointwise cross-validation for function-on-scalar regression}
 \usage{
-pwcv(fdobj, Z, L = NULL, lambda, eval.pts = seq(min(fdobj$basis$range),
-  max(fdobj$basis$range), length.out = 201), scale = FALSE)
+pwcv(
+  fdobj,
+  Z,
+  L = NULL,
+  lambda,
+  eval.pts = seq(min(fdobj$basis$range), max(fdobj$basis$range), length.out = 201),
+  scale = FALSE
+)
 }
 \arguments{
 \item{fdobj}{a functional data object (class \code{fd}) giving the

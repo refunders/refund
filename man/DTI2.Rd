@@ -4,7 +4,8 @@
 \name{DTI2}
 \alias{DTI2}
 \title{Diffusion Tensor Imaging: more fractional anisotropy profiles and outcomes}
-\format{A data frame made up of \describe{
+\format{
+A data frame made up of \describe{
 \item{cca}{a 340 x 93
 matrix of fractional anisotropy profiles from the corpus callosum;}
 \item{rcst}{a 340 x 55 matrix of fractional anisotropy
@@ -14,7 +15,8 @@ profiles from the right corticospinal tract;}
 subject-specific visit numbers;}
 \item{pasat}{numeric vector
 containing the PASAT score at each visit.}
-}}
+}
+}
 \description{
 A diffusion tensor imaging dataset used in Swihart et al. (2012). Mean
 diffusivity profiles for the corpus callosum (cca) and parallel diffusivity

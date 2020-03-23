@@ -4,9 +4,17 @@
 \alias{ffpcplot}
 \title{Plot PC-based function-on-function regression terms}
 \usage{
-ffpcplot(object, type = c("fpc+surf", "surf", "fpc"), pages = 1,
-  se.mult = 2, ticktype = "detailed", theta = 30, phi = 30,
-  plot = TRUE, auto.layout = TRUE)
+ffpcplot(
+  object,
+  type = c("fpc+surf", "surf", "fpc"),
+  pages = 1,
+  se.mult = 2,
+  ticktype = "detailed",
+  theta = 30,
+  phi = 30,
+  plot = TRUE,
+  auto.layout = TRUE
+)
 }
 \arguments{
 \item{object}{a fitted \code{pffr}-model}

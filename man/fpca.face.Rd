@@ -4,12 +4,29 @@
 \alias{fpca.face}
 \title{Functional principal component analysis with fast covariance estimation}
 \usage{
-fpca.face(Y = NULL, ydata = NULL, Y.pred = NULL, argvals = NULL,
-  pve = 0.99, npc = NULL, var = FALSE, simul = FALSE,
-  sim.alpha = 0.95, center = TRUE, knots = 35, p = 3, m = 2,
-  lambda = NULL, alpha = 1, search.grid = TRUE,
-  search.length = 100, method = "L-BFGS-B", lower = -20,
-  upper = 20, control = NULL)
+fpca.face(
+  Y = NULL,
+  ydata = NULL,
+  Y.pred = NULL,
+  argvals = NULL,
+  pve = 0.99,
+  npc = NULL,
+  var = FALSE,
+  simul = FALSE,
+  sim.alpha = 0.95,
+  center = TRUE,
+  knots = 35,
+  p = 3,
+  m = 2,
+  lambda = NULL,
+  alpha = 1,
+  search.grid = TRUE,
+  search.length = 100,
+  method = "L-BFGS-B",
+  lower = -20,
+  upper = 20,
+  control = NULL
+)
 }
 \arguments{
 \item{Y, ydata}{the user must supply either \code{Y}, a matrix of functions
@@ -114,8 +131,8 @@ if(case==2) phi <- cbind(rep(1,J),sqrt(3)*(2*t-1),
 ########     Generate Data            #############
 ###################################################
 xi <- matrix(rnorm(I*N),I,N);
-xi <- xi\\\%*\\\%diag(sqrt(lambdaTrue))
-X <- xi\\\%*\\\%t(phi); # of size I by J
+xi <- xi\\%*\\%diag(sqrt(lambdaTrue))
+X <- xi\\%*\\%t(phi); # of size I by J
 Y <- X + sigma*matrix(rnorm(I*J),I,J)
 
 results <- fpca.face(Y,center = TRUE, argvals=t,knots=100,pve=0.99)
@@ -126,7 +143,7 @@ Phi <- results$efunctions
 eigenvalues <- results$evalues
 
 for(k in 1:N){
-  if(Phi[,k]\\\%*\\\%phi[,k]< 0) 
+  if(Phi[,k]\\%*\\%phi[,k]< 0) 
     Phi[,k] <- - Phi[,k]
 }
 

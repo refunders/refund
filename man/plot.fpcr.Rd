@@ -4,8 +4,15 @@
 \alias{plot.fpcr}
 \title{Default plotting for functional principal component regression output}
 \usage{
-\method{plot}{fpcr}(x, se = TRUE, col = 1, lty = c(1, 2, 2),
-  xlab = "", ylab = "Coefficient function", ...)
+\method{plot}{fpcr}(
+  x,
+  se = TRUE,
+  col = 1,
+  lty = c(1, 2, 2),
+  xlab = "",
+  ylab = "Coefficient function",
+  ...
+)
 }
 \arguments{
 \item{x}{an object of class \code{"\link{fpcr}"}.}

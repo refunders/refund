@@ -5,13 +5,29 @@
 \alias{coef.pfr}
 \title{Extract coefficient functions from a fitted pfr-object}
 \usage{
-\method{coefficients}{pfr}(object, select = 1, coords = NULL,
-  n = NULL, se = ifelse(length(object$smooth) & select, TRUE, FALSE),
-  seWithMean = FALSE, useVc = TRUE, Qtransform = FALSE, ...)
-
-\method{coef}{pfr}(object, select = 1, coords = NULL, n = NULL,
+\method{coefficients}{pfr}(
+  object,
+  select = 1,
+  coords = NULL,
+  n = NULL,
   se = ifelse(length(object$smooth) & select, TRUE, FALSE),
-  seWithMean = FALSE, useVc = TRUE, Qtransform = FALSE, ...)
+  seWithMean = FALSE,
+  useVc = TRUE,
+  Qtransform = FALSE,
+  ...
+)
+
+\method{coef}{pfr}(
+  object,
+  select = 1,
+  coords = NULL,
+  n = NULL,
+  se = ifelse(length(object$smooth) & select, TRUE, FALSE),
+  seWithMean = FALSE,
+  useVc = TRUE,
+  Qtransform = FALSE,
+  ...
+)
 }
 \arguments{
 \item{object}{return object from \code{\link{pfr}}}

@@ -6,10 +6,12 @@
 \alias{Q}
 \title{Simulated longitudinal data with functional predictor and scalar response,
 and structural information associated with predictor function}
-\format{The data frame \code{PEER.Sim} is made up of subject ID
+\format{
+The data frame \code{PEER.Sim} is made up of subject ID
 number(\code{id}), subject-specific time of measurement (\code{t}),
 functional predictor profile (\code{W.1-W.100}) and scalar response
-(\code{Y})}
+(\code{Y})
+}
 \description{
 \code{PEER.Sim} contains simulated observations from 100 subjects, each
 observed at 4 distinct timepoints. At each timepoint bumpy predictor

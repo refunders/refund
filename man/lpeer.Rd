@@ -4,9 +4,22 @@
 \alias{lpeer}
 \title{Longitudinal Functional Models with Structured Penalties}
 \usage{
-lpeer(Y, subj, t, funcs, argvals = NULL, covariates = NULL,
-  comm.pen = TRUE, pentype = "Ridge", L.user = NULL, f_t = NULL,
-  Q = NULL, phia = 10^3, se = FALSE, ...)
+lpeer(
+  Y,
+  subj,
+  t,
+  funcs,
+  argvals = NULL,
+  covariates = NULL,
+  comm.pen = TRUE,
+  pentype = "Ridge",
+  L.user = NULL,
+  f_t = NULL,
+  Q = NULL,
+  phia = 10^3,
+  se = FALSE,
+  ...
+)
 }
 \arguments{
 \item{Y}{vector of all outcomes over all visits or timepoints}

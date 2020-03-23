@@ -4,8 +4,15 @@
 \alias{ccb.fpc}
 \title{Corrected confidence bands using functional principal components}
 \usage{
-ccb.fpc(Y, argvals = NULL, nbasis = 10, pve = 0.99, n.boot = 100,
-  simul = FALSE, sim.alpha = 0.95)
+ccb.fpc(
+  Y,
+  argvals = NULL,
+  nbasis = 10,
+  pve = 0.99,
+  n.boot = 100,
+  simul = FALSE,
+  sim.alpha = 0.95
+)
 }
 \arguments{
 \item{Y}{matrix of observed functions for which estimates and covariance

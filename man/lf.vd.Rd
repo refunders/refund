@@ -4,9 +4,17 @@
 \alias{lf.vd}
 \title{Construct a VDFR regression term}
 \usage{
-lf.vd(X, argvals = seq(0, 1, l = ncol(X)), vd = NULL,
-  integration = c("simpson", "trapezoidal", "riemann"), L = NULL,
-  basistype = c("s", "te", "t2"), transform = NULL, mp = TRUE, ...)
+lf.vd(
+  X,
+  argvals = seq(0, 1, l = ncol(X)),
+  vd = NULL,
+  integration = c("simpson", "trapezoidal", "riemann"),
+  L = NULL,
+  basistype = c("s", "te", "t2"),
+  transform = NULL,
+  mp = TRUE,
+  ...
+)
 }
 \arguments{
 \item{X}{matrix containing variable-domain functions. Should be \eqn{N x J},

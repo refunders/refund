@@ -4,11 +4,24 @@
 \alias{fpca.sc}
 \title{Functional principal components analysis by smoothed covariance}
 \usage{
-fpca.sc(Y = NULL, ydata = NULL, Y.pred = NULL, argvals = NULL,
-  random.int = FALSE, nbasis = 10, pve = 0.99, npc = NULL,
-  var = FALSE, simul = FALSE, sim.alpha = 0.95, useSymm = FALSE,
-  makePD = FALSE, center = TRUE, cov.est.method = 2,
-  integration = "trapezoidal")
+fpca.sc(
+  Y = NULL,
+  ydata = NULL,
+  Y.pred = NULL,
+  argvals = NULL,
+  random.int = FALSE,
+  nbasis = 10,
+  pve = 0.99,
+  npc = NULL,
+  var = FALSE,
+  simul = FALSE,
+  sim.alpha = 0.95,
+  useSymm = FALSE,
+  makePD = FALSE,
+  center = TRUE,
+  cov.est.method = 2,
+  integration = "trapezoidal"
+)
 }
 \arguments{
 \item{Y, ydata}{the user must supply either \code{Y}, a matrix of functions

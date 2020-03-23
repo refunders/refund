@@ -52,8 +52,8 @@ Y <- MY + sigma*rnorm(n1*n2,0,1)
 ##########################
 est <- fbps(Y,list(x=x,z=z))
 mse <- mean((est$Yhat-MY)^2)
-cat("mse of fbps is",mse,"\\n")
-cat("The smoothing parameters are:",est$lambda,"\\n")
+cat("mse of fbps is",mse,"\n")
+cat("The smoothing parameters are:",est$lambda,"\n")
 
 ########################################################################
 ########## Compare the estimated surface with the true surface #########
