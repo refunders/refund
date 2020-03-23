@@ -113,6 +113,7 @@ Collate:
     'poridge.R'
     'postprocess.pfr.R'
     'predict.fgam.R'
+    'predict.fosr.R'
     'predict.pfr.R'
     'predict.pfr_old.R'
     'preprocess.pfr.R'
@@ -149,4 +150,4 @@ Collate:
     'fpca.lfda.R'
     'predict.fbps.R'
     'select_knots.R'
-RoxygenNote: 6.1.1
+RoxygenNote: 7.1.0
