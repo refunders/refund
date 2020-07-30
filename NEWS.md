@@ -1,5 +1,9 @@
 # refund 0.1-21
 
+* Fixes bugs 
+
+# refund 0.1-21
+
 * Fixes a bug in `fpc()` due to release of R 4.0.0 that changes the following:
 
 ```
