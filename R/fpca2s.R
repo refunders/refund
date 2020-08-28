@@ -45,7 +45,7 @@
 ##'
 ##' Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C., (2013), Fast
 ##' covariance estimation for high-dimensional functional data. (submitted)
-##' \url{http://arxiv.org/abs/1306.5718}.
+##' \url{https://arxiv.org/abs/1306.5718}.
 ##'
 ##' Gavish, M., and Donoho, D. L.  (2014). The optimal hard threshold for
 ##' singular values is 4/sqrt(3).  \emph{IEEE Transactions on Information Theory}, 60(8), 5040--5053.

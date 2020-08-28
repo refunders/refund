@@ -63,7 +63,7 @@
 #'
 #'  Donoho, D.L., and Gavish, M. (2013). The Optimal Hard Threshold for Singular
 #'  Values is 4/sqrt(3). eprint arXiv:1305.5870. Available from
-#'  \url{http://arxiv.org/abs/1305.5870}.
+#'  \url{https://arxiv.org/abs/1305.5870}.
 #'@examples
 #'  ## as in Sec. 6.2 of Huang, Shen, Buja (2008):
 #'  set.seed(2678695)

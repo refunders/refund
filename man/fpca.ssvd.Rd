@@ -132,7 +132,7 @@ Huang, J. Z., Shen, H., and Buja, A. (2008). Functional principal
 
  Donoho, D.L., and Gavish, M. (2013). The Optimal Hard Threshold for Singular
  Values is 4/sqrt(3). eprint arXiv:1305.5870. Available from
- \url{http://arxiv.org/abs/1305.5870}.
+ \url{https://arxiv.org/abs/1305.5870}.
 }
 \seealso{
 \code{\link{fpca.sc}} and \code{\link{fpca.face}} for FPCA based on

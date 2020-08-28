@@ -162,7 +162,7 @@ Statistical Society: Series B}, 66, 165--185.
 
 Scheipl, F. (2007) Testing for nonparametric terms and random effects in
 structured additive regression. Diploma thesis.\
-http://www.statistik.lmu.de/~scheipl/downloads/DIPLOM.zip.
+https://www.statistik.lmu.de/~scheipl/downloads/DIPLOM.zip.
 
 Scheipl, F., Greven, S. and Kuechenhoff, H (2008) Size and power of tests
 for a zero random effect variance or polynomial regression in additive and
@@ -172,7 +172,7 @@ linear mixed models.  \emph{Computational Statistics & Data Analysis},
 Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (2012).
 Testing for functional effects. Johns Hopkins University Dept. of
 Biostatistics Working Paper 247. Available at
-\url{http://biostats.bepress.com/jhubiostat/paper247}
+\url{https://biostats.bepress.com/jhubiostat/paper247}
 }
 \seealso{
 \code{\link{pfr}}, \code{\link{predict.pfr}}, package

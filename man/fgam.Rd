@@ -103,7 +103,7 @@ vis.fgam(fit,af.term='X_2',plot.type='contour')
 \references{
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
-pp. 249-269.  Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
+pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
 }
 \seealso{
 \code{\link{af}}, \code{\link{lf}}, \code{\link{predict.fgam}}, \code{\link{vis.fgam}}

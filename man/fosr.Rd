@@ -187,7 +187,7 @@ Analysis}, 2nd ed., Chapter 13.  New York: Springer.
 Reiss, P. T., Huang, L., and Mennes, M. (2010).  Fast function-on-scalar
 regression with penalized basis expansions.  \emph{International Journal of
 Biostatistics}, 6(1), article 28.  Available at
-\url{http://works.bepress.com/phil_reiss/16/}
+\url{https://works.bepress.com/phil_reiss/16/}
 }
 \seealso{
 \code{\link{plot.fosr}}
