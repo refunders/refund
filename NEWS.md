@@ -1,6 +1,7 @@
-# refund 0.1-21
+# refund 0.1-22
 
 * Fixes bugs 
+  * Commented out option `useSymm = TRUE` in tests for `fpca.sc`
 
 # refund 0.1-21
 
