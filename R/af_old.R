@@ -51,7 +51,7 @@
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 #' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
-#' pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
+#' pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
 #' @seealso \code{\link{fgam}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
 #' \code{\link{fgam}} for examples
 #' @importFrom stats ecdf

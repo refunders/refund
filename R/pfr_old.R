@@ -88,7 +88,7 @@
 #'
 #' Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (July 2012). 
 #' Testing for functional effects. Johns Hopkins University Dept. of Biostatistics 
-#' Working Paper 247, available at \url{https://biostats.bepress.com/jhubiostat/paper247}
+#' Working Paper 247, available at \url{https://biostats.bepress.com/jhubiostat/paper247/}
 #' American Statistical Association, 109(508): 1425-1439.
 #'
 #' @author Bruce Swihart \email{bruce.swihart@@gmail.com} and 

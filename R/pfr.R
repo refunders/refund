@@ -58,7 +58,7 @@
 #' McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 #' Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of
 #' Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269.
-#' Available at \url{http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924}.
+#' Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
 #'
 #' Gellar, J. E., Colantuoni, E., Needham, D. M., and Crainiceanu, C. M. (2014).
 #' Variable-Domain Functional Regression for Modeling ICU Data. Journal of the
