@@ -172,7 +172,7 @@ linear mixed models.  \emph{Computational Statistics & Data Analysis},
 Swihart, Bruce J., Goldsmith, Jeff; and Crainiceanu, Ciprian M. (2012).
 Testing for functional effects. Johns Hopkins University Dept. of
 Biostatistics Working Paper 247. Available at
-\url{https://biostats.bepress.com/jhubiostat/paper247}
+\url{https://biostats.bepress.com/jhubiostat/paper247/}
 }
 \seealso{
 \code{\link{pfr}}, \code{\link{predict.pfr}}, package
