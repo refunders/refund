@@ -1,7 +1,7 @@
 context("Testing pffr")
 
 set.seed(9312)
-data2 <- pffrSim(scenario = "all", n = 100)
+data2 <- pffrSim(scenario = "all", n = 30)
 argvals <- attr(data2, "yindex")
 s <- attr(data2, "xindex")
 m2 <- pffr(Y ~
@@ -41,7 +41,7 @@ test_that("convenience functions are working", {
 # sparse data (80% missing on a regular grid):
 test_that("pffr with sparse data works", {
   set.seed(88182004)
-  data3 <- pffrSim(scenario = c("int", "smoo"), n = 100, propmissing = 0.8)
+  data3 <- pffrSim(scenario = c("int", "smoo"), n = 30, propmissing = 0.8)
   t <- attr(data3, "yindex")
   m3.sparse <- pffr(Y ~ s(xsmoo), data = data3$data, ydata = data3$ydata, yind = t)
   expect_is(summary(m3.sparse), "summary.pffr")
@@ -80,7 +80,7 @@ test_that("ffpc terms are working", {
   expect_is(m.pc, "pffr")
   expect_is(summary(m.pc), "summary.pffr")
 
-  expect_is(ffpcplot(m.pc, type = "surf", auto.layout = FALSE, theta  =  50, phi  =  40), "list")
+  #expect_is(ffpcplot(m.pc, type = "surf", auto.layout = FALSE, theta  =  50, phi  =  40), "list")
 })
 
 test_that("another ff term example", {

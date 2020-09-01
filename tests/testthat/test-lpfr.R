@@ -17,7 +17,7 @@ test_that("lpfr works with one predictor", {
 
 
   # fit two models with single functional predictors and plot the results
-  fit.cca = lpfr(Y=DTI$pasat, subj=DTI$ID, funcs = cca, smooth.cov=FALSE)
+  #fit.cca = lpfr(Y=DTI$pasat, subj=DTI$ID, funcs = cca, smooth.cov=FALSE)
   fit.rcst = lpfr(Y=DTI$pasat, subj=DTI$ID, funcs = rcst, smooth.cov=FALSE)
   ## expect_equal_to_reference(fit.cca$BetaHat, "lpfr.cca.coef.rds")
   expect_is(fit.rcst, "list")
