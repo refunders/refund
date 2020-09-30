@@ -41,6 +41,9 @@
 #'   Defaults to a cubic tensor product B-spline with marginal second
 #'   differences, i.e. \code{list(bs="ps", m=c(2,2,2))}. See
 #'   \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} for details
+#' @param constant_over_yind fit a term \eqn{\int^{s_{hi, i}}_{s_{lo, i}} f(X_i(s), s) ds}
+#' that is constant over t? Defaults to `FALSE`. Integration limits can still depend on the
+#' index of the response and induce estimated effects that vary over t.
 #'
 #' @return a list containing \itemize{ \item \code{call} a "call" to
 #'   \code{\link[mgcv]{te}} (or \code{\link[mgcv]{s}}, \code{\link[mgcv]{t2}})
@@ -61,7 +64,7 @@ sff <- function(X,
                 basistype= c("te", "t2", "s"),
                 integration=c("simpson", "trapezoidal"),
                 L=NULL,
-                limits=NULL,
+                limits=NULL, constant_over_yind = FALSE,
                 splinepars=list(bs="ps", m=c(2,2,2))
 ){
   n <- nrow(X)
@@ -144,13 +147,22 @@ sff <- function(X,
   splinefun <- as.symbol(basistype) # if(basistype=="te") quote(te) else quote(s)
   frmls <- formals(getFromNamespace(deparse(splinefun), ns="mgcv"))
   frmls <- modifyList(frmls[names(frmls) %in% names(splinepars)], splinepars)
+  call <- as.call(c(
+    list(splinefun,
+      x = as.symbol(substitute(yindname)),
+      y = as.symbol(substitute(xindname)),
+      z = as.symbol(substitute(xname)),
+      by =as.symbol(substitute(LXname))),
+    frmls))
+  if(constant_over_yind) {
     call <- as.call(c(
       list(splinefun,
-        x = as.symbol(substitute(yindname)),
         y = as.symbol(substitute(xindname)),
         z = as.symbol(substitute(xname)),
         by =as.symbol(substitute(LXname))),
       frmls))
+  }
+
 
   return(list(call=call, xind=xind[1,], L=L, X=X,
               xname=xname, xindname=xindname, yindname=yindname, LXname=LXname,

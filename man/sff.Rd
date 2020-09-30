@@ -12,6 +12,7 @@ sff(
   integration = c("simpson", "trapezoidal"),
   L = NULL,
   limits = NULL,
+  constant_over_yind = FALSE,
   splinepars = list(bs = "ps", m = c(2, 2, 2))
 )
 }
@@ -47,6 +48,10 @@ i}, s_{lo, i}) = (0, t)} or a function that takes \code{s} as the first and
 \code{(s,t)} if \code{s} falls into the integration range for the given
 \code{t}. This is an experimental feature and not well tested yet; use at
 your own risk.}
+
+\item{constant_over_yind}{fit a term \eqn{\int^{s_{hi, i}}_{s_{lo, i}} f(X_i(s), s) ds}
+that is constant over t? Defaults to `FALSE`. Integration limits can still depend on the
+index of the response and induce estimated effects that vary over t.}
 
 \item{splinepars}{optional arguments supplied to the \code{basistype}-term.
 Defaults to a cubic tensor product B-spline with marginal second
