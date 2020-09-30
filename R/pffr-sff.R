@@ -144,16 +144,17 @@ sff <- function(X,
   splinefun <- as.symbol(basistype) # if(basistype=="te") quote(te) else quote(s)
   frmls <- formals(getFromNamespace(deparse(splinefun), ns="mgcv"))
   frmls <- modifyList(frmls[names(frmls) %in% names(splinepars)], splinepars)
-  call <- as.call(c(
-    list(splinefun,
-         x = as.symbol(substitute(yindname)),
-         y = as.symbol(substitute(xindname)),
-         z = as.symbol(substitute(xname)),
-         by =as.symbol(substitute(LXname))),
-    frmls))
+    call <- as.call(c(
+      list(splinefun,
+        x = as.symbol(substitute(yindname)),
+        y = as.symbol(substitute(xindname)),
+        z = as.symbol(substitute(xname)),
+        by =as.symbol(substitute(LXname))),
+      frmls))
 
   return(list(call=call, xind=xind[1,], L=L, X=X,
-              xname=xname, xindname=xindname, yindname=yindname, LXname=LXname))
+              xname=xname, xindname=xindname, yindname=yindname, LXname=LXname,
+              limits = limits))
 }#end sff()
 
 

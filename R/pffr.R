@@ -504,7 +504,7 @@ pffr <- function(
           smat <- shift_and_shorten(smat, eff.windows)
           tmat <- shift_and_shorten(tmat, eff.windows)
           LStacked <- shift_and_shorten(LStacked, eff.windows)
-          if(is.null(x$LX)){ # sff
+          if(is.null(x[["LX"]])){ # sff
             XStacked <- shift_and_shorten(XStacked, eff.windows)
           }
         }
