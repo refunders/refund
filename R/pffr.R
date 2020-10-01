@@ -503,6 +503,11 @@ pffr <- function(
           }
           smat <- shift_and_shorten(smat, eff.windows)
           tmat <- shift_and_shorten(tmat, eff.windows)
+          if(!is.null(x[["use_lag"]]) && x[["use_lag"]]) {
+            # lag := time distance between response time scale and exposure time scale
+            smat <- tmat - smat
+          }
+
           LStacked <- shift_and_shorten(LStacked, eff.windows)
           if(is.null(x[["LX"]])){ # sff
             XStacked <- shift_and_shorten(XStacked, eff.windows)

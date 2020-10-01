@@ -1,4 +1,3 @@
-
 #' Construct a smooth function-on-function regression term
 #'
 #' Defines a term \eqn{\int^{s_{hi, i}}_{s_{lo, i}} f(X_i(s), s, t) ds} for
@@ -39,12 +38,15 @@
 #'   your own risk.
 #' @param splinepars optional arguments supplied to the \code{basistype}-term.
 #'   Defaults to a cubic tensor product B-spline with marginal second
-#'   differences, i.e. \code{list(bs="ps", m=c(2,2,2))}. See
+#'   differences, i.e. \code{list(bs="ps", m=list(c(2,2),c(2,2),c(2,2))}. See
 #'   \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} for details
 #' @param constant_over_yind fit a term \eqn{\int^{s_{hi, i}}_{s_{lo, i}} f(X_i(s), s) ds}
 #' that is constant over t? Defaults to `FALSE`. Integration limits can still depend on the
 #' index of the response and induce estimated effects that vary over t.
-#'
+#' @param use_lag if `limits` defines a window of effectiveness with constant width h around t,
+#'  it can make sense to fit effects like  \eqn{\int^{h}_{0} f(X_i(t-h), h) dh}, i.e.,
+#'  only the time distance ("lag") between exposure and response affects their partial associations, not the
+#'  timescales themselves.
 #' @return a list containing \itemize{ \item \code{call} a "call" to
 #'   \code{\link[mgcv]{te}} (or \code{\link[mgcv]{s}}, \code{\link[mgcv]{t2}})
 #'   using the appropriately constructed covariate and weight matrices (see
@@ -64,8 +66,10 @@ sff <- function(X,
                 basistype= c("te", "t2", "s"),
                 integration=c("simpson", "trapezoidal"),
                 L=NULL,
-                limits=NULL, constant_over_yind = FALSE,
-                splinepars=list(bs="ps", m=c(2,2,2))
+                limits=NULL,
+                constant_over_yind = FALSE,
+                use_lag = FALSE,
+                splinepars=list(bs="ps", m=list(c(2,2),c(2,2),c(2,2)))
 ){
   n <- nrow(X)
   nxgrid <- ncol(X)
@@ -166,7 +170,7 @@ sff <- function(X,
 
   return(list(call=call, xind=xind[1,], L=L, X=X,
               xname=xname, xindname=xindname, yindname=yindname, LXname=LXname,
-              limits = limits))
+              limits = limits, use_lag = use_lag))
 }#end sff()
 
 

@@ -13,7 +13,8 @@ sff(
   L = NULL,
   limits = NULL,
   constant_over_yind = FALSE,
-  splinepars = list(bs = "ps", m = c(2, 2, 2))
+  use_lag = FALSE,
+  splinepars = list(bs = "ps", m = list(c(2, 2), c(2, 2), c(2, 2)))
 )
 }
 \arguments{
@@ -53,9 +54,14 @@ your own risk.}
 that is constant over t? Defaults to `FALSE`. Integration limits can still depend on the
 index of the response and induce estimated effects that vary over t.}
 
+\item{use_lag}{if `limits` defines a window of effectiveness with constant width h around t,
+it can make sense to fit effects like  \eqn{\int^{h}_{0} f(X_i(t-h), h) dh}, i.e.,
+only the time distance ("lag") between exposure and response affects their partial associations, not the
+timescales themselves.}
+
 \item{splinepars}{optional arguments supplied to the \code{basistype}-term.
 Defaults to a cubic tensor product B-spline with marginal second
-differences, i.e. \code{list(bs="ps", m=c(2,2,2))}. See
+differences, i.e. \code{list(bs="ps", m=list(c(2,2),c(2,2),c(2,2))}. See
 \code{\link[mgcv]{te}} or \code{\link[mgcv]{s}} for details}
 }
 \value{
