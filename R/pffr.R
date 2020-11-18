@@ -335,7 +335,7 @@ pffr <- function(
   }
   algorithm <- as.symbol(algorithm)
   if(as.character(algorithm)=="bam" && !("chunk.size" %in% names(call))){
-    call$chunk.size <- max(ntotal/5, 10000)
+    call$chunk.size <- 10000
     #same default as in bam
   }
   ## no te-terms possible in gamm4:

@@ -304,7 +304,7 @@ pffrGLS <- function(
   }
   algorithm <- as.symbol(algorithm)
   if(as.character(algorithm)=="bam" && !("chunk.size" %in% names(call))){
-    call$chunk.size <- max(nobs/5, 10000)
+    call$chunk.size <- 10000
     #same default as in bam
   }
   ##
