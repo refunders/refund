@@ -145,7 +145,7 @@ cmdscale_lanczos <- function(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE){
 #' @export
 #' @references Gower, J. C. (1968). Adding a point to vector diagrams in
 #' multivariate analysis. Biometrika, 55(3), 582-585.
-#' \url{http://doi.org/10.2307/2334268}
+#' \url{https://doi.org/10.1093/biomet/55.3.582}
 #'
 #' Miller, D. L. (2012). On smooth models for complex domains and distances. PhD
 #' dissertation, Department of Mathematical Sciences, University of Bath.
