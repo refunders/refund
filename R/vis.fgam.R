@@ -63,20 +63,20 @@
 #' ## third order marginal difference penalties
 #' ## specifying gamma>1 enforces more smoothing when using GCV
 #' ## to choose smoothing parameters
-#' fit <- fgam(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
+#' #fit <- fgam(y~af(X,splinepars=list(k=c(8,8),m=list(c(2,3),c(2,3)))),gamma=1.2)
 #'
 #' ## contour plot of the fitted surface
-#' vis.fgam(fit,plot.type='contour')
+#' #vis.fgam(fit,plot.type='contour')
 #'
 #' ## similar to Figure 5 from McLean et al.
 #' ## Bands seem too conservative in some cases
-#' xval <- runif(1, min(fit$fgam$ft[[1]]$Xrange), max(fit$fgam$ft[[1]]$Xrange))
-#' tval <- runif(1, min(fit$fgam$ft[[1]]$xind), max(fit$fgam$ft[[1]]$xind))
-#' par(mfrow=c(4, 1))
-#' vis.fgam(fit, af.term='X', deriv2=FALSE, xval=xval)
-#' vis.fgam(fit, af.term='X', deriv2=FALSE, tval=tval)
-#' vis.fgam(fit, af.term='X', deriv2=TRUE, xval=xval)
-#' vis.fgam(fit, af.term='X', deriv2=TRUE, tval=tval)
+#' #xval <- runif(1, min(fit$fgam$ft[[1]]$Xrange), max(fit$fgam$ft[[1]]$Xrange))
+#' #tval <- runif(1, min(fit$fgam$ft[[1]]$xind), max(fit$fgam$ft[[1]]$xind))
+#' #par(mfrow=c(4, 1))
+#' #vis.fgam(fit, af.term='X', deriv2=FALSE, xval=xval)
+#' #vis.fgam(fit, af.term='X', deriv2=FALSE, tval=tval)
+#' #vis.fgam(fit, af.term='X', deriv2=TRUE, xval=xval)
+#' #vis.fgam(fit, af.term='X', deriv2=TRUE, tval=tval)
 vis.fgam=function(object, af.term, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50,
                   plot.type = "persp", ticktype = "detailed", ...){
 

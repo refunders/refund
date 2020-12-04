@@ -1,3 +1,7 @@
+# refund 0.1-23
+
+* Minor bug fixes in `fgam` examples for upcoming R release
+
 # refund 0.1-22
 
 * Fixes bugs 
