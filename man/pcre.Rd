@@ -31,7 +31,9 @@ independent \eqn{\delta_{im} \sim N(0, \sigma^2\lambda_m)}, where \eqn{\sigma^2}
 is (usually) estimated and controls the overall contribution of the \eqn{B_i(t)} while the relative importance
 of the \eqn{M} basisfunctions is controlled by the supplied variances \code{lambda_m}.
 Can be used to model smooth residuals if \code{id} is simply an index of observations.
-Differing from random effects in \code{mgcv}, these effects are estimated under a "sum-to-zero-for-each-t"-constraint.
+Differing from scalar random effects in \code{mgcv}, these effects are estimated under a "sum-to-zero-for-each-t"-constraint --
+specifically \eqn{\sum_i \hat b_i(t) = 0} (not \eqn{\sum_i n_i \hat b_i(t) = 0}) where $n_i$ is the number of observed curves for
+subject i, so the intercept curve for models with unbalanced group sizes no longer corresponds to the global mean function.
 
 \code{efunctions} and \code{evalues} are typically eigenfunctions and eigenvalues of an estimated
 covariance operator for the functional process to be modeled, i.e., they are

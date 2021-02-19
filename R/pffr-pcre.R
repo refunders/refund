@@ -22,10 +22,11 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots) {
   form <- as.formula(paste("~", paste(object$term[1], ":",
     paste("(",paste(object$term[-1], collapse="+"),")")), "-1"))
   X_id <- model.matrix(as.formula(paste("~ 0 +", object$term[1])), data)
-  #absorb sum-to-zero constraint: 1_n' X_id coef = 0
-  Cr <- rbind(t(colSums(X_id)),
-    matrix(0, nrow=ncol(X_id)-1, ncol=ncol(X_id)))
-  X_id <- X_id %*% Null(t(as.matrix(Cr)))
+  #absorb sum-to-zero constraint: sum_i b_i(t) = 0
+  n_id <- nlevels(data[[object$term[1]]])
+  Cr <- cbind(1, matrix(0, nrow = n_id, ncol = n_id - 1))
+  D <- MASS::Null(Cr)
+  X_id <- X_id %*% D
   X_ef <- model.matrix(as.formula(paste("~ 0 +",
     paste(object$term[-1], collapse="+"))), data)
   object$X <- tensor.prod.model.matrix(list(X_id, X_ef))
@@ -55,7 +56,7 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots) {
 #' @importFrom mgcv tensor.prod.model.matrix Predict.matrix
 Predict.matrix.pcre.random.effect <- function(object, data){
   X_id <- model.matrix(as.formula(paste("~ 0 +", object$term[1])), data)
-  X_id <- X_id %*% Null(t(as.matrix(object$Cr)))
+  X_id <- X_id %*% MASS::Null(object$Cr)
   X_ef <- model.matrix(as.formula(paste("~ 0 +",
     paste(object$term[-1], collapse="+"))), data)
   tensor.prod.model.matrix(list(X_id, X_ef))
@@ -72,7 +73,9 @@ Predict.matrix.pcre.random.effect <- function(object, data){
 #' is (usually) estimated and controls the overall contribution of the \eqn{B_i(t)} while the relative importance
 #' of the \eqn{M} basisfunctions is controlled by the supplied variances \code{lambda_m}.
 #' Can be used to model smooth residuals if \code{id} is simply an index of observations.
-#' Differing from random effects in \code{mgcv}, these effects are estimated under a "sum-to-zero-for-each-t"-constraint.
+#' Differing from scalar random effects in \code{mgcv}, these effects are estimated under a "sum-to-zero-for-each-t"-constraint --
+#' specifically \eqn{\sum_i \hat b_i(t) = 0} (not \eqn{\sum_i n_i \hat b_i(t) = 0}) where $n_i$ is the number of observed curves for
+#' subject i, so the intercept curve for models with unbalanced group sizes no longer corresponds to the global mean function.
 #'
 #' \code{efunctions} and \code{evalues} are typically eigenfunctions and eigenvalues of an estimated
 #' covariance operator for the functional process to be modeled, i.e., they are

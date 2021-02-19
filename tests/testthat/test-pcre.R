@@ -33,10 +33,8 @@ test_that("pcre works as expected", {
   m1 <- pffr(Y ~ 1 + pcre(id=id, efunctions=efunctions, evalues=evalues, yind=t), yind=t, data=data)
   ## expect_equal_to_reference(m1, "pcre.pffr.obj.rds")
   expect_is(m1, "pffr")
-
-  t1 <- predict(m1, type="terms")
-  ## expect_equal_to_reference(t1, "pcre.prediction.obj.rds")
-  expect_is(t1, "list")
+  re <- predict(m1, type = "terms")[[2]]
+  expect_equivalent(colSums(re), rep(0, T))
 
   expect_is(summary(m1), "summary.pffr")
 })
@@ -91,6 +89,9 @@ test_that("pcre works for sparse", {
   t1 <- predict(m1, type="terms")
   ## expect_equal_to_reference(t1, "pcre.prediction.obj.rds")
   expect_is(t1, "list")
+
+  re <- predict(m1, type = "terms", newdata = data)[[2]]
+  expect_equivalent(colSums(re), rep(0, T))
 
   expect_is(summary(m1), "summary.pffr")
 })
