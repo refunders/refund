@@ -6,7 +6,7 @@
 #' is a functional predictor on the closed interval \eqn{T}. See \code{\link{smooth.terms}}
 #' for a list of bivariate basis and penalty options; the default is a tensor
 #' product basis with marginal cubic regression splines for estimating \eqn{F(x,t)}.
-#' 
+#'
 #' @param X functional predictors, typically expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
@@ -27,8 +27,8 @@
 #'   \code{"trapezoidal"} or \code{"riemann"}.
 #' @param L an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
 #'   integration over \code{t}. If present, overrides \code{integration}.
-#' @param presmooth string indicating the method to be used for preprocessing functional predictor prior 
-#'   to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and 
+#' @param presmooth string indicating the method to be used for preprocessing functional predictor prior
+#'   to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
 #'   \code{fpca.interpolate}. Defaults to \code{NULL} indicateing no preprocessing. See
 #'   \code{\link{create.prep.func}}.
 #' @param presmooth.opts list including options passed to preprocessing method
@@ -42,7 +42,7 @@
 #'   function indicated by \code{basistype}. These could include, for example,
 #'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
 #'   \code{\link{s}} for details.
-#' 
+#'
 #' @return A list with the following entries:
 #'   \item{\code{call}}{a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
 #'     constructed covariate and weight matrices.}
@@ -55,7 +55,7 @@
 #'   \item{\code{Xrange}}{the \code{Xrange} argument supplied to \code{af}}
 #'   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
 #'     \code{\link{create.prep.func}}}
-#' 
+#'
 #' @examples
 #' \dontrun{
 #' data(DTI)
@@ -87,7 +87,7 @@
 #' vis.pfr(fit2, select=1, xval=.6)
 #' pred <- predict(fit2, newdata = DTI2[test,], type='response', PredOutOfRange = TRUE)
 #' sqrt(mean((DTI2$pasat[test] - pred)^2))
-#' 
+#'
 #' ## Try to predict the binary response disease status (case or control)
 #' ##   using the quantile transformed measurements from the rcst tract
 #' ##   with a smooth component for a scalar covariate that is pure noise
@@ -100,7 +100,7 @@
 #' par(mfrow=c(1,2))
 #' plot(fit3, scheme=2, rug=FALSE)
 #' abline(h=0, col="green")
-#' 
+#'
 #' # 4 versions: fit with/without Qtransform, plotted with/without Qtransform
 #' fit4 <- pfr(case ~ af(rcst, k=c(7,7), m = list(c(2, 1), c(2, 1)), bs="ps",
 #'                       presmooth="fpca.face", Qtransform=FALSE) +
@@ -113,10 +113,10 @@
 #' plot(fit3, select=1, scheme=2, main="QT=TRUE", zlim=zlms, xlab="t", ylab="rcst")
 #' plot(fit3, select=1, scheme=2, Qtransform=TRUE, main="QT=TRUE", rug=FALSE,
 #'      zlim=zlms, xlab="t", ylab="p(rcst)")
-#' 
+#'
 #' vis.pfr(fit3, select=1, plot.type="contour")
 #' }
-#' 
+#'
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Fabian Scheipl,
 #'   and Jonathan Gellar
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
@@ -145,7 +145,10 @@ af <- function(X, argvals = NULL, xind = NULL,
                integration = c("simpson", "trapezoidal", "riemann"),
                L = NULL, presmooth = NULL, presmooth.opts = NULL,
                Xrange=range(X, na.rm=T), Qtransform=FALSE, ...) {
-  
+
+  basistype <- match.arg(basistype)
+  integration <- match.arg(integration)
+
   # Catch if af_old syntax is used
   dots <- list(...)
   dots.unmatched <- names(dots)[!(names(dots) %in%
@@ -161,13 +164,13 @@ af <- function(X, argvals = NULL, xind = NULL,
     ret <- eval(call, envir=parent.frame())
     return(ret)
   }
-  
+
   if (!is.null(xind)) {
     argvals = xind
     cat("Warnings: xind argument is renamed as argvals and will not be supported
         in the next version of refund.")
   }
-  
+
   if (is(X, "fd")) {
     # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
     if (is.null(argvals))
@@ -177,12 +180,11 @@ af <- function(X, argvals = NULL, xind = NULL,
   } else if (is.null(argvals))
     argvals <- seq(0, 1, l = ncol(X))
   xind = argvals
-  
+
   xind = argvals
   n=nrow(X)
   nt=ncol(X)
-  basistype <- match.arg(basistype)
-  integration <- match.arg(integration)
+
 
   xindname <- paste(deparse(substitute(X)), ".omat", sep = "")
   tindname <- paste(deparse(substitute(X)), ".tmat", sep = "")
@@ -213,7 +215,7 @@ af <- function(X, argvals = NULL, xind = NULL,
       }
     }
   }
-  
+
   if (!is.null(L)) {
     stopifnot(nrow(L) == n, ncol(L) == nt)
   } else {
@@ -229,7 +231,7 @@ af <- function(X, argvals = NULL, xind = NULL,
       cbind(rep(mean(diffs), n), diffs)
     })
   }
-  
+
   # Set up dots to make a "dt" basis call
   if (Qtransform) {
     bs0 <- dots$bs
@@ -243,7 +245,7 @@ af <- function(X, argvals = NULL, xind = NULL,
     if (!is.null(bs0)) dots$xt$bs <- bs0
     if (!is.null(xt0)) dots$xt$xt <- xt0
   }
-  
+
   # Set up data and call
   data <- list(xind, X, L)
   names(data) <- c(tindname, xindname, Lname)
@@ -251,11 +253,11 @@ af <- function(X, argvals = NULL, xind = NULL,
   call <- as.call(c(list(splinefun, z=as.symbol(substitute(tindname)),
                          x=as.symbol(substitute(xindname)),
                          by = as.symbol(substitute(Lname))), dots))
-  
+
   # Return list
   res <- list(call = call, data = data, xind = xind[1,], L = L,
               xindname = xindname, tindname=tindname, Lname=Lname,
               presmooth=presmooth, Xrange=Xrange)
-  if(!is.null(presmooth)) {res$prep.func <- prep.func} 
+  if(!is.null(presmooth)) {res$prep.func <- prep.func}
   return(res)
 }
