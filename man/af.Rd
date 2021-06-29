@@ -45,8 +45,8 @@ for calculating entries in \code{L}. Alternatively and for non-equidistant grids
 \item{L}{an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
 integration over \code{t}. If present, overrides \code{integration}.}
 
-\item{presmooth}{string indicating the method to be used for preprocessing functional predictor prior 
-to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and 
+\item{presmooth}{string indicating the method to be used for preprocessing functional predictor prior
+to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
 \code{fpca.interpolate}. Defaults to \code{NULL} indicateing no preprocessing. See
 \code{\link{create.prep.func}}.}
 
