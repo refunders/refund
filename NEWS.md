@@ -1,3 +1,8 @@
+# refund 0.1-24	
+
+* Minor bug fixes in `pfr` to patch error in R version 4.1
+
+
 # refund 0.1-23
 
 * Minor bug fixes in `fgam` examples for upcoming R release
