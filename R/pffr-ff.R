@@ -69,10 +69,10 @@
 #' @references For background on \code{check.ident}:\cr Scheipl, F., Greven,
 #'   S. (2016). Identifiability in penalized function-on-function regression
 #'   models. Electronic Journal of Statistics, 10(1), 495--526.
-#'   \url{https://projecteuclid.org/euclid.ejs/1457123504}
+#'   \url{https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-10/issue-1/Identifiability-in-penalized-function-on-function-regression-models/10.1214/16-EJS1123.full}
 #' @export
 #' @importFrom MASS Null
-# FIXME: weights for simpson's rule on non-equidistant grids
+# FIXME: weights for Simpson's rule on non-equidistant grids
 # TODO: allow X to be of class fd (?)
 # TODO: allow X to be a factor -- would result in one beta(s,t) surface for each level? (?)
 # TODO: by variables

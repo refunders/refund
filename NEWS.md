@@ -1,7 +1,7 @@
 # refund 0.1-24	
 
 * Minor bug fixes in `pfr` to patch error in R version 4.1
-
+* Updated documentation URLs
 
 # refund 0.1-23
 

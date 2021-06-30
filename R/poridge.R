@@ -145,7 +145,6 @@ cmdscale_lanczos <- function(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE){
 #' @export
 #' @references Gower, J. C. (1968). Adding a point to vector diagrams in
 #' multivariate analysis. Biometrika, 55(3), 582-585.
-#' \url{https://doi.org/10.1093/biomet/55.3.582}
 #'
 #' Miller, D. L. (2012). On smooth models for complex domains and distances. PhD
 #' dissertation, Department of Mathematical Sciences, University of Bath.
@@ -268,7 +267,7 @@ pco_predict_preprocess <- function(model, newdata=NULL, dist_list){
 #'@references Reiss, P. T., Miller, D. L., Wu, P.-S., and Wen-Yu Hua, W.-Y.
 #'Penalized nonparametric scalar-on-function regression via principal
 #'coordinates. Under revision. Available at
-#'\url{https://works.bepress.com/phil_reiss/42/}.
+#'\url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5714326/}.
 #'
 #' @examples
 #' \dontrun{

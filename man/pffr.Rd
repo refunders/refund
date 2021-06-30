@@ -253,7 +253,7 @@ Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2015).
 
   F. Scheipl, J. Gertheiss, S. Greven (2016):  Generalized Functional Additive Mixed Models,
   Electronic Journal of Statistics, 10(1), 1455--1492.
-  \url{https://projecteuclid.org/euclid.ejs/1464710238/}
+  \url{https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-10/issue-1/Generalized-functional-additive-mixed-models/10.1214/16-EJS1145.full}
 }
 \seealso{
 \code{\link[mgcv]{smooth.terms}} for details of \code{mgcv} syntax

@@ -137,7 +137,7 @@ print(cbind(fitted(m)[ c(1:5,10:15)],p))
 Reiss, P. T., Miller, D. L., Wu, P.-S., and Wen-Yu Hua, W.-Y.
 Penalized nonparametric scalar-on-function regression via principal
 coordinates. Under revision. Available at
-\url{https://works.bepress.com/phil_reiss/42/}.
+\url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5714326/}.
 }
 \author{
 David L Miller, based on code from Lan Huo and Phil Reiss

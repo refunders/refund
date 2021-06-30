@@ -48,7 +48,6 @@ An example of how to use this function in practice is shown in
 \references{
 Gower, J. C. (1968). Adding a point to vector diagrams in
 multivariate analysis. Biometrika, 55(3), 582-585.
-\url{https://doi.org/10.1093/biomet/55.3.582}
 
 Miller, D. L. (2012). On smooth models for complex domains and distances. PhD
 dissertation, Department of Mathematical Sciences, University of Bath.

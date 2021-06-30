@@ -216,7 +216,6 @@ Analysis with R and MATLAB}. New York: Springer.
 
 Reiss, P. T. (2006).  Regression with signals and images as predictors.
 Ph.D. dissertation, Department of Biostatistics, Columbia University.
-Available at \url{https://works.bepress.com/phil_reiss/11/}.
 
 Reiss, P. T., and Ogden, R. T. (2007).  Functional principal component
 regression and functional partial least squares.  \emph{Journal of the

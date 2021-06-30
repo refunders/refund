@@ -97,7 +97,7 @@ of eigenvalues accounting for at least 0.995 of the total variance in
 For background on \code{check.ident}:\cr Scheipl, F., Greven,
   S. (2016). Identifiability in penalized function-on-function regression
   models. Electronic Journal of Statistics, 10(1), 495--526.
-  \url{https://projecteuclid.org/euclid.ejs/1457123504}
+  \url{https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-10/issue-1/Identifiability-in-penalized-function-on-function-regression-models/10.1214/16-EJS1123.full}
 }
 \seealso{
 \code{mgcv}'s \code{\link[mgcv]{linear.functional.terms}}

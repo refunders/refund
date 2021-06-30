@@ -156,7 +156,7 @@ axisIntervals(1)
 Reiss, P. T., Huang, L., and Mennes, M. (2010).  Fast
 function-on-scalar regression with penalized basis expansions.
 \emph{International Journal of Biostatistics}, 6(1), article 28.  Available
-at \url{https://works.bepress.com/phil_reiss/16/}
+at \url{https://pubmed.ncbi.nlm.nih.gov/21969982/}
 }
 \seealso{
 \code{\link{fosr}}
