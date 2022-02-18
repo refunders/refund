@@ -333,19 +333,24 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
                    ncol(A), ". Using ", ncol(A), "."))
     N <- ncol(A)
   }
+  
   npc <- N
+  
+  Ytilde <- as.matrix(t(A0)%*%(Bt%*%t(Y.pred)))   
+  sigmahat2 <- max(mean(Y[!Index.miss]^2) -sum(Sigma),0) 
+  Xi <- t(Ytilde)%*%(matrix(A[,1:N], ncol = N)/sqrt(J)) 
+  Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J)) 
 
-  Ytilde <- as.matrix(t(A0)%*%(Bt%*%t(Y.pred)))
-  sigmahat2 <- max(mean(Y[!Index.miss]^2) -sum(Sigma),0)
-  Xi <- t(Ytilde)%*%(A[,1:N]/sqrt(J))
-  Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J))
+  eigenvectors = as.matrix(B%*%(A0%*% matrix(A[,1:N], ncol = N))) 
+  eigenvalues = Sigma[1:N] 
 
-  eigenvectors = as.matrix(B%*%(A0%*%A[,1:N]))
-  eigenvalues = Sigma[1:N] #- sigmahat2/J
-
-  Yhat <- t(A[,1:N])%*%Ytilde
-  Yhat <- as.matrix(B%*%(A0%*%A[,1:N]%*%diag(eigenvalues/(eigenvalues+sigmahat2/J))%*%Yhat))
-  Yhat <- t(Yhat + meanX)
+  Yhat <- t(matrix(A[,1:N], ncol = N))%*%Ytilde 
+  if(N > 1){
+    Yhat <- as.matrix(B %*%( A0%*%matrix(A[,1:N], ncol = N) %*% diag(eigenvalues/(eigenvalues+sigmahat2/J))%*%Yhat ) ) 
+  }else{
+    Yhat <- as.matrix(B %*%( A0 %*% matrix(A[,1:N], ncol = N)  %*% Yhat * eigenvalues/(eigenvalues+sigmahat2/J)))
+  }
+  Yhat <- t(Yhat + meanX)  
 
 
   scores <- sqrt(J)*Xi[,1:N]
