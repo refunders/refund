@@ -1,3 +1,8 @@
+# refund 0.1-25	
+
+* Minor bug fixes in `fpca.face` to patch error when npc = 1
+
+
 # refund 0.1-24	
 
 * Minor bug fixes in `pfr` to patch error in R version 4.1

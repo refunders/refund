@@ -4,7 +4,11 @@
 \alias{expand.call}
 \title{Return call with all possible arguments}
 \usage{
-\method{expand}{call}(definition = NULL, call = sys.call(sys.parent(1)), expand.dots = TRUE)
+expand.call(
+  definition = NULL,
+  call = sys.call(sys.parent(1)),
+  expand.dots = TRUE
+)
 }
 \arguments{
 \item{definition}{a function. See \code{\link[base]{match.call}}.}
