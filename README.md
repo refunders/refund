@@ -12,6 +12,10 @@ Regression with scalar responses and functional predictors is implemented in fun
 Regularized covariance and FPC estimation is implemented in functions `fpca.sc`,
 `fpca.ssvd`, `fpca.face`, `fpca2s`.
 
+
+Shiny-based interactive graphics for visualizing results from `fpca` and regression methods in `refund` can be generated using the `plot_shiny()` function in the `refund.shiny` package.
+
+
 Wavelet-based functional regression methods with scalar responses and functional predictors can be found in the `wcr` and `wnet` functions in the `refund.wave` package.
 
 ---------------
