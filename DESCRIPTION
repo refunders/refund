@@ -1,8 +1,8 @@
 Package: refund
 Type: Package
 Title: Regression with Functional Data
-Version: 0.1-25
-Date: 2022-02-18
+Version: 0.1-26
+Date: 2022-04-10
 Authors@R: c(
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
@@ -22,7 +22,9 @@ Authors@R: c(
     person(c("Madan", "Gopal"), "Kundu", role="ctb"),
     person("So Young", "Park", role="ctb", email="spark13@ncsu.edu"),
     person(c("David", "L."), "Miller", role="ctb", email="dave@ninepointeightone.net"),
-    person("Ana-Maria", "Staicu", role="ctb", email="ana-maria_staicu@ncsu.edu"))
+    person("Ana-Maria", "Staicu", role="ctb", email="ana-maria_staicu@ncsu.edu"),
+    person("Erjia", "Cui", role="ctb", email="ecui1@jhmi.edu"),
+    person("Ruonan", "Li", role="ctb", email="rli20@ncsu.edu"))
 Depends:
     R (>= 3.00.0)
 Imports:
@@ -42,7 +44,8 @@ Imports:
     ggplot2,
     stats,
     pbs,
-    methods
+    methods,
+    simex
 Suggests:
     RColorBrewer,
     reshape2,
@@ -147,7 +150,10 @@ Collate:
     'f_sum4.R'
     'f_trace.R'
     'mfpca.sc.R'
+    'mfpca.face.R'
+    'face.Cov.mfpca.R'
     'fpca.lfda.R'
     'predict.fbps.R'
     'select_knots.R'
 RoxygenNote: 7.1.2
+Encoding: UTF-8
