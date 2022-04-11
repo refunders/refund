@@ -35,13 +35,14 @@
 #' @param silent Logical, indicating whether to not display the name of each step.
 #' Defaults to \code{TRUE}.
 #' 
-#' @return An object of class \code{mfpca} containing:
+#' @return A list containing:
 #' \item{Xhat}{FPC approximation (projection onto leading components)
 #' of \code{Y}, estimated curves for all subjects and visits}
 #' \item{Xhat.subject}{Estimated subject specific curves for all subjects}
 #' \item{Y}{The observed data}
-#' \item{scores}{A matrix of estimated FPC scores for level1 and level2.} 
 #' \item{mu}{estimated mean function (or a vector of zeroes if \code{center==FALSE}).} 
+#' \item{eta}{The estimated visit specific shifts from overall mean.}
+#' \item{scores}{A matrix of estimated FPC scores for level1 and level2.} 
 #' \item{efunctions}{A matrix of estimated eigenfunctions of the functional
 #' covariance, i.e., the FPC basis functions for levels 1 and 2.} 
 #' \item{evalues}{Estimated eigenvalues of the covariance operator, i.e., variances 
@@ -50,7 +51,6 @@
 #' number of basis functions needed to explain proportion \code{pve} of the
 #' variance in the observed curves for levels 1 and 2.} 
 #' \item{sigma2}{Estimated measurement error variance.} 
-#' \item{eta}{The estimated visit specific shifts from overall mean.}
 #' 
 #' @author Ruonan Li \email{rli20@@ncsu.edu}, Erjia Cui \email{ecui1@@jhmi.edu}
 #' 
@@ -69,7 +69,6 @@
 #' @importFrom splines spline.des
 #' @importFrom mgcv s smooth.construct gam predict.gam
 #' @importFrom MASS ginv
-#' @importFrom simex diag.block
 #' @importFrom Matrix crossprod
 #' @importFrom stats smooth.spline optim
 #' 
@@ -380,7 +379,7 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
         }
       }
       C <- t(B)
-      invD = diag.block(temp, Jm)
+      invD <- kronecker(diag(1, Jm), temp)
       
       ## calculate inverse of each block components separately
       MatE <- ginv(A-B%*%invD%*%C)
@@ -436,7 +435,7 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
         }
       }
       C <- t(B)
-      invD = diag.block(temp, Jm)
+      invD <- kronecker(diag(1, Jm), temp)
       
       ## calculate inverse of each block components separately
       MatE <- ginv(A-B%*%invD%*%C)
@@ -472,8 +471,8 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
   ###################################################################
   if(silent == FALSE) print("Organize the results")
   
-  res <- list(Xhat = Xhat, Xhat.subject = Xhat.subject, mu = mu, eta = eta, scores = scores, 
-              efunctions = efunctions, evalues = evalues, npc = npc, sigma2 = sigma2, Y = df$Y)
+  res <- list(Xhat = Xhat, Xhat.subject = Xhat.subject, Y = df$Y, mu = mu, eta = eta, scores = scores, 
+              efunctions = efunctions, evalues = evalues, npc = npc, sigma2 = sigma2)
   
   rm(df, efunctions, eta, evalues, mueta, nVisits, npc, scores, Xhat, Xhat.subject, 
      argvals, diag_Gt, I, ID, J, mu, pve, L, sigma2)

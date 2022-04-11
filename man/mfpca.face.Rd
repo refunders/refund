@@ -55,13 +55,14 @@ If given, this overrides \code{pve}.}
 Defaults to \code{TRUE}.}
 }
 \value{
-An object of class \code{mfpca} containing:
+A list containing:
 \item{Xhat}{FPC approximation (projection onto leading components)
 of \code{Y}, estimated curves for all subjects and visits}
 \item{Xhat.subject}{Estimated subject specific curves for all subjects}
 \item{Y}{The observed data}
-\item{scores}{A matrix of estimated FPC scores for level1 and level2.} 
 \item{mu}{estimated mean function (or a vector of zeroes if \code{center==FALSE}).} 
+\item{eta}{The estimated visit specific shifts from overall mean.}
+\item{scores}{A matrix of estimated FPC scores for level1 and level2.} 
 \item{efunctions}{A matrix of estimated eigenfunctions of the functional
 covariance, i.e., the FPC basis functions for levels 1 and 2.} 
 \item{evalues}{Estimated eigenvalues of the covariance operator, i.e., variances 
@@ -69,8 +70,7 @@ of FPC scores for levels 1 and 2.}
 \item{npc}{Number of FPCs: either the supplied \code{npc}, or the minimum
 number of basis functions needed to explain proportion \code{pve} of the
 variance in the observed curves for levels 1 and 2.} 
-\item{sigma2}{Estimated measurement error variance.} 
-\item{eta}{The estimated visit specific shifts from overall mean.}
+\item{sigma2}{Estimated measurement error variance.}
 }
 \description{
 Decompose dense or sparse multilevel functional observations using multilevel 

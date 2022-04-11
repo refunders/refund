@@ -44,8 +44,7 @@ Imports:
     ggplot2,
     stats,
     pbs,
-    methods,
-    simex
+    methods
 Suggests:
     RColorBrewer,
     reshape2,
