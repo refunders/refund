@@ -82,44 +82,30 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
   
   pspline.setting.mfpca <- function(x,knots=35,p=3,m=2,weight=NULL,type="full",
                                     knots.option="equally-spaced"){
-    # x: the marginal data points
-    # knots: the list of interior knots or the numbers of interior knots
-    # p: degrees for B-splines, with defaults values 3
-    # m: orders of difference penalty, with default values 2
-    # knots.option: type of knots placement, with default values "equally-spaced"
-    
-    #require(splines)
-    #require(Matrix)
-    
-    ### design matrix 
+    # design matrix 
     K = length(knots)-2*p-1
     B = spline.des(knots=knots, x=x, ord=p+1, outer.ok=TRUE,sparse=TRUE)$design
-    
     bs = "ps"
-    
     if(knots.option == "quantile"){
       bs = "bs"
     }
-    
     s.object = s(x=x, bs=bs, k=K+p, m=c(p-1,2), sp=NULL)
     object  = smooth.construct(s.object,data = data.frame(x=x),knots=list(x=knots))
     P =  object$S[[1]]
+    
     if(knots.option == "quantile") P = P / max(abs(P))*10 # rescaling
     
     if(is.null(weight)) weight <- rep(1,length(x))
     
     if(type=="full"){
-      
       Sig = crossprod(matrix.multiply.mfpca(B,weight,option=2),B)
       eSig = eigen(Sig)
       V = eSig$vectors
       E = eSig$values
-      if(min(E)<=0.0000001) {#cat("Warning! t(B)%*%B is singular!\n");
-        #cat("A small identity matrix is added!\n");
+      if(min(E)<=0.0000001) {
         E <- E + 0.000001;
       }
       Sigi_sqrt = matrix.multiply.mfpca(V,1/sqrt(E))%*%t(V)
-      
       tUPU = Sigi_sqrt%*%(P%*%Sigi_sqrt)
       Esig = eigen(tUPU,symmetric=TRUE)
       U = Esig$vectors
@@ -136,19 +122,15 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
     }
     
     List = list("A" = A, "B" = B, "s" = s, "Sigi.sqrt" = Sigi_sqrt, "U" = U, "P" = P)
-    
     return(List)
   }
   
-  ## a function supposed to be in the refund package
-  quadWeights.mfpca <- function(argvals, method = "trapezoidal")
-  {
+  quadWeights.mfpca <- function(argvals, method = "trapezoidal"){
     ret <- switch(method,
                   trapezoidal = {D <- length(argvals)
                   1/2*c(argvals[2] - argvals[1], argvals[3:D] -argvals[1:(D-2)], argvals[D] - argvals[D-1])},
                   midpoint = c(0,diff(argvals)),
                   stop("function quadWeights: choose either trapezoidal or midpoint quadrature rule"))
-    
     return(ret)  
   }
   
@@ -235,14 +217,14 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
   if(length(knots)>1) K.p <- length(knots)-2*p-1
   if(K.p>=L) cat("Too many knots!\n")
   stopifnot(K.p < L)
-  c.p <- K.p + p #the number of B-spline basis functions
+  c.p <- K.p + p # the number of B-spline basis functions
   
   ## Precalculation for smoothing
   List <- pspline.setting.mfpca(argvals, knots, p, m)
-  B <- List$B #B is the J by c design matrix
-  Sigi.sqrt <- List$Sigi.sqrt #(t(B)B)^(-1/2)
-  s <- List$s #eigenvalues of Sigi_sqrt%*%(P%*%Sigi_sqrt)
-  U <- List$U #eigenvectors of Sigi_sqrt%*%(P%*%Sigi_sqrt)
+  B <- List$B # B is the J by c design matrix
+  Sigi.sqrt <- List$Sigi.sqrt # (t(B)B)^(-1/2)
+  s <- List$s # eigenvalues of Sigi_sqrt%*%(P%*%Sigi_sqrt)
+  U <- List$U # eigenvectors of Sigi_sqrt%*%(P%*%Sigi_sqrt)
   A0 <- Sigi.sqrt %*% U
   G <- crossprod(B) / nrow(B)
   eig_G <- eigen(G, symmetric = T)
@@ -251,6 +233,7 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
   Bnew <- as.matrix(B %*% G_invhalf) #the transformed basis functions
   Anew <- G_half %*% A0
   rm(List, Sigi.sqrt, U, G, eig_G, G_half)
+  
   
   ##################################################################################
   ## Impute missing data of Y using FACE and estimate the total covariance (Kt)
