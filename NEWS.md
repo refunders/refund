@@ -1,3 +1,8 @@
+# refund 0.1-26	
+
+* New function, `mfpca.face`, which is a faster version of `mfpca.sc`
+
+
 # refund 0.1-25	
 
 * Minor bug fixes in `fpca.face` to patch error when npc = 1
