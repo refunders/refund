@@ -1,7 +1,7 @@
 # `refund`
 [![](https://travis-ci.org/refunders/refund.svg?branch=master)](https://travis-ci.org/refunders/refund)
 
-[![](http://cranlogs.r-pkg.org/badges/refund)](http://cran.rstudio.com/web/packages/refund/index.html)
+[![](http://cranlogs.r-pkg.org/badges/refund)](https://cran.rstudio.com/web/packages/refund/index.html)
 
 ## Methods for regression with functional data
 

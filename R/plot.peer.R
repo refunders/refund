@@ -29,7 +29,7 @@
 
 ### Function to plot estimated regression function
 plot.peer<- function(x, conf=0.95, ylab='Estimated regression function', main=expression(gamma),...){
-  if(!class(x)=='peer') return (cat("Error: The object is not an peer object.\n"))
+  if(!inherits(x, "peer")) return (cat("Error: The object is not an peer object.\n"))
   if(conf>0.99 | conf<0.70) return (cat("Error: Confidence level should be within 0.70 and 0.99\n"))
   status<- x$status
   est<- x$GammaHat

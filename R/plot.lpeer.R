@@ -32,7 +32,7 @@
 ##' }
 ### Function to plot estimated regression function
 plot.lpeer<- function(x, conf=0.95, ...){
-  if(!class(x)=='lpeer') return (cat("Error: The object is not an lpeer object.\n"))
+  if(!inherits(x, "lpeer")) return (cat("Error: The object is not an lpeer object.\n"))
   if(conf>0.99 | conf<0.70) return (cat("Error: Confidence level should be within 0.70 and 0.99\n"))
   d<- x$d
   status<- x$status

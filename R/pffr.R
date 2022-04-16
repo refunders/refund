@@ -173,7 +173,7 @@
 #'
 #'   F. Scheipl, J. Gertheiss, S. Greven (2016):  Generalized Functional Additive Mixed Models,
 #'   Electronic Journal of Statistics, 10(1), 1455--1492.
-#'   \url{https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-10/issue-1/Generalized-functional-additive-mixed-models/10.1214/16-EJS1145.full}
+#'   \url{https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-10/issue-1/Generalized-functional-additive-mixed-models/10.1214}
 #' @export
 #' @importFrom mgcv ti jagam gam gam.fit bam gamm
 #' @importFrom gamm4 gamm4

@@ -5,9 +5,7 @@
 \alias{cd4}
 \title{Observed CD4 cell counts}
 \format{
-A data frame made up of \describe{ \item{list("cd4")}{A 366 x 61
-matrix of CD4 cell counts.}\item{ }{A 366 x 61 matrix of CD4 cell counts.}
-}
+A data frame made up of a 366 x 61 matrix of CD4 cell counts
 }
 \description{
 CD4 cell counts for 366 subjects between months -18 and 42 since
