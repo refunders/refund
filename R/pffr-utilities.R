@@ -64,6 +64,8 @@ getShrtlbls <- function(object){
                 #make a parseable expression for ffpc terms
                 if(grepl("^ffpc", x)){
                     ffpcnumber <- gsub("(^.+))([0-9]+$)","\\2", x)
+                    # special case: one FPC
+                    if (ffpcnumber == x) ffpcnumber <- 1
                     x <- gsub(")[0-9]+",")",x)
                    }
                 exprx <- parse(text=x)
