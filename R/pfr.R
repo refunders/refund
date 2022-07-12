@@ -215,7 +215,7 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
 
   newtrmstrings <- attr(tf, "term.labels")
   if (!attr(tf, "intercept")) {
-    newfrml <- paste(newfrml, "0", sep = "")
+    newfrml <- paste(newfrml, "0 +", sep = "")
   }
 
   # Process refund-type terms
