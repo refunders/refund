@@ -12,8 +12,12 @@ ff(
   integration = c("simpson", "trapezoidal", "riemann"),
   L = NULL,
   limits = NULL,
-  splinepars = if (basistype != "s") {     list(bs = "ps", m = list(c(2, 1), c(2, 1)),
-    k = c(5, 5)) } else {     list(bs = "tp", m = NA) },
+  splinepars = if (basistype != "s") {
+     list(bs = "ps", m = list(c(2, 1), c(2, 1)),
+    k = c(5, 5))
+ } else {
+     list(bs = "tp", m = NA)
+ },
   check.ident = TRUE
 )
 }

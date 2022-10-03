@@ -25,7 +25,8 @@ fpca.face(
   method = "L-BFGS-B",
   lower = -20,
   upper = 20,
-  control = NULL
+  control = NULL,
+  periodicity = FALSE
 )
 }
 \arguments{
