@@ -177,7 +177,7 @@ predict.pffr <- function(object,
                             Xct <- t(newdata[[cov]]) - as.vector(ffpc$meanX)
                             xiMat <- t(qr.coef(qr(ffpc$PCMat), Xct))
                             colnames(xiMat) <- paste(make.names(cov),".PC", 1:ncol(xiMat), sep="")
-                            xiMat <- xiMat[rep(1:nobs, each=nyindex), ]
+                            xiMat <- xiMat[rep(1:nobs, each = nyindex), , drop = FALSE]
                             for(nm in colnames(xiMat)){
                                 gamdata[[nm]] <- xiMat[,nm]
                             }

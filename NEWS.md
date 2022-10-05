@@ -1,3 +1,7 @@
+# refund 0.1-27	
+
+* bug fix for `pfr` models without intercept (thx, @ZheyuanLi)
+
 # refund 0.1-26	
 
 * New function, `mfpca.face`, which is a faster version of `mfpca.sc`
