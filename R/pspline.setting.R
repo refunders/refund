@@ -18,7 +18,7 @@ if(periodicity){
 }
 
 
-difference.penalty <-function(m,p,K,periodicity=FALSE){
+difference.penalty <-function(m,p,K,periodicity=periodicity){
   
   # parameter  m: difference order
   # parameter  p: degree of B-splines
