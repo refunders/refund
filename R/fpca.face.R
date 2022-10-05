@@ -54,6 +54,7 @@
 #' @param lower see \code{\link[stats]{optim}}
 #' @param upper see \code{\link[stats]{optim}}
 #' @param control see \code{\link[stats]{optim}}
+#' @param periodicity Option for a periodic spline basis. Defaults to FALSE.
 #' @return A list with components
 #' \enumerate{
 #' \item \code{Yhat} - If \code{Y.pred} is specified, the smooth version of

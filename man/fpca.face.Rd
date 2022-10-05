@@ -83,6 +83,8 @@ Otherwise, \code{\link[stats]{optim}} is used}
 \item{upper}{see \code{\link[stats]{optim}}}
 
 \item{control}{see \code{\link[stats]{optim}}}
+
+\item{periodicity}{Option for a periodic spline basis. Defaults to FALSE.}
 }
 \value{
 A list with components
