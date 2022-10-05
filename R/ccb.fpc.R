@@ -112,7 +112,7 @@ function(Y, argvals=NULL, nbasis = 10, pve = .99, n.boot = 100, simul = FALSE, s
     Fit.Iter = try(fpca.sc(Y = Y.Boot, Y.pred = Y, argvals = argvals, nbasis = nbasis, pve = pve, var = TRUE, simul = FALSE))
 
     ## save estimates and variances
-    if(class(Fit.Iter) != "try-error"){
+    if(!inherits(Fit.Iter, "try-error")){
       n.succ = n.succ + 1
       for(i.subj in 1:I){
         Yhat.boot[[i.subj]][i.boot,] = Fit.Iter$Yhat[i.subj,]

@@ -2,7 +2,7 @@
 #' @rdname fosr.perm
 fosr.perm.test <-
 function(x, level=.05) {
-	if (class(x)!="fosr.perm") stop("First argument must be an object of class 'fosr.perm")
+	if (!inherits(x, "fosr.perm")) stop("First argument must be an object of class 'fosr.perm")
     x$level = level
     critval = quantile(apply(x$F.perm, 1, max), 1-level, type=1)
     x$critval=critval

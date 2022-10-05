@@ -1,3 +1,9 @@
+# refund 0.1-28	
+
+* added periodic spline option for `fpca.face`
+* changed if(class(object) != "string") to if(!inherits(object, "string")) in `ccb.fpc.R` and `fosr.perm.test.R` files to fix Note.
+
+
 # refund 0.1-27	
 
 * bug fix for `pfr` models without intercept (thx, @ZheyuanLi)
