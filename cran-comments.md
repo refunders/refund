@@ -1,3 +1,11 @@
+## CRAN submission 0.1-28
+
+The Date field is not in ISO 8601 yyyy-mm-dd format.
+
+* Fixed for resubmission
+
+
+
 ## Test environments
 * local windows 8 x64, R 3.1.3
 * win-builder (devel and release)
