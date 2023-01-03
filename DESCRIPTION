@@ -1,8 +1,8 @@
 Package: refund
 Type: Package
 Title: Regression with Functional Data
-Version: 0.1-28
-Date: 2022-10-06
+Version: 0.1-29
+Date: 2023-01-03
 Authors@R: c(
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
@@ -155,5 +155,5 @@ Collate:
     'fpca.lfda.R'
     'predict.fbps.R'
     'select_knots.R'
-RoxygenNote: 7.2.0
+RoxygenNote: 7.2.1
 Encoding: UTF-8

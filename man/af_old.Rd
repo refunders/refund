@@ -11,8 +11,8 @@ af_old(
   basistype = c("te", "t2", "s"),
   integration = c("simpson", "trapezoidal", "riemann"),
   L = NULL,
-  splinepars = list(bs = "ps", k = c(min(ceiling(nrow(X)/5), 20),
-    min(ceiling(ncol(X)/5), 20)), m = list(c(2, 2), c(2, 2))),
+  splinepars = list(bs = "ps", k = c(min(ceiling(nrow(X)/5), 20), min(ceiling(ncol(X)/5),
+    20)), m = list(c(2, 2), c(2, 2))),
   presmooth = TRUE,
   Xrange = range(X),
   Qtransform = FALSE
