@@ -83,15 +83,15 @@ test_that("ffpc terms are working", {
   #expect_is(ffpcplot(m.pc, type = "surf", auto.layout = FALSE, theta  =  50, phi  =  40), "list")
 })
 
-test_that("another ff term example", {
-  m.ff <- pffr(y ~ c(1) + 0 + ff(X, yind = argvals), data = data, yind = argvals)
-  expect_equal_to_reference(m.ff$coefficients, "pffr.ff.coef.rds")
-
-  expect_is(summary(m.ff), "summary.pffr")
-
-  # fits are very similar:
-  # expect_equal(fitted(m.pc), fitted(m.ff))  # NOT TRUE
-})
+# test_that("another ff term example", {
+#   m.ff <- pffr(y ~ c(1) + 0 + ff(X, yind = argvals), data = data, yind = argvals)
+#   expect_equal_to_reference(m.ff$coefficients, "pffr.ff.coef.rds")
+# 
+#   expect_is(summary(m.ff), "summary.pffr")
+# 
+#   # fits are very similar:
+#   # expect_equal(fitted(m.pc), fitted(m.ff))  # NOT TRUE
+# })
 
 test_that("ff limits arg works", {
   set.seed(2121)

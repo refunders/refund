@@ -23,8 +23,7 @@
 ##' (the default, 4, gives cubic splines).
 ##' @param pen.order order of derivative penalty.
 ##' @param basistype type of basis used. The basis is created by an appropriate
-##' constructor function from the \pkg{fda} package; see
-##' \code{\link[fda]{basisfd}}. Only \code{"bspline"} and \code{"fourier"} are
+##' constructor function from the \pkg{fda} package; see basisfd. Only \code{"bspline"} and \code{"fourier"} are
 ##' supported.
 ##' @return An object of class \code{fosr}, which is a list with the following
 ##' elements: \item{fd}{object of class \code{"\link{fd}"} representing the
@@ -46,26 +45,6 @@
 ##' @references Fan, J., and Zhang, J.-T. (2000). Two-step estimation of
 ##' functional linear models with applications to longitudinal data.
 ##' \emph{Journal of the Royal Statistical Society, Series B}, 62(2), 303--322.
-##' @examples
-##'
-##' require(fda)
-##'
-##' # Effect of latitude on daily mean temperatures
-##' tempmat = t(CanadianWeather$dailyAv[,,1])
-##' latmat = cbind(1, scale(CanadianWeather$coord[ , 1], TRUE, FALSE))  # centred!
-##' fzmod <- fosr2s(tempmat, latmat, argvals=day.5, basistype="fourier", nbasis=25)
-##'
-##' par(mfrow=1:2)
-##' ylabs = c("Intercept", "Latitude effect")
-##' for (k in 1:2) {
-##' 	with(fzmod,matplot(day.5, cbind(raw.coef[,k],raw.coef[,k]-2*raw.se[,k],
-##' 	     raw.coef[,k]+2*raw.se[,k],est.func[,k],est.func[,k]-2*se.func[,k],
-##' 	     est.func[,k]+2*se.func[,k]), type=c("p","l","l","l","l","l"),pch=16,
-##' 	     lty=c(1,2,2,1,2,2),col=c(1,1,1,2,2,2), cex=.5,axes=FALSE,xlab="",ylab=ylabs[k]))
-##'     axesIntervals()
-##'     box()
-##'     if (k==1) legend("topleft", legend=c("Raw","Smoothed"), col=1:2, lty=2)
-##' }
 ##'
 ##' @export
 ##' @importFrom fda create.bspline.basis create.fourier.basis eval.basis getbasispenalty
@@ -76,7 +55,7 @@ fosr2s <- function (Y, X, argvals = seq(0,1,,ncol(Y)), nbasis = 15, norder = 4,
     # Stage 1: raw estimates
     n = dim(X)[1]
     p = dim(X)[2]
-    XtX.inv = solve(crossprod(X))
+    XtX.inv = solve(crossprod(X), tol = 0)
     raw.coef = t(XtX.inv %*% crossprod(X, Y))
     resmat = Y - X %*% t(raw.coef)
     covmat = cov(resmat)  # TODO: add more sophisticated covariance methods?
@@ -99,7 +78,7 @@ fosr2s <- function (Y, X, argvals = seq(0,1,,ncol(Y)), nbasis = 15, norder = 4,
     	lambda[j] <- swmod$sp
     	coefmat[ , j] <- swmod$coef
     	est.func[ , j] <- fitted(swmod)
-    	m1 <- Bmat %*% solve(crossprod(Bmat) + swmod$sp * P)
+    	m1 <- Bmat %*% solve(crossprod(Bmat) + swmod$sp * P, tol = 0)
     	se.func[ , j] <- sqrt(XtX.inv[j,j] * rowSums(m1 * (m1 %*% Bt.Sig.B)))
     }
 

@@ -1,3 +1,7 @@
+## CRAN submission 0.1-29
+
+* Fixed errors due to failure to find CanadianWeather data in examples
+
 ## CRAN submission 0.1-28
 
 The Date field is not in ISO 8601 yyyy-mm-dd format.

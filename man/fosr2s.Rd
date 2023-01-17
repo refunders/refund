@@ -33,8 +33,7 @@ functions.}
 \item{pen.order}{order of derivative penalty.}
 
 \item{basistype}{type of basis used. The basis is created by an appropriate
-constructor function from the \pkg{fda} package; see
-\code{\link[fda]{basisfd}}. Only \code{"bspline"} and \code{"fourier"} are
+constructor function from the \pkg{fda} package; see basisfd. Only \code{"bspline"} and \code{"fourier"} are
 supported.}
 }
 \value{
@@ -66,28 +65,6 @@ coefficient functions by minimizing a penalized criterion, this function
 introduces smoothing only as a second step. The idea was proposed by Fan
 and Zhang (2000), who employed local polynomials rather than roughness
 penalization for the smoothing step.
-}
-\examples{
-
-require(fda)
-
-# Effect of latitude on daily mean temperatures
-tempmat = t(CanadianWeather$dailyAv[,,1])
-latmat = cbind(1, scale(CanadianWeather$coord[ , 1], TRUE, FALSE))  # centred!
-fzmod <- fosr2s(tempmat, latmat, argvals=day.5, basistype="fourier", nbasis=25)
-
-par(mfrow=1:2)
-ylabs = c("Intercept", "Latitude effect")
-for (k in 1:2) {
-	with(fzmod,matplot(day.5, cbind(raw.coef[,k],raw.coef[,k]-2*raw.se[,k],
-	     raw.coef[,k]+2*raw.se[,k],est.func[,k],est.func[,k]-2*se.func[,k],
-	     est.func[,k]+2*se.func[,k]), type=c("p","l","l","l","l","l"),pch=16,
-	     lty=c(1,2,2,1,2,2),col=c(1,1,1,2,2,2), cex=.5,axes=FALSE,xlab="",ylab=ylabs[k]))
-    axesIntervals()
-    box()
-    if (k==1) legend("topleft", legend=c("Raw","Smoothed"), col=1:2, lty=2)
-}
-
 }
 \references{
 Fan, J., and Zhang, J.-T. (2000). Two-step estimation of
