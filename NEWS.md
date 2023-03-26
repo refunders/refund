@@ -1,3 +1,7 @@
+# refund 0.1-30
+
+* removed import lattice::qq from pffr-methods.R
+
 # refund 0.1-28	
 
 * added periodic spline option for `fpca.face`

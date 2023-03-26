@@ -1,3 +1,8 @@
+## CRAN submission 0.1-30
+
+Version: 0.1-29
+Check: S3 generic/method consistency
+
 ## CRAN submission 0.1-29
 
 * Fixed errors due to failure to find CanadianWeather data in examples

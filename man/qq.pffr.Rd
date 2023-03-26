@@ -4,7 +4,7 @@
 \alias{qq.pffr}
 \title{QQ plots for pffr model residuals}
 \usage{
-\method{qq}{pffr}(
+qq.pffr(
   object,
   rep = 0,
   level = 0.9,
