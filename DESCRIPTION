@@ -128,6 +128,8 @@ Collate:
     'vis.fgam.R'
     'predict.fosr.vs.R'
     'CD4-data.R'
+    'content-data.R'
+    'COVID19-data.R'
     'DTI-data.R'
     'DTI2-data.R'
     'PEER.Sim-data.R'
