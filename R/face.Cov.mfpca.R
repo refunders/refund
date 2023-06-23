@@ -106,7 +106,7 @@ face.Cov.mfpca <- function(Y, argvals, A0, B, Anew, Bnew, G_invhalf, s, Cov=FALS
     ########   data imputation      #########
     #########################################
     if(imputation) {
-      Phi.N <- Phi[,1:N]
+      Phi.N <- Phi[,1:N, drop = FALSE]
       A.N <- G_invhalf %*% A[,1:N]
       d <- Sigma[1:N]
       sigmahat2  <-  max(mean(Y[!Index.miss]^2) -sum(Sigma),0)
@@ -122,7 +122,7 @@ face.Cov.mfpca <- function(Y, argvals, A0, B, Anew, Bnew, G_invhalf, s, Cov=FALS
     
   } ## end of while loop
   
-  Phi.N <- Phi[,1:N]
+  Phi.N <- Phi[,1:N, drop = FALSE]
   evalues <- Sigma[1:N]
   Ktilde <- NULL
   if(Cov) {
