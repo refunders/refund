@@ -4,7 +4,7 @@
 #' functional principal component analysis with the fast covariance estimation 
 #' approach. 
 #' 
-#' The fast MFPCA approach (Cui et al., 2022+) uses FACE (Xiao et al., 2016) to estimate 
+#' The fast MFPCA approach (Cui et al., 2023) uses FACE (Xiao et al., 2016) to estimate 
 #' covariance functions and mixed model equations (MME) to predict 
 #' scores for each level. As a result, it has lower computational complexity than 
 #' MFPCA (Di et al., 2009) implemented in the \code{mfpca.sc} function, and
@@ -54,12 +54,13 @@
 #' 
 #' @author Ruonan Li \email{rli20@@ncsu.edu}, Erjia Cui \email{ecui1@@jhmi.edu}
 #' 
-#' @references Cui, E., Li, R., Crainiceanu, C., and Xiao, L. (2022+). Fast multilevel
-#' functional principal component analysis.
+#' @references Cui, E., Li, R., Crainiceanu, C., and Xiao, L. (2023). Fast multilevel
+#' functional principal component analysis. \emph{Journal of Computational and 
+#' Graphical Statistics}, 32(3), 366-377.
 #' 
 #' Di, C., Crainiceanu, C., Caffo, B., and Punjabi, N. (2009).
 #' Multilevel functional principal component analysis. \emph{Annals of Applied
-#' Statistics}, 3, 458--488.
+#' Statistics}, 3, 458-488.
 #' 
 #' Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C. (2016).
 #' Fast covariance estimation for high-dimensional functional data.  
