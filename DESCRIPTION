@@ -1,13 +1,13 @@
 Package: refund
 Type: Package
 Title: Regression with Functional Data
-Version: 0.1-30
-Date: 2023-03-23
+Version: 0.1-31
+Date: 2023-06-26
 Authors@R: c(
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
     person("Lei", "Huang", role = "aut", email = "huangracer@gmail.com"),
-    person("Julia", "Wrobel", role = c("aut","cre"), email="julia.wrobel@cuanschutz.edu"),
+    person("Julia", "Wrobel", role = c("aut","cre"), email="julia.wrobel@emory.edu"),
     person("Chongzhi", "Di", role = "aut", email = "cdi@fredhutch.org"),
     person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"),
     person("Jaroslaw", "Harezlak", role="aut"),
