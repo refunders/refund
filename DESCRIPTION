@@ -27,7 +27,7 @@ Authors@R: c(
     person("Ruonan", "Li", role="ctb", email="rli20@ncsu.edu"),
     person("Zheyuan", "Li", role="ctb"))
 Depends:
-    R (>= 3.00.0)
+    R (>= 3.5.0)
 Imports:
     fda,
     Matrix,

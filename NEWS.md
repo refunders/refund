@@ -1,3 +1,10 @@
+# refund 0.1-31
+
+* added COVID19 datasets
+* minor bug fix for mfpca.face
+* updated email address for package maintainer
+
+
 # refund 0.1-30
 
 * removed import lattice::qq from pffr-methods.R
