@@ -4,6 +4,9 @@
 ##'
 ##' @name COVID19
 ##' @docType data
+##' 
+##' @usage data(COVID19)
+##' 
 ##' @format A list made up of \describe{
 ##' \item{US_weekly_mort}{A numeric vector of length 207, which contains the 
 ##' total number of weekly all-cause deaths in the US from January 14, 2017 to December 26, 2020;}
@@ -47,5 +50,5 @@
 ##' in US_states_population and multiplying by one million.}
 ##' }
 ##' @references Crainiceanu, C., Goldsmith, J., Leroux, A., Cui, E. (2023). Functional
-##' Data Analysis with R. \emph{Chapman \& Hall/CRC Statistics}
+##' Data Analysis with R. \emph{Chapman & Hall/CRC Statistics}
 NULL
