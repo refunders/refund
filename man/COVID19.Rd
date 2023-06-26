@@ -48,10 +48,13 @@ to a state) of States_CV19_mortality by the population of that state stored
 in US_states_population and multiplying by one million.}
 }
 }
+\usage{
+data(COVID19)
+}
 \description{
 The COVID19 mortality data used in the "Functional Data Analysis with R" book
 }
 \references{
 Crainiceanu, C., Goldsmith, J., Leroux, A., Cui, E. (2023). Functional
-Data Analysis with R. \emph{Chapman \& Hall/CRC Statistics}
+Data Analysis with R. \emph{Chapman & Hall/CRC Statistics}
 }
