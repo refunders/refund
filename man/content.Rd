@@ -18,6 +18,9 @@ A list made up of \describe{
 \item{zbmi}{Numeric vector of the BMI-for-age z-scores;}
 }
 }
+\usage{
+data(content)
+}
 \description{
 The CONTENT child growth study was funded by the Sixth Framework Programme 
 of the European Union, Project CONTENT (INCO-DEV-3-032136) and was led by 
@@ -28,5 +31,5 @@ Lima city in Peru.
 }
 \references{
 Crainiceanu, C., Goldsmith, J., Leroux, A., Cui, E. (2023). Functional
-Data Analysis with R. \emph{Chapman \& Hall/CRC Statistics}
+Data Analysis with R. \emph{Chapman & Hall/CRC Statistics}
 }

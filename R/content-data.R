@@ -9,6 +9,9 @@
 ##'
 ##' @name content
 ##' @docType data
+##' 
+##' @usage data(content)
+##' 
 ##' @format A list made up of \describe{
 ##' \item{id}{Numeric vector of subject ID numbers;}
 ##' \item{ma1fe0}{Numeric vector of the sex of the child, 1 for male and 0 for female;}
@@ -22,5 +25,5 @@
 ##' \item{zbmi}{Numeric vector of the BMI-for-age z-scores;}
 ##' }
 ##' @references Crainiceanu, C., Goldsmith, J., Leroux, A., Cui, E. (2023). Functional
-##' Data Analysis with R. \emph{Chapman \& Hall/CRC Statistics}
+##' Data Analysis with R. \emph{Chapman & Hall/CRC Statistics}
 NULL
