@@ -1,3 +1,7 @@
+# refund 0.1-32
+
+* Simon Wood removed "pers" argument from mgcv::plot.random.effect. Removed reference to pers from plot_pfr.gam to avoid documentation and code being inconsistent.
+
 # refund 0.1-31
 
 * added COVID19 datasets

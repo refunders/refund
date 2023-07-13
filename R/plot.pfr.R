@@ -53,7 +53,7 @@ plot.pfr <- function(x, Qtransform=FALSE, ...) {
 #' @seealso \code{\link[mgcv]{plot.gam}}
 #' @keywords internal
 pfr_plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0,
-                         select = NULL, scale = -1, n = 100, n2 = 40, n3=3, pers = FALSE,
+                         select = NULL, scale = -1, n = 100, n2 = 40, n3=3,
                          theta = 30, phi = 30, jit = FALSE, xlab = NULL, ylab = NULL,
                          main = NULL, ylim = NULL, xlim = NULL, too.far = 0.1, all.terms = FALSE,
                          shade = FALSE, shade.col = "gray80", shift = 0, trans = I,
@@ -142,7 +142,7 @@ pfr_plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0
       attr(x$smooth[[i]], "coefficients") <- x$coefficients[first:last]
       P <- plot(x$smooth[[i]], P = NULL, data = x$model,
                 partial.resids = partial.resids, rug = rug, se = se,
-                scale = scale, n = n, n2 = n2, pers = pers, theta = theta,
+                scale = scale, n = n, n2 = n2, theta = theta,
                 phi = phi, jit = jit, xlab = xlab, ylab = ylab,
                 main = main, label = term.lab, ylim = ylim, xlim = xlim,
                 too.far = too.far, shade = shade, shade.col = shade.col,
@@ -301,7 +301,7 @@ pfr_plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0
                                              i == select)) {
       plot(x$smooth[[i]], P = pd[[i]], partial.resids = partial.resids,
            rug = rug, se = se, scale = scale, n = n, n2 = n2,
-           pers = pers, theta = theta, phi = phi, jit = jit,
+          theta = theta, phi = phi, jit = jit,
            xlab = xlab, ylab = ylab, main = main, ylim = ylim,
            xlim = xlim, too.far = too.far, shade = shade,
            shade.col = shade.col, shift = shift, trans = trans,
@@ -336,7 +336,7 @@ pfr_plot.gam <- function (x, residuals = FALSE, rug = TRUE, se = TRUE, pages = 0
 #' @keywords internal
 plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1,
                               se2.mult = 2, partial.resids = FALSE, rug = TRUE, se = TRUE,
-                              scale = -1, n = 100, n2 = 40, pers = FALSE, theta = 30, phi = 30,
+                              scale = -1, n = 100, n2 = 40,  theta = 30, phi = 30,
                               jit = FALSE, xlab = NULL, ylab = NULL, main = NULL, ylim = NULL,
                               xlim = NULL, too.far = 0.1, shade = FALSE, shade.col = "gray80",
                               shift = 0, trans = I, by.resids = FALSE, scheme = 0, ...) {
@@ -625,8 +625,6 @@ plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1
       }
       else if (x$dim == 2) {
         P$fit[P$exclude] <- NA
-        if (pers)
-          scheme <- 1
         if (scheme == 1) {
           persp(P$x, P$y, matrix(trans(P$fit + shift),
                                  n2, n2), xlab = P$xlab, ylab = P$ylab, zlab = P$main,
@@ -692,8 +690,6 @@ plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1
         P$fit[P$exclude] <- NA
         if (!is.null(main))
           P$title <- main
-        if (pers)
-          scheme <- 1
         if (scheme == 1) {
           persp(P$x, P$y, matrix(trans(P$fit + shift),
                                  n2, n2), xlab = P$xlab, ylab = P$ylab, zlab = P$main,
