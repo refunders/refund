@@ -89,7 +89,7 @@ all.equal(fitted(m.pc), fitted(m.ff))
 layout(t(1:3))
 persp(t, s, t(beta.st), theta=50, phi=40, main="Truth",
     ticktype="detailed")
-plot(m.ff, select=1, pers=TRUE, zlim=range(beta.st), theta=50, phi=40,
+plot(m.ff, select=1, zlim=range(beta.st), theta=50, phi=40,
     ticktype="detailed")
 title(main="ff()")
 ffpcplot(m.pc, type="surf", auto.layout=FALSE, theta = 50, phi = 40)

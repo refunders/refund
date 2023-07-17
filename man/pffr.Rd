@@ -203,7 +203,7 @@ t <- attr(data1, "yindex")
 s <- attr(data1, "xindex")
 m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
 summary(m1)
-plot(m1, pers=TRUE, pages=1)
+plot(m1, pages=1)
 
 \dontrun{
 ###############################################################################
@@ -221,7 +221,7 @@ m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
         yind=t,
         data=data2)
 summary(m2)
-plot(m2, pers=TRUE)
+plot(m2)
 str(coef(m2))
 # convenience functions:
 preddata <- pffrSim(scenario="all", n=20)
@@ -239,7 +239,7 @@ data3 <- pffrSim(scenario=c("int", "smoo"), n=100, propmissing=0.8)
 t <- attr(data3, "yindex")
 m3.sparse <- pffr(Y ~ s(xsmoo), data=data3$data, ydata=data3$ydata, yind=t)
 summary(m3.sparse)
-plot(m3.sparse, pers=TRUE, pages=1)
+plot(m3.sparse,pages=1)
 }
 }
 \references{
