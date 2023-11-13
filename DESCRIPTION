@@ -2,7 +2,7 @@ Package: refund
 Type: Package
 Title: Regression with Functional Data
 Version: 0.1-32
-Date: 2023-07-17
+Date: 2023-11-13
 Authors@R: c(
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),

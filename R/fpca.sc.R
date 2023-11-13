@@ -277,10 +277,12 @@ fpca.sc <- function(Y = NULL, ydata = NULL, Y.pred = NULL, argvals = NULL, rando
   evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values
   ###
   evalues = replace(evalues, which(evalues <= 0), 0)
-  npc = ifelse(is.null(npc), min(which(cumsum(evalues)/sum(evalues) > pve)), npc)
+  per <- cumsum(evalues)/sum(evalues)
+  npc = ifelse(is.null(npc), min(which(per > pve)), npc)
   efunctions = matrix(Winvsqrt %*% eigen(V, symmetric = TRUE)$vectors[, seq(len = npc)],
     nrow = D, ncol = npc)
   evalues = eigen(V, symmetric = TRUE, only.values = TRUE)$values[1:npc]  # use correct matrix for eigenvalue problem
+  pve = per[npc]
   cov.hat = efunctions %*% tcrossprod(diag(evalues, nrow = npc, ncol = npc), efunctions)
   ### numerical integration for estimation of sigma2
   T.len <- argvals[D] - argvals[1]  # total interval length
@@ -322,7 +324,7 @@ fpca.sc <- function(Y = NULL, ydata = NULL, Y.pred = NULL, argvals = NULL, rando
   }
 
   ret.objects = c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc",
-    "argvals")
+    "argvals", "pve")
   if (var) {
     ret.objects = c(ret.objects, "sigma2", "diag.var", "VarMats")
     if (simul)
