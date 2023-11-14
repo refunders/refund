@@ -60,8 +60,8 @@ A list with the following entries:
 \item \code{call} - a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
 constructed covariate and weight matrices.
 \item \code{argvals} - the \code{argvals} argument supplied to \code{af}
-\item \code{L}{ the  matrix of weights used for the integration
-\item \code{xindname}{ the name used for the functional predictor variable in the \code{formula} used by \code{mgcv}.}
+\item \code{L}-the  matrix of weights used for the integration
+\item \code{xindname} - the name used for the functional predictor variable in the \code{formula} used by \code{mgcv}.
 \item \code{tindname} - the name used for \code{argvals} variable in the \code{formula} used by \code{mgcv}
 \item \code{Lname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
 \item \code{presmooth} - the \code{presmooth} argument supplied to \code{af}
@@ -70,7 +70,7 @@ constructed covariate and weight matrices.
 \item \code{ecdflist} - a list containing one empirical cdf function from applying \code{\link{ecdf}}
 to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}
 \item \code{Xfd} - an \code{fd} object from presmoothing the functional predictors using
-\code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}.}
+\code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}.
 }
 }
 \description{

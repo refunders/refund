@@ -30,7 +30,7 @@
 ##' @param nperm number of permutations.
 ##' @param prelim number of preliminary permutations.  The smoothing parameter
 ##' in the main permutations will be fixed to the median value from these
-##' preliminary permutations.  If \code{prelim=0}, this is not done. Preliminary 
+##' preliminary permutations.  If \code{prelim=0}, this is not done. Preliminary
 ##' permutations are not available when \code{multi.sp = TRUE} (hence the complicated default).
 ##' @param level significance level for the simultaneous test.
 ##' @param plot logical value indicating whether to plot the real- and
@@ -58,8 +58,8 @@
 ##' null hypothesis models.} \item{level}{significance level of the test.}
 ##' \item{critval}{critical value for the test.} \item{signif}{vector of
 ##' logical values indicating whether significance is attained at each of the
-##' points \code{argvals}.} \item{n2s}{subset of {1, \dots{},
-##' \code{length(argvals)}} identifying the points at which the test statistic
+##' points \code{argvals}.} \item{n2s}{subset of 1, ...,
+##' length(argvals) identifying the points at which the test statistic
 ##' changes from non-significant to significant.} \item{s2n}{points at which
 ##' the test statistic changes from significant to non-significant.}
 ##' @author Philip Reiss \email{phil.reiss@@nyumc.org} and Lan Huo

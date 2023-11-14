@@ -55,10 +55,10 @@ predict.pffr <- function(object,
                          se.fit = FALSE,
                          ...){
   #browser()
-  
+
   call <- match.call()
   nyindex <- object$pffr$nyindex
-  
+
   ## warn if any entries in ... are not arguments for predict.gam
   dots <- list(...)
   if(length(dots)){
@@ -71,11 +71,11 @@ predict.pffr <- function(object,
     if(length(notUsed))
       warning("Arguments <", paste(notUsed, collapse=", "), "> supplied but not used." )
   }
-  
-  
+
+
   if(!missing(newdata)){
     nobs <- nrow(as.matrix(newdata[[1]]))
-    
+
     # check if the supplied data already has the shape expected by predict.gam
     # and dispatch immediately if so (need this so summary works as expected!)
     if(!(all(names(newdata) %in% names(object$model))) |
@@ -89,16 +89,16 @@ predict.pffr <- function(object,
       #                replacement="", x=unique(unlist(sapply(object$smooth, function(x) x$term))))
       #        covnames <- unique(covnames[covnames != paste(object$pffr$yindname, ".vec", sep="")])
       #        stopifnot(all(covnames %in% names(newdata)))
-      
-      
+
+
       #get newdata into the shape expected by predict gam:
       gamdata <- list()
       #y-index
       gamdata[[paste(object$pffr$yindname, ".vec", sep="")]] <- rep(object$pffr$yind, times=nobs)
-      
+
       # which covariates occur in which terms?
       varmap <- sapply(names(object$pffr$labelmap), function(x) all.vars(formula(paste("~", x))))
-      
+
       # don't include response
       covnames <- unique(names(newdata)[names(newdata)!=deparse(object$formula[[2]])])
       for(cov in covnames){
@@ -127,10 +127,10 @@ predict.pffr <- function(object,
                   stop("Error for ", names(varmap)[trm],
                        "-- Prediction for ff-terms with <limits> not implememented yet.")
                 }
-                
+
                 predL <- matrix(L[1,], byrow=TRUE, nrow=nrow(newdata[[cov]]), ncol=ncol(L))
-                
-                
+
+
                 gamdata[[paste(cov, ".smat", sep="")]] <-
                   matrix(ff$xind, byrow=TRUE, ncol=length(ff$xind), nrow=nobs*nyindex)
                 gamdata[[paste(cov, ".tmat", sep="")]] <-
@@ -150,7 +150,7 @@ predict.pffr <- function(object,
                        "-- Prediction for sff-terms with varying rows in integration operator L not implememented yet.")
                 }
                 predL <- matrix(L[1,], byrow=TRUE, nrow=nrow(newdata[[cov]]), ncol=ncol(L))
-                
+
                 gamdata[[paste(cov, ".mat", sep="")]] <- newdata[[cov]][rep(1:nobs, e=nyindex),]
                 gamdata[[paste(cov, ".smat", sep="")]] <-
                   matrix(sff$xind, byrow=TRUE, ncol=length(sff$xind), nrow=nobs*nyindex)
@@ -190,9 +190,9 @@ predict.pffr <- function(object,
                 # stack the matrix of the functional covariate (row-wise!)
                 as.vector(t(newdata[[cov]]))
               }
-              
+
             }
-            
+
           }
         }
       }
@@ -204,23 +204,23 @@ predict.pffr <- function(object,
     nobs <- object$pffr$nobs
   }
   isIrregular <- missing(newdata) & object$pffr$sparseOrNongrid
-  
-  
+
+
   #call predict.gam
   call[[1]] <- if(inherits(object, "bam")){
     mgcv::predict.bam
   }  else mgcv::predict.gam
   call$object <- as.name("object")
   ret <- eval(call)
-  
+
   if(type=="lpmatrix" && reformat){
     reformat <- FALSE
     warning("Setting reformat to FALSE for type=\"lpmatrix\".")
   }
-  
-  
+
+
   #reformat into matrices with same shape as <Response>
-  
+
   if(reformat){
     if(!isIrregular){
       if(missing(newdata) && !is.null(object$pffr$missingind)){
@@ -235,7 +235,7 @@ predict.pffr <- function(object,
           }
         }
       } else insertNA <- function(x) return(x)
-      
+
       if(se.fit){
         if(type %in% c("terms", "iterms")){
           ret <- lapply(ret, function(x)
@@ -248,7 +248,7 @@ predict.pffr <- function(object,
                       names(d)  <- colnames(x)[i]
                       return(d)
                     })))
-          
+
         } else {
           ret <- lapply(ret, function(x) matrix(insertNA(x), nrow=nobs,
                                                 ncol=object$pffr$nyindex, byrow=TRUE))
@@ -276,7 +276,7 @@ predict.pffr <- function(object,
                       names(d)  <- colnames(x)[i]
                       return(d)
                     })))
-          
+
         } else {
           ret <- lapply(ret, function(x) cbind(evalpoints, .value=x))
         }
@@ -468,7 +468,7 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
         if(is.factor(x)) return(c(NA, NA))
         return(range(x, na.rm=TRUE))
       }
-      
+
       makeDataGrid <- function(trm){
         #generate grid of values in range of original data
         x <- get.var(trm$term[1], object$model)
@@ -485,13 +485,13 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
           xg <- if(is.factor(x)) {
             unique(x)
           } else seq(min(x), max(x),length=ng)
-          
+
           which.pcre <- which(sapply(object$pffr$pcreterms, `[[`, "idname")
                               == trm$term[1])
           pcreterm <- object$pffr$pcreterms[[which.pcre]]
-          
+
           yg <- seq(min(pcreterm$yind), max(pcreterm$yind), l=ng)
-          
+
           # interpolate given eigenfunctions to grid values:
           efcts.grid <- sapply(colnames(pcreterm$efunctions),
                                function(nm){
@@ -511,9 +511,9 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
         } else {
           if(trm$dim > 1) {
             ng <- ifelse(trm$dim==2, n2, n3)
-            
+
             varnms <- trm$term
-            
+
             x <- get.var(trm$term[1], object$model)
             xg <- if(is.factor(x)) {
               unique(x)
@@ -545,17 +545,17 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
         }
         return(d)
       }
-      
+
       getP <- function(trm, d){
         #return an object similar to what plot.mgcv.smooth etc. return
         X <- PredictMat(trm, d)
-        
+
         if(is.pcre){
           #sloppy, but effective: temporarily overwrite offending entries
           trm$dim <- 2
           trm$term[2] <- paste0(object$pffr$yindname, ".vec")
         }
-        
+
         P <- if(trm$dim==1){
           list(x=attr(d, "xm"), xlab=trm$term, xlim=safeRange(attr(d, "xm")))
         } else {
@@ -589,24 +589,24 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
           }
           P$coef <- cbind(P$coef, se=P$se)
         }
-        
+
         P$dim <- trm$dim
         return(P)
       }
-      
+
       trm <- object$smooth[[i]]
       is.pcre <- "pcre.random.effect" %in% class(trm)
-      
+
       #FIXME: this fails for pcre-terms with >2 FPCs...!
       if(trm$dim > 3 && !is.pcre){
         warning("can't deal with smooths with more than 3 dimensions, returning NULL for ",
                 shrtlbls[names(object$smooth)[i] == unlist(object$pffr$labelmap)])
         return(NULL)
       }
-      
+
       d <- makeDataGrid(trm)
       P <- getP(trm, d)
-      
+
       #browser()
       # get proper labeling
       P$main <- shrtlbls[names(object$smooth)[i] == unlist(object$pffr$labelmap)]
@@ -626,10 +626,10 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
         P$xlab <- xlab
         P$zlab <- gsub(".mat$", "", object$pffr$ff[[which.sff]]$xname)
       }
-      
+
       return(P)
     }
-    
+
     bread <- if(freq){
       object$Ve
     } else {
@@ -651,16 +651,16 @@ coef.pffr <- function(object, raw=FALSE, se=TRUE, freq=FALSE, sandwich=FALSE,
     } else {
       covmat <- bread
     }
-    
+
     ret <- list()
     smind <- unlist(sapply(object$smooth, function(x){
       seq(x$first.para, x$last.para)
     }))
     ret$pterms <- cbind(value=object$coefficients[-smind])
     if(se) ret$pterms <- cbind(ret$pterms, se=sqrt(diag(covmat)[-smind]))
-    
+
     shrtlbls <- getShrtlbls(object)
-    
+
     ret$smterms <- lapply(1:length(object$smooth), getCoefs)
     names(ret$smterms) <- sapply(seq_along(ret$smterms), function(i){
       ret$smterms[[i]]$main
@@ -693,12 +693,12 @@ summary.pffr <- function (object, ...) {
   class(object) <- class(object)[!(class(object) %in% "pffr")]
   call$object <- as.name("object")
   ret <- eval(call)
-  
+
   ret$formula <- object$pffr$formula
-  
+
   # make short labels for display
   shrtlbls <- getShrtlbls(object)
-  
+
   if(!is.null(ret$s.table)){
     rownames(ret$s.table) <- sapply(rownames(ret$s.table),
                                     function(x){
@@ -746,17 +746,17 @@ print.summary.pffr <- function(x, digits = max(3, getOption("digits") - 3),
   }
   cat("\nR-sq.(adj) = ",formatC(x$r.sq,digits=3,width=5))
   if (length(x$dev.expl)>0) cat("   Deviance explained = ",formatC(x$dev.expl*100,digits=3,width=4),"%\n",sep="")
-  
+
   if (!is.null(x$method)&&!(x$method%in%c("PQL","lme.ML","lme.REML")))
     cat(x$method," score = ",formatC(x$sp.criterion,digits=5),sep="")
-  
+
   cat("  Scale est. = ",formatC(x$scale,digits=5,width=8,flag="-"),"  n = ",x$n,"\n",sep="")
   invisible(x)
 }
 
 #' QQ plots for pffr model residuals
 #'
-#' This is simply a wrapper for code{\link[mgcv]{qq.gam}()}.
+#' This is simply a wrapper for \code{\link[mgcv]{qq.gam}()}.
 #'
 #' @param object a fitted \code{\link{pffr}}-object
 #' @inheritParams mgcv::qq.gam

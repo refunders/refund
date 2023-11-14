@@ -41,5 +41,5 @@ qq.pffr(
 \item{...}{extra graphics parameters to pass to plotting functions.}
 }
 \description{
-This is simply a wrapper for code{\link[mgcv]{qq.gam}()}.
+This is simply a wrapper for \code{\link[mgcv]{qq.gam}()}.
 }

@@ -23,14 +23,14 @@ An object of class "pi.smooth". See
    \code{\link[mgcv]{smooth.construct}} for the elements it will contain.
 }
 \description{
-The \code{pi} basis is appropriate for smooths of multiple variables. Its 
+The \code{pi} basis is appropriate for smooths of multiple variables. Its
 purpose is to parameterize the way in which the basis changes with one of
 those variables. For example, suppose the smooth is over three variables,
 \eqn{x}, \eqn{y}, and \eqn{t}, and we want to parameterize the effect of
 \eqn{t}. Then the \code{pi} basis will assume \eqn{f(x,y,t) = \sum_k
 g_k(t)*f_k(x,y)}, where the \eqn{g_k(t)} functions are pre-specified and the
 \eqn{f_k(x,y)} functions are estimated using a bivariate basis. An example of
-a parametric interaction is a linear interaction, which would take the form 
+a parametric interaction is a linear interaction, which would take the form
 \eqn{f(x,y,t) = f_1(x,y) + t*f_2(x,y)}.
 }
 \details{
@@ -62,7 +62,7 @@ elements:
 \enumerate{
   \item a list of functions of length \eqn{k}, where each function is of
   one argument (assumed to be \eqn{t})
-  \item one of the following recognized character strings: code{"linear"},
+  \item one of the following recognized character strings: \code{"linear"},
   indicating a linear interaction, i.e. \eqn{f(x,t) = f_1(x)+t*f_2(x)};
   \code{"quadratic"}, indicating a quadratic interaction, i.e.
   \eqn{f(x,t) = f_1(x)+t*f_2(x) + t^2*f_3(x)}; or
