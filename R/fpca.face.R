@@ -2,7 +2,7 @@
 #'
 #' A fast implementation of the sandwich smoother (Xiao et al., 2013)
 #' for covariance matrix smoothing. Pooled generalized cross validation
-#' at the data level is used for selecting the smoothing parameter. 
+#' at the data level is used for selecting the smoothing parameter.
 #' @param Y,ydata the user must supply either \code{Y}, a matrix of functions
 #' observed on a regular grid, or a data frame \code{ydata} representing
 #' irregularly observed functions. See Details.
@@ -64,6 +64,7 @@
 #' \item \code{npc} - number of principal components
 #' \item \code{efunctions} - matrix of eigenvectors
 #' \item \code{evalues} - vector of eigenvalues
+#' \item \code{pve} - The percent variance explained by the returned number of PCs
 #' }
 #' if \code{var == TRUE} additional components are returned
 #' \enumerate{
@@ -77,13 +78,13 @@
 #' @author Luo Xiao
 #' @seealso   \code{\link{fpca.sc}}  for another covariance-estimate based
 #' smoothing of \code{Y}; \code{\link{fpca2s}} and \code{\link{fpca.ssvd}}
-#' for two SVD-based smoothings.  
+#' for two SVD-based smoothings.
 #' @references Xiao, L., Li, Y., and Ruppert, D. (2013).
 #' Fast bivariate \emph{P}-splines: the sandwich smoother,
 #' \emph{Journal of the Royal Statistical Society: Series B}, 75(3), 577-599.
 #'
 #' Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C. (2016).
-#' Fast covariance estimation for high-dimensional functional data.  
+#' Fast covariance estimation for high-dimensional functional data.
 #' \emph{Statistics and Computing}, 26, 409-421.
 #' DOI: 10.1007/s11222-014-9485-x.
 #' @examples
@@ -94,16 +95,16 @@
 #' N <- 4 #number of eigenfunctions
 #' sigma <- 2 ##standard deviation of random noises
 #' lambdaTrue <- c(1,0.5,0.5^2,0.5^3) # True eigenvalues
-#'   
+#'
 #' case = 1
 #' ### True Eigenfunctions
-#'   
+#'
 #' if(case==1) phi <- sqrt(2)*cbind(sin(2*pi*t),cos(2*pi*t),
 #'                                 sin(4*pi*t),cos(4*pi*t))
 #' if(case==2) phi <- cbind(rep(1,J),sqrt(3)*(2*t-1),
 #'                           sqrt(5)*(6*t^2-6*t+1),
 #'                          sqrt(7)*(20*t^3-30*t^2+12*t-1))
-#' 
+#'
 #' ###################################################
 #' ########     Generate Data            #############
 #' ###################################################
@@ -111,28 +112,33 @@
 #' xi <- xi %*% diag(sqrt(lambdaTrue))
 #' X <- xi %*% t(phi); # of size I by J
 #' Y <- X + sigma*matrix(rnorm(I*J),I,J)
-#' 
+#'
 #' results <- fpca.face(Y,center = TRUE, argvals=t,knots=100,pve=0.99)
+#'
+#' # calculate percent variance explained by each PC
+#'  evalues = results$evalues
+#'  pve_vec = evalues * results$npc/sum(evalues)
+#'
 #' ###################################################
 #' ####               FACE                ########
-#' ###################################################  
+#' ###################################################
 #' Phi <- results$efunctions
 #' eigenvalues <- results$evalues
 #'
 #' for(k in 1:N){
-#'   if(Phi[,k] %*% phi[,k]< 0) 
+#'   if(Phi[,k] %*% phi[,k]< 0)
 #'     Phi[,k] <- - Phi[,k]
 #' }
-#' 
+#'
 #' ### plot eigenfunctions
 #' par(mfrow=c(N/2,2))
 #' seq <- (1:(J/10))*10
 #' for(k in 1:N){
-#'   plot(t[seq],Phi[seq,k]*sqrt(J),type="l",lwd = 3, 
+#'   plot(t[seq],Phi[seq,k]*sqrt(J),type="l",lwd = 3,
 #'        ylim = c(-2,2),col = "red",
 #'        ylab = paste("Eigenfunction ",k,sep=""),
 #'        xlab="t",main="FACE")
-#'   
+#'
 #'   lines(t[seq],phi[seq,k],lwd = 2, col = "black")
 #' }
 #' @export
@@ -335,32 +341,33 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
                    ncol(A), ". Using ", ncol(A), "."))
     N <- ncol(A)
   }
-  
+
   npc <- N
-  
-  Ytilde <- as.matrix(t(A0)%*%(Bt%*%t(Y.pred)))   
-  sigmahat2 <- max(mean(Y[!Index.miss]^2) -sum(Sigma),0) 
-  Xi <- t(Ytilde)%*%(matrix(A[,1:N], ncol = N)/sqrt(J)) 
-  Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J)) 
 
-  eigenvectors = as.matrix(B%*%(A0%*% matrix(A[,1:N], ncol = N))) 
-  eigenvalues = Sigma[1:N] 
+  Ytilde <- as.matrix(t(A0)%*%(Bt%*%t(Y.pred)))
+  sigmahat2 <- max(mean(Y[!Index.miss]^2) -sum(Sigma),0)
+  Xi <- t(Ytilde)%*%(matrix(A[,1:N], ncol = N)/sqrt(J))
+  Xi <- MM(Xi,Sigma[1:N]/(Sigma[1:N] + sigmahat2/J))
 
-  Yhat <- t(matrix(A[,1:N], ncol = N))%*%Ytilde 
+  eigenvectors = as.matrix(B%*%(A0%*% matrix(A[,1:N], ncol = N)))
+  eigenvalues = Sigma[1:N]
+
+  Yhat <- t(matrix(A[,1:N], ncol = N))%*%Ytilde
   if(N > 1){
-    Yhat <- as.matrix(B %*%( A0%*%matrix(A[,1:N], ncol = N) %*% diag(eigenvalues/(eigenvalues+sigmahat2/J))%*%Yhat ) ) 
+    Yhat <- as.matrix(B %*%( A0%*%matrix(A[,1:N], ncol = N) %*% diag(eigenvalues/(eigenvalues+sigmahat2/J))%*%Yhat ) )
   }else{
     Yhat <- as.matrix(B %*%( A0 %*% matrix(A[,1:N], ncol = N)  %*% Yhat * eigenvalues/(eigenvalues+sigmahat2/J)))
   }
-  Yhat <- t(Yhat + meanX)  
+  Yhat <- t(Yhat + meanX)
 
 
   scores <- sqrt(J)*Xi[,1:N]
   mu <- meanX
   efunctions <- eigenvectors[,1:N]
   evalues <- J*eigenvalues[1:N]
+  pve  <- per[N]
 
-  ret.objects <- c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc")
+  ret.objects <- c("Yhat", "Y", "scores", "mu", "efunctions", "evalues", "npc", "pve")
   if(var) {
     sigma2 = sigmahat2
     VarMats = vector("list",I)
