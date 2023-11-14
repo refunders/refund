@@ -70,7 +70,7 @@
 ##' \item{npc }{number of FPCs: either the supplied \code{npc}, or the minimum
 ##' number of basis functions needed to explain proportion \code{pve} of the
 ##' variance in the observed curves.} \item{argvals}{argument values of
-##' eigenfunction evaluations} \item{sigma2}{estimated measurement error
+##' eigenfunction evaluations} \item{pve}{The percent variance explained by the returned number of PCs}\item{sigma2}{estimated measurement error
 ##' variance.} \item{diag.var}{diagonal elements of the covariance matrices for
 ##' each estimated curve.} \item{VarMats}{a list containing the estimated
 ##' covariance matrices for each curve in \code{Y}.} \item{crit.val}{estimated

@@ -64,6 +64,7 @@
 #' \item \code{npc} - number of principal components
 #' \item \code{efunctions} - matrix of eigenvectors
 #' \item \code{evalues} - vector of eigenvalues
+#' \item \code{pve} - The percent variance explained by the returned number of PCs
 #' }
 #' if \code{var == TRUE} additional components are returned
 #' \enumerate{
@@ -113,6 +114,11 @@
 #' Y <- X + sigma*matrix(rnorm(I*J),I,J)
 #'
 #' results <- fpca.face(Y,center = TRUE, argvals=t,knots=100,pve=0.99)
+#'
+#' # calculate percent variance explained by each PC
+#'  evalues = results$evalues
+#'  pve_vec = evalues * results$npc/sum(evalues)
+#'
 #' ###################################################
 #' ####               FACE                ########
 #' ###################################################
