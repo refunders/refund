@@ -1,3 +1,11 @@
+# refund 0.1-34
+
+* Added pve to what is returned by mfpca.face
+* Change names in list of what is returned by mfpca.face to be the same as mfpca.sc
+* Updated email address for Erjia Cui
+* Changed Erjia from contributor to author
+
+
 # refund 0.1-33
 
 * Added pve to what is returned by fpca.sc and fpca.face

@@ -27,22 +27,22 @@ Missingness is allowed and need to be labeled as NA. The data must be specified.
 \item{id}{A vector containing the id information to identify the subjects. The
 data must be specified.}
 
-\item{visit}{A vector containing information used to identify the visits. 
+\item{visit}{A vector containing information used to identify the visits.
 If not provided, assume the visit id are 1,2,... for each subject.}
 
-\item{twoway}{Logical, indicating whether to carry out twoway ANOVA and 
+\item{twoway}{Logical, indicating whether to carry out twoway ANOVA and
 calculate visit-specific means. Defaults to \code{TRUE}.}
 
 \item{weight}{The way of calculating covariance. \code{weight = "obs"} indicates
-that the sample covariance is weighted by observations. \code{weight = "subj"} 
+that the sample covariance is weighted by observations. \code{weight = "subj"}
 indicates that the sample covariance is weighted equally by subjects. Defaults to \code{"obs"}.}
 
 \item{argvals}{A vector containing observed locations on the functional domain.}
 
-\item{pve}{Proportion of variance explained. This value is used to choose the 
+\item{pve}{Proportion of variance explained. This value is used to choose the
 number of principal components for both levels.}
 
-\item{npc}{Pre-specified value for the number of principal components. 
+\item{npc}{Pre-specified value for the number of principal components.
 If given, this overrides \code{pve}.}
 
 \item{p}{The degree of B-splines functions to use. Defaults to 3.}
@@ -56,33 +56,34 @@ Defaults to \code{TRUE}.}
 }
 \value{
 A list containing:
-\item{Xhat}{FPC approximation (projection onto leading components)
+\item{Yhat}{FPC approximation (projection onto leading components)
 of \code{Y}, estimated curves for all subjects and visits}
-\item{Xhat.subject}{Estimated subject specific curves for all subjects}
-\item{Y}{The observed data}
-\item{mu}{estimated mean function (or a vector of zeroes if \code{center==FALSE}).} 
+\item{Yhat.subject}{Estimated subject specific curves for all subjects}
+\item{Y.df}{The observed data}
+\item{mu}{estimated mean function (or a vector of zeroes if \code{center==FALSE}).}
 \item{eta}{The estimated visit specific shifts from overall mean.}
-\item{scores}{A matrix of estimated FPC scores for level1 and level2.} 
+\item{scores}{A matrix of estimated FPC scores for level1 and level2.}
 \item{efunctions}{A matrix of estimated eigenfunctions of the functional
-covariance, i.e., the FPC basis functions for levels 1 and 2.} 
-\item{evalues}{Estimated eigenvalues of the covariance operator, i.e., variances 
+covariance, i.e., the FPC basis functions for levels 1 and 2.}
+\item{evalues}{Estimated eigenvalues of the covariance operator, i.e., variances
 of FPC scores for levels 1 and 2.}
+\item{pve}{The percent variance explained by the returned number of PCs.}
 \item{npc}{Number of FPCs: either the supplied \code{npc}, or the minimum
 number of basis functions needed to explain proportion \code{pve} of the
-variance in the observed curves for levels 1 and 2.} 
+variance in the observed curves for levels 1 and 2.}
 \item{sigma2}{Estimated measurement error variance.}
 }
 \description{
-Decompose dense or sparse multilevel functional observations using multilevel 
-functional principal component analysis with the fast covariance estimation 
+Decompose dense or sparse multilevel functional observations using multilevel
+functional principal component analysis with the fast covariance estimation
 approach.
 }
 \details{
-The fast MFPCA approach (Cui et al., 2023) uses FACE (Xiao et al., 2016) to estimate 
-covariance functions and mixed model equations (MME) to predict 
-scores for each level. As a result, it has lower computational complexity than 
+The fast MFPCA approach (Cui et al., 2023) uses FACE (Xiao et al., 2016) to estimate
+covariance functions and mixed model equations (MME) to predict
+scores for each level. As a result, it has lower computational complexity than
 MFPCA (Di et al., 2009) implemented in the \code{mfpca.sc} function, and
-can be applied to decompose data sets with over 10000 subjects and over 10000 
+can be applied to decompose data sets with over 10000 subjects and over 10000
 dimensions.
 }
 \examples{
@@ -91,7 +92,7 @@ mfpca.DTI <- mfpca.face(Y = DTI$cca, id = DTI$ID, twoway = TRUE)
 }
 \references{
 Cui, E., Li, R., Crainiceanu, C., and Xiao, L. (2023). Fast multilevel
-functional principal component analysis. \emph{Journal of Computational and 
+functional principal component analysis. \emph{Journal of Computational and
 Graphical Statistics}, 32(3), 366-377.
 
 Di, C., Crainiceanu, C., Caffo, B., and Punjabi, N. (2009).
@@ -99,9 +100,9 @@ Multilevel functional principal component analysis. \emph{Annals of Applied
 Statistics}, 3, 458-488.
 
 Xiao, L., Ruppert, D., Zipunnikov, V., and Crainiceanu, C. (2016).
-Fast covariance estimation for high-dimensional functional data.  
+Fast covariance estimation for high-dimensional functional data.
 \emph{Statistics and Computing}, 26, 409-421.
 }
 \author{
-Ruonan Li \email{rli20@ncsu.edu}, Erjia Cui \email{ecui1@jhmi.edu}
+Ruonan Li \email{rli20@ncsu.edu}, Erjia Cui \email{ecui@umn.edu}
 }

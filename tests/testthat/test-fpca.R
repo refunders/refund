@@ -55,17 +55,17 @@ test_that("fpca.sc options work", {
   sc <- fpca.sc(Y)
   sc_cov1 <- fpca.sc(Y, cov.est.method = 1)
   #sc_sym <- fpca.sc(Y, useSymm = TRUE)
-  sc_int <- fpca.sc(Y, random.int = TRUE)
+  #sc_int <- fpca.sc(Y, random.int = TRUE)
 
   expect_equal(sc$Yhat, sc_cov1$Yhat, tolerance=.02)
   #expect_equal(sc$Yhat, sc_sym$Yhat, tolerance=.01)
-  expect_equal(sc$Yhat, sc_int$Yhat, tolerance=.01)
+  #expect_equal(sc$Yhat, sc_int$Yhat, tolerance=.01)
 })
 
 
 # test_that("fpca.ssvd options work", {
 #   skip_on_cran()
-# 
+#
 #   expect_error(fpca.ssvd(Y = 1:10, ydata=data.frame()), "irregular data")
 #   expect_warning(fpca.ssvd(Y = Y, argvals=sqrt(t)), "non-equidistant")
 #   ssvd <- fpca.ssvd(Y)
@@ -75,10 +75,10 @@ test_that("fpca.sc options work", {
 #   expect_true(ncol(ssvd_npc1$efunctions) == 1)
 #   expect_equal(ssvd_d2$efunctions, ssvd$efunctions, tol=.01)
 # })
-# 
+#
 # test_that("fpca2s options work", {
 #   skip_on_cran()
-# 
+#
 #   expect_error(fpca2s(Y = 1:10, ydata=data.frame()), "irregular data")
 #   expect_warning(fpca2s(Y = Y, argvals=sqrt(t)), "non-equidistant")
 #   twos <- fpca2s(Y)
