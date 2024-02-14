@@ -255,7 +255,7 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
   where.mgcv <- c(where.par, where.s, where.te, where.t2)
   if (length(where.mgcv)) {
     if ("data" %in% names(call))
-      frmlenv <- list2env(eval(call$data), frmlenv)
+      frmlenv <- list2env(eval(call$data, envir = frmlenv), frmlenv)
     lapply(terms[where.mgcv], function(x) {
       nms <- if (!is.null(names(x))) {
         all.vars(x[names(x) == ""])
