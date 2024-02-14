@@ -58,6 +58,8 @@ License: GPL (>= 2)
 LazyLoad: yes
 LazyData: true
 Repository: CRAN
+URL: https://github.com/refunders/refund
+BugReports: https://github.com/refunders/refund/issues
 Collate:
     'Omegas.R'
     'af.R'
