@@ -1,3 +1,13 @@
+# refund 0.1-36
+
+* Fix threshold for small sigma2 in mfpca.face function to ensure accurate score estimation for level1 scores
+
+
+# refund 0.1-35
+
+* One line fix to pfr that allows pfr to be called from within another function
+* Pull request on URL updates in documentation
+
 # refund 0.1-34
 
 * Added pve to what is returned by mfpca.face

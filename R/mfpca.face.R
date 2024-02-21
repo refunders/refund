@@ -347,7 +347,7 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
     for(j in 1:length(unVisits)){
       Jm <- unVisits[j]
       ## calculate block matrices
-      if(sigma2 < 1e-4){
+      if(sigma2 < 1e-10){
         A <- Jm * (t(phi1) %*% phi1)
         B <- matrix(rep(t(phi1) %*% phi2, Jm), nrow = npc[[1]])
         temp <- ginv(t(phi2) %*% phi2)
@@ -381,7 +381,7 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
       int1 <- rowsum(df$Ytilde[which(df$id %in% ind.Jm),] %*% phi1, rep(1:length(ind.Jm), each = Jm))
       int2 <- t(matrix(t(df$Ytilde[which(df$id %in% ind.Jm),] %*% phi2), nrow = npc[[2]]*Jm))
       int <- cbind(int1, int2)
-      if(sigma2 >= 1e-4){
+      if(sigma2 >= 1e-10){
         int <- int / sigma2
       }
       score1[which(nVisits$id %in% ind.Jm),] <- int %*% t(Mat1)
@@ -403,7 +403,7 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
     for(m in 1:I){
       Jm <- nVisits[m, 2]  ## number of visits for mth subject
       ## calculate block matrices
-      if(sigma2 < 1e-4){
+      if(sigma2 < 1e-10){
         A <- Jm * (t(phi1) %*% phi1)
         B <- matrix(rep(t(phi1) %*% phi2, Jm), nrow = npc[[1]])
         temp <- ginv(t(phi2) %*% phi2)
@@ -434,7 +434,7 @@ mfpca.face <- function(Y, id, visit = NULL, twoway = TRUE, weight = "obs", argva
       ## estimate the principal component scores
       int1 <- colSums(matrix(df$Ytilde[df$id==ID[m],], ncol = L) %*% phi1)
       int2 <- matrix(df$Ytilde[df$id==ID[m],], ncol = L) %*% phi2
-      if(sigma2 < 1e-4){
+      if(sigma2 < 1e-10){
         int <- c(int1, as.vector(t(int2)))
       }else{
         int <- c(int1, as.vector(t(int2))) / sigma2
