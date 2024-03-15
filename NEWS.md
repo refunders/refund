@@ -1,6 +1,7 @@
 # refund 0.1-36
 
 * Fix threshold for small sigma2 in mfpca.face function to ensure accurate score estimation for level1 scores
+* Added parameters npc2 and pve2 to mfpca.face to allow for user to specify separate npc or pve for level 2 decomposition
 
 
 # refund 0.1-35

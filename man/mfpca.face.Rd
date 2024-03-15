@@ -13,6 +13,8 @@ mfpca.face(
   argvals = NULL,
   pve = 0.99,
   npc = NULL,
+  pve2 = NULL,
+  npc2 = NULL,
   p = 3,
   m = 2,
   knots = 35,
@@ -44,6 +46,12 @@ number of principal components for both levels.}
 
 \item{npc}{Pre-specified value for the number of principal components.
 If given, this overrides \code{pve}.}
+
+\item{pve2}{Proportion of variance explained in level 2. If given, this overrides
+the value of \code{pve} for level 2.}
+
+\item{npc2}{Pre-specified value for the number of principal components in level 2.
+If given, this overrides \code{npc} for level 2.}
 
 \item{p}{The degree of B-splines functions to use. Defaults to 3.}
 
