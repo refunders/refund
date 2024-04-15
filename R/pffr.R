@@ -262,7 +262,7 @@ pffr <- function(
       c(names(formals(gam)), names(formals(bam)), names(formals(gam.fit)),
         names(formals(jagam)))
     }
-    if(!is.null(dots$family) && dots$family == "gaulss") {
+    if(!is.null(dots$family) && dots$family$family == "gaulss") {
       validDots <- c(validDots, "varformula")
       gaulss <- TRUE
     }
