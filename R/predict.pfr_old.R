@@ -1,3 +1,4 @@
+#' @export
 predict.pfr_old <- function(object, new.data=NULL, levels=NULL, ...){
   ## predict.pfr() will provide fitted values at the population and subject level for pfr objects
   ## predict.pfr() will also provide predictions for new.data at each level where applicable.
@@ -12,11 +13,11 @@ predict.pfr_old <- function(object, new.data=NULL, levels=NULL, ...){
     ## pre      <- with(par,preprocess.pfr(subj=subj.new,
     ##                                     covariates=covariates.new, funcs=funcs.old, kz=kz.old, kb=kb.old,
     ##                                     nbasis=nbasis.old,
-    ##                                     funcs.new=funcs.new))    
+    ##                                     funcs.new=funcs.new))
     pre      <- preprocess.pfr(subj=par$subj.new,
                                covariates=par$covariates.new, funcs=par$funcs.old, kz=par$kz.old, kb=par$kb.old,
                                nbasis=par$nbasis.old,
-                               funcs.new=par$funcs.new,smooth.option=par$smooth.option.old)    
+                               funcs.new=par$funcs.new,smooth.option=par$smooth.option.old)
     #    psi            <- data.calc$psi
     #    C              <- data.calc$C
     #    Z1             <- data.calc$Z1
@@ -38,7 +39,7 @@ predict.pfr_old <- function(object, new.data=NULL, levels=NULL, ...){
       rs <- rowSums(pre$Z1)
       fitted.vals.level.1 <- fitted.vals.level.0 + rs
     }else{ fitted.vals.level.1 <- rep(NA, length(fitted.vals.level.0))}
-    
+
   }
   ret <- list(fitted.vals.level.0, fitted.vals.level.1)
   names(ret) <- c("fitted.vals.level.0", "fitted.vals.level.1")

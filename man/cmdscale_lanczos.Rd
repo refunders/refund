@@ -7,7 +7,7 @@
 cmdscale_lanczos(d, k = 2, eig = FALSE, add = FALSE, x.ret = FALSE)
 }
 \arguments{
-\item{d}{a distance structure as returned by \code{\link{dist}}, or a full
+\item{d}{a distance structure as returned by \code{{dist}}, or a full
 symmetric matrix of distances or dissimilarities.}
 
 \item{k}{the maximum dimension of the space which the data are to be
@@ -23,19 +23,19 @@ the modified dissimilarities are Euclidean.}
 should be returned.}
 }
 \value{
-as \code{\link{cmdscale}}
+as \code{{cmdscale}}
 }
 \description{
-This is a modified version of \code{\link{cmdscale}} that uses the Lanczos
-procedure (\code{\link[mgcv]{slanczos}}) instead of \code{eigen}. Called by
-\code{\link{smooth.construct.pco.smooth.spec}}.
+This is a modified version of \code{{cmdscale}} that uses the Lanczos
+procedure (\code{[mgcv]{slanczos}}) instead of \code{eigen}. Called by
+\code{{smooth.construct.pco.smooth.spec}}.
 }
 \references{
 Cailliez, F. (1983). The analytical solution of the additive constant problem.
 \emph{Psychometrika}, 48, 343-349.
 }
 \seealso{
-\code{\link{smooth.construct.pco.smooth.spec}}
+\code{{smooth.construct.pco.smooth.spec}}
 }
 \author{
 David L Miller, based on code by R Core.

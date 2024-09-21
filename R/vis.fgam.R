@@ -1,10 +1,10 @@
 #' Visualization of FGAM objects
 #'
-#' Produces perspective or contour plot views of an estimated surface corresponding to \code{\link{af}}
-#' terms fit using \code{\link{fgam}} or plots \dQuote{slices} of the estimated surface or estimated
+#' Produces perspective or contour plot views of an estimated surface corresponding to \code{{af}}
+#' terms fit using \code{{fgam}} or plots \dQuote{slices} of the estimated surface or estimated
 #' second derivative surface with one of its arguments fixed and corresponding twice-standard error
 #' \dQuote{Bayesian} confidence bands constructed using the method in Marra and Wood (2012).  See the details.
-#' @param object an \code{fgam} object, produced by \code{\link{fgam}}
+#' @param object an \code{fgam} object, produced by \code{{fgam}}
 #' @param af.term character; the name of the functional predictor to be plotted.  Only important
 #' if multiple \code{af} terms are fit.  Defaults to the first \code{af} term in \code{object$call}
 #' @param xval a number in the range of functional predictor to be plotted.  The surface will be plotted
@@ -15,12 +15,12 @@
 #' @param deriv2 logical; if \code{TRUE}, plot the estimated second derivative surface along with
 #' Bayesian confidence bands.  Only implemented for the "slices" plot from either \code{xval} or
 #' \code{tval} being specified
-#' @param theta numeric; viewing angle; see \code{\link{persp}}
-#' @param plot.type one of \code{"contour"} (to use \code{\link{levelplot}}) or \code{"persp"}
-#' (to use \code{\link{persp}}).  Ignored if either \code{xval} or \code{tval} is specified
+#' @param theta numeric; viewing angle; see \code{{persp}}
+#' @param plot.type one of \code{"contour"} (to use \code{{levelplot}}) or \code{"persp"}
+#' (to use \code{{persp}}).  Ignored if either \code{xval} or \code{tval} is specified
 #' @param ticktype how to draw the tick marks if \code{plot.type="persp"}.  Defaults to \code{"detailed"}
-#' @param ... other options to be passed to \code{\link{persp}}, \code{\link{levelplot}}, or
-#' \code{\link{plot}}
+#' @param ... other options to be passed to \code{{persp}}, \code{{levelplot}}, or
+#' \code{{plot}}
 #' @details The confidence bands used when plotting slices of the estimated surface or second derivative
 #' surface are the ones proposed in Marra and Wood (2012).  These are a generalization of the "Bayesian"
 #' intervals of Wahba (1983) with an adjustment for the uncertainty about the model intercept. The
@@ -29,7 +29,7 @@
 #' @return Simply produces a plot
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 #' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23(1)},
-#' pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
+#' pp. 249-269.
 #'
 #' Marra, G., and Wood, S. N. (2012) Coverage properties of confidence intervals for generalized
 #' additive model components. \emph{Scandinavian Journal of Statistics}, \bold{39(1)}, pp. 53--74.
@@ -37,8 +37,8 @@
 #' Wabha, G. (1983) "Confidence intervals" for the cross-validated smoothing spline. \emph{Journal of the
 #' Royal Statistical Society, Series B}, \bold{45(1)}, pp. 133--150.
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}
-#' @seealso \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{fgam}}, \code{\link{persp}},
-#' \code{\link{levelplot}}
+#' @seealso \code{{vis.gam}}, \code{{plot.gam}}, \code{{fgam}}, \code{{persp}},
+#' \code{{levelplot}}
 #' @importFrom mgcv vis.gam predict.gam
 #' @importFrom lattice levelplot
 #' @importFrom graphics persp

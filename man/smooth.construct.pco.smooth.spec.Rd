@@ -24,20 +24,20 @@ An object of class \code{pco.smooth}. The resulting object has an
 }
 \description{
 Smooth constructor function for principal coordinate ridge regression fitted
-by \code{\link[mgcv]{gam}}. When the principal coordinates are defined by a
+by \code{[mgcv]{gam}}. When the principal coordinates are defined by a
 relevant distance among functional predictors, this is a form of nonparametric
 scalar-on-function regression. Reiss et al. (2016) describe the approach and
 apply it to dynamic time warping distances among functional predictors.
 }
 \section{Details}{
  The constructor is not normally called directly, but is
- rather used internally by \code{\link{gam}}.
+ rather used internally by \code{{gam}}.
 
- In a \code{\link[mgcv]{gam}} term of the above form \code{s(dummy, bs="pco",
+ In a \code{[mgcv]{gam}} term of the above form \code{s(dummy, bs="pco",
  k, xt)}, \itemize{ \item \code{dummy} is an arbitrary vector (or name of a
  column in \code{data}) whose length is the number of observations. This is
  not actually used, but is required as part of the input to
- \code{\link[mgcv]{s}}. Note that if multiple \code{pco} terms are used in
+ \code{[mgcv]{s}}. Note that if multiple \code{pco} terms are used in
  the model, there must be multiple unique term names (e.g., "\code{dummy1}",
  "\code{dummy2}", etc). \item \code{k} is the number of principal coordinates
  (e.g., \code{k=9} will give a 9-dimensional projection of the data). \item
@@ -48,12 +48,12 @@ apply it to dynamic time warping distances among functional predictors.
  matrix \code{realdata} and distance function \code{dist_fn}, whereupon a
  distance matrix \code{dist_fn(realdata)} is created. } The list \code{xt}
  also has the following optional elements: \itemize{ \item \code{add}: Passed
- to \code{\link{cmdscale}} when performing multidimensional scaling; for
+ to \code{{cmdscale}} when performing multidimensional scaling; for
  details, see the help for that function. (Default \code{FALSE}.)\cr \item
  \code{fastcmd}: if \code{TRUE}, multidimensional scaling is performed by
- \code{\link{cmdscale_lanczos}}, which uses Lanczos iteration to
+ \code{{cmdscale_lanczos}}, which uses Lanczos iteration to
  eigendecompose the distance matrix; if \code{FALSE}, MDS is carried out by
- \code{\link{cmdscale}}. Default is \code{FALSE}, to use \code{cmdscale}. }
+ \code{{cmdscale}}. Default is \code{FALSE}, to use \code{cmdscale}. }
 }
 
 \examples{
@@ -136,8 +136,7 @@ print(cbind(fitted(m)[ c(1:5,10:15)],p))
 \references{
 Reiss, P. T., Miller, D. L., Wu, P.-S., and Wen-Yu Hua, W.-Y.
 Penalized nonparametric scalar-on-function regression via principal
-coordinates. Under revision. Available at
-\url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5714326/}.
+coordinates.
 }
 \author{
 David L Miller, based on code from Lan Huo and Phil Reiss

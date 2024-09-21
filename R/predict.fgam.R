@@ -1,33 +1,33 @@
 #' Prediction from a fitted FGAM model
 #'
-#' Takes a fitted \code{fgam}-object produced by \code{\link{fgam}} and produces predictions given a
+#' Takes a fitted \code{fgam}-object produced by \code{{fgam}} and produces predictions given a
 #' new set of values for the model covariates or the original values used for the model fit.
 #' Predictions can be accompanied by standard errors, based on the posterior distribution of the
-#' model coefficients. This is a wrapper function for \code{\link{predict.gam}}()
-#' @param object a fitted \code{fgam} object as produced by \code{\link{fgam}}
+#' model coefficients. This is a wrapper function for \code{{predict.gam}}()
+#' @param object a fitted \code{fgam} object as produced by \code{{fgam}}
 #' @param newdata a named list containing the values of the model covariates at which predictions
 #' are required. If this is not provided then predictions corresponding to the original data are
-#' returned. All variables provided to newdata should be in the format supplied to \code{\link{fgam}},
+#' returned. All variables provided to newdata should be in the format supplied to \code{{fgam}},
 #' i.e., functional predictors must be supplied as matrices with each row corresponding to one
 #' observed function. Index variables for the functional covariates are reused from the fitted model
 #' object or alternatively can be supplied as attributes of the matrix of functional predictor values.
 #' Any variables in the model not specified in newdata are set to their average values from the data
 #' supplied during fitting the model
-#' @param type character; see \code{\link{predict.gam}} for details
-#' @param se.fit logical; see \code{\link{predict.gam}} for details
-#' @param terms character see \code{\link{predict.gam}} for details
+#' @param type character; see \code{{predict.gam}} for details
+#' @param se.fit logical; see \code{{predict.gam}} for details
+#' @param terms character see \code{{predict.gam}} for details
 #' @param PredOutOfRange logical; if this argument is true then any functional predictor values in
 #' newdata corresponding to \code{fgam} terms that are greater[less] than the maximum[minimum] of the
 #' domain of the marginal basis for the rows of the tensor product smooth are set to the maximum[minimum]
 #' of the domain.  If this argument is false, attempting to predict a value of the functional predictor
 #' outside the range of this basis produces an error
-#' @param ... additional arguments passed on to \code{\link{predict.gam}}
+#' @param ... additional arguments passed on to \code{{predict.gam}}
 #' @return If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long
 #' format. If \code{se == TRUE}, a list with entries fit and se.fit containing fits and standard errors,
 #' respectively. If \code{type == "terms" or "iterms"} each of these lists is a list of matrices of the
 #' same dimension as the response for newdata containing the linear predictor and its se for each term
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
-#' @seealso \code{\link{fgam}}, \code{\link[mgcv]{predict.gam}}
+#' @seealso \code{{fgam}}, \code{[mgcv]{predict.gam}}
 #' @examples
 #' ######### Octane data example #########
 #' data(gasoline)
@@ -182,7 +182,7 @@ predict.fgam <- function (object, newdata, type = "response", se.fit = FALSE,
                   }
                 } else {
                   # lf() term
-                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])$processed  
+                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])$processed
                 }
               }
               if(type=='lpmatrix') newdata[[cov]] <- as.vector(newdata[[cov]])

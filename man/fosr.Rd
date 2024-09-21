@@ -31,7 +31,7 @@ fosr(
 \item{formula}{Formula for fitting fosr. If used, data argument must not be null.}
 
 \item{Y, fdobj}{the functional responses, given as either an \eqn{n\times d}
-matrix \code{Y} or a functional data object (class \code{"\link[fda]{fd}"})
+matrix \code{Y} or a functional data object (class \code{"[fda]{fd}"})
 as in the \pkg{fda} package.}
 
 \item{data}{data frame containing the predictors and responses.}
@@ -50,7 +50,7 @@ squares, \code{"GLS"} for penalized generalized least squares, \code{"mix"}
 for mixed effect models.}
 
 \item{gam.method}{smoothing parameter selection method, to be passed to
-\code{\link[mgcv]{gam}}: \code{"REML"} for restricted maximum likelihood,
+\code{[mgcv]{gam}}: \code{"REML"} for restricted maximum likelihood,
 \code{"GCV.Cp"} for generalized cross-validation.}
 
 \item{cov.method}{covariance estimation method: the current options are
@@ -77,24 +77,24 @@ by the principal components; defaults to 0.99.}
 \item{max.iter}{maximum number of iterations if \code{method = "GLS"}.}
 
 \item{maxlam}{maximum smoothing parameter value to consider (when
-\code{lamvec=NULL}; see \code{\link{lofocv}}).}
+\code{lamvec=NULL}; see \code{{lofocv}}).}
 
 \item{cv1}{logical value indicating whether a cross-validation score should
 be computed even if a single fixed \code{lambda} is specified (when
 \code{method = "OLS"}).}
 
 \item{scale}{logical value or vector determining scaling of the matrix
-\code{X} (see \code{\link{scale}}, to which the value of this argument is
+\code{X} (see \code{{scale}}, to which the value of this argument is
 passed).}
 }
 \value{
 An object of class \code{fosr}, which is a list with the following
-elements: \item{fd}{object of class \code{"\link{fd}"} representing the
+elements: \item{fd}{object of class \code{"{fd}"} representing the
 estimated coefficient functions. Its main components are a basis and a
 matrix of coefficients with respect to that basis.} \item{pca.resid}{if
 \code{method = "mix"}, an object representing a functional PCA of the
-residuals, performed by \code{\link{fpca.sc}} if the responses are in raw
-form or by \code{\link[fda]{pca.fd}} if in functional-data-object form.}
+residuals, performed by \code{{fpca.sc}} if the responses are in raw
+form or by \code{[fda]{pca.fd}} if in functional-data-object form.}
 \item{U}{if \code{method = "mix"}, an \eqn{n\times m} matrix of random
 effects, where \eqn{m} is the number of functional PC's needed to explain
 proportion \code{pve} of the residual variance. These random effects can be
@@ -105,7 +105,7 @@ of the coefficient function estimates at the points given by
 \code{argvals}.} \item{se.func}{matrix of values of the standard error
 estimates for the coefficient functions, at the points given by
 \code{argvals}.} \item{argvals}{points at which the coefficient functions
-are evaluated.} \item{fit}{fit object outputted by \code{\link{amc}}.}
+are evaluated.} \item{fit}{fit object outputted by \code{{amc}}.}
 \item{edf}{effective degrees of freedom of the fit.}
 \item{lambda}{smoothing parameter, or vector of smoothing parameters.}
 \item{cv}{cross-validated integrated squared error if \code{method="OLS"},
@@ -133,7 +133,7 @@ responses.
 
 There are three types of values for argument \code{lambda}:\enumerate{\item
 if \code{NULL}, the smoothing parameter is estimated by
-\code{\link[mgcv]{gam}} (package \pkg{mgcv}) if \code{method = "GLS"}, or
+\code{[mgcv]{gam}} (package \pkg{mgcv}) if \code{method = "GLS"}, or
 by \code{optimize} if \code{method = "OLS"}; \item if a scalar, this value
 is used as the smoothing parameter (but only for the initial model, if
 \code{method = "GLS"}); \item if a vector, this is used as a grid of values
@@ -190,7 +190,7 @@ Biostatistics}, 6(1), article 28.  Available at
 \url{https://pubmed.ncbi.nlm.nih.gov/21969982/}
 }
 \seealso{
-\code{\link{plot.fosr}}
+\code{{plot.fosr}}
 }
 \author{
 Philip Reiss \email{phil.reiss@nyumc.org}, Lan Huo, and Fabian

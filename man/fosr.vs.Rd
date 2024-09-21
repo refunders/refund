@@ -14,7 +14,7 @@ fosr.vs(
 )
 }
 \arguments{
-\item{formula}{an object of class "\code{\link{formula}}": an expression of the model to be fitted.}
+\item{formula}{an object of class "\code{{formula}}": an expression of the model to be fitted.}
 
 \item{data}{a data frame that contains the variables in the model.}
 
@@ -28,7 +28,7 @@ fosr.vs(
 }
 \value{
 A fitted fosr.vs-object, which is a list with the following elements:
-\item{formula}{an object of class "\code{\link{formula}}": an expression of the model to be fitted.}
+\item{formula}{an object of class "\code{{formula}}": an expression of the model to be fitted.}
 \item{coefficients}{the estimated coefficient functions.}
 \item{fitted.values}{the fitted curves.}
 \item{residuals}{the residual curves.}
@@ -84,7 +84,7 @@ Chen, Y., Goldsmith, J., and Ogden, T. (2016).
 Variable selection in function-on-scalar regression. \emph{Stat} 5 88-101
 }
 \seealso{
-\code{\link{grpreg}}
+\code{{grpreg}}
 }
 \author{
 Yakuan Chen \email{yc2641@cumc.columbia.edu}

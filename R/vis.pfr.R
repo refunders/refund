@@ -5,8 +5,8 @@
 #' estimated surface or estimated second derivative surface with one of its arguments fixed.
 #' Corresponding twice-standard error \dQuote{Bayesian} confidence bands are
 #' constructed using the method in Marra and Wood (2012). See the details.
-#' 
-#' @param object an \code{pfr} object, produced by \code{\link{pfr}}
+#'
+#' @param object an \code{pfr} object, produced by \code{{pfr}}
 #' @param select index for the smooth term to be plotted, according to its position
 #'   in the model formula (and in \code{object$smooth}). Not needed if only one
 #'   multivariate term is present.
@@ -20,47 +20,47 @@
 #' @param deriv2 logical; if \code{TRUE}, plot the estimated second derivative surface along with
 #'   Bayesian confidence bands.  Only implemented for the "slices" plot from either \code{xval} or
 #'   \code{tval} being specified
-#' @param theta numeric; viewing angle; see \code{\link{persp}}
-#' @param plot.type one of \code{"contour"} (to use \code{\link{levelplot}}) or \code{"persp"}
-#'   (to use \code{\link{persp}}).  Ignored if either \code{xval} or \code{tval} is specified
+#' @param theta numeric; viewing angle; see \code{{persp}}
+#' @param plot.type one of \code{"contour"} (to use \code{{levelplot}}) or \code{"persp"}
+#'   (to use \code{{persp}}).  Ignored if either \code{xval} or \code{tval} is specified
 #' @param ticktype how to draw the tick marks if \code{plot.type="persp"}.  Defaults to \code{"detailed"}
-#' @param ... other options to be passed to \code{\link{persp}}, \code{\link{levelplot}}, or
-#'   \code{\link{plot}}
-#' 
+#' @param ... other options to be passed to \code{{persp}}, \code{{levelplot}}, or
+#'   \code{{plot}}
+#'
 #' @details The confidence bands used when plotting slices of the estimated surface or second derivative
 #' surface are the ones proposed in Marra and Wood (2012).  These are a generalization of the "Bayesian"
 #' intervals of Wahba (1983) with an adjustment for the uncertainty about the model intercept. The
 #' estimated covariance matrix of the model parameters is obtained from assuming a particular Bayesian
 #' model on the parameters.
-#' 
+#'
 #' @return Simply produces a plot
 #' @references
 #' McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 #' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23(1)},
-#' pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
+#' pp. 249-269.
 #'
 #' Marra, G., and Wood, S. N. (2012) Coverage properties of confidence intervals for generalized
 #' additive model components. \emph{Scandinavian Journal of Statistics}, \bold{39(1)}, pp. 53--74.
 #'
 #' Wabha, G. (1983) "Confidence intervals" for the cross-validated smoothing spline. \emph{Journal of the
 #' Royal Statistical Society, Series B}, \bold{45(1)}, pp. 133--150.
-#' 
+#'
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}
-#' @seealso \code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{pfr}}, \code{\link{persp}},
-#'   \code{\link{levelplot}}
+#' @seealso \code{{vis.gam}}, \code{{plot.gam}}, \code{{pfr}}, \code{{persp}},
+#'   \code{{levelplot}}
 #' @importFrom mgcv vis.gam predict.gam
 #' @importFrom lattice levelplot
 #' @importFrom graphics persp
 #' @export
-#' 
+#'
 #' @examples
 #' ################# DTI Example #####################
 #' data(DTI)
-#' 
+#'
 #' ## only consider first visit and cases (since no PASAT scores for controls),
 #' ## and remove missing data
 #' DTI <- DTI[DTI$visit==1 & DTI$case==1 & complete.cases(DTI$cca),]
-#' 
+#'
 #' ## Fit the PFR using FA measurements along corpus
 #' ## callosum as functional predictor with PASAT as response
 #' ## using 8 cubic B-splines for each marginal bases with
@@ -85,12 +85,12 @@
 
 vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, theta = 50,
                   plot.type = "persp", ticktype = "detailed", ...){
-  
+
   trm.dim <- sapply(object$smooth, function(x) x$dim)
   n.mv <- sum(trm.dim>1)
   if (!all(length(object$pfr), length(object$smooth), n.mv>0))
     stop('Model contains no smooth terms for visualization')
-  
+
   if (!(object$smooth[[select]]$dim > 1)) {
     if (select==1 & n.mv==1) {
       select <- which(trm.dim>1)
@@ -98,8 +98,8 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
       stop('Term indicated by \"select\" is not a multivariate smooth')
     }
   }
-  
-  
+
+
   # ttypes are the term types for object$smooth; fttypes for object$pfr$ft
   #ftlist  <- c("lf", "af", "lf.vd", "peer") # This vector identifies term types that end up in ft
   ttypes  <- object$pfr$termtype[object$pfr$termtype != "par"]
@@ -120,7 +120,7 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
   #} else {
   #  stop("Uncrecognized select type")
   #}
-  
+
   # Corresponding coefficient indices
   smooth.i <- object$smooth[[select]]
   tind <- 1:length(object$coefficients) %in%
@@ -130,7 +130,7 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
     bquote(paste(hat(F),'(p,t),   p=',hat(G)[t],'(',.(tvar),')',sep=''))
   else
     bquote(paste(hat(F),'(',.(tvar),',t)',sep=''))
-  
+
   if(!(length(tval)+length(xval))) {
     # Plot entire surface (not slices)
     temp <- list()
@@ -139,21 +139,21 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
       vis.gam(object, view=paste0(tvar, c(".omat", ".tmat")), cond=temp,
               ticktype=ticktype, theta=theta, contour.col=rev(heat.colors(100)),
               xlab=tvar, ylab='\nt', zlab='', main=mtitle, ...)
-      
+
     } else if (plot.type=='contour'){
       # not making use of vis.gam because want colour key/legend
       est <- coef(object, select=select)
       ylab=ifelse(is.null(smooth.i$QT), tvar, 'p')
       names(est)[1:2] <- c("t", "x")
-      
-      lattice::levelplot(value~t*x, data=est, contour=TRUE, labels=TRUE, 
+
+      lattice::levelplot(value~t*x, data=est, contour=TRUE, labels=TRUE,
                          pretty=TRUE, xlab='t', ylab=ylab,
                          col.regions=rev(heat.colors(100)),
                          main=as.expression(mtitle), ...)
     }
   } else {
     # Plot slice of surface
-    
+
     if(length(xval)+length(tval)>1){
       warning('Specify only one value for either xval or tval.  Only first specified value will be used')
       if(length(xval)){
@@ -163,7 +163,7 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
         tval=tval[1]
       }
     }
-    
+
     if (length(xval)) {
       # x fixed
       nfine <- ndefault(object$pfr$ft[[af.ind]]$xind)
@@ -196,7 +196,7 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
         main=bquote(paste(frac(partialdiff^2,partialdiff*.(tvar)^2)*hat('F')(.(tvar),.(round(tval,3))),' by ',.(tvar),sep=''))
         ylab=bquote(paste(frac(partialdiff^2,partialdiff*.(tvar)^2)*hat('F')(.(tvar),.(round(tval,3))),sep=''))
       }
-      
+
     }
     newdata <- list()
     newdata[[paste(tvar,'.omat',sep='')]] <- xvals
@@ -213,25 +213,25 @@ vis.pfr=function(object, select=1, xval = NULL, tval = NULL, deriv2 = FALSE, the
         #matrix(object$pfr$datameans[names(object$pfr$datameans)==varnames[i]],nr=1,nc=length(newX))
       }
     }
-    
+
     lpmat <- predict.gam(object,newdata=newdata,type='lpmatrix')[,tind]
     if(deriv2){
       eps <- 1e-7 ## finite difference interval
       newdata[[paste(tvar,'.tmat',sep='')]] <- tvals + eps
       X1 <- predict.gam(object,newdata=newdata,type='lpmatrix')[,tind]
-      
+
       newdata[[paste(tvar,'.tmat',sep='')]] <- tvals + 2*eps
       X2 <- predict.gam(object,newdata=newdata,type='lpmatrix')[,tind]
-      
+
       lpmat <- (X2-2*X1+lpmat)/eps^2
     }
-    
+
     preds <- sum(object$cmX)+lpmat%*%object$coef[tind]
     se.preds <- rowSums(lpmat%*%object$Vp[tind,tind]*lpmat)^.5
     ucl <- preds+2*se.preds
     lcl <- preds-2*se.preds
     ylim <- range(ucl,lcl,preds)
-    
+
     par(mar=c(5.1,5.7,4.1,0.5))
     plot(x=x,preds,ylim=ylim,type='l',main=main,ylab=ylab,xlab=xlab,...)
     lines(x,ucl,col=2,lty=2)

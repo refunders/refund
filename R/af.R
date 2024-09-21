@@ -1,9 +1,9 @@
 #' Construct an FGAM regression term
 #'
 #' Defines a term \eqn{\int_{T}F(X_i(t),t)dt} for inclusion in an \code{mgcv::gam}-formula (or
-#' \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
-#' \code{\link{pfr}}, where \eqn{F(x,t)} is an unknown smooth bivariate function and \eqn{X_i(t)}
-#' is a functional predictor on the closed interval \eqn{T}. See \code{\link{smooth.terms}}
+#' \code{{bam}} or \code{{gamm}} or \code{gamm4:::gamm}) as constructed by
+#' \code{{pfr}}, where \eqn{F(x,t)} is an unknown smooth bivariate function and \eqn{X_i(t)}
+#' is a functional predictor on the closed interval \eqn{T}. See \code{{smooth.terms}}
 #' for a list of bivariate basis and penalty options; the default is a tensor
 #' product basis with marginal cubic regression splines for estimating \eqn{F(x,t)}.
 #'
@@ -11,7 +11,7 @@
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
 #'   indicated by \code{NA} values. Alternatively, can be an object of class
-#'   \code{"fd"}; see \code{\link[fda]{fd}}.
+#'   \code{"fd"}; see \code{[fda]{fd}}.
 #' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 #'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
 #'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
@@ -20,8 +20,8 @@
 #'   \code{X$basis$rangeval} if \code{X} is a \code{fd} object.)
 #' @param xind same as argvals. It will not be supported in the next version of refund.
 #' @param basistype defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
-#'   use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
-#'   parameterization of tensor product splines (see \code{\link{t2}})
+#'   use \code{"s"} for bivariate basis functions (see \code{{s}}) or \code{"t2"} for an alternative
+#'   parameterization of tensor product splines (see \code{{t2}})
 #' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule
 #'   for calculating entries in \code{L}. Alternatively and for non-equidistant grids,
 #'   \code{"trapezoidal"} or \code{"riemann"}.
@@ -30,9 +30,9 @@
 #' @param presmooth string indicating the method to be used for preprocessing functional predictor prior
 #'   to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
 #'   \code{fpca.interpolate}. Defaults to \code{NULL} indicateing no preprocessing. See
-#'   \code{\link{create.prep.func}}.
+#'   \code{{create.prep.func}}.
 #' @param presmooth.opts list including options passed to preprocessing method
-#'   \code{\link{create.prep.func}}.
+#'   \code{{create.prep.func}}.
 #' @param Xrange numeric; range to use when specifying the marginal basis for the \emph{x}-axis.  It may
 #'   be desired to increase this slightly over the default of \code{range(X)} if concerned about predicting
 #'   for future observed curves that take values outside of \code{range(X)}
@@ -40,8 +40,8 @@
 #'   applying a quantile transformation on each column of \code{X} prior to fitting?
 #' @param ... optional arguments for basis and penalization to be passed to the
 #'   function indicated by \code{basistype}. These could include, for example,
-#'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
-#'   \code{\link{s}} for details.
+#'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{{te}} or
+#'   \code{{s}} for details.
 #'
 #' @return A list with the following entries:
 #'   \item{\code{call}}{a \code{"call"} to \code{te} (or \code{s}, \code{t2}) using the appropriately
@@ -54,7 +54,7 @@
 #'   \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{af}}
 #'   \item{\code{Xrange}}{the \code{Xrange} argument supplied to \code{af}}
 #'   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
-#'     \code{\link{create.prep.func}}}
+#'     \code{{create.prep.func}}}
 #'
 #' @examples
 #' \dontrun{
@@ -121,9 +121,9 @@
 #'   and Jonathan Gellar
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 #' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
-#' pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
-#' @seealso \code{\link{pfr}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
-#' \code{\link{pfr}} for examples
+#' pp. 249-269.
+#' @seealso \code{pfr}, \code{lf}, mgcv's \code{linear.functional.terms},
+#' \code{pfr} for examples
 #' @importFrom stats ecdf
 #' @importFrom fda int2Lfd smooth.basisPar eval.fd create.bspline.basis
 #' @importFrom utils modifyList getFromNamespace

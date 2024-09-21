@@ -19,7 +19,7 @@ peer(
 where \code{N} is the number of columns and \code{J} is the number of
 evaluation points. May include missing/sparse functions, which are
 indicated by \code{NA} values. Alternatively, can be an object of class
-\code{"fd"}; see \code{\link[fda]{fd}}.}
+\code{"fd"}; see \code{[fda]{fd}}.}
 
 \item{argvals}{indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
@@ -49,11 +49,11 @@ an error.}
 }
 \description{
 Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in a
-\code{\link{pfr}} formula, where \eqn{\beta(t)} is estimated with
+\code{{pfr}} formula, where \eqn{\beta(t)} is estimated with
 structured penalties (Randolph et al., 2012).
 }
 \details{
-\code{peer} is a wrapper for \code{\link{lf}}, which defines linear
+\code{peer} is a wrapper for \code{{lf}}, which defines linear
 functional predictors for any type of basis. It simply calls \code{lf}
 with the appropriate options for the \code{peer} basis and penalty construction.
 The type of penalty is determined by the \code{pentype} argument. There
@@ -74,7 +74,7 @@ are four types of penalties available:
 }
 
 The original stand-alone implementation by Madan Gopal Kundu is available in
-\code{\link{peer_old}}.
+\code{{peer_old}}.
 }
 \examples{
 
@@ -113,7 +113,7 @@ Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
 functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 }
 \seealso{
-\code{\link{pfr}}, \code{\link{smooth.construct.peer.smooth.spec}}
+\code{{pfr}}, \code{{.smooth.spec}}
 }
 \author{
 Jonathan Gellar \email{JGellar@mathematica-mpr.com} and

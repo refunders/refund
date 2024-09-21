@@ -1,8 +1,8 @@
 #' Construct an FLM regression term
 #'
-#' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{\link[mgcv]{gam}}-formula
-#' (or \code{\link{bam}} or \code{\link{gamm}} or \code{\link[gamm4]{gamm4}}) as constructed by
-#' \code{\link{fgam}}, where \eqn{\beta(t)} is an unknown coefficient function and \eqn{X_i(t)}
+#' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{[mgcv]{gam}}-formula
+#' (or \code{bam} or \code{gamm} or \code{[gamm4]{gamm4}}) as constructed by
+#' \code{fgam}, where \eqn{\beta(t)} is an unknown coefficient function and \eqn{X_i(t)}
 #' is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic B-spline with
 #' second-order difference penalties for estimating \eqn{\beta(t)}.  The functional predictor must
 #' be fully observed on a regular grid.
@@ -19,9 +19,9 @@
 #' integration over \code{t}
 #' @param splinepars optional arguments specifying options for representing and penalizing the
 #' functional coefficient \eqn{\beta(t)}. Defaults to a cubic B-spline with second-order difference
-#' penalties, i.e. \code{list(bs="ps", m=c(2, 1))} See \code{\link{te}} or \code{\link{s}} for details
+#' penalties, i.e. \code{list(bs="ps", m=c(2, 1))} See \code{te} or \code{s} for details
 #' @param presmooth logical; if true, the functional predictor is pre-smoothed prior to fitting.  See
-#' \code{\link{smooth.basisPar}}
+#' \code{smooth.basisPar}
 #' @return a list with the following entries
 #' \enumerate{
 #' \item \code{call} - a \code{call} to \code{te} (or \code{s}, \code{t2}) using the appropriately
@@ -34,11 +34,11 @@
 #' \item \code{LXname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
 #' \item \code{presmooth} - the \code{presmooth} argument supplied to \code{lf}
 #' \item \code{Xfd} - an \code{fd} object from presmoothing the functional predictors using
-#' \code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}
+#' \code{{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{{fd}}
 #' }
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
-#' @seealso \code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}},
-#' \code{\link{fgam}} for examples
+#' @seealso \code{{fgam}}, \code{{af}}, mgcv's \code{{linear.functional.terms}},
+#' \code{{fgam}} for examples
 #' @importFrom fda create.bspline.basis smooth.basisPar eval.fd
 #' @importFrom utils getFromNamespace modifyList
 #' @export
@@ -52,18 +52,18 @@ lf_old <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
     argvals = xind
   }
   xind = argvals
-  
+
   n=nrow(X)
   nt=ncol(X)
   integration <- match.arg(integration)
   if(is.null(splinepars$bs)) splinepars$bs <- 'ps'
   if(is.null(splinepars$k)) splinepars$k <- min(ceiling(n/4),40)
   if(is.null(splinepars$m)) splinepars$m = c(2, 2)
-  
+
   tindname <- paste(deparse(substitute(X)), ".tmat", sep = "")
   LXname <- paste("L.", deparse(substitute(X)), sep = "")
   basistype = "s"
-  
+
   if (is.null(dim(xind))) {
     xind <- t(xind)
     stopifnot(ncol(xind) == nt)
@@ -73,19 +73,19 @@ lf_old <- function(X, argvals = seq(0, 1, l = ncol(X)), xind = NULL,
     }
     stopifnot(nrow(xind) == n)
   }
-  
+
   Xfd=NULL
   if(presmooth){
     bbt=create.bspline.basis(rangeval=range(xind),nbasis=ceiling(nt/4),
                              norder=splinepars$m[1]+2, breaks=NULL)
-    
+
     # pre-smooth functional predictor
     temp <- smooth.basisPar(t(xind),t(X),bbt,int2Lfd(splinepars$m[2]))
     Xfd <- temp$fd
     Xfd$y2cMap <-temp$y2cMap
     X <- t(sapply(1:n,function(i){eval.fd(xind[i,],Xfd[i])}))
   }
-  
+
   if (!is.null(L)) {
     stopifnot(nrow(L) == n, ncol(L) == nt)
   }else {

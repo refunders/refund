@@ -38,7 +38,7 @@ supported.}
 }
 \value{
 An object of class \code{fosr}, which is a list with the following
-elements: \item{fd}{object of class \code{"\link{fd}"} representing the
+elements: \item{fd}{object of class \code{"{fd}"} representing the
 estimated coefficient functions. Its main components are a basis and a
 matrix of coefficients with respect to that basis. }
 \item{raw.coef}{\eqn{d\times p} matrix of coefficient estimates from
@@ -60,7 +60,7 @@ along the function, and then (2) smoothing the resulting coefficients to
 obtain coefficient functions.
 }
 \details{
-Unlike \code{\link{fosr}} and \code{\link{pffr}}, which obtain smooth
+Unlike \code{{fosr}} and \code{{pffr}}, which obtain smooth
 coefficient functions by minimizing a penalized criterion, this function
 introduces smoothing only as a second step. The idea was proposed by Fan
 and Zhang (2000), who employed local polynomials rather than roughness
@@ -72,7 +72,7 @@ functional linear models with applications to longitudinal data.
 \emph{Journal of the Royal Statistical Society, Series B}, 62(2), 303--322.
 }
 \seealso{
-\code{\link{fosr}}, \code{\link{pffr}}
+\code{{fosr}}, \code{{pffr}}
 }
 \author{
 Philip Reiss \email{phil.reiss@nyumc.org} and Lan Huo

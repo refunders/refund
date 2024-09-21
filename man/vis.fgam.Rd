@@ -17,7 +17,7 @@ vis.fgam(
 )
 }
 \arguments{
-\item{object}{an \code{fgam} object, produced by \code{\link{fgam}}}
+\item{object}{an \code{fgam} object, produced by \code{{fgam}}}
 
 \item{af.term}{character; the name of the functional predictor to be plotted.  Only important
 if multiple \code{af} terms are fit.  Defaults to the first \code{af} term in \code{object$call}}
@@ -33,22 +33,22 @@ is specified}
 Bayesian confidence bands.  Only implemented for the "slices" plot from either \code{xval} or
 \code{tval} being specified}
 
-\item{theta}{numeric; viewing angle; see \code{\link{persp}}}
+\item{theta}{numeric; viewing angle; see \code{{persp}}}
 
-\item{plot.type}{one of \code{"contour"} (to use \code{\link{levelplot}}) or \code{"persp"}
-(to use \code{\link{persp}}).  Ignored if either \code{xval} or \code{tval} is specified}
+\item{plot.type}{one of \code{"contour"} (to use \code{{levelplot}}) or \code{"persp"}
+(to use \code{{persp}}).  Ignored if either \code{xval} or \code{tval} is specified}
 
 \item{ticktype}{how to draw the tick marks if \code{plot.type="persp"}.  Defaults to \code{"detailed"}}
 
-\item{...}{other options to be passed to \code{\link{persp}}, \code{\link{levelplot}}, or
-\code{\link{plot}}}
+\item{...}{other options to be passed to \code{{persp}}, \code{{levelplot}}, or
+\code{{plot}}}
 }
 \value{
 Simply produces a plot
 }
 \description{
-Produces perspective or contour plot views of an estimated surface corresponding to \code{\link{af}}
-terms fit using \code{\link{fgam}} or plots \dQuote{slices} of the estimated surface or estimated
+Produces perspective or contour plot views of an estimated surface corresponding to \code{{af}}
+terms fit using \code{{fgam}} or plots \dQuote{slices} of the estimated surface or estimated
 second derivative surface with one of its arguments fixed and corresponding twice-standard error
 \dQuote{Bayesian} confidence bands constructed using the method in Marra and Wood (2012).  See the details.
 }
@@ -97,7 +97,7 @@ X <- X[!ind,]
 \references{
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23(1)},
-pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
+pp. 249-269.
 
 Marra, G., and Wood, S. N. (2012) Coverage properties of confidence intervals for generalized
 additive model components. \emph{Scandinavian Journal of Statistics}, \bold{39(1)}, pp. 53--74.
@@ -106,8 +106,8 @@ Wabha, G. (1983) "Confidence intervals" for the cross-validated smoothing spline
 Royal Statistical Society, Series B}, \bold{45(1)}, pp. 133--150.
 }
 \seealso{
-\code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{fgam}}, \code{\link{persp}},
-\code{\link{levelplot}}
+\code{{vis.gam}}, \code{{plot.gam}}, \code{{fgam}}, \code{{persp}},
+\code{{levelplot}}
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}

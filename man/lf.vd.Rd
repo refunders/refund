@@ -52,8 +52,8 @@ block-diagonal penalty matrix (with one smoothing parameter).}
 
 \item{...}{optional arguments for basis and penalization to be passed to the
 function indicated by \code{basistype}. These could include, for example,
-\code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link{te}} or
-\code{\link{s}} for details.}
+\code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{{te}} or
+\code{{s}} for details.}
 }
 \value{
 a list with the following entries
@@ -71,9 +71,9 @@ a list with the following entries
 }
 \description{
 This function defines the a variable-domain functional regression term
-for inclusion in an \code{\link[mgcv]{gam}}-formula (or \code{\link[mgcv]{bam}} or
-\code{\link[mgcv]{gamm}} or \code{gamm4::gamm} as constructed by
-\code{\link{pfr}}. These are functional predictors for which each function is
+for inclusion in an \code{[mgcv]{gam}}-formula (or \code{[mgcv]{bam}} or
+\code{[mgcv]{gamm}} or \code{gamm4::gamm} as constructed by
+\code{{pfr}}. These are functional predictors for which each function is
 observed over a domain of different width.
 The default is the term \eqn{1/T_i\int_0^{T_i}X_i(t)\beta(t,T_i)dt},
 where \eqn{X_i(t)} is a functional predictor of length \eqn{T_i} and \eqn{\beta(t,T_i)}
@@ -81,7 +81,7 @@ is an unknown bivariate coefficient function. Various domain transformations
 are available, such as lagging or domain-standardizing the coordinates, or
 parameterizing the interactions; these often result in improved model fit.
 Basis choice is fully customizable using the options of
-\code{\link[mgcv]{s}} and \code{\link[mgcv]{te}}.
+\code{[mgcv]{s}} and \code{[mgcv]{te}}.
 }
 \details{
 The variable-domain functional regression model uses the term
@@ -91,7 +91,7 @@ The variable-domain functional regression model uses the term
    of the coefficient function is the triangular (or trapezoidal) surface
    defined by \eqn{{t,T_i: 0\le t\le T_i}}. The default basis uses
    bivariate thin-plate regression splines.
-   
+
    Different basis transformations can result in different properties; see
    Gellar, et al. (2014) for a more complete description. We make five basis
    transformations easily accessible using the \code{transform} argument.
@@ -110,22 +110,22 @@ The variable-domain functional regression model uses the term
      \item \code{"noInteraction"}: first transforms the domain as in
        \code{"standardized"}, then reduces the bivariate basis to univariate
        with no effect of \code{vd}. This would be equivalent to using
-       \code{\link{lf}} on the domain-standardized predictor functions.
+       \code{{lf}} on the domain-standardized predictor functions.
    }
-   
+
    The practical effect of using the \code{"lagged"} basis is to increase
    smoothness along the right (diagonal) edge of the resultant estimate.
    The practical effect of using a \code{"standardized"} basis is to allow
    for greater smoothness at high values of \eqn{T_i} compared to lower
    values.
-   
+
    These basis transformations rely on the basis constructors
    available in the \code{mgcvTrans} package. For more specific control over
    the transformations, you can use \code{bs="dt"} and/or \code{bs="pi"};
-   see \code{\link{smooth.construct.dt.smooth.spec}} or
-   \code{\link{smooth.construct.pi.smooth.spec}} for an explanation of the
+   see \code{{smooth.construct.dt.smooth.spec}} or
+   \code{{smooth.construct.pi.smooth.spec}} for an explanation of the
    options (entered through the \code{xt} argument of \code{lf.vd}/\code{s}).
-   
+
    Note that tensor product bases are only recommended when a standardized
    transformation is used. Without this transformation, just under half of
    the "knots" used to define the basis will fall outside the range of the
@@ -151,12 +151,12 @@ The variable-domain functional regression model uses the term
                  family="binomial", data=sofa)
   fit.vd7 <- pfr(death ~ lf.vd(SOFA, transform="noInteraction", bs="ps") + age + los,
                  family="binomial", data=sofa)
-  
+
   ests <- lapply(1:7, function(i) {
-    c.i <- coef(get(paste0("fit.vd", i)), n=173, n2=173) 
+    c.i <- coef(get(paste0("fit.vd", i)), n=173, n2=173)
     c.i[(c.i$SOFA.arg <= c.i$SOFA.vd),]
   })
-  
+
   # Try plotting for each i
   i <- 1
   lims <- c(-2,8)
@@ -176,7 +176,7 @@ The variable-domain functional regression model uses the term
           ggplot2::theme_bw()
   }
 }
-  
+
 }
 \references{
 Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
@@ -185,8 +185,8 @@ Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
    109(508):1425-1439, 2014.
 }
 \seealso{
-\code{\link{pfr}}, \code{\link{lf}}, mgcv's
-   \code{\link{linear.functional.terms}}.
+\code{{pfr}}, \code{{lf}}, mgcv's
+   \code{{linear.functional.terms}}.
 }
 \author{
 Jonathan E. Gellar <JGellar@mathematica-mpr.com>

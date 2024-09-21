@@ -21,7 +21,7 @@ fpc(
 where \code{N} is the number of columns and \code{J} is the number of
 evaluation points. May include missing/sparse functions, which are
 indicated by \code{NA} values. Alternatively, can be an object of class
-\code{"fd"}; see \code{\link[fda]{fd}}.}
+\code{"fd"}; see \code{[fda]{fd}}.}
 
 \item{argvals}{indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
@@ -49,22 +49,22 @@ to use for pre-smoothing \code{X}}
 
 \item{k}{the dimension of the pre-smoothing basis}
 
-\item{...}{additional options to be passed to \code{\link{lf}}. These include
+\item{...}{additional options to be passed to \code{{lf}}. These include
 \code{argvals}, \code{integration}, and any additional options for the
 pre-smoothing basis (as constructed by \code{mgcv::s}), such as \code{m}.}
 }
 \value{
-The result of a call to \code{\link{lf}}.
+The result of a call to \code{{lf}}.
 }
 \description{
-Constructs a functional principal component regression (Reiss and Ogden, 
+Constructs a functional principal component regression (Reiss and Ogden,
 2007, 2010) term for inclusion in an \code{mgcv::gam}-formula (or
-\code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as
-constructed by \code{\link{pfr}}. Currently only one-dimensional functions
+\code{{bam}} or \code{{gamm}} or \code{gamm4:::gamm}) as
+constructed by \code{{pfr}}. Currently only one-dimensional functions
 are allowed.
 }
 \details{
-\code{fpc} is a wrapper for \code{\link{lf}}, which defines linear
+\code{fpc} is a wrapper for \code{{lf}}, which defines linear
 functional predictors for any type of basis for inclusion in a \code{pfr}
 formula. \code{fpc} simply calls \code{lf} with the appropriate options for
 the \code{fpc} basis and penalty construction.
@@ -80,23 +80,23 @@ Ogden (2007). Both methods consist of the following steps:
 
 This implementation provides options for each of these steps. The basis
 for in step 1 can be specified using the arguments \code{bs} and \code{k},
-as well as other options via \code{...}; see \code{\link[mgcv]{s}} for
+as well as other options via \code{...}; see \code{[mgcv]{s}} for
 these options. The type of PC-decomposition is specified with \code{method}.
 And the FLM can be fit either penalized or unpenalized via \code{penalize}.
 
-The default is FPCR-R, which uses a b-spline basis, an unconstrained 
-principal components decomposition using \code{\link{svd}}, and the FLM
+The default is FPCR-R, which uses a b-spline basis, an unconstrained
+principal components decomposition using \code{{svd}}, and the FLM
 fit with a second-order difference penalty. FPCR-C can be selected by
 using a different option for \code{method}, indicating a constrained
 ("functional") PC decomposition, and by default an unpenalized fit of the
 FLM.
 
-FPCR-R is also implemented in \code{\link{fpcr}}; here we implement the
+FPCR-R is also implemented in \code{{fpcr}}; here we implement the
   method for inclusion in a \code{pfr} formula.
 }
 \section{NOTE}{
 
-Unlike \code{\link{fpcr}}, \code{fpc} within a \code{pfr} formula does
+Unlike \code{{fpcr}}, \code{fpc} within a \code{pfr} formula does
 not automatically decorrelate the functional predictors from additional
 scalar covariates.
 }
@@ -140,7 +140,7 @@ Reiss, P. T., and Ogden, R. T. (2010). Functional generalized linear models
 with images as predictors. \emph{Biometrics}, 66, 61-69.
 }
 \seealso{
-\code{\link{lf}}, \code{\link{smooth.construct.fpc.smooth.spec}}
+\code{{lf}}, \code{{smooth.construct.fpc.smooth.spec}}
 }
 \author{
 Jonathan Gellar \email{JGellar@mathematica-mpr.com}, Phil Reiss

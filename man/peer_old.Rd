@@ -52,7 +52,7 @@ specified with \code{pentype='DECOMP'}.}
 
 \item{se}{logical; calculate standard error when \code{TRUE}.}
 
-\item{...}{additional arguments passed to the \code{\link{lme}} function.}
+\item{...}{additional arguments passed to the \code{{lme}} function.}
 }
 \value{
 a list containing: \item{fit}{result of the call to \code{lme}}

@@ -1,19 +1,19 @@
 #' Construct an FLM regression term
 #'
 #' Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{mgcv::gam}-formula (or
-#' \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
-#' \code{\link{pfr}}, where \eqn{\beta(t)} is an unknown coefficient
+#' \code{{bam}} or \code{{gamm}} or \code{gamm4:::gamm}) as constructed by
+#' \code{{pfr}}, where \eqn{\beta(t)} is an unknown coefficient
 #' function and \eqn{X_i(t)} is a functional predictor on the closed interval
 #' \eqn{T}. See
-#' \code{\link{smooth.terms}} for a list of basis and penalty options; the
+#' \code{{smooth.terms}} for a list of basis and penalty options; the
 #' default is thin-plate regression splines, as this is the default option
-#' for \code{\link[mgcv]{s}}.
-#' 
+#' for \code{[mgcv]{s}}.
+#'
 #' @param X functional predictors, typically expressed as an \code{N} by \code{J} matrix,
 #'   where \code{N} is the number of columns and \code{J} is the number of
 #'   evaluation points. May include missing/sparse functions, which are
 #'   indicated by \code{NA} values. Alternatively, can be an object of class
-#'   \code{"fd"}; see \code{\link[fda]{fd}}.
+#'   \code{"fd"}; see \code{[fda]{fd}}.
 #' @param argvals indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 #'   subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
 #'   an \code{N} by \code{J} matrix. Indices may be unequally spaced. Entering
@@ -26,16 +26,16 @@
 #'   \code{"trapezoidal"} or \code{"riemann"}.
 #' @param L an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
 #'   integration over \code{t}. If present, overrides \code{integration}.
-#' @param presmooth string indicating the method to be used for preprocessing functional predictor prior 
-#'   to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and 
+#' @param presmooth string indicating the method to be used for preprocessing functional predictor prior
+#'   to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
 #'   \code{fpca.interpolate}. Defaults to \code{NULL} indicating no preprocessing. See
-#'   \code{\link{create.prep.func}}.
+#'   \code{{create.prep.func}}.
 #' @param presmooth.opts list including options passed to preprocessing method
-#'   \code{\link{create.prep.func}}.
+#'   \code{{create.prep.func}}.
 #' @param ... optional arguments for basis and penalization to be passed to
 #'   \code{mgcv::s}. These could include, for example,
-#'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link[mgcv]{s}} for details.
-#' 
+#'   \code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{[mgcv]{s}} for details.
+#'
 #' @return a list with the following entries
 #'   \item{\code{call}}{a \code{call} to \code{te} (or \code{s}, \code{t2}) using the appropriately
 #'     constructed covariate and weight matrices}
@@ -47,24 +47,24 @@
 #'   \item{\code{LXname}}{the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}}
 #'   \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{lf}}
 #'   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
-#'     \code{\link{create.prep.func}}}
+#'     \code{{create.prep.func}}}
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com}, Fabian Scheipl,
 #'   and Jonathan Gellar
-#' 
+#'
 #' @references
 #' Goldsmith, J., Bobb, J., Crainiceanu, C., Caffo, B., and Reich, D. (2011).
 #' Penalized functional regression. \emph{Journal of Computational and Graphical
 #' Statistics}, 20(4), 830-851.
-#' 
+#'
 #' Goldsmith, J., Crainiceanu, C., Caffo, B., and Reich, D. (2012). Longitudinal
 #' penalized functional regression for cognitive outcomes on neuronal tract
 #' measurements. \emph{Journal of the Royal Statistical Society: Series C},
 #' 61(3), 453-469.
-#' 
+#'
 #' @examples
 #' data(DTI)
 #' DTI1 <- DTI[DTI$visit==1 & complete.cases(DTI),]
-#' 
+#'
 #' # We can apply various preprocessing options to the DTI data
 #' fit1 <- pfr(pasat ~ lf(cca, k=30), data=DTI1)
 #' fit2 <- pfr(pasat ~ lf(cca, k=30, presmooth="fpca.sc",
@@ -75,15 +75,15 @@
 #' fit5 <- pfr(pasat ~ lf(cca, k=30, presmooth="bspline",
 #'                        presmooth.opts=list(nbasis=8)), data=DTI1)
 #' fit6 <- pfr(pasat ~ lf(cca, k=30, presmooth="interpolate"), data=DTI1)
-#' 
+#'
 #' # All models should result in similar fits
 #' fits <- as.data.frame(lapply(1:6, function(i)
 #'   get(paste0("fit",i))$fitted.values))
 #' names(fits) <- c("none", "fpca.sc", "fpca.face", "fpca.ssvd", "bspline", "interpolate")
 #' pairs(fits)
-#' 
-#' @seealso \code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
-#'  and \code{\link{linear.functional.terms}}; \code{\link{pfr}} for additional examples
+#'
+#' @seealso \code{{pfr}}, \code{{af}}, mgcv's \code{{smooth.terms}}
+#'  and \code{{linear.functional.terms}}; \code{{pfr}} for additional examples
 #' @importFrom fda eval.fd
 #' @importFrom methods is
 #' @export lf
@@ -92,7 +92,7 @@
 lf <- function(X, argvals = NULL, xind = NULL,
                integration = c("simpson", "trapezoidal", "riemann"),
                L = NULL, presmooth = NULL, presmooth.opts = NULL, ...) {
-  
+
   # Catch if lf_old syntax is used
   dots <- list(...)
   dots.unmatched <- names(dots)[!(names(dots) %in% names(formals(s)))]
@@ -106,13 +106,13 @@ lf <- function(X, argvals = NULL, xind = NULL,
     ret <- eval(call, envir=parent.frame())
     return(ret)
   }
-  
+
   if (!is.null(xind)) {
     cat("Argument xind is placed by argvals. xind will not be supported in the next
         version of refund.")
     argvals = xind
   }
-  
+
   if (is(X, "fd")) {
     # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
     if (is.null(argvals))
@@ -122,8 +122,8 @@ lf <- function(X, argvals = NULL, xind = NULL,
   } else if (is.null(argvals))
     argvals <- seq(0, 1, l = ncol(X))
   xind = argvals
-  
-  
+
+
   n=nrow(X)
   nt=ncol(X)
   integration <- match.arg(integration)
@@ -172,6 +172,6 @@ lf <- function(X, argvals = NULL, xind = NULL,
                          by = as.symbol(substitute(LXname))), dots))
   res <-list(call = call, data = data, xind = xind[1,], L = L, tindname=tindname,
              LXname=LXname,presmooth=presmooth)
-  if(!is.null(presmooth)) {res$prep.func <- prep.func} 
+  if(!is.null(presmooth)) {res$prep.func <- prep.func}
   return(res)
 }

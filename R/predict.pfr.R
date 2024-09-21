@@ -1,36 +1,36 @@
 #' Prediction from a fitted pfr model
 #'
-#' Takes a fitted \code{pfr}-object produced by \code{\link{pfr}} and produces predictions given a
+#' Takes a fitted \code{pfr}-object produced by \code{{pfr}} and produces predictions given a
 #' new set of values for the model covariates or the original values used for the model fit.
 #' Predictions can be accompanied by standard errors, based on the posterior distribution of the
-#' model coefficients. This is a wrapper function for \code{\link{predict.gam}}()
-#' @param object a fitted \code{pfr} object as produced by \code{\link{pfr}}
+#' model coefficients. This is a wrapper function for \code{{predict.gam}}()
+#' @param object a fitted \code{pfr} object as produced by \code{{pfr}}
 #' @param newdata a named list containing the values of the model covariates at which predictions
 #' are required. If this is not provided then predictions corresponding to the original data are
-#' returned. All variables provided to newdata should be in the format supplied to \code{\link{pfr}},
+#' returned. All variables provided to newdata should be in the format supplied to \code{{pfr}},
 #' i.e., functional predictors must be supplied as matrices with each row corresponding to one
 #' observed function. Index variables for the functional covariates are reused from the fitted model
 #' object or alternatively can be supplied as attributes of the matrix of functional predictor values.
 #' Any variables in the model not specified in newdata are set to their average values from the data
 #' supplied during fitting the model
-#' 
-#' @param type character; see \code{\link{predict.gam}} for details
-#' @param se.fit logical; see \code{\link{predict.gam}} for details
-#' @param terms character see \code{\link{predict.gam}} for details
+#'
+#' @param type character; see \code{{predict.gam}} for details
+#' @param se.fit logical; see \code{{predict.gam}} for details
+#' @param terms character see \code{{predict.gam}} for details
 #' @param PredOutOfRange logical; if this argument is true then any functional predictor values in
 #' newdata corresponding to \code{pfr} terms that are greater[less] than the maximum[minimum] of the
 #' domain of the marginal basis for the rows of the tensor product smooth are set to the maximum[minimum]
 #' of the domain.  If this argument is false, attempting to predict a value of the functional predictor
 #' outside the range of this basis produces an error
-#' @param ... additional arguments passed on to \code{\link{predict.gam}}
-#' 
+#' @param ... additional arguments passed on to \code{{predict.gam}}
+#'
 #' @return If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long
 #' format. If \code{se == TRUE}, a list with entries fit and se.fit containing fits and standard errors,
 #' respectively. If \code{type == "terms" or "iterms"} each of these lists is a list of matrices of the
 #' same dimension as the response for newdata containing the linear predictor and its se for each term
-#' 
+#'
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
-#' @seealso \code{\link{pfr}}, \code{\link[mgcv]{predict.gam}}
+#' @seealso \code{{pfr}}, \code{[mgcv]{predict.gam}}
 #' @export
 #' @examples
 #' ######### Octane data example #########
@@ -50,7 +50,7 @@
 #' @importFrom splines spline.des
 predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                           terms = NULL, PredOutOfRange = FALSE, ...) {
-  
+
   if (!("pfr"%in% class(object))) {
     # Call predict.pfr_old()
     call <- sys.call()
@@ -58,12 +58,12 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
     ret <- eval(call)
     return(ret)
   }
-  
+
   call <- match.call()
   string <- NULL
   if (!missing(newdata)) {
     nobs <- nrow(as.matrix(newdata[[1]]))
-    
+
     stopifnot(length(unique(sapply(newdata, function(x)
       ifelse(is.matrix(x), nrow(x), length(x))))) == 1)
     gamdata <- list()
@@ -80,7 +80,7 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
           if (is.af) {
             af <- object$pfr$ft[[grep(paste(cov, "[,\\)]", sep = ""),
                                       names(object$pfr$ft))]]
-            
+
             if(J!=length(af$xind) & type!='lpmatrix'){
               stop(paste('Provided data for functional covariate', cov,
                          'does not have same observation times as original data',
@@ -96,7 +96,7 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                 }else{
                   if (sum(dim(as.matrix(attr(newdata, "L")))==dim(as.matrix(newdata[[cov]])))!=2) {
                     warning(paste('Supplied L matrix for',cov,'is not the same dimension as the matrix of observations and will be ignored',sep=''))
-                    
+
                   }else{
                     L <- as.vector(attr(newdata, "L"))
                   }
@@ -129,11 +129,11 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                   }
                 } else {
                   # af() term
-                  newdata[[cov]] <- af$prep.func(newX = newdata[[cov]])  
+                  newdata[[cov]] <- af$prep.func(newX = newdata[[cov]])
                 }
-                
+
               }
-              
+
               #if (af$Qtransform) {
               #  if(type=='lpmatrix' & J!=length(af$xind)){
               #    stop('Prediction with quantile transformation only implemented for when new data observation times match original data observation times')
@@ -168,7 +168,7 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                 }else{
                   if (sum(dim(as.matrix(attr(newdata, "L")))==dim(as.matrix(newdata[[cov]])))!=2) {
                     warning(paste('Supplied L matrix for',cov,'is not the same dimension as the matrix of observations and will be ignored',sep=''))
-                    
+
                   }else{
                     L <- as.vector(attr(newdata, "L"))
                   }
@@ -197,9 +197,9 @@ predict.pfr <- function (object, newdata, type = "response", se.fit = FALSE,
                   }
                 } else {
                   # lf() term
-                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])  
+                  newdata[[cov]] <- lf$prep.func(newX = newdata[[cov]])
                 }
-                
+
               }
               if(type=='lpmatrix') newdata[[cov]] <- as.vector(newdata[[cov]])
               gamdata[[paste(cov, ".tmat", sep = "")]] <- tmat

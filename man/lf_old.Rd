@@ -33,10 +33,10 @@ integration over \code{t}}
 
 \item{splinepars}{optional arguments specifying options for representing and penalizing the
 functional coefficient \eqn{\beta(t)}. Defaults to a cubic B-spline with second-order difference
-penalties, i.e. \code{list(bs="ps", m=c(2, 1))} See \code{\link{te}} or \code{\link{s}} for details}
+penalties, i.e. \code{list(bs="ps", m=c(2, 1))} See \code{te} or \code{s} for details}
 
 \item{presmooth}{logical; if true, the functional predictor is pre-smoothed prior to fitting.  See
-\code{\link{smooth.basisPar}}}
+\code{smooth.basisPar}}
 }
 \value{
 a list with the following entries
@@ -51,20 +51,20 @@ used by \code{mgcv}
 \item \code{LXname} - the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}
 \item \code{presmooth} - the \code{presmooth} argument supplied to \code{lf}
 \item \code{Xfd} - an \code{fd} object from presmoothing the functional predictors using
-\code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}
+\code{{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{{fd}}
 }
 }
 \description{
-Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{\link[mgcv]{gam}}-formula
-(or \code{\link{bam}} or \code{\link{gamm}} or \code{\link[gamm4]{gamm4}}) as constructed by
-\code{\link{fgam}}, where \eqn{\beta(t)} is an unknown coefficient function and \eqn{X_i(t)}
+Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{[mgcv]{gam}}-formula
+(or \code{bam} or \code{gamm} or \code{[gamm4]{gamm4}}) as constructed by
+\code{fgam}, where \eqn{\beta(t)} is an unknown coefficient function and \eqn{X_i(t)}
 is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic B-spline with
 second-order difference penalties for estimating \eqn{\beta(t)}.  The functional predictor must
 be fully observed on a regular grid.
 }
 \seealso{
-\code{\link{fgam}}, \code{\link{af}}, mgcv's \code{\link{linear.functional.terms}},
-\code{\link{fgam}} for examples
+\code{{fgam}}, \code{{af}}, mgcv's \code{{linear.functional.terms}},
+\code{{fgam}} for examples
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl

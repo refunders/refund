@@ -9,22 +9,22 @@
 #' Functional Generalized Additive Models (McLean et al., 2013),
 #' and
 #' Variable-Domain Functional Regression (Gellar et al., 2014).
-#' This function is a wrapper for mgcv's \code{\link{gam}} and its siblings
+#' This function is a wrapper for mgcv's \code{{gam}} and its siblings
 #' to fit models with a scalar (but not necessarily continuous) response.
 #'
 #' @param formula a formula that could contain any of the following special terms:
-#'   \code{\link{lf}()}, \code{\link{af}()}, \code{\link{lf.vd}()},
-#'   \code{\link{peer}()},  \code{\link{fpc}()},
-#'   or \code{\link{re}()}; also \code{mgcv}'s \code{\link{s}()},
-#'   \code{\link{te}()}, or \code{\link{t2}()}.
+#'   \code{{lf}()}, \code{{af}()}, \code{{lf.vd}()},
+#'   \code{{peer}()},  \code{{fpc}()},
+#'   or \code{{re}()}; also \code{mgcv}'s \code{{s}()},
+#'   \code{{te}()}, or \code{{t2}()}.
 #' @param fitter the name of the function used to estimate the model. Defaults
-#'   to \code{\link{gam}} if the matrix of functional responses has less than 2e5
-#'   data points and to \code{\link{bam}} if not. "gamm" (see \code{\link{gamm}})
-#'   and "gamm4" (see \code{\link{gamm4}}) are valid options as well.
+#'   to \code{{gam}} if the matrix of functional responses has less than 2e5
+#'   data points and to \code{{bam}} if not. "gamm" (see \code{{gamm}})
+#'   and "gamm4" (see \code{{gamm4}}) are valid options as well.
 #' @param method The smoothing parameter estimation method. Default is
-#'   \code{"REML"}. For options, see \code{\link{gam}}.
-#' @param ... additional arguments that are valid for \code{\link{gam}} or
-#'   \code{\link{bam}}. These include \code{data} and \code{family} to specify
+#'   \code{"REML"}. For options, see \code{{gam}}.
+#' @param ... additional arguments that are valid for \code{{gam}} or
+#'   \code{{bam}}. These include \code{data} and \code{family} to specify
 #'   the input data and outcome family, as well as many options to control the
 #'   estimation.
 #'
@@ -32,7 +32,7 @@
 #'   Binomial responses should be specified as a numeric vector rather than as a
 #'   matrix or a factor.
 #' @return
-#'   A fitted pfr-object, which is a \code{\link{gam}}-object with some
+#'   A fitted pfr-object, which is a \code{{gam}}-object with some
 #'   additional information in a \code{$pfr}-element. If fitter is \code{"gamm"}
 #'   or \code{"gamm4"}, only the \code{$gam} part of the returned list is
 #'   modified in this way.
@@ -58,7 +58,6 @@
 #' McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and
 #' Ruppert, D. (2014). Functional generalized additive models. \emph{Journal of
 #' Computational and Graphical Statistics}, \bold{23 (1)}, pp. 249-269.
-#' Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
 #'
 #' Gellar, J. E., Colantuoni, E., Needham, D. M., and Crainiceanu, C. M. (2014).
 #' Variable-Domain Functional Regression for Modeling ICU Data. Journal of the
@@ -66,8 +65,8 @@
 #'
 #' @author Jonathan Gellar \email{JGellar@@mathematica-mpr.com}, Mathew W. McLean,
 #' Jeff Goldsmith, and Fabian Scheipl
-#' @seealso \code{\link{af}}, \code{\link{lf}}, \code{\link{lf.vd}},
-#'   \code{\link{fpc}}, \code{\link{peer}}, \code{\link{re}}.
+#' @seealso \code{{af}}, \code{{lf}}, \code{{lf.vd}},
+#'   \code{{fpc}}, \code{{peer}}, \code{{re}}.
 #' @importFrom mgcv gam gam.fit bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom lme4 lmer

@@ -20,7 +20,7 @@ lf(
 where \code{N} is the number of columns and \code{J} is the number of
 evaluation points. May include missing/sparse functions, which are
 indicated by \code{NA} values. Alternatively, can be an object of class
-\code{"fd"}; see \code{\link[fda]{fd}}.}
+\code{"fd"}; see \code{[fda]{fd}}.}
 
 \item{argvals}{indices of evaluation of \code{X}, i.e. \eqn{(t_{i1},.,t_{iJ})} for
 subject \eqn{i}. May be entered as either a length-\code{J} vector, or as
@@ -38,17 +38,17 @@ for calculating entries in \code{L}. Alternatively and for non-equidistant grids
 \item{L}{an optional \code{N} by \code{ncol(argvals)} matrix giving the weights for the numerical
 integration over \code{t}. If present, overrides \code{integration}.}
 
-\item{presmooth}{string indicating the method to be used for preprocessing functional predictor prior 
-to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and 
+\item{presmooth}{string indicating the method to be used for preprocessing functional predictor prior
+to fitting. Options are \code{fpca.sc}, \code{fpca.face}, \code{fpca.ssvd}, \code{fpca.bspline}, and
 \code{fpca.interpolate}. Defaults to \code{NULL} indicating no preprocessing. See
-\code{\link{create.prep.func}}.}
+\code{{create.prep.func}}.}
 
 \item{presmooth.opts}{list including options passed to preprocessing method
-\code{\link{create.prep.func}}.}
+\code{{create.prep.func}}.}
 
 \item{...}{optional arguments for basis and penalization to be passed to
 \code{mgcv::s}. These could include, for example,
-\code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{\link[mgcv]{s}} for details.}
+\code{"bs"}, \code{"k"}, \code{"m"}, etc. See \code{[mgcv]{s}} for details.}
 }
 \value{
 a list with the following entries
@@ -62,17 +62,17 @@ a list with the following entries
   \item{\code{LXname}}{the name used for the \code{L} variable in the \code{formula} used by \code{mgcv}}
   \item{\code{presmooth}}{the \code{presmooth} argument supplied to \code{lf}}
   \item{\code{prep.func}}{a function that preprocesses data based on the preprocessing method specified in \code{presmooth}. See
-    \code{\link{create.prep.func}}}
+    \code{{create.prep.func}}}
 }
 \description{
 Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in an \code{mgcv::gam}-formula (or
-\code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
-\code{\link{pfr}}, where \eqn{\beta(t)} is an unknown coefficient
+\code{{bam}} or \code{{gamm}} or \code{gamm4:::gamm}) as constructed by
+\code{{pfr}}, where \eqn{\beta(t)} is an unknown coefficient
 function and \eqn{X_i(t)} is a functional predictor on the closed interval
 \eqn{T}. See
-\code{\link{smooth.terms}} for a list of basis and penalty options; the
+\code{{smooth.terms}} for a list of basis and penalty options; the
 default is thin-plate regression splines, as this is the default option
-for \code{\link[mgcv]{s}}.
+for \code{[mgcv]{s}}.
 }
 \examples{
 data(DTI)
@@ -107,8 +107,8 @@ measurements. \emph{Journal of the Royal Statistical Society: Series C},
 61(3), 453-469.
 }
 \seealso{
-\code{\link{pfr}}, \code{\link{af}}, mgcv's \code{\link{smooth.terms}}
- and \code{\link{linear.functional.terms}}; \code{\link{pfr}} for additional examples
+\code{{pfr}}, \code{{af}}, mgcv's \code{{smooth.terms}}
+ and \code{{linear.functional.terms}}; \code{{pfr}} for additional examples
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}, Fabian Scheipl,

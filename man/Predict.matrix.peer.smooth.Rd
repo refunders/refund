@@ -8,10 +8,10 @@
 }
 \arguments{
 \item{object}{a \code{peer.smooth} object created by
-\code{\link{smooth.construct.peer.smooth.spec}}, see
-\code{\link[mgcv]{smooth.construct}}}
+\code{{.smooth.spec}}, see
+\code{[mgcv]{smooth.construct}}}
 
-\item{data}{see \code{\link[mgcv]{smooth.construct}}}
+\item{data}{see \code{[mgcv]{smooth.construct}}}
 }
 \value{
 design matrix for PEER terms

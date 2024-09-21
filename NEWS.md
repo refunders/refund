@@ -1,3 +1,7 @@
+# refund 0.1-37
+
+* Fixed invalid email address for Yakuan Chen
+
 # refund 0.1-36
 
 * Fix threshold for small sigma2 in mfpca.face function to ensure accurate score estimation for level1 scores

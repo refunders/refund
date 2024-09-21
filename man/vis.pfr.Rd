@@ -17,7 +17,7 @@ vis.pfr(
 )
 }
 \arguments{
-\item{object}{an \code{pfr} object, produced by \code{\link{pfr}}}
+\item{object}{an \code{pfr} object, produced by \code{{pfr}}}
 
 \item{select}{index for the smooth term to be plotted, according to its position
 in the model formula (and in \code{object$smooth}). Not needed if only one
@@ -34,15 +34,15 @@ is specified.}
 Bayesian confidence bands.  Only implemented for the "slices" plot from either \code{xval} or
 \code{tval} being specified}
 
-\item{theta}{numeric; viewing angle; see \code{\link{persp}}}
+\item{theta}{numeric; viewing angle; see \code{{persp}}}
 
-\item{plot.type}{one of \code{"contour"} (to use \code{\link{levelplot}}) or \code{"persp"}
-(to use \code{\link{persp}}).  Ignored if either \code{xval} or \code{tval} is specified}
+\item{plot.type}{one of \code{"contour"} (to use \code{{levelplot}}) or \code{"persp"}
+(to use \code{{persp}}).  Ignored if either \code{xval} or \code{tval} is specified}
 
 \item{ticktype}{how to draw the tick marks if \code{plot.type="persp"}.  Defaults to \code{"detailed"}}
 
-\item{...}{other options to be passed to \code{\link{persp}}, \code{\link{levelplot}}, or
-\code{\link{plot}}}
+\item{...}{other options to be passed to \code{{persp}}, \code{{levelplot}}, or
+\code{{plot}}}
 }
 \value{
 Simply produces a plot
@@ -94,7 +94,7 @@ vis.pfr(fit, deriv2=TRUE, tval=tval)
 \references{
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23(1)},
-pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
+pp. 249-269.
 
 Marra, G., and Wood, S. N. (2012) Coverage properties of confidence intervals for generalized
 additive model components. \emph{Scandinavian Journal of Statistics}, \bold{39(1)}, pp. 53--74.
@@ -103,8 +103,8 @@ Wabha, G. (1983) "Confidence intervals" for the cross-validated smoothing spline
 Royal Statistical Society, Series B}, \bold{45(1)}, pp. 133--150.
 }
 \seealso{
-\code{\link{vis.gam}}, \code{\link{plot.gam}}, \code{\link{pfr}}, \code{\link{persp}},
-  \code{\link{levelplot}}
+\code{{vis.gam}}, \code{{plot.gam}}, \code{{pfr}}, \code{{persp}},
+  \code{{levelplot}}
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com}

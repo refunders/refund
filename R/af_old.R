@@ -1,8 +1,8 @@
 #' Construct an FGAM regression term
 #'
 #' Defines a term \eqn{\int_{T}F(X_i(t),t)dt} for inclusion in an \code{mgcv::gam}-formula (or
-#' \code{\link{bam}} or \code{\link{gamm}} or \code{gamm4:::gamm}) as constructed by
-#' \code{\link{fgam}}, where \eqn{F(x,t)}$ is an unknown smooth bivariate function and \eqn{X_i(t)}
+#' \code{{bam}} or \code{{gamm}} or \code{gamm4:::gamm}) as constructed by
+#' \code{{fgam}}, where \eqn{F(x,t)}$ is an unknown smooth bivariate function and \eqn{X_i(t)}
 #' is a functional predictor on the closed interval \eqn{T}. Defaults to a cubic tensor product
 #' B-spline with marginal second-order difference penalties for estimating \eqn{F(x,t)}.  The
 #' functional predictor must be fully observed on a regular grid
@@ -12,17 +12,17 @@
 #' \emph{i}th row \eqn{(t_{i1},.,t_{iJ})}
 #' @param xind Same as argvals. It will discard this argument in the next version of refund.
 #' @param basistype defaults to \code{"te"}, i.e. a tensor product spline to represent \eqn{F(x,t)} Alternatively,
-#' use \code{"s"} for bivariate basis functions (see \code{\link{s}}) or \code{"t2"} for an alternative
-#' parameterization of tensor product splines (see \code{\link{t2}})
+#' use \code{"s"} for bivariate basis functions (see \code{{s}}) or \code{"t2"} for an alternative
+#' parameterization of tensor product splines (see \code{{t2}})
 #' @param integration method used for numerical integration. Defaults to \code{"simpson"}'s rule for
 #' calculating entries in \code{L}. Alternatively and for non-equidistant grids, \code{"trapezoidal"}
 #' or \code{"riemann"}. \code{"riemann"} integration is always used if \code{L} is specified
 #' @param splinepars optional arguments specifying options for representing and penalizing the
 #' function \eqn{F(x,t)}. Defaults to a cubic tensor product B-spline with marginal second-order
-#' difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 2), c(2, 2))}, see \code{\link{te}} or
-#' \code{\link{s}} for details
+#' difference penalties, i.e. \code{list(bs="ps", m=list(c(2, 2), c(2, 2))}, see \code{{te}} or
+#' \code{{s}} for details
 #' @param presmooth logical; if true, the functional predictor is pre-smoothed prior to fitting; see
-#' \code{\link{smooth.basisPar}}
+#' \code{{smooth.basisPar}}
 #' @param Xrange numeric; range to use when specifying the marginal basis for the \emph{x}-axis.  It may
 #' be desired to increase this slightly over the default of \code{range(X)} if concerned about predicting
 #' for future observed curves that take values outside of \code{range(X)}
@@ -43,17 +43,17 @@
 #' \item \code{presmooth} - the \code{presmooth} argument supplied to \code{af}
 #' \item \code{Qtranform} - the \code{Qtransform} argument supplied to \code{af}
 #' \item \code{Xrange} - the \code{Xrange} argument supplied to \code{af}
-#' \item \code{ecdflist} - a list containing one empirical cdf function from applying \code{\link{ecdf}}
+#' \item \code{ecdflist} - a list containing one empirical cdf function from applying \code{{ecdf}}
 #' to each (possibly presmoothed) column of \code{X}.  Only present if \code{Qtransform=TRUE}
 #' \item \code{Xfd} - an \code{fd} object from presmoothing the functional predictors using
-#' \code{\link{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{\link{fd}}.
+#' \code{{smooth.basisPar}}.  Only present if \code{presmooth=TRUE}.  See \code{{fd}}.
 #' }
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @references McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 #' generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
-#' pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
-#' @seealso \code{\link{fgam}}, \code{\link{lf}}, mgcv's \code{\link{linear.functional.terms}},
-#' \code{\link{fgam}} for examples
+#' pp. 249-269.
+#' @seealso \code{{fgam}}, \code{{lf}}, mgcv's \code{{linear.functional.terms}},
+#' \code{{fgam}} for examples
 #' @importFrom stats ecdf
 #' @importFrom fda int2Lfd smooth.basisPar eval.fd create.bspline.basis
 #' @importFrom utils modifyList getFromNamespace

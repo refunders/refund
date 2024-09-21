@@ -8,10 +8,10 @@
 }
 \arguments{
 \item{object}{a \code{fpc.smooth} object created by
-\code{\link{smooth.construct.fpc.smooth.spec}}, see
-\code{\link[mgcv]{smooth.construct}}}
+\code{{smooth.construct.fpc.smooth.spec}}, see
+\code{[mgcv]{smooth.construct}}}
 
-\item{data}{see \code{\link[mgcv]{smooth.construct}}}
+\item{data}{see \code{[mgcv]{smooth.construct}}}
 }
 \value{
 design matrix for FPC terms

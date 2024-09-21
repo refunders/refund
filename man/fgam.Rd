@@ -8,28 +8,28 @@ fgam(formula, fitter = NA, tensortype = c("te", "t2"), ...)
 }
 \arguments{
 \item{formula}{a formula with special terms as for gam, with additional special terms
-\code{\link{af}}(), \code{\link{lf}}(), \code{\link{re}}().}
+\code{{af}}(), \code{{lf}}(), \code{{re}}().}
 
-\item{fitter}{the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}}
+\item{fitter}{the name of the function used to estimate the model. Defaults to \code{[mgcv]{gam}}
 if the matrix of functional responses has less than 2e5 data points and to
-\code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4"
-(see \code{\link[gamm4]{gamm4}}) are valid options as well.}
+\code{[mgcv]{bam}} if not. "gamm" (see \code{[mgcv]{gamm}}) and "gamm4"
+(see \code{[gamm4]{gamm4}}) are valid options as well.}
 
-\item{tensortype}{defaults to \code{\link[mgcv]{te}}, other valid option is \code{\link[mgcv]{t2}}}
+\item{tensortype}{defaults to \code{[mgcv]{te}}, other valid option is \code{[mgcv]{t2}}}
 
-\item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}; for example,
+\item{...}{additional arguments that are valid for \code{[mgcv]{gam}} or \code{[mgcv]{bam}}; for example,
 specify a \code{gamma} > 1 to increase amount of smoothing when using GCV to choose smoothing
 parameters or \code{method="REML"} to change to REML for estimation of smoothing parameters
 (default is GCV).}
 }
 \value{
-a fitted fgam-object, which is a \code{\link{gam}}-object with some additional information
+a fitted fgam-object, which is a \code{{gam}}-object with some additional information
 in a fgam-entry. If fitter is "gamm" or "gamm4", only the $gam part of the
 returned list is modified in this way.
 }
 \description{
 Implements functional generalized additive models for functional and scalar covariates and scalar responses.
-Additionally implements functional linear models.  This function is a wrapper for mgcv's \code{\link[mgcv]{gam}}
+Additionally implements functional linear models.  This function is a wrapper for mgcv's \code{[mgcv]{gam}}
 and its siblings to fit models of the general form
 \deqn{g(E(Y_i)) = \beta_0 + \int_{T_1} F(X_{i1},t)dt+ \int_{T_2} \beta(t)X_{i2}dt + f(z_{i1}) + f(z_{i2}, z_{i3}) + \ldots}
 with a scalar (but not necessarily continuous) response Y, and link function g
@@ -99,10 +99,10 @@ z1 <- rnorm(length(y))
 \references{
 McLean, M. W., Hooker, G., Staicu, A.-M., Scheipl, F., and Ruppert, D. (2014). Functional
 generalized additive models. \emph{Journal of Computational and Graphical Statistics}, \bold{23 (1)},
-pp. 249-269.  Available at \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3982924/}.
+pp. 249-269.
 }
 \seealso{
-\code{\link{af}}, \code{\link{lf}}, \code{\link{predict.fgam}}, \code{\link{vis.fgam}}
+\code{{af}}, \code{{lf}}, \code{{predict.fgam}}, \code{{vis.fgam}}
 }
 \author{
 Mathew W. McLean \email{mathew.w.mclean@gmail.com} and Fabian Scheipl

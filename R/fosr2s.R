@@ -5,7 +5,7 @@
 ##' along the function, and then (2) smoothing the resulting coefficients to
 ##' obtain coefficient functions.
 ##'
-##' Unlike \code{\link{fosr}} and \code{\link{pffr}}, which obtain smooth
+##' Unlike \code{{fosr}} and \code{{pffr}}, which obtain smooth
 ##' coefficient functions by minimizing a penalized criterion, this function
 ##' introduces smoothing only as a second step. The idea was proposed by Fan
 ##' and Zhang (2000), who employed local polynomials rather than roughness
@@ -26,7 +26,7 @@
 ##' constructor function from the \pkg{fda} package; see basisfd. Only \code{"bspline"} and \code{"fourier"} are
 ##' supported.
 ##' @return An object of class \code{fosr}, which is a list with the following
-##' elements: \item{fd}{object of class \code{"\link{fd}"} representing the
+##' elements: \item{fd}{object of class \code{"{fd}"} representing the
 ##' estimated coefficient functions. Its main components are a basis and a
 ##' matrix of coefficients with respect to that basis. }
 ##' \item{raw.coef}{\eqn{d\times p} matrix of coefficient estimates from
@@ -41,7 +41,7 @@
 ##' smooth the \eqn{p} coefficient functions with respect to the supplied
 ##' basis. }
 ##' @author Philip Reiss \email{phil.reiss@@nyumc.org} and Lan Huo
-##' @seealso \code{\link{fosr}}, \code{\link{pffr}}
+##' @seealso \code{{fosr}}, \code{{pffr}}
 ##' @references Fan, J., and Zhang, J.-T. (2000). Two-step estimation of
 ##' functional linear models with applications to longitudinal data.
 ##' \emph{Journal of the Royal Statistical Society, Series B}, 62(2), 303--322.

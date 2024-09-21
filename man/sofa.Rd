@@ -8,7 +8,7 @@
 A data frame with 520 rows (subjects) and 7 variables:
 \describe{
   \item{death}{binary indicator that the subject died in the ICU}
-  \item{SOFA}{520 x 173 matrix in variable-domain format (a ragged array). 
+  \item{SOFA}{520 x 173 matrix in variable-domain format (a ragged array).
     Each column represents an ICU day. Each row contains the SOFA scores for
     a subject, one per day, for as long as the subject remained in the ICU.
     The remaining cells of each row are padded with \code{NA}s. SOFA scores
@@ -45,13 +45,13 @@ Vincent, JL, Moreno, R, Takala, J, Willatts, S, De Mendonca, A,
    Bruining, H, Reinhart, CK, Suter, PM, Thijs, LG (1996). The SOFA ( Sepsis
    related Organ Failure Assessment) score to describe organ
    dysfunction/failure. Intensive Care Medicine, 22(7): 707-710.
-   
+
    Needham, D. M., Dennison, C. R., Dowdy, D. W., Mendez-Tellez, P. A.,
    Ciesla, N., Desai, S. V., Sevransky, J., Shanholtz, C., Scharfstein, D.,
    Herridge, M. S., and Pronovost, P. J. (2006). Study protocol: The
    Improving Care of Acute Lung Injury Patients (ICAP) study. Critical Care
    (London, England), 10(1), R9.
-   
+
    Gellar, Jonathan E., Elizabeth Colantuoni, Dale M. Needham, and
    Ciprian M. Crainiceanu. Variable-Domain Functional Regression for Modeling
    ICU Data. Journal of the American Statistical Association,
