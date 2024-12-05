@@ -316,13 +316,16 @@ model.matrix.pffr <- function (object, ...)
 #' values from a \code{pffr} object.
 #' "Fitted values" here refers to the estimated additive predictor values,
 #' these will not be on the scale of the response for models with link functions.
+#' 
+#' For \code{family = "gaulss"} and \code{reformat = TRUE}, this only returns the
+#' predicted means without the predicted standard deviations.
 #'
 #' @param object a fitted \code{pffr}-object
-#' @param reformat logical, defaults to TRUE. Should residuals be returned in
+#' @param reformat logical, defaults to TRUE. Should residuals/fitted values be returned in
 #'   \code{n x yindex} matrix form (regular grid data) or, respectively, in the
 #'   shape of the originally supplied \code{ydata} argument (sparse/irregular
 #'   data), or, if \code{FALSE}, simply as a long vector as returned by
-#'   \code{resid.gam()}?
+#'   \code{resid.gam()} or \code{fitted.gam()}? 
 #' @param ... other arguments, passed to \code{\link[mgcv]{residuals.gam}}.
 #'
 #' @return A matrix or \code{ydata}-like \code{data.frame} or a vector of
@@ -338,7 +341,7 @@ residuals.pffr <- function (object, reformat=TRUE, ...)
     stop("`object' is not of class \"pffr\"")
   ret <- mgcv::residuals.gam(object, ...)
   if(reformat){
-    if(!object$pffr$sparseOrNongrid){
+   if(!object$pffr$sparseOrNongrid){
       if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){
         tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)
         tmp[-object$pffr$missingind] <- ret
@@ -362,7 +365,10 @@ fitted.pffr <- function (object, reformat=TRUE, ...)
   if (!inherits(object, "pffr"))
     stop("`object' is not of class \"pffr\"")
   ret <- object$fitted.values
-  if(reformat){
+  if (reformat) {
+    if (m$family$family == "gaulss") {
+      ret <- ret[, 1] 
+    } 
     if(!object$pffr$sparseOrNongrid){
       if(!(length(ret)==object$pffr$nobs*object$pffr$nyindex)){
         tmp <- rep(NA, object$pffr$nobs*object$pffr$nyindex)

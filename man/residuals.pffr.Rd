@@ -12,11 +12,11 @@
 \arguments{
 \item{object}{a fitted \code{pffr}-object}
 
-\item{reformat}{logical, defaults to TRUE. Should residuals be returned in
+\item{reformat}{logical, defaults to TRUE. Should residuals/fitted values be returned in
 \code{n x yindex} matrix form (regular grid data) or, respectively, in the
 shape of the originally supplied \code{ydata} argument (sparse/irregular
 data), or, if \code{FALSE}, simply as a long vector as returned by
-\code{resid.gam()}?}
+\code{resid.gam()} or \code{fitted.gam()}?}
 
 \item{...}{other arguments, passed to \code{\link[mgcv]{residuals.gam}}.}
 }
@@ -29,6 +29,10 @@ See \code{\link{predict.pffr}} for alternative options to extract estimated
 values from a \code{pffr} object.
 "Fitted values" here refers to the estimated additive predictor values,
 these will not be on the scale of the response for models with link functions.
+}
+\details{
+For \code{family = "gaulss"} and \code{reformat = TRUE}, this only returns the
+predicted means without the predicted standard deviations.
 }
 \author{
 Fabian Scheipl
