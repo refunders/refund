@@ -366,7 +366,7 @@ fitted.pffr <- function (object, reformat=TRUE, ...)
     stop("`object' is not of class \"pffr\"")
   ret <- object$fitted.values
   if (reformat) {
-    if (m$family$family == "gaulss") {
+    if (object$family$family == "gaulss") {
       ret <- ret[, 1] 
     } 
     if(!object$pffr$sparseOrNongrid){
