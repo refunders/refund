@@ -318,11 +318,11 @@ function(Y=NULL,ydata=NULL,Y.pred = NULL,argvals=NULL,pve = 0.99, npc  = NULL,
     #########################################
 
     if(imputation) {
-      A.N <- A[,1:N]
+      A.N <- A[,1:N, drop = F]
       d <- Sigma[1:N]
       sigmahat2  <-  max(mean(Y[!Index.miss]^2) -sum(Sigma),0)
       Xi <- t(A.N)%*%Ytilde
-      Xi <- t(as.matrix(B%*%(A0%*%((A.N%*%diag(d/(d+sigmahat2/J)))%*%Xi))))
+      Xi <- t(as.matrix(B%*%(A0%*%((A.N%*%diag(d/(d+sigmahat2/J), nrow = N))%*%Xi))))
       Y <- Y*(1-Index.miss) + Xi*Index.miss
       if(sum(is.na(Y))>0)
         print("error")
