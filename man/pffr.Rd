@@ -146,6 +146,14 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   format, i.e. as a matrix-valued entry in \code{data},  which can contain
   missing values.\cr
 
+  When a \code{rho} argument (as defined in \code{mgcv::bam}) is supplied,
+  \code{pffr} automatically constructs the required \code{AR.start} indicator
+  so that residuals can follow an AR(1) process along the functional response.
+  This facility is available for \code{algorithm = "bam"} fits that use
+  \code{method = "fREML"}; non-Gaussian families must additionally enable
+  \code{discrete = TRUE}, mirroring the constraints documented in
+  \code{?mgcv::bam}.\cr
+
   If the functional responses are \emph{sparse or irregular} (i.e., not
   evaluated on the same evaluation points across all observations), the
   \code{ydata}-argument can be used to specify the responses: \code{ydata}
