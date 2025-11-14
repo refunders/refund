@@ -67,7 +67,7 @@
 #' Jeff Goldsmith, and Fabian Scheipl
 #' @seealso \code{{af}}, \code{{lf}}, \code{{lf.vd}},
 #'   \code{{fpc}}, \code{{peer}}, \code{{re}}.
-#' @importFrom mgcv gam gam.fit bam s te t2
+#' @importFrom mgcv gam gam.fit3 bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom lme4 lmer
 #' @importFrom stats terms.formula
@@ -154,7 +154,7 @@ pfr <- function(formula=NULL, fitter=NA, method="REML", ...){
       c(names(formals(gamm4)), names(formals(lmer)))
     }
     else {
-      c(names(formals(gam)), names(formals(gam.fit)))
+      c(names(formals(gam)), names(formals(gam.fit3)))
     }
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
     if (length(notUsed))

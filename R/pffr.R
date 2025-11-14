@@ -175,7 +175,7 @@
 #'   Electronic Journal of Statistics, 10(1), 1455--1492.
 #'   \url{https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-10/issue-1/Generalized-functional-additive-mixed-models/10.1214/16-EJS1145.full}
 #' @export
-#' @importFrom mgcv ti jagam gam gam.fit bam gamm
+#' @importFrom mgcv ti jagam gam gam.fit3 bam gamm
 #' @importFrom gamm4 gamm4
 #' @importFrom lme4 lmer
 #' @examples
@@ -239,7 +239,7 @@ pffr <- function(
     ...
 ){
   # TODO: subset args!
-  
+
   call <- match.call()
   tensortype <- as.symbol(match.arg(tensortype))
   # make sure we use values for the args that were defined as close to the
@@ -250,8 +250,8 @@ pffr <- function(
   ## supplies args as variables that are also defined differently in GlobalEnv:
   ## this should then ensure that the args as defined in the calling function,
   ## and not in GlobalEnv get used....
-  
-  ## warn if entries in ... aren't arguments for gam/gam.fit/jagam or gamm4/lmer
+
+  ## warn if entries in ... aren't arguments for gam/gam.fit3/jagam or gamm4/lmer
   ## check for special case of gaulss family
   dots <- list(...)
   gaulss <- FALSE
@@ -259,17 +259,17 @@ pffr <- function(
     validDots <- if(!is.na(algorithm) && algorithm=="gamm4"){
       c(names(formals(gamm4)), names(formals(lmer)))
     } else {
-      c(names(formals(gam)), names(formals(bam)), names(formals(gam.fit)),
+      c(names(formals(gam)), names(formals(bam)), names(formals(gam.fit3)),
         names(formals(jagam)))
     }
     if (!is.null(dots$family)) {
       if ( (is.character(dots$family) && dots$family == "gaulss") |
           (is.list(dots$family) && dots$family$family == "gaulss")) {
         validDots <- c(validDots, "varformula")
-        gaulss <- TRUE 
+        gaulss <- TRUE
       }
     }
-    
+
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
     if (length(notUsed))
       warning("Arguments <", paste(notUsed, collapse=", "), "> supplied but not used." )
@@ -280,14 +280,14 @@ pffr <- function(
     stopifnot(ncol(ydata)==3)
     stopifnot(c(".obs", ".index", ".value") == colnames(ydata))
   }
-  
+
   pffrspecials <- c("s", "te", "ti", "t2", "ff", "c", "sff", "ffpc", "pcre")
   tf <- terms.formula(formula, specials=pffrspecials)
   trmstrings <- attr(tf, "term.labels")
   terms <- sapply(trmstrings, function(trm) as.call(parse(text=trm))[[1]], simplify=FALSE)
   #ugly, but getTerms(formula)[-1] does not work for terms like I(x1:x2)
   frmlenv <- environment(formula)
-  
+
   #which terms are which type:
   where.specials <- sapply(pffrspecials, function(sp) attr(tf, "specials")[[sp]]-1)
   if(length(trmstrings)) {
@@ -295,26 +295,26 @@ pffr <- function(
                                     (unlist(attr(tf, "specials")) - 1)))
     # indices of linear/factor terms with functional coefficients over yind
   } else where.specials$par <- numeric(0)
-  
+
   responsename <- attr(tf,"variables")[2][[1]]
-  
+
   #start new formula
   newfrml <- paste(responsename, "~", sep="")
   newfrmlenv <- new.env()
   evalenv <- if("data" %in% names(call)) eval.parent(call$data) else NULL
-  
+
   if(sparseOrNongrid){
     nobs <- length(unique(ydata$.obs))
     stopifnot(all(ydata$.obs %in% rownames(data)))
     # FIXME: allow for non-1:nobs .obs-formats!
     stopifnot(all(ydata$.obs %in% 1:nobs))
-    
-    
+
+
     #works for data-lists or matrix-valued covariates as well:
     nobs.data <- nrow(as.matrix(data[[1]]))
     stopifnot(nobs == nobs.data)
     ntotal <- nrow(ydata)
-    
+
     #generate yind for estimates/predictions etc
     yind <- if(length(unique(ydata$.index))>100){
       seq(min(ydata$.index), max(ydata$.index), l=100)
@@ -327,7 +327,7 @@ pffr <- function(
     nyindex <- ncol(eval(responsename,  envir=evalenv, enclos=frmlenv))
     ntotal <- nobs*nyindex
   }
-  
+
   if(missing(algorithm)||is.na(algorithm)){
     algorithm <- ifelse(ntotal > 1e5, "bam", "gam")
   }
@@ -343,8 +343,8 @@ pffr <- function(
   if(as.character(algorithm)=="gamm4"){
     stopifnot(length(unlist(where.specials[c("te","ti")]))<1)
   }
-  
-  
+
+
   if(!sparseOrNongrid){
     #if missing, define y-index or get it from first ff/sff-term, then assign expanded versions to newfrmlenv
     if(missing(yind)){
@@ -379,46 +379,46 @@ pffr <- function(
     if(length(yindname)>1) yindname <- "yindex"
     # make sure yind is sorted
     stopifnot(all.equal(order(yind), 1:nyindex))
-    
-    
+
+
     yindvec <- rep(yind, times = nobs)
     yindvecname <- as.symbol(paste(yindname,".vec",sep=""))
     assign(x=deparse(yindvecname), value=yindvec, envir=newfrmlenv)
-    
+
     #assign response in _long_ format to newfrmlenv
     assign(x=deparse(responsename), value=as.vector(t(eval(responsename, envir=evalenv,
                                                            enclos=frmlenv))),
            envir=newfrmlenv)
-    
-    
+
+
     missingind <-  if(any(is.na(get(as.character(responsename), newfrmlenv)))){
       which(is.na(get(as.character(responsename), newfrmlenv)))
     } else NULL
-    
+
     # repeat which row in <data> how many times
     stackpattern <- rep(1:nobs, each=nyindex)
-    
+
   } else {
     # sparseOrNongrid:
     yindname <- "yindex"
     yindvec <- ydata$.index
     yindvecname <- as.symbol(paste(yindname,".vec",sep=""))
     assign(x=deparse(yindvecname), value=ydata$.index, envir=newfrmlenv)
-    
+
     #assign response in _long_ format to newfrmlenv
     assign(x=deparse(responsename), value=ydata$.value, envir=newfrmlenv)
-    
+
     missingind <- NULL
-    
+
     # repeat which row in <data> how many times:
     stackpattern <- ydata$.obs
   }
-  
-  
+
+
   ##################################################################################
   #modify formula terms....
   newtrmstrings <- attr(tf, "term.labels")
-  
+
   #if intercept, add \mu(yindex)
   if(attr(tf, "intercept")){
     # have to jump thru some hoops to get bs.yindex handed over properly
@@ -427,10 +427,10 @@ pffr <- function(
     intcall <- NULL
     assign(x= "intcall", value= do.call("call", arglist, envir=newfrmlenv), envir=newfrmlenv)
     newfrmlenv$intcall$x <- as.symbol(yindvecname)
-    
+
     intstring <- deparse(newfrmlenv$intcall)
     rm(intcall, envir=newfrmlenv)
-    
+
     newfrml <- paste(newfrml, intstring, sep=" ")
     addFint <- TRUE
     names(intstring) <- paste("Intercept(",yindname,")",sep="")
@@ -438,24 +438,24 @@ pffr <- function(
     newfrml <-paste(newfrml, "0", sep="")
     addFint <- FALSE
   }
-  
+
   #transform: c(foo) --> foo
   if(length(where.specials$c)){
     newtrmstrings[where.specials$c] <- sapply(trmstrings[where.specials$c], function(x){
       sub("\\)$", "", sub("^c\\(", "", x)) #c(BLA) --> BLA
     })
   }
-  
+
   #prep function-on-function-terms
   if(length(c(where.specials$ff, where.specials$sff))){
     ffterms <- lapply(terms[c(where.specials$ff, where.specials$sff)], function(x){
       eval(x, envir=evalenv, enclos=frmlenv)
     })
-    
+
     newtrmstrings[c(where.specials$ff, where.specials$sff)] <- sapply(ffterms, function(x) {
       safeDeparse(x$call)
     })
-    
+
     #apply limits function and assign stacked data to newfrmlenv
     makeff <- function(x){
       tmat <- matrix(yindvec, nrow=length(yindvec), ncol=length(x$xind))
@@ -473,7 +473,7 @@ pffr <- function(
         # find int-limits and set weights to 0 outside
         use <- x$limits(smat, tmat)
         LStacked <- LStacked * use
-        
+
         # find indices for row-wise int-range & maximal occuring width:
         windows <- t(apply(use, 1, function(x){
           use_this <- which(x)
@@ -496,7 +496,7 @@ pffr <- function(
               (window[1] + width - maxw) : window[2]
             }
           }))
-          
+
           # extract relevant parts of each row and stack'em
           shift_and_shorten <- function(X, eff.windows){
             t(sapply(1:(nrow(X)),
@@ -516,7 +516,7 @@ pffr <- function(
       assign(x=x$xindname,
              value=smat,
              envir=newfrmlenv)
-      
+
       assign(x=x$LXname,
              value=LStacked,
              envir=newfrmlenv)
@@ -529,12 +529,12 @@ pffr <- function(
     }
     lapply(ffterms, makeff)
   } else ffterms <- NULL
-  
+
   if(length(where.specials$ffpc)){ ##TODO for sparse
     ffpcterms <- lapply(terms[where.specials$ffpc], function(x){
       eval(x, envir=evalenv, enclos=frmlenv)
     })
-    
+
     lapply(ffpcterms, function(trm){
       lapply(colnames(trm$data), function(nm){
         assign(x=nm, value=trm$data[stackpattern, nm], envir=newfrmlenv)
@@ -542,8 +542,8 @@ pffr <- function(
       })
       invisible(NULL)
     })
-    
-    
+
+
     getFfpcFormula <- function(trm) {
       frmls <- lapply(colnames(trm$data), function(pc) {
         arglist <- c(name="s", x = as.symbol(yindvecname), by= as.symbol(pc),
@@ -556,10 +556,10 @@ pffr <- function(
       return(paste(unlist(frmls), collapse=" + "))
     }
     newtrmstrings[where.specials$ffpc] <- sapply(ffpcterms, getFfpcFormula)
-    
+
     ffpcterms <- lapply(ffpcterms, function(x) x[names(x)!="data"])
   } else ffpcterms <- NULL
-  
+
   #prep PC-based random effects
   if(length(where.specials$pcre)){
     pcreterms <- lapply(terms[where.specials$pcre], function(x){
@@ -577,7 +577,7 @@ pffr <- function(
         # don't ever extrapolate eigenfunctions:
         stopifnot(min(trm$yind)<=min(yind))
         stopifnot(max(trm$yind)>=max(yind))
-        
+
         # interpolate given eigenfunctions to observed index values:
         lapply(colnames(trm$efunctions), function(nm){
           tmp <- approx(x=trm$yind,
@@ -592,16 +592,16 @@ pffr <- function(
       assign(x=trm$idname, value=trm$id[stackpattern], envir=newfrmlenv)
       invisible(NULL)
     })
-    
+
     newtrmstrings[where.specials$pcre] <- sapply(pcreterms, function(x) {
       safeDeparse(x$call)
     })
   }else pcreterms <- NULL
-  
-  
+
+
   #transform: s(x, ...), te(x, z,...), t2(x, z, ...) --> <ti|t2>(x, <z,> yindex, ..., <bs.yindex>)
   makeSTeT2 <- function(x){
-    
+
     xnew <- x
     if(deparse(x[[1]]) %in%  c("te", "ti") && as.character(algorithm) == "gamm4") xnew[[1]] <- quote(t2)
     if(deparse(x[[1]]) == "s"){
@@ -624,13 +624,13 @@ pffr <- function(
       eval(x$bs.yindex)
     } else bs.yindex
     xnew <- xnew[names(xnew) != "bs.yindex"]
-    
+
     if(deparse(xnew[[1]]) == "ti"){
       # apply sum-to-zero constraints to marginal bases for covariate(s),
       #  but not to <yindex> to get terms with sum-to-zero-for-each-t constraints
       xnew$mc <- c(rep(TRUE, length(xnew$d)-1), FALSE)
     }
-    
+
     xnew$bs <- if("bs" %in% names(x)){
       if("bs" %in% names(this.bs.yindex)){
         c(eval(x$bs), this.bs.yindex$bs)
@@ -672,7 +672,7 @@ pffr <- function(
       }
     }
     xnew$k <- unlist(xnew$k)
-    
+
     if("xt" %in% names(x)){
       #       # xt has to be supplied as a list, with length(x$d) entries,
       #       # each of which is a list or NULL:
@@ -683,17 +683,17 @@ pffr <- function(
       #                       is.null(eval(x$xt[[i]][[1]])))))
       xnew$xt <- x$xt
     }
-    
+
     ret <- safeDeparse(xnew)
     return(ret)
   }
-  
+
   if(length(c(where.specials$s, where.specials$te, where.specials$t2))){
     newtrmstrings[c(where.specials$s, where.specials$te, where.specials$t2)] <-
       sapply(terms[c(where.specials$s, where.specials$te, where.specials$t2)],
              makeSTeT2)
   }
-  
+
   #transform: x --> s(YINDEX, by=x)
   if(length(where.specials$par)){
     newtrmstrings[where.specials$par] <- sapply(terms[where.specials$par], function(x){
@@ -701,9 +701,9 @@ pffr <- function(
       xnew <- as.call(c(quote(s), yindvecname, by=x, xnew))
       safeDeparse(xnew)
     })
-    
+
   }
-  
+
   #... & assign expanded/additional variables to newfrmlenv
   where.specials$notff <- c(where.specials$c, where.specials$par,
                             where.specials$s, where.specials$te, where.specials$t2)
@@ -728,8 +728,8 @@ pffr <- function(
              nms <- if(!is.null(names(x))){
                all.vars(x[names(x) %in% c("", "by")])
              }  else all.vars(x)
-             
-             
+
+
              sapply(nms, function(nm){
                var <- get(nm, envir=evalenv)
                if(is.matrix(var)){
@@ -748,10 +748,10 @@ pffr <- function(
              invisible(NULL)
            })
   }
-  
+
   newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse="+"))
   environment(newfrml) <- newfrmlenv
-  
+
   # variance formula for gaulss
   if(gaulss) {
     if(is.null(dots$varformula)) {
@@ -762,7 +762,7 @@ pffr <- function(
     newfrml <- list(newfrml, dots$varformula)
   }
   pffrdata <- list2df(as.list(newfrmlenv))
-  
+
   newcall <- expand.call(pffr, call)
   newcall$yind <- newcall$tensortype <- newcall$bs.int <-
     newcall$bs.yindex <- newcall$algorithm <- newcall$ydata <- NULL
@@ -820,16 +820,16 @@ pffr <- function(
     message("JAGS/BUGS model code written to \n", m$modelfile, ",\n see ?jagam")
     return(m)
   }
-  
+
   m.smooth <- if(as.character(algorithm) %in% c("gamm4","gamm")){
     m$gam$smooth
   } else m$smooth
-  
+
   #return some more info s.t. custom predict/plot/summary will work
   trmmap <- newtrmstrings
   names(trmmap) <- names(terms)
   if(addFint) trmmap <- c(trmmap, intstring)
-  
+
   # map labels to terms --
   # ffpc are associated with multiple smooths
   # parametric are associated with multiple smooths if covariate is a factor
@@ -884,7 +884,7 @@ pffr <- function(
           return(x)
         }
       }), lbls)]
-    
+
   }
   # check whether any parametric terms were left out & add them
   nalbls <- sapply(labelmap,
@@ -894,14 +894,14 @@ pffr <- function(
   if (any(nalbls)) {
     labelmap[nalbls] <- trmmap[nalbls]
   }
-  
+
   names(m.smooth) <- lbls
   if(as.character(algorithm) %in% c("gamm4","gamm")){
     m$gam$smooth <- m.smooth
   } else{
     m$smooth  <- m.smooth
   }
-  
+
   ret <-  list(
     call=call,
     formula=formula,
@@ -919,7 +919,7 @@ pffr <- function(
     missingind = missingind,
     sparseOrNongrid=sparseOrNongrid,
     ydata=ydata)
-  
+
   if(as.character(algorithm) %in% c("gamm4","gamm")){
     m$gam$pffr <- ret
     class(m$gam) <- c("pffr", class(m$gam))

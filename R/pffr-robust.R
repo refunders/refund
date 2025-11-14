@@ -33,11 +33,11 @@ coefboot.pffr <- function(object,
                           conf=c(.9,.95), type = "percent",
                           method=c("resample", "residual", "residual.c"),
                           showProgress=TRUE, ...){
-  
+
   method <- match.arg(method)
   parallel <- match.arg(parallel)
   stopifnot(B > 0, conf > 0, conf < 1)
-  
+
   if(is.null(ncpus)) ncpus <- getOption("boot.ncpus", 1L)
   ##
   modcall <- object$pffr$call
@@ -61,19 +61,19 @@ coefboot.pffr <- function(object,
   }
   modcall$fit <- TRUE
   yind <- modcall$yind
-  
+
   # container object for return
   coefboot <- coef(object, se = FALSE, n1=n1, n2=n2, n3=n3)
 
   ## refit models on bootstrap data sets & save fits
   message("starting bootstrap (", B, " replications).\n")
-  
+
   dim_return <- length(unlist(c(coefboot$pterms[,"value"],
                        sapply(coefboot$smterms, function(x) x$value))))
   fallback_return <- rep(NA, dim_return)
-  
+
   bootcoef <- function(modcall, fallback = fallback_return){
-    mb <- try(eval(as.call(modcall))) 
+    mb <- try(eval(as.call(modcall)))
     if (inherits(mb, "try-error")) {
       return(fallback)
     }
@@ -84,10 +84,10 @@ coefboot.pffr <- function(object,
     if(showProgress) cat(".")
     unlist(coefvec)
   }
-  
+
   if(object$pffr$sparseOrNongrid) {
     stop("coefboot.pffr not (yet...) implemented for sparse/irregular data")
-    
+
     ## TODO:
     ## - "all(ydata$.obs %in% 1:nobs)" in pffr means overwriting .obs required
     ## - subset does not yield REPEATED obs
@@ -98,7 +98,7 @@ coefboot.pffr <- function(object,
     #  modcall$ydata <- ydataB
     #  modcall
     #}
-    
+
   } else {
     resample.default <- function(modcall, data, indices) {
       dataB <- data[indices,]
@@ -124,16 +124,16 @@ coefboot.pffr <- function(object,
                      "resample" = resample.default,
                      "residual" = resample.resid,
                      "residual.c" = resample.residc)
-  
+
   bootfct <- function(modcall, data, indices){
     modcall <- resample(modcall, data, indices)
     bootcoef(modcall)
   }
-  
+
   bootreps <- boot(data=modcall$data, statistic=bootfct, R=B, modcall=modcall,
                    parallel=parallel, ncpus=ncpus, ...)
   if(showProgress) message("done.\n")
-  
+
   failed <- which(rowSums(is.na(bootreps$t)) == ncol(bootreps$t))
   if (length(failed)) {
     if (length(failed) == B) stop("All bootstrap replicates failed.")
@@ -142,15 +142,15 @@ coefboot.pffr <- function(object,
     bootreps$R <- bootreps$R - length(failed)
   }
   ## disentangle bootreps
-  
-  
+
+
   ptrms <- rownames(coefboot$pterms)
   ptrmsboot <- matrix(bootreps$t[,1:length(ptrms)], )
   ptrmsboot <- t(ptrmsboot)
-  
+
   smtrms <- names(coefboot$smterms)
   smtrmvallengths <- sapply(coefboot$smterms, function(x) length(x$value))
-  
+
   #drop NULL-entries
   NULLentries <- smtrmvallengths==0
   if (any(NULLentries)) {
@@ -158,7 +158,7 @@ coefboot.pffr <- function(object,
     smtrmvallengths <- smtrmvallengths[!NULLentries]
     coefboot$smterms <- coefboot$smterms[!NULLentries]
   }
-  
+
   start <- c(1, cumsum(head(smtrmvallengths,-1))+1)
   stop <- cumsum(smtrmvallengths)
   smtrmsboot <- vector(length(smtrms), mode="list")
@@ -166,7 +166,7 @@ coefboot.pffr <- function(object,
     smtrmsboot[[i]] <- t((bootreps$t[,-(1:length(ptrms))])[,start[i]:stop[i]])
   }
   names(smtrmsboot) <- smtrms
-  
+
   ## get bootstrap CIs
   cat("calculating bootstrap CIs....")
   mylapply <- if(parallel=="multicore"){
@@ -187,7 +187,7 @@ coefboot.pffr <- function(object,
       }
     } else lapply
   }
-  
+
   getCIs <- function(which=1:length(bootreps$t0), conf=.95, type = type){
     ret <- mylapply(which, function(i){
       ci <- boot.ci(bootreps, conf=conf, index=i,
@@ -198,7 +198,7 @@ coefboot.pffr <- function(object,
       # capture failed CIs here:
       if (is.null(ret)) {
         ret <- matrix(NA, nrow = length(conf), ncol = 2)
-      }  
+      }
       return(as.vector(ret))
     })
     ret <- do.call(cbind, ret)
@@ -212,7 +212,7 @@ coefboot.pffr <- function(object,
                                    getCIs(which=length(ptrms)+(start[i]:stop[i]), conf=conf, type=type))
   }
   names(coefboot$smterms) <- smtrms
-  
+
   return(structure(coefboot, call=match.call()))
 }
 
@@ -273,31 +273,31 @@ pffrGLS <- function(
   # TODO: allow term-specific overrides of bs.yindex
   # TODO: weights, subset, offset args!
   # TODO: write missing locations into pffr so fitted etc will work...
-  
+
   call <- match.call()
   tensortype <- as.symbol(match.arg(tensortype))
-  
-  ## warn if any entries in ... are not arguments for gam/gam.fit or gamm4/lmer
+
+  ## warn if any entries in ... are not arguments for gam/gam.fit3 or gamm4/lmer
   dots <- list(...)
   if(length(dots)){
     validDots <- if(!is.na(algorithm) && algorithm=="gamm4"){
       c(names(formals(gamm4)), names(formals(lmer)))
     } else {
-      c(names(formals(gam)), names(formals(gam.fit)))
+      c(names(formals(gam)), names(formals(gam.fit3)))
     }
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
     if(length(notUsed))
       warning("Arguments <", paste(notUsed, collapse=", "), "> supplied but not used." )
   }
-  
-  
+
+
   tf <- terms.formula(formula, specials=c("s", "te", "t2", "ff", "c", "sff", "ffpc", "pcre"))
   trmstrings <- attr(tf, "term.labels")
   terms <- sapply(trmstrings, function(trm) as.call(parse(text=trm))[[1]], simplify=FALSE)
   #ugly, but getTerms(formula)[-1] does not work for terms like I(x1:x2)
   frmlenv <- environment(formula)
-  
-  
+
+
   where.c <- attr(tf, "specials")$c - 1    # indices of scalar offset terms
   where.ff <- attr(tf, "specials")$ff - 1  # function-on-function terms
   where.sff <- attr(tf, "specials")$sff - 1  #smooth function-on-function terms
@@ -310,18 +310,18 @@ pffrGLS <- function(
     where.par <- which(!(1:length(trmstrings) %in%
                            c(where.c, where.ff, where.sff, where.ffpc, where.pcre, where.s, where.te, where.t2))) # indices of linear/factor terms with varying coefficients over yind.
   } else where.par <- numeric(0)
-  
+
   responsename <- attr(tf,"variables")[2][[1]]
-  
+
   #start new formula
   newfrml <- paste(responsename, "~", sep="")
   newfrmlenv <- new.env()
   evalenv <- if("data" %in% names(call)) eval.parent(call$data) else NULL
-  
+
   nobs <- nrow(eval(responsename,  envir=evalenv, enclos=frmlenv))
   nyindex <- ncol(eval(responsename,  envir=evalenv, enclos=frmlenv))
-  
-  
+
+
   if(missing(algorithm)||is.na(algorithm)){
     algorithm <- ifelse(nobs > 1e5, "bam", "gam")
   }
@@ -334,7 +334,7 @@ pffrGLS <- function(
   ###<GLS
   if(as.character(algorithm)=="gamm4") stop("pffrGLS not implemented for gamm4")
   ###GLS>
-  
+
   #if missing, define y-index or get it from first ff/sff-term, then assign expanded versions to newfrmlenv
   if(missing(yind)){
     if(length(c(where.ff, where.sff))){
@@ -361,13 +361,13 @@ pffrGLS <- function(
   if(length(yindname)>1) yindname <- "yindex"
   # make sure yind is sorted
   stopifnot(all.equal(order(yind), 1:nyindex))
-  
-  
+
+
   yindvec <- rep(yind, times = nobs)
   yindvecname <- as.symbol(paste(yindname,".vec",sep=""))
   assign(x=deparse(yindvecname), value=yindvec, envir=newfrmlenv)
-  
-  
+
+
   ###<GLS
   sqrtSigmaInv <- {
     eSigma <- eigen(hatSigma, symmetric=TRUE)
@@ -385,8 +385,8 @@ pffrGLS <- function(
     eSigma$vectors%*%diag(1/sqrt(eSigma$values))%*%t(eSigma$vectors)
   }
   assign(x=deparse(call$hatSigma), value=hatSigma, envir=frmlenv)
-  
-  
+
+
   originalresponsename <- paste(deparse(responsename),".Original", sep="")
   assign(x=originalresponsename,
          value=as.vector(t(eval(responsename, envir=evalenv, enclos=frmlenv))),
@@ -396,17 +396,17 @@ pffrGLS <- function(
   #assign (decorrelated) response in _long_ format to newfrmlenv
   assign(x=deparse(responsename), value=as.vector(ytilde),
          envir=newfrmlenv)
-  
-  
+
+
   if(any(is.na(get(as.character(responsename), newfrmlenv)))){
     stop("no missings in y for GLS version of pffr allowed")
   }
   ####GLS>
-  
+
   ##################################################################################
   #modify formula terms....
   newtrmstrings <- attr(tf, "term.labels")
-  
+
   #if intercept, add \mu(yindex)
   if(attr(tf, "intercept")){
     # have to jump thru some hoops to get bs.yindex handed over properly
@@ -415,10 +415,10 @@ pffrGLS <- function(
     intcall <- NULL
     assign(x= "intcall", value= do.call("call", arglist, envir=newfrmlenv), envir=newfrmlenv)
     newfrmlenv$intcall$x <- as.symbol(yindvecname)
-    
+
     intstring <- deparse(newfrmlenv$intcall)
     rm(intcall, envir=newfrmlenv)
-    
+
     newfrml <- paste(newfrml, intstring, sep=" ")
     addFint <- TRUE
     names(intstring) <- paste("Intercept(",yindname,")",sep="")
@@ -426,20 +426,20 @@ pffrGLS <- function(
     newfrml <-paste(newfrml, "0", sep="")
     addFint <- FALSE
   }
-  
+
   #transform: c(foo) --> foo
   if(length(where.c)){
     newtrmstrings[where.c] <- sapply(trmstrings[where.c], function(x){
       sub("\\)$", "", sub("^c\\(", "", x)) #c(BLA) --> BLA
     })
   }
-  
+
   #prep function-on-function-terms
   if(length(c(where.ff, where.sff))){
     ffterms <- lapply(terms[c(where.ff, where.sff)], function(x){
       eval(x, envir=evalenv, enclos=frmlenv)
     })
-    
+
     newtrmstrings[c(where.ff, where.sff)] <- sapply(ffterms, function(x) {
       safeDeparse(x$call)
     })
@@ -465,8 +465,8 @@ pffrGLS <- function(
       })
       invisible(NULL)
     })
-    
-    
+
+
     getFfpcFormula <- function(trm) {
       frmls <- lapply(colnames(trm$data), function(pc) {
         arglist <- c(name="s", x = as.symbol(yindvecname), by= as.symbol(pc), id=trm$id, trm$splinepars)
@@ -478,10 +478,10 @@ pffrGLS <- function(
       return(paste(unlist(frmls), collapse=" + "))
     }
     newtrmstrings[where.ffpc] <- sapply(ffpcterms, getFfpcFormula)
-    
+
     ffpcterms <- lapply(ffpcterms, function(x) x[names(x)!="data"])
   } else ffpcterms <- NULL
-  
+
   #prep PC-based random effects
   if(length(where.pcre)){
     pcreterms <- lapply(terms[where.pcre], function(x){
@@ -495,17 +495,17 @@ pffrGLS <- function(
       })
       invisible(NULL)
     })
-    
+
     newtrmstrings[where.pcre] <- sapply(pcreterms, function(x) {
       safeDeparse(x$call)
     })
-    
+
     pcereterms <- lapply(pcreterms, function(x) x[names(x)!="data"])
   }else pcreterms <- NULL
-  
+
   #transform: s(x, ...), te(x, z,...), t2(x, z, ...) --> te(x, (z,)  yindex, ..., <bs.yindex>)
   makeSTeT2 <- function(x){
-    
+
     xnew <- x
     if(deparse(x[[1]]) == "te" && as.character(algorithm) == "gamm4") xnew[[1]] <- quote(t2)
     if(deparse(x[[1]]) == "s"){
@@ -528,7 +528,7 @@ pffrGLS <- function(
       x$bs.yindex
     } else bs.yindex
     xnew <- xnew[names(xnew) != "bs.yindex"]
-    
+
     xnew$bs <- if("bs" %in% names(x)){
       if("bs" %in% names(this.bs.yindex)){
         c(eval(x$bs), this.bs.yindex$bs)
@@ -569,9 +569,9 @@ pffrGLS <- function(
         pmax(8, 5^xnew$d)
       }
     }
-    
+
     xnew$xt <- if("xt" %in% names(x)){
-      
+
       add.impose <- function(lst){
         # use this in order to propagate xt-args to gam WITHOUT evaluating them,
         # because this can break (stupid parse-cutoff!) and
@@ -604,22 +604,22 @@ pffrGLS <- function(
     } else {
       imposearg <- bquote(list(impose.ffregC = .(TRUE),
                                nobs=.(nobs)))
-      
+
       xtra <- bquote(list(.(imposearg)))
       for (i in 3:(length(xnew$d)+1))
         xtra[[i]] <- imposearg
       xtra
     }
-    
+
     ret <- safeDeparse(xnew)
     return(ret)
   }
-  
+
   if(length(c(where.s, where.te, where.t2))){
     newtrmstrings[c(where.s, where.te, where.t2)] <-
       sapply(terms[c(where.s, where.te, where.t2)], makeSTeT2)
   }
-  
+
   #transform: x --> s(YINDEX, by=x)
   if(length(where.par)){
     newtrmstrings[where.par] <- sapply(terms[where.par], function(x){
@@ -627,9 +627,9 @@ pffrGLS <- function(
       xnew <- as.call(c(quote(s), yindvecname, by=x, xnew))
       safeDeparse(xnew)
     })
-    
+
   }
-  
+
   #... & assign expanded/additional variables to newfrmlenv
   where.notff <- c(where.c, where.par, where.s, where.te, where.t2)
   if(length(where.notff)){
@@ -652,8 +652,8 @@ pffrGLS <- function(
              nms <- if(!is.null(names(x))){
                all.vars(x[names(x) == ""])
              }  else all.vars(x)
-             
-             
+
+
              sapply(nms, function(nm){
                stopifnot(length(get(nm, envir=frmlenv)) == nobs)
                assign(x=nm,
@@ -666,9 +666,9 @@ pffrGLS <- function(
   }
   newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse="+"))
   environment(newfrml) <- newfrmlenv
-  
+
   pffrdata <- list2df(as.list(newfrmlenv))
-  
+
   newcall <- expand.call(pffr, call)
   newcall$yind <- newcall$tensortype <- newcall$bs.int <-
     newcall$bs.yindex <- newcall$algorithm <- NULL
@@ -676,9 +676,9 @@ pffrGLS <- function(
   newcall$data <- quote(pffrdata)
   newcall[[1]] <- algorithm
   newcall$hatSigma <- NULL
-  
-  
-  
+
+
+
   # add appropriate centering constraints for smooth effects
   # (not possible for gamm4, as the constraint destroys the simple
   # diagonal structure of the t2-penalties)
@@ -693,8 +693,8 @@ pffrGLS <- function(
                 ## constraint: sum_i f(z_i, t) = 0 \forall t
                 cat("imposing constraints..\n")
                 nygrid <- length(unique(data[[object$margin[[length(object$margin)]]$term]]))
-                
-                
+
+
                 ## C = ((1,...,1) \otimes I_G) * B
                 Ctmp <- kronecker(t(rep(1, object$margin[[length(object$margin)]]$xt$nobs)), diag(nygrid))
                 if(ncol(Ctmp) > nrow(object$X)){
@@ -702,7 +702,7 @@ pffrGLS <- function(
                   Ctmp <- Ctmp[, - get(".PFFRmissingResponses", .GlobalEnv)]
                 }
                 C <- Ctmp %*% object$X
-                
+
                 ## we need the number of effective constraints <nC> to correspond to the
                 ## rank of the constraint matrix C, which is the min. of number of basis
                 ## functions for t (object$margin[[length(object$margin)]]$bs.dim) and
@@ -711,7 +711,7 @@ pffrGLS <- function(
                 object$C <- object$Cp <- C[seq(1, nygrid, length.out = nC), ]
               }}))
     )
-    
+
     suppressMessages(
       trace(mgcv::smooth.construct.t2.smooth.spec,
             at = max(which(sapply(as.list(body(mgcv::smooth.construct.t2.smooth.spec)), function(x) any(grepl(x, pattern="object$Cp", fixed=TRUE))))) + 1,
@@ -722,7 +722,7 @@ pffrGLS <- function(
                 ## constraint: sum_i f(z_i, t) = 0 \forall t
                 cat("imposing constraints..\n")
                 nygrid <- length(unique(data[[object$margin[[length(object$margin)]]$term]]))
-                
+
                 ## C = ((1,...,1) \otimes I_G) * B
                 Ctmp <- kronecker(t(rep(1, object$margin[[length(object$margin)]]$xt$nobs)), diag(nygrid))
                 if(ncol(Ctmp) > nrow(object$X)){
@@ -730,7 +730,7 @@ pffrGLS <- function(
                   Ctmp <- Ctmp[, - get(".PFFRmissingResponses", .GlobalEnv)]
                 }
                 C <- Ctmp %*% object$X
-                
+
                 ## we need the number of effective constraints <nC> to correspond to the
                 ## rank of the constraint matrix C, which is the min. of number of basis
                 ## functions for t (object$margin[[length(object$margin)]]$bs.dim) and
@@ -739,15 +739,15 @@ pffrGLS <- function(
                 object$C <- object$Cp <- C[seq(1, nygrid, length.out = nC), ]
               }}))
     )
-    
-    
+
+
     on.exit({
       suppressMessages(try(untrace(mgcv::smooth.construct.tensor.smooth.spec), silent = TRUE))
       suppressMessages(try(untrace(mgcv::smooth.construct.t2.smooth.spec), silent = TRUE))
     })
   }
-  
-  
+
+
   ###<GLS
   newcall$GLSinfo <- list(yind=yind, nobs=nobs, sqrtSigmaInv=sqrtSigmaInv)
   if(as.character(algorithm) == "gam"){
@@ -766,7 +766,7 @@ pffrGLS <- function(
     }))
     on.exit(untrace(gam), add=TRUE)
   }
-  
+
   if(as.character(algorithm) == "bam"){
     trace(bam, at=40, quote({
       #browser()
@@ -785,17 +785,17 @@ pffrGLS <- function(
     on.exit(untrace(bam), add=TRUE)
   }
   #browser()
-  
+
   m <- eval(newcall)
   # browser()
-  
+
   # overwrite decorrelated response, fitted values etc s.t. summary etc are (more) correct
   m$y <- newfrmlenv[[originalresponsename]]
   # check that we really fitted the object
   # (need this for coefboot.pffr), if yes overwrite
   if(is.null(newcall$fit) | (!is.null(newcall$fit) && eval(newcall$fit))){
     #browser()
-    
+
     if(!is.null(m$model)){
       m$model[, deparse(responsename)] <- newfrmlenv[[originalresponsename]]
     }
@@ -815,8 +815,8 @@ pffrGLS <- function(
     #                                kronecker(Diagonal(nobs), sqrtSigmaInv))%*%X))
     #        }
     #        Vp <- solve(XWX)
-    
-    
+
+
     #        XtildeWXtilde <- {
     #           xcall <- newcall
     #           xcall$fit <- FALSE
@@ -830,22 +830,22 @@ pffrGLS <- function(
     #        X <- predict(m, type="lpmatrix")
     #        all.equal(as.matrix(crossprod(kronecker(Diagonal(nobs), solve(sqrtSigma))%*%X)), XtildeWXtilde)
   }
-  
-  
+
+
   #browser()
-  
+
   ###GLS>
-  
-  
+
+
   m.smooth <- if(as.character(algorithm) %in% c("gamm4","gamm")){
     m$gam$smooth
   } else m$smooth
-  
+
   #return some more info s.t. custom predict/plot/summary will work
   trmmap <- newtrmstrings
   names(trmmap) <- names(terms)
   if(addFint) trmmap <- c(trmmap, intstring)
-  
+
   # map labels to terms --
   # ffpc are associated with multiple smooths
   # parametric are associated with multiple smooths if covariate is a factor
@@ -895,14 +895,14 @@ pffrGLS <- function(
   if(any(nalbls <- sapply(labelmap, function(x) any(is.na(x))))){
     labelmap[nalbls] <- trmmap[nalbls]
   }
-  
+
   names(m.smooth) <- lbls
   if(as.character(algorithm) %in% c("gamm4","gamm")){
     m$gam$smooth <- m.smooth
   } else{
     m$smooth  <- m.smooth
   }
-  
+
   ret <-  list(
     call=match.call(),
     formula=formula,
@@ -926,7 +926,7 @@ pffrGLS <- function(
     sparseOrNongrid=FALSE,
     ff=ffterms,
     ffpc=ffpcterms)
-  
+
   if(as.character(algorithm) %in% c("gamm4","gamm")){
     m$gam$pffr <- ret
     class(m$gam) <- c("pffr", class(m$gam))

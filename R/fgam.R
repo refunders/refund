@@ -26,7 +26,7 @@
 #' pp. 249-269.
 #' @author Mathew W. McLean \email{mathew.w.mclean@@gmail.com} and Fabian Scheipl
 #' @seealso \code{{af}}, \code{{lf}}, \code{{predict.fgam}}, \code{{vis.fgam}}
-#' @importFrom mgcv gam gam.fit bam s te t2
+#' @importFrom mgcv gam gam.fit3 bam s te t2
 #' @importFrom gamm4 gamm4
 #' @importFrom lme4 lmer
 #' @importFrom stats terms.formula
@@ -97,7 +97,7 @@ fgam <- function(formula,fitter=NA,tensortype=c('te','t2'),...){
       c(names(formals(gamm4)), names(formals(lmer)))
     }
     else {
-      c(names(formals(gam)), names(formals(gam.fit)))
+      c(names(formals(gam)), names(formals(gam.fit3)))
     }
     notUsed <- names(dots)[!(names(dots) %in% validDots)]
     if (length(notUsed))
