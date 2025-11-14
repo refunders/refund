@@ -47,7 +47,7 @@ plus residual trajectories that are centered at zero for each gridpoint.}
 
 \item{showProgress}{TRUE/FALSE}
 
-\item{...}{not used}
+\item{...}{further arguments handed to \code{\link[boot]{boot}} like e.g. \code{strata} for models with random effects.}
 }
 \value{
 a list with similar structure as the return value of \code{\link{coef.pffr}}, containing the
