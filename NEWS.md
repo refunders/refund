@@ -1,3 +1,7 @@
+# refund 0.1-38
+
+* Removed dependency on mgcv::plot.random.effect 
+
 # refund 0.1-37
 
 * Fixed invalid email address for Yakuan Chen

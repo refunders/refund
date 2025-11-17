@@ -727,8 +727,3 @@ plot.mgcv.smooth <- function (x, P = NULL, data = NULL, label = "", se1.mult = 1
   }
 }
 
-
-#' @rdname pfr_plot.gam
-#' @keywords internal
-plot.random.effect <- getFromNamespace("plot.random.effect", "mgcv")
-
