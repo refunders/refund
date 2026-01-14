@@ -1,3 +1,19 @@
+# refund 0.1-38
+
+* `pffrSim()` now supports a formula-based interface for specifying simulation
+  models (e.g., `pffrSim(Y ~ ff(X1) + xlin, effects = list(X1 = "cosine"))`).
+  The new interface provides:
+  - Customizable effect functions via preset libraries or user-defined functions
+  - Access to true coefficient functions via the `truth` attribute
+  - Support for non-Gaussian responses via the `family` argument
+* The `scenario` argument in `pffrSim()` is deprecated. Use the formula
+  interface instead. Legacy code using `scenario` will continue to work but
+  will emit a deprecation warning.
+* Added internal helper functions for formula-driven data simulation:
+  `parse_pffr_formula()`, `compute_ff_effect()`, `compute_linear_effect()`,
+  `compute_smooth_effect()`, `compute_const_effect()`, `compute_intercept()`,
+  `generate_functional_covariate()`, `generate_scalar_covariate()`.
+
 # refund 0.1-37
 
 * Fixed invalid email address for Yakuan Chen
