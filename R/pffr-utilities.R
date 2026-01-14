@@ -53,7 +53,7 @@ expand.call <- function(
 
 list2df <- function(l) {
   # make a list into a dataframe -- matrices are left as matrices!
-  nrows <- sapply(l, function(x) nrow(as.matrix(x)))
+  nrows <- sapply(l, \(x) nrow(as.matrix(x)))
   stopifnot(length(unique(nrows)) == 1)
   ret <- data.frame(rep(NA, nrows[1]))
   for (i in 1:length(l)) ret[[i]] <- l[[i]]
@@ -61,83 +61,156 @@ list2df <- function(l) {
   return(ret)
 }
 
-## TODO: this does not always yield unique labels, e.g. if you have
-##   s(g, bs="re") + s(g, bs="mrf", xt=somepenalty)
-getShrtlbls <- function(object) {
-  # make short labels for display/coef-list, etc...
+#' Create short labels for pffr terms at model fit time
+#'
+#' Creates a named vector mapping mgcv smooth labels to human-readable pffr labels.
+#' This is called during `pffr()` fitting and stored in `object$pffr$shortlabels`.
+#'
+#' @param labelmap Named list mapping original term names to mgcv smooth labels.
+#' @param m.smooth List of smooth objects from the fitted model.
+#' @param yindname Name of the y-index variable.
+#' @param where.specials List indicating which terms are which type (par, ff, ffpc, etc.).
+#' @returns Named character vector: names are mgcv smooth labels, values are short labels.
+#' @keywords internal
+create_shortlabels <- function(labelmap, m.smooth, yindname, where.specials) {
+  # Build result: one short label per smooth in m.smooth
 
-  labelmap <- object$pffr$labelmap
+  shortlabels <- character()
 
-  ret <- sapply(names(unlist(labelmap)), function(x) {
-    #make a parseable expression for ffpc terms
-    if (grepl("^ffpc", x)) {
-      ffpcnumber <- gsub("(^.+))([0-9]+$)", "\\2", x)
-      # special case: one FPC
-      if (ffpcnumber == x) ffpcnumber <- 1
-      x <- gsub(")[0-9]+", ")", x)
+  for (term_name in names(labelmap)) {
+    mgcv_labels <- labelmap[[term_name]]
+
+    # Skip if no labels (shouldn't happen)
+    if (length(mgcv_labels) == 0 || all(is.na(mgcv_labels))) next
+
+    # Check term type based on name patterns and where.specials
+    term_idx <- match(term_name, names(labelmap))
+    is_par <- term_idx %in% where.specials$par
+    is_ffpc <- grepl("^ffpc", term_name)
+    is_ff <- term_idx %in% where.specials$ff
+    is_sff <- term_idx %in% where.specials$sff
+
+    for (i in seq_along(mgcv_labels)) {
+      mgcv_label <- mgcv_labels[i]
+      if (is.na(mgcv_label)) next
+
+      sm <- NULL
+      if (!is.null(names(m.smooth)) && mgcv_label %in% names(m.smooth)) {
+        sm <- m.smooth[[mgcv_label]]
+      } else {
+        sm_idx <- which(vapply(
+          m.smooth,
+          \(x) identical(x$label, mgcv_label),
+          logical(1)
+        ))
+        if (length(sm_idx) > 0) {
+          sm <- m.smooth[[sm_idx[1]]]
+        }
+      }
+
+      # Generate short label based on term type
+      if (is_par && length(mgcv_labels) > 1) {
+        # Factor varying coefficient: extract factor level from smooth
+        if (!is.null(sm) && !is.null(sm$by.level)) {
+          short <- paste0(sm$by, sm$by.level, "(", yindname, ")")
+        } else {
+          short <- paste0(term_name, "(", yindname, ")")
+        }
+      } else if (is_par) {
+        # Scalar varying coefficient
+        short <- paste0(term_name, "(", yindname, ")")
+      } else if (is_ffpc) {
+        # ffpc: extract PC number and variable name
+        # mgcv_label looks like "s(yindex.vec):X.PC1"
+        pc_match <- regmatches(mgcv_label, regexpr("PC[0-9]+", mgcv_label))
+        if (length(pc_match) > 0) {
+          pc_num <- gsub("PC", "", pc_match)
+          # Extract variable from term_name (ffpc(X, ...))
+          var_match <- regmatches(term_name, regexpr("\\(([^,)]+)", term_name))
+          var_name <- gsub("[\\(\\)]", "", var_match)
+          short <- paste0("ffpc(", var_name, ")", pc_num)
+        } else {
+          short <- simplify_term_label(term_name, yindname)
+        }
+      } else if (is_ff || is_sff) {
+        # ff/sff: use simplified version of original term
+        short <- simplify_term_label(term_name, yindname)
+      } else {
+        # Other terms (s, te, t2, c-wrapped, intercept)
+        short <- simplify_term_label(term_name, yindname)
+      }
+
+      shortlabels[mgcv_label] <- short
     }
-    exprx <- parse(text = x)
+  }
 
-    #remove argument names
-    x <- gsub("((?:[A-Za-z]+))(\\s)(=)(\\s)", "", x, perl = TRUE)
+  shortlabels
+}
 
-    #remove whitespace
-    x <- gsub("\\s", "", x)
+#' Simplify a term label for display
+#'
+#' @param term_name Original term name string.
+#' @param yindname Name of the y-index variable.
+#' @returns Simplified label string.
+#' @keywords internal
+simplify_term_label <- function(term_name, yindname) {
+  # Handle special cases
+  if (grepl("^Intercept\\(", term_name)) {
+    return(term_name)
+  }
 
-    #remove everything after and including first quoted argument
-    if (any(regexpr(",\".*", x)[[1]] > 0)) {
-      x <- gsub("([^\"]*)(,[c\\(]*\".*)(\\)$)", "\\1\\3", x, perl = TRUE)
+  # Try to parse the term
+  expr <- tryCatch(
+    parse(text = term_name)[[1]],
+    error = \(e) NULL
+  )
+
+  if (is.null(expr)) {
+    # Simple variable name: add (yindname)
+    return(paste0(term_name, "(", yindname, ")"))
+  }
+
+  # For function calls, simplify by removing extra arguments
+  if (is.call(expr)) {
+    fn_name <- as.character(expr[[1]])
+
+    # Extract variable names
+    vars <- all.vars(expr)
+    # Remove yindex if present
+    vars <- vars[!grepl("yindex|vec", vars)]
+
+    if (length(vars) == 0) {
+      return(term_name)
     }
 
-    #remove everything after last variable:
-    lstvrbl <- tail(all.vars(exprx), 1)
-    x <- gsub(
-      paste("\\(.*(^.*?(?=", lstvrbl, ")", lstvrbl, ")(.*$)", sep = ""),
-      "\\1",
-      x,
-      perl = TRUE
-    )
-
-    #match braces
-    openbr <- sum(grepl("\\(", strsplit(x, "")[[1]]))
-    closebr <- sum(grepl("\\)", strsplit(x, "")[[1]]))
-    if (openbr > closebr)
-      x <- paste(c(x, rep(")", openbr - closebr)), sep = "", collapse = "")
-
-    #add number of PC for ffpc terms
-    if (grepl("^ffpc", x)) {
-      x <- paste(x, ffpcnumber, sep = "")
-    }
-    return(x)
-  })
-  # correct labels for factor variables:
-  if (
-    any(
-      sapply(labelmap, length) > 1 &
-        !sapply(names(labelmap), function(x) grepl("^ffpc", x))
-    )
-  ) {
-    which <- which(
-      sapply(labelmap, length) > 1 &
-        !sapply(names(labelmap), function(x) grepl("^ffpc", x))
-    )
-    inds <- c(0, cumsum(sapply(labelmap, length)))
-    for (w in which) {
-      ret[(inds[w] + 1):inds[w + 1]] <- {
-        lbls <- labelmap[[w]]
-        bylevels <- sapply(object$smooth[lbls], function(x) x$by.level)
-        by <- object$smooth[[lbls[1]]]$by
-        paste(by, bylevels, "(", object$pffr$yindname, ")", sep = "")
+    # Build simplified label
+    if (fn_name %in% c("s", "te", "ti", "t2")) {
+      if (length(vars) == 1) {
+        return(paste0(fn_name, "(", vars[1], ",", yindname, ")"))
+      } else {
+        return(paste0(
+          fn_name,
+          "(",
+          paste(vars, collapse = ","),
+          ",",
+          yindname,
+          ")"
+        ))
+      }
+    } else if (fn_name %in% c("ff", "sff", "ffpc")) {
+      return(paste0(fn_name, "(", vars[1], ")"))
+    } else {
+      # Default: just use the function call with main variables
+      if (length(vars) == 1) {
+        return(paste0(vars[1], "(", yindname, ")"))
+      } else {
+        return(paste0(fn_name, "(", paste(vars, collapse = ","), ")"))
       }
     }
   }
-  #append labels for varying coefficient terms
-  if (any(!grepl("\\(", ret))) {
-    which <- which(!grepl("\\(", ret))
-    ret[which] <- paste(ret[which], "(", object$pffr$yindname, ")", sep = "")
-  }
 
-  return(ret)
+  # Fallback: return as-is with yindname
+  paste0(term_name, "(", yindname, ")")
 }
 
 #' Simulate example data for pffr
@@ -585,9 +658,10 @@ parse_pffr_formula <- function(formula) {
   term_labels <- attr(tf, "term.labels")
 
   # Parse each term
-  terms_list <- lapply(term_labels, function(term_str) {
-    parse_single_term(term_str, specials)
-  })
+  terms_list <- lapply(
+    term_labels,
+    \(term_str) parse_single_term(term_str, specials)
+  )
 
   # Name by term label
 
@@ -608,10 +682,7 @@ parse_pffr_formula <- function(formula) {
 parse_single_term <- function(term_str, specials) {
   # Try to parse as expression
 
-  expr <- tryCatch(
-    parse(text = term_str)[[1]],
-    error = function(e) NULL
-  )
+  expr <- tryCatch(parse(text = term_str)[[1]], error = \(e) NULL)
 
   if (is.null(expr)) {
     return(list(type = "linear", varname = term_str, call = NULL))
@@ -1226,11 +1297,11 @@ pffrSim_formula <- function(
           n_args <- length(formals(f_xt))
           if (n_args >= length(vars) + 1) {
             # Multi-variable function: f(x1, x2, ..., t)
-            cov_vals <- lapply(vars, function(v) data[[v]])
+            cov_vals <- lapply(vars, \(v) data[[v]])
             etaTerms[[term_label]] <- do.call(f_xt, c(cov_vals, list(yind)))
           } else {
             # Standard 2-arg function: combine covariates via product
-            combined_x <- Reduce(`*`, lapply(vars, function(v) data[[v]]))
+            combined_x <- Reduce(`*`, lapply(vars, \(v) data[[v]]))
             etaTerms[[term_label]] <- f_xt(combined_x, yind)
           }
         } else {
@@ -1338,10 +1409,13 @@ pffrSim_formula <- function(
     df <- tryCatch(
       {
         theta <- family$getTheta(TRUE)
-        if (length(theta) > 0 && is.finite(theta[1]) && theta[1] > 0)
-          theta[1] else 4
+        if (length(theta) > 0 && is.finite(theta[1]) && theta[1] > 0) {
+          theta[1]
+        } else {
+          4
+        }
       },
-      error = function(e) 4
+      error = \(e) 4
     )
     eta_var <- var(as.vector(eta))
     sigma2 <- if (eta_var > 0) eta_var / SNR else 1

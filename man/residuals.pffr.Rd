@@ -7,7 +7,7 @@
 \usage{
 \method{residuals}{pffr}(object, reformat = TRUE, ...)
 
-\method{fitted}{pffr}(object, reformat = TRUE, ...)
+\method{fitted}{pffr}(object, reformat = TRUE, which = c("mean", "scale", "both"), ...)
 }
 \arguments{
 \item{object}{a fitted \code{pffr}-object}
@@ -19,10 +19,17 @@ data), or, if \code{FALSE}, simply as a long vector as returned by
 \code{resid.gam()} or \code{fitted.gam()}?}
 
 \item{...}{other arguments, passed to \code{\link[mgcv]{residuals.gam}}.}
+
+\item{which}{For \code{fitted.pffr} with \code{family = "gaulss"} only:
+which fitted values to return. One of \code{"mean"} (default, returns
+predicted means), \code{"scale"} (returns predicted log-standard
+deviations), or \code{"both"} (returns list with both components).}
 }
 \value{
 A matrix or \code{ydata}-like \code{data.frame} or a vector of
-  residuals / fitted values (see \code{reformat}-argument)
+  residuals / fitted values (see \code{reformat}-argument). For
+  \code{fitted.pffr} with \code{family = "gaulss"} and \code{which = "both"},
+  returns a list with \code{mean} and \code{scale} components.
 }
 \description{
 See \code{\link{predict.pffr}} for alternative options to extract estimated
@@ -31,8 +38,10 @@ values from a \code{pffr} object.
 these will not be on the scale of the response for models with link functions.
 }
 \details{
-For \code{family = "gaulss"} and \code{reformat = TRUE}, this only returns the
-predicted means without the predicted standard deviations.
+For \code{family = "gaulss"} (Gaussian location-scale models), the fitted
+values matrix has two columns: means and log-standard deviations. Use the
+\code{which} argument in \code{fitted.pffr} to control which values are
+returned.
 }
 \author{
 Fabian Scheipl
