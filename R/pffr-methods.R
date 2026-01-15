@@ -958,9 +958,41 @@ summary.pffr <- function(object, ...) {
   shrtlbls <- object$pffr$shortlabels
 
   if (!is.null(ret$s.table)) {
-    rownames(ret$s.table) <- sapply(rownames(ret$s.table), function(x) {
-      shrtlbls[pmatch(x, unlist(object$pffr$labelmap))]
-    })
+    rownames(ret$s.table) <- vapply(
+      rownames(ret$s.table),
+      \(x) {
+        # Direct lookup in shortlabels
+        if (x %in% names(shrtlbls)) {
+          shrtlbls[[x]]
+        } else {
+          # Fallback: try partial match against labelmap for backwards compat
+          idx <- pmatch(x, unlist(object$pffr$labelmap))
+          if (!is.na(idx)) shrtlbls[[idx]] else x
+        }
+      },
+      character(1)
+    )
+  }
+
+  # Handle parametric scale effects for location-scale families (e.g., gaulss)
+  # These have names like "(Intercept).1", "grpB.1" in p.table
+  # Only apply this transformation for families with multiple linear predictors
+  is_location_scale <- !is.null(object$family$nlp) && object$family$nlp > 1
+  if (is_location_scale && !is.null(ret$p.table)) {
+    rownames(ret$p.table) <- vapply(
+      rownames(ret$p.table),
+      \(x) {
+        # Check for .N suffix indicating scale parameter (N > 0)
+        if (grepl("\\.([0-9]+)$", x)) {
+          # Extract base name and suffix
+          base_name <- sub("\\.([0-9]+)$", "", x)
+          paste0("log(SD): ", base_name)
+        } else {
+          x
+        }
+      },
+      character(1)
+    )
   }
   class(ret) <- c("summary.pffr", class(ret))
   if (!object$pffr$sparseOrNongrid) {

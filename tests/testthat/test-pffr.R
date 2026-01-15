@@ -1428,3 +1428,384 @@ test_that("fitted.pffr with gaulss family returns mean/scale correctly", {
   expect_true(is.list(fit_both_vec))
   expect_equal(length(fit_both_vec$mean), n * nygrid)
 })
+
+test_that("gaulss model has correct shortlabels for scale parameter", {
+  skip_on_cran()
+  set.seed(113)
+
+  n <- 30
+  nygrid <- 25
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  m <- pffr(Y ~ xlin, yind = t, data = dat, family = mgcv::gaulss())
+
+  # Check shortlabels includes log(SD) label
+  shortlabels <- m$pffr$shortlabels
+  expect_true(any(grepl("log\\(SD\\)", shortlabels)))
+
+  # Summary should show log(SD)(t) instead of NA
+  summ <- summary(m)
+  s_table_rows <- rownames(summ$s.table)
+  expect_true(any(grepl("log\\(SD\\)", s_table_rows)))
+  expect_false(any(is.na(s_table_rows)))
+})
+
+test_that("create_shortlabels handles complex scale formulas for gaulss", {
+  # Test create_shortlabels directly with mock scale smooths
+  # that have covariates (complex case for gaulss)
+
+  mock_smooth <- list(
+    list(label = "s(t.vec)"),
+    list(label = "s(t.vec):xlin"),
+    list(label = "s.1(t.vec)"),
+    list(label = "s.1(t.vec):xlin")
+  )
+
+  mock_labelmap <- list(
+    xlin = "s(t.vec):xlin",
+    "Intercept(t)" = "s(t.vec)"
+  )
+
+  mock_where <- list(par = 1L, ff = integer(0), sff = integer(0))
+
+  # Mock gaulss family (has nlp = 2)
+  mock_family <- list(nlp = 2)
+
+  result <- create_shortlabels(
+    labelmap = mock_labelmap,
+    m.smooth = mock_smooth,
+    yindname = "t",
+    where.specials = mock_where,
+    family = mock_family
+  )
+
+  # Simple scale intercept should be log(SD)(t)
+  expect_equal(result[["s.1(t.vec)"]], "log(SD)(t)")
+
+  # Complex scale with covariate should be log(SD): xlin(t)
+  expect_equal(result[["s.1(t.vec):xlin"]], "log(SD): xlin(t)")
+
+  # Without gaulss family, scale smooths should NOT be labeled
+  result_gaussian <- create_shortlabels(
+    labelmap = mock_labelmap,
+    m.smooth = mock_smooth,
+    yindname = "t",
+    where.specials = mock_where,
+    family = list(nlp = 1) # Regular family
+  )
+
+  # Scale smooths should not be in result for non-location-scale family
+  expect_false("s.1(t.vec)" %in% names(result_gaussian))
+})
+
+
+###############################################################################
+# pffrGLS Tests
+###############################################################################
+
+test_that("pffrGLS fits a simple model correctly", {
+  skip_on_cran()
+  set.seed(200)
+
+  n <- 30
+  nygrid <- 25
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  # Construct AR(1) covariance matrix
+  rho <- 0.5
+  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
+
+  m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+
+  expect_s3_class(m, "pffr")
+  expect_equal(dim(fitted(m)), c(n, nygrid))
+  expect_false(any(is.na(fitted(m))))
+})
+
+test_that("pffrGLS has complete pffr slot", {
+  skip_on_cran()
+  set.seed(201)
+
+  n <- 25
+  nygrid <- 20
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  rho <- 0.3
+  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
+
+  m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+
+  # Check pffr slot has all required fields
+  expect_true(!is.null(m$pffr$shortlabels))
+  expect_true(!is.null(m$pffr$labelmap))
+  expect_true(!is.null(m$pffr$termmap))
+  expect_true(!is.null(m$pffr$nobs))
+  expect_true(!is.null(m$pffr$nyindex))
+  expect_true(!is.null(m$pffr$yind))
+  expect_true(!is.null(m$pffr$where))
+
+  # GLS-specific fields
+  expect_true(!is.null(m$pffr$hatSigma))
+  expect_true(!is.null(m$pffr$sqrtSigmaInv))
+})
+
+test_that("pffrGLS works with ff() terms", {
+  skip_on_cran()
+  set.seed(202)
+
+  n <- 30
+  nxgrid <- 20
+  nygrid <- 25
+
+  dat <- pffrSim(
+    Y ~ ff(X1, xind = s),
+    n = n,
+    nxgrid = nxgrid,
+    nygrid = nygrid,
+    effects = list(X1 = "cosine"),
+    SNR = 50
+  )
+  s <- attr(dat, "xindex")
+  t <- attr(dat, "yindex")
+
+  rho <- 0.5
+  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
+
+  m <- pffrGLS(Y ~ ff(X1, xind = s), yind = t, data = dat, hatSigma = hatSigma)
+
+  expect_s3_class(m, "pffr")
+  expect_equal(dim(fitted(m)), c(n, nygrid))
+
+  # Check coef works
+  coefs <- coef(m)
+  expect_true(is.list(coefs))
+  expect_true("smterms" %in% names(coefs))
+})
+
+test_that("pffrGLS summary and coef methods work", {
+  skip_on_cran()
+  set.seed(203)
+
+  n <- 25
+  nygrid <- 20
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  rho <- 0.4
+  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
+
+  m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+
+  # Test summary
+  summ <- summary(m)
+  expect_s3_class(summ, "summary.pffr")
+  expect_true(!is.null(summ$s.table))
+
+  # Test coef
+  coefs <- coef(m)
+  expect_true(is.list(coefs))
+  expect_true("pterms" %in% names(coefs))
+  expect_true("smterms" %in% names(coefs))
+})
+
+test_that("pffrGLS handles poorly conditioned hatSigma", {
+  skip_on_cran()
+  set.seed(204)
+
+  n <- 20
+  nygrid <- 15
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  # Create poorly conditioned matrix (high correlation)
+  rho <- 0.99
+  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
+
+  # Should warn about condition number
+  expect_warning(
+    m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma),
+    "condition number"
+  )
+
+  # But should still fit
+  expect_s3_class(m, "pffr")
+})
+
+test_that("pffrGLS rejects missing values in response", {
+  skip_on_cran()
+  set.seed(205)
+
+  n <- 20
+  nygrid <- 15
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  dat$Y[1, 5] <- NA # Introduce missing value
+  t <- attr(dat, "yindex")
+
+  rho <- 0.5
+  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
+
+  expect_error(
+    pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma),
+    "missing values"
+  )
+})
+
+test_that("pffrGLS predict works correctly", {
+  skip_on_cran()
+  set.seed(206)
+
+  n <- 30
+  nygrid <- 20
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  rho <- 0.4
+  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
+
+  m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+
+  # Predict on training data
+  pred <- predict(m)
+  expect_equal(dim(pred), c(n, nygrid))
+  expect_equal(pred, fitted(m), tolerance = 1e-10)
+
+  # Predict on new data
+  set.seed(207)
+  newdat <- sim_xlin_data(n = 15, nygrid = nygrid, SNR = 50)
+  pred_new <- predict(m, newdata = newdat)
+  expect_equal(dim(pred_new), c(15, nygrid))
+})
+
+
+###############################################################################
+# coefboot.pffr Tests
+###############################################################################
+
+test_that("coefboot.pffr runs on simple pffr model", {
+  skip_on_cran()
+  set.seed(210)
+
+  n <- 30
+  nygrid <- 20
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  m <- pffr(Y ~ xlin, yind = t, data = dat)
+
+  # Run bootstrap with small B for speed
+  boot_ci <- coefboot.pffr(m, B = 5, showProgress = FALSE)
+
+  expect_true(is.list(boot_ci))
+  expect_true("pterms" %in% names(boot_ci))
+  expect_true("smterms" %in% names(boot_ci))
+
+  # pterms should have CI columns
+  expect_true(ncol(boot_ci$pterms) > 1)
+})
+
+test_that("coefboot.pffr residual resampling method works", {
+  skip_on_cran()
+  set.seed(211)
+
+  n <- 25
+  nygrid <- 20
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  m <- pffr(Y ~ xlin, yind = t, data = dat)
+
+  # Test residual method
+  boot_ci <- coefboot.pffr(m, B = 5, method = "residual", showProgress = FALSE)
+  expect_true(is.list(boot_ci))
+
+  # Test centered residual method
+  boot_ci_c <- coefboot.pffr(
+    m,
+    B = 5,
+    method = "residual.c",
+    showProgress = FALSE
+  )
+  expect_true(is.list(boot_ci_c))
+})
+
+test_that("coefboot.pffr works with sparse/irregular data", {
+  skip_on_cran()
+  set.seed(212)
+
+  # Generate sparse data
+  dat_sparse <- pffrSim(scenario = c("int", "smoo"), n = 30, propmissing = 0.5)
+  t <- attr(dat_sparse, "yindex")
+
+  m_sparse <- pffr(
+    Y ~ s(xsmoo),
+    data = dat_sparse$data,
+    ydata = dat_sparse$ydata,
+    yind = t
+  )
+
+  # Run bootstrap with sparse data
+  boot_ci <- coefboot.pffr(m_sparse, B = 5, showProgress = FALSE)
+
+  expect_true(is.list(boot_ci))
+  expect_true("pterms" %in% names(boot_ci))
+  expect_true("smterms" %in% names(boot_ci))
+})
+
+test_that("coefboot.pffr works with gaulss family", {
+  skip_on_cran()
+  set.seed(213)
+
+  n <- 30
+  nygrid <- 20
+
+  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  # Fit gaulss model
+  m_gaulss <- pffr(Y ~ xlin, yind = t, data = dat, family = mgcv::gaulss())
+
+  expect_s3_class(m_gaulss, "pffr")
+
+  # Run bootstrap
+  boot_ci <- coefboot.pffr(m_gaulss, B = 5, showProgress = FALSE)
+
+  expect_true(is.list(boot_ci))
+  expect_true("pterms" %in% names(boot_ci))
+  expect_true("smterms" %in% names(boot_ci))
+})
+
+test_that("pffrGLS errors on sparse data (not yet implemented)", {
+  skip_on_cran()
+  set.seed(214)
+
+  # Generate sparse data
+  dat_sparse <- pffrSim(scenario = c("int", "smoo"), n = 30, propmissing = 0.5)
+  t <- attr(dat_sparse, "yindex")
+
+  rho <- 0.5
+  hatSigma <- rho^abs(outer(1:length(t), 1:length(t), "-"))
+
+  # pffrGLS with sparse data should error (not yet implemented)
+  expect_error(
+    pffrGLS(
+      Y ~ s(xsmoo),
+      data = dat_sparse$data,
+      ydata = dat_sparse$ydata,
+      yind = t,
+      hatSigma = hatSigma
+    ),
+    "sparse data not yet"
+  )
+})

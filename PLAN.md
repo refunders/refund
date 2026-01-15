@@ -233,6 +233,10 @@ Problem: `fitted.pffr` only returns means for gaulss, silently discarding scale 
 - [x] Add parameter `which = c("mean", "scale", "both")` or similar
 - [x] Document the behavior for location-scale families
 - [x] Add test for gaulss fitted values extraction
+- [x] Fix shortlabel for gaulss log-sd smooth terms (was showing "NA" in summary)
+  - Simple case: intercept-only scale formula now shows `log(SD)(t)`
+  - Complex case: scale formula with covariates shows `log(SD): <termname>(t)`
+- [ ] **TODO**: Improve gaulss varformula support - allow users to specify `varformula` using pffr syntax (with `ff()`, `s()`, etc.) and automatically translate it the same way the mean formula is translated. Currently `varformula` is passed directly to mgcv without pffr's term transformations.
 
 #### 3.6 Formula Parsing Refactor
 

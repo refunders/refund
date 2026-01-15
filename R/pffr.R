@@ -869,7 +869,8 @@ pffr <- function(
     labelmap = labelmap,
     m.smooth = m.smooth,
     yindname = yindname,
-    where.specials = where.specials
+    where.specials = where.specials,
+    family = m$family
   )
 
   ret <- list(

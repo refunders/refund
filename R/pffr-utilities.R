@@ -70,9 +70,16 @@ list2df <- function(l) {
 #' @param m.smooth List of smooth objects from the fitted model.
 #' @param yindname Name of the y-index variable.
 #' @param where.specials List indicating which terms are which type (par, ff, ffpc, etc.).
+#' @param family The model family object (used to detect location-scale families).
 #' @returns Named character vector: names are mgcv smooth labels, values are short labels.
 #' @keywords internal
-create_shortlabels <- function(labelmap, m.smooth, yindname, where.specials) {
+create_shortlabels <- function(
+  labelmap,
+  m.smooth,
+  yindname,
+  where.specials,
+  family = NULL
+) {
   # Build result: one short label per smooth in m.smooth
 
   shortlabels <- character()
@@ -141,6 +148,48 @@ create_shortlabels <- function(labelmap, m.smooth, yindname, where.specials) {
       }
 
       shortlabels[mgcv_label] <- short
+    }
+  }
+
+  # Handle location-scale family smooths (e.g., gaulss)
+  # These have labels like "s.1(...)" for scale parameter and aren't in labelmap
+  # Only do this for families with multiple linear predictors
+  is_location_scale <- !is.null(family) &&
+    !is.null(family$nlp) &&
+    family$nlp > 1
+
+  if (is_location_scale) {
+    all_smooth_labels <- vapply(m.smooth, \(x) x$label, character(1))
+    unlabeled <- setdiff(all_smooth_labels, names(shortlabels))
+
+    for (mgcv_label in unlabeled) {
+      # Check for scale parameter pattern: smooth.N(...) where N > 0
+      # Only match known mgcv smooth types: s, te, ti, t2
+      # e.g., "s.1(t_grid.vec)", "te.1(x,t)", "s.1(t_grid.vec):xlin"
+      scale_match <- regexpr("^(s|te|ti|t2)\\.([0-9]+)\\(", mgcv_label)
+      if (scale_match > 0) {
+        # Extract the base term by removing the .N suffix
+        base_label <- sub("^(s|te|ti|t2)\\.([0-9]+)", "\\1", mgcv_label)
+
+        # Check if this is just the intercept (yindname only) or has covariates
+        has_by <- grepl(":", mgcv_label)
+
+        if (has_by) {
+          # Complex case: scale depends on covariate
+          # Extract the covariate part after the colon
+          by_part <- sub(".*:", "", mgcv_label)
+          shortlabels[mgcv_label] <- paste0(
+            "log(SD): ",
+            by_part,
+            "(",
+            yindname,
+            ")"
+          )
+        } else {
+          # Simple case: intercept-only scale
+          shortlabels[mgcv_label] <- paste0("log(SD)(", yindname, ")")
+        }
+      }
     }
   }
 
