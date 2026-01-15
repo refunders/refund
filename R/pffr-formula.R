@@ -96,7 +96,6 @@ transform_c_term <- function(term_string) {
 #' Transform smooth terms (s, te, ti, t2) to include y-index
 #'
 #' Converts univariate/bivariate smooth terms into tensor products that
-
 #' include the functional response index.
 #'
 #' @param term The term call object.
@@ -118,7 +117,6 @@ transform_smooth_term <- function(
   is_gamm4 <- as.character(algorithm) == "gamm4"
 
   # Convert term type for gamm4 compatibility
-
   xnew[[1]] <- get_smooth_type(term_type, tensortype, is_gamm4)
 
   # Set dimension parameter
@@ -152,7 +150,11 @@ transform_smooth_term <- function(
   safeDeparse(xnew)
 }
 
-# Helper: determine smooth term type
+# Determine smooth term type based on original type and algorithm
+# @param term_type Original term type ("s", "te", "ti", "t2")
+# @param tensortype Default tensor type for s() terms
+# @param is_gamm4 Whether using gamm4 algorithm
+# @returns Symbol for the transformed term type
 get_smooth_type <- function(term_type, tensortype, is_gamm4) {
   if (term_type %in% c("te", "ti") && is_gamm4) {
     return(quote(t2))
@@ -163,7 +165,10 @@ get_smooth_type <- function(term_type, tensortype, is_gamm4) {
   as.name(term_type)
 }
 
-# Helper: determine dimension parameter for smooth
+# Determine dimension parameter for tensor smooth
+# @param term The original term call
+# @param term_type The term type string
+# @returns Integer vector of dimensions for tensor product
 get_smooth_dimensions <- function(term, term_type) {
   if (term_type == "s") {
     nvars <- if (!is.null(names(term))) {
@@ -179,7 +184,10 @@ get_smooth_dimensions <- function(term, term_type) {
   }
 }
 
-# Helper: determine bs parameter for smooth
+# Determine basis specification (bs) for tensor smooth
+# @param term The original term call
+# @param bs_yindex Basis spec for y-index marginal
+# @returns Character vector of basis types for each marginal
 get_smooth_bs <- function(term, bs_yindex) {
   term_bs <- if ("bs" %in% names(term)) eval(term$bs) else NULL
   yindex_bs <- bs_yindex$bs %||% "tp"
@@ -192,7 +200,10 @@ get_smooth_bs <- function(term, bs_yindex) {
   }
 }
 
-# Helper: determine m parameter for smooth
+# Determine penalty order (m) for tensor smooth
+# @param term The original term call
+# @param bs_yindex Basis spec for y-index marginal
+# @returns Penalty order specification
 get_smooth_m <- function(term, bs_yindex) {
   if ("m" %in% names(term)) {
     if ("m" %in% names(bs_yindex)) {
@@ -204,7 +215,11 @@ get_smooth_m <- function(term, bs_yindex) {
   }
 }
 
-# Helper: determine k parameter for smooth
+# Determine basis dimension (k) for tensor smooth
+# @param term The original term call
+# @param d Dimension vector from get_smooth_dimensions()
+# @param bs_yindex Basis spec for y-index marginal
+# @returns Integer vector of basis dimensions for each marginal
 get_smooth_k <- function(term, d, bs_yindex) {
   yindex_k <- bs_yindex$k %||% 8
   k <- if ("k" %in% names(term)) {
