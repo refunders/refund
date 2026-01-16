@@ -994,9 +994,12 @@ pffr <- function(
   # Apply sandwich correction if requested
   if (sandwich) {
     gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
+    # Strip pffr class for vcov calls to avoid predict.pffr warnings
+    gam_obj_stripped <- gam_obj
+    class(gam_obj_stripped) <- setdiff(class(gam_obj_stripped), "pffr")
     # Overwrite both the frequentist and the Bayesian covariance matrix
-    gam_obj$Vp <- gam_obj$Vc <- stats::vcov(gam_obj, sandwich = TRUE)
-    gam_obj$Ve <- stats::vcov(gam_obj, sandwich = TRUE, freq = TRUE)
+    gam_obj$Vp <- gam_obj$Vc <- stats::vcov(gam_obj_stripped, sandwich = TRUE)
+    gam_obj$Ve <- stats::vcov(gam_obj_stripped, sandwich = TRUE, freq = TRUE)
     if (as.character(algorithm) %in% c("gamm4", "gamm")) {
       m$gam <- gam_obj
     } else {

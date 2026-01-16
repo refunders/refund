@@ -666,6 +666,14 @@ coef.pffr <- function(
   n3 = 20,
   ...
 ) {
+  # Warn if deprecated Ktt argument is passed
+ if ("Ktt" %in% names(list(...))) {
+    warning(
+      "The 'Ktt' argument is deprecated and ignored. ",
+      "Use sandwich=TRUE for robust standard errors via mgcv::vcov.gam().",
+      call. = FALSE
+    )
+  }
   if (raw) {
     return(object$coefficients)
   } else {
@@ -880,7 +888,10 @@ coef.pffr <- function(
       if (model_has_sandwich) {
         covmat <- if (freq) object$Ve else object$Vp
       } else {
-        covmat <- stats::vcov(object, sandwich = TRUE, freq = freq)
+        # Strip pffr class to avoid predict.pffr warnings during vcov
+        object_stripped <- object
+        class(object_stripped) <- setdiff(class(object_stripped), "pffr")
+        covmat <- stats::vcov(object_stripped, sandwich = TRUE, freq = freq)
       }
     } else {
       covmat <- if (freq) object$Ve else object$Vp
@@ -951,19 +962,26 @@ summary.pffr <- function(object, ...) {
     )
   }
 
-  # Handle parametric scale effects for location-scale families (e.g., gaulss)
+  # Handle parametric effects for multi-linear-predictor families (e.g., gaulss)
   # These have names like "(Intercept).1", "grpB.1" in p.table
   # Only apply this transformation for families with multiple linear predictors
-  is_location_scale <- !is.null(object$family$nlp) && object$family$nlp > 1
-  if (is_location_scale && !is.null(ret$p.table)) {
+  is_multi_lp <- !is.null(object$family$nlp) && object$family$nlp > 1
+  if (is_multi_lp && !is.null(ret$p.table)) {
+    # Use log(SD) label only for gaulss, generic lpN label for other families
+    is_gaulss <- identical(object$family$family, "gaulss")
     rownames(ret$p.table) <- vapply(
       rownames(ret$p.table),
       \(x) {
-        # Check for .N suffix indicating scale parameter (N > 0)
+        # Check for .N suffix indicating additional linear predictor (N > 0)
         if (grepl("\\.([0-9]+)$", x)) {
           # Extract base name and suffix
           base_name <- sub("\\.([0-9]+)$", "", x)
-          paste0("log(SD): ", base_name)
+          lp_num <- sub(".*\\.([0-9]+)$", "\\1", x)
+          if (is_gaulss) {
+            paste0("log(SD): ", base_name)
+          } else {
+            paste0("lp", as.integer(lp_num) + 1, ": ", base_name)
+          }
         } else {
           x
         }
