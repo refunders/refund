@@ -347,8 +347,8 @@ pffr <- function(
     }
   }
 
-  sparseOrNongrid <- !is.null(ydata)
-  if (sparseOrNongrid) {
+  is_sparse <- !is.null(ydata)
+  if (is_sparse) {
     stopifnot(ncol(ydata) == 3)
     stopifnot(c(".obs", ".index", ".value") == colnames(ydata))
   }
@@ -364,10 +364,10 @@ pffr <- function(
 
   #start new formula
   newfrml <- paste(responsename, "~", sep = "")
-  newfrmlenv <- new.env()
+  formula_env <- new.env()
   evalenv <- if ("data" %in% names(call)) eval.parent(call$data) else NULL
 
-  if (sparseOrNongrid) {
+  if (is_sparse) {
     nobs <- length(unique(ydata$.obs))
     stopifnot(all(ydata$.obs %in% rownames(data)))
     # FIXME: allow for non-1:nobs .obs-formats!
@@ -413,8 +413,8 @@ pffr <- function(
     )
   }
 
-  if (!sparseOrNongrid) {
-    #if missing, define y-index or get it from first ff/sff-term, then assign expanded versions to newfrmlenv
+  if (!is_sparse) {
+    #if missing, define y-index or get it from first ff/sff-term, then assign expanded versions to formula_env
     if (missing(yind)) {
       if (length(c(where.specials$ff, where.specials$sff))) {
         if (length(where.specials$ff)) {
@@ -449,10 +449,10 @@ pffr <- function(
     stopifnot(all.equal(order(yind), 1:nyindex))
 
     yindvec <- rep(yind, times = nobs)
-    yindvecname <- as.symbol(paste(yindname, ".vec", sep = ""))
-    assign(x = deparse(yindvecname), value = yindvec, envir = newfrmlenv)
+    yindex_vec_name <- as.symbol(paste(yindname, ".vec", sep = ""))
+    assign(x = deparse(yindex_vec_name), value = yindvec, envir = formula_env)
 
-    #assign response in _long_ format to newfrmlenv
+    #assign response in _long_ format to formula_env
     assign(
       x = deparse(responsename),
       value = as.vector(t(eval(
@@ -460,29 +460,35 @@ pffr <- function(
         envir = evalenv,
         enclos = frmlenv
       ))),
-      envir = newfrmlenv
+      envir = formula_env
     )
 
-    missingind <- if (any(is.na(get(as.character(responsename), newfrmlenv)))) {
-      which(is.na(get(as.character(responsename), newfrmlenv)))
+    missing_indices <- if (
+      any(is.na(get(as.character(responsename), formula_env)))
+    ) {
+      which(is.na(get(as.character(responsename), formula_env)))
     } else NULL
 
     # repeat which row in <data> how many times
-    stackpattern <- rep(1:nobs, each = nyindex)
+    obs_indices <- rep(1:nobs, each = nyindex)
   } else {
-    # sparseOrNongrid:
+    # is_sparse:
     yindname <- "yindex"
     yindvec <- ydata$.index
-    yindvecname <- as.symbol(paste(yindname, ".vec", sep = ""))
-    assign(x = deparse(yindvecname), value = ydata$.index, envir = newfrmlenv)
+    yindex_vec_name <- as.symbol(paste(yindname, ".vec", sep = ""))
+    assign(
+      x = deparse(yindex_vec_name),
+      value = ydata$.index,
+      envir = formula_env
+    )
 
-    #assign response in _long_ format to newfrmlenv
-    assign(x = deparse(responsename), value = ydata$.value, envir = newfrmlenv)
+    #assign response in _long_ format to formula_env
+    assign(x = deparse(responsename), value = ydata$.value, envir = formula_env)
 
-    missingind <- NULL
+    missing_indices <- NULL
 
     # repeat which row in <data> how many times:
-    stackpattern <- ydata$.obs
+    obs_indices <- ydata$.obs
   }
 
   ##################################################################################
@@ -492,7 +498,7 @@ pffr <- function(
   #if intercept, add \mu(yindex)
   if (parsed$has_intercept) {
     # Use modular intercept transformer
-    int_result <- transform_intercept_term(yindvecname, bs.int, yindname)
+    int_result <- transform_intercept_term(yindex_vec_name, bs.int, yindname)
     intstring <- int_result$term_string
 
     newfrml <- paste(newfrml, intstring, sep = " ")
@@ -527,7 +533,7 @@ pffr <- function(
       }
     )
 
-    #apply limits function and assign stacked data to newfrmlenv
+    #apply limits function and assign stacked data to formula_env
     makeff <- function(x) {
       tmat <- matrix(yindvec, nrow = length(yindvec), ncol = length(x$xind))
       smat <- matrix(
@@ -538,11 +544,11 @@ pffr <- function(
       )
       if (!is.null(x[["LX"]])) {
         # for ff: stack weights * covariate
-        LStacked <- x$LX[stackpattern, ]
+        LStacked <- x$LX[obs_indices, ]
       } else {
         # for sff: stack weights, X separately
-        LStacked <- x$L[stackpattern, ]
-        XStacked <- x$X[stackpattern, ]
+        LStacked <- x$L[obs_indices, ]
+        XStacked <- x$X[obs_indices, ]
       }
       if (!is.null(x$limits)) {
         # find int-limits and set weights to 0 outside
@@ -565,13 +571,13 @@ pffr <- function(
           }
         }
       }
-      assign(x = x$yindname, value = tmat, envir = newfrmlenv)
-      assign(x = x$xindname, value = smat, envir = newfrmlenv)
+      assign(x = x$yindname, value = tmat, envir = formula_env)
+      assign(x = x$xindname, value = smat, envir = formula_env)
 
-      assign(x = x$LXname, value = LStacked, envir = newfrmlenv)
+      assign(x = x$LXname, value = LStacked, envir = formula_env)
       if (is.null(x[["LX"]])) {
         # sff
-        assign(x = x$xname, value = XStacked, envir = newfrmlenv)
+        assign(x = x$xname, value = XStacked, envir = formula_env)
       }
       invisible(NULL)
     }
@@ -586,7 +592,7 @@ pffr <- function(
 
     lapply(ffpcterms, function(trm) {
       lapply(colnames(trm$data), function(nm) {
-        assign(x = nm, value = trm$data[stackpattern, nm], envir = newfrmlenv)
+        assign(x = nm, value = trm$data[obs_indices, nm], envir = formula_env)
         invisible(NULL)
       })
       invisible(NULL)
@@ -596,13 +602,13 @@ pffr <- function(
       frmls <- lapply(colnames(trm$data), function(pc) {
         arglist <- c(
           name = "s",
-          x = as.symbol(yindvecname),
+          x = as.symbol(yindex_vec_name),
           by = as.symbol(pc),
           id = trm$id,
           trm$splinepars
         )
-        call <- do.call("call", arglist, envir = newfrmlenv)
-        call$x <- as.symbol(yindvecname)
+        call <- do.call("call", arglist, envir = formula_env)
+        call$x <- as.symbol(yindex_vec_name)
         call$by <- as.symbol(pc)
         safeDeparse(call)
       })
@@ -618,14 +624,14 @@ pffr <- function(
     pcreterms <- lapply(terms[where.specials$pcre], function(x) {
       eval(x, envir = evalenv, enclos = frmlenv)
     })
-    #assign newly created data to newfrmlenv
+    #assign newly created data to formula_env
     lapply(pcreterms, function(trm) {
-      if (!sparseOrNongrid && all(trm$yind == yind)) {
+      if (!is_sparse && all(trm$yind == yind)) {
         lapply(colnames(trm$efunctions), function(nm) {
           assign(
             x = nm,
             value = trm$efunctions[rep(1:nyindex, times = nobs), nm],
-            envir = newfrmlenv
+            envir = formula_env
           )
           invisible(NULL)
         })
@@ -642,11 +648,11 @@ pffr <- function(
             xout = yindvec,
             method = "linear"
           )$y
-          assign(x = nm, value = tmp, envir = newfrmlenv)
+          assign(x = nm, value = tmp, envir = formula_env)
           invisible(NULL)
         })
       }
-      assign(x = trm$idname, value = trm$id[stackpattern], envir = newfrmlenv)
+      assign(x = trm$idname, value = trm$id[obs_indices], envir = formula_env)
       invisible(NULL)
     })
 
@@ -664,7 +670,7 @@ pffr <- function(
         function(x)
           transform_smooth_term(
             x,
-            yindvecname,
+            yindex_vec_name,
             bs.yindex,
             tensortype,
             algorithm
@@ -676,11 +682,11 @@ pffr <- function(
   if (length(where.specials$par)) {
     newtrmstrings[where.specials$par] <- sapply(
       terms[where.specials$par],
-      function(x) transform_par_term(x, yindvecname, bs.yindex)
+      function(x) transform_par_term(x, yindex_vec_name, bs.yindex)
     )
   }
 
-  #... & assign expanded/additional variables to newfrmlenv
+  #... & assign expanded/additional variables to formula_env
   where.specials$notff <- c(
     where.specials$c,
     where.specials$par,
@@ -714,11 +720,11 @@ pffr <- function(
       sapply(nms, function(nm) {
         var <- get(nm, envir = evalenv)
         if (is.matrix(var)) {
-          stopifnot(!sparseOrNongrid || ncol(var) == nyindex)
-          assign(x = nm, value = as.vector(t(var)), envir = newfrmlenv)
+          stopifnot(!is_sparse || ncol(var) == nyindex)
+          assign(x = nm, value = as.vector(t(var)), envir = formula_env)
         } else {
           stopifnot(length(var) == nobs)
-          assign(x = nm, value = var[stackpattern], envir = newfrmlenv)
+          assign(x = nm, value = var[obs_indices], envir = formula_env)
         }
         invisible(NULL)
       })
@@ -732,7 +738,7 @@ pffr <- function(
     intercept_string = if (addFint) intstring else NULL,
     term_strings = newtrmstrings,
     has_intercept = addFint,
-    newfrmlenv = newfrmlenv
+    formula_env = formula_env
   )
 
   # variance formula for gaulss
@@ -741,18 +747,18 @@ pffr <- function(
       dots$varformula <- formula(paste(
         "~",
         safeDeparse(
-          as.call(c(as.name("s"), x = as.symbol(yindvecname), bs.int))
+          as.call(c(as.name("s"), x = as.symbol(yindex_vec_name), bs.int))
         )
       ))
     }
-    environment(dots$varformula) <- newfrmlenv
+    environment(dots$varformula) <- formula_env
     newfrml <- list(newfrml, dots$varformula)
   }
 
   # Build AR.start indicator if AR(1) errors requested
   if (useAR) {
-    resp_long <- get(as.character(responsename), envir = newfrmlenv)
-    obs_ids <- stackpattern
+    resp_long <- get(as.character(responsename), envir = formula_env)
+    obs_ids <- obs_indices
     valid_idx <- which(!is.na(resp_long))
     if (!length(valid_idx)) {
       stop("Cannot build AR.start because all responses are missing.")
@@ -765,11 +771,11 @@ pffr <- function(
       integer(1)
     ))
     start_idx[start_positions] <- TRUE
-    assign("AR.start", value = start_idx, envir = newfrmlenv)
+    assign("AR.start", value = start_idx, envir = formula_env)
   }
 
   # Build mgcv data using modular function
-  pffrdata <- build_mgcv_data(newfrmlenv)
+  pffrdata <- build_mgcv_data(formula_env)
 
   newcall <- expand.call(pffr, call)
   newcall$yind <- newcall$tensortype <- newcall$bs.int <-
@@ -790,7 +796,7 @@ pffr <- function(
   if ("weights" %in% dotargs) {
     wtsdone <- FALSE
     if (length(dots$weights) == nobs) {
-      newcall$weights <- dots$weights[stackpattern]
+      newcall$weights <- dots$weights[obs_indices]
       wtsdone <- TRUE
     }
     if (
@@ -810,7 +816,7 @@ pffr <- function(
   if ("offset" %in% dotargs) {
     ofstdone <- FALSE
     if (length(dots$offset) == nobs) {
-      newcall$offset <- dots$offset[stackpattern]
+      newcall$offset <- dots$offset[obs_indices]
       ofstdone <- TRUE
     }
     if (
@@ -863,14 +869,19 @@ pffr <- function(
     if (length(where.specials$par)) {
       for (w in where.specials$par) {
         # only combine if <by>-variable is a factor!
-        if (is.factor(get(names(labelmap)[w], envir = newfrmlenv))) {
+        if (is.factor(get(names(labelmap)[w], envir = formula_env))) {
           labelmap[[w]] <- {
             #covariates for parametric terms become by-variables:
             where <- sapply(m.smooth, function(x) x$by) == names(labelmap)[w]
             sapply(m.smooth[where], function(x) x$label)
           }
         } else {
-          labelmap[[w]] <- paste0("s(", yindvecname, "):", names(labelmap)[w])
+          labelmap[[w]] <- paste0(
+            "s(",
+            yindex_vec_name,
+            "):",
+            names(labelmap)[w]
+          )
         }
       }
     }
@@ -955,8 +966,8 @@ pffr <- function(
     ff = ffterms,
     ffpc = ffpcterms,
     pcreterms = pcreterms,
-    missingind = missingind,
-    sparseOrNongrid = sparseOrNongrid,
+    missing_indices = missing_indices,
+    is_sparse = is_sparse,
     ydata = ydata,
     sandwich = sandwich
   )

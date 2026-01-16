@@ -259,7 +259,7 @@ build_mgcv_data <- function(newfrmlenv) {
 #' @param intercept_string Intercept term string (or NULL if no intercept).
 #' @param term_strings Character vector of transformed term strings.
 #' @param has_intercept Logical, whether model has intercept.
-#' @param newfrmlenv Environment for formula.
+#' @param formula_env Environment for formula.
 #' @returns Formula object for mgcv.
 #' @keywords internal
 build_mgcv_formula <- function(
@@ -267,7 +267,7 @@ build_mgcv_formula <- function(
   intercept_string,
   term_strings,
   has_intercept,
-  newfrmlenv
+  formula_env
 ) {
   frml_str <- if (has_intercept && !is.null(intercept_string)) {
     paste(responsename, "~", intercept_string)
@@ -280,6 +280,6 @@ build_mgcv_formula <- function(
   }
 
   frml <- formula(frml_str)
-  environment(frml) <- newfrmlenv
+  environment(frml) <- formula_env
   frml
 }

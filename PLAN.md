@@ -10,6 +10,7 @@
 2. Write comprehensive unit tests with ground truth comparison
 3. Refactor pffr formula parsing into modular functions
 4. (Future) Better defaults and inference
+5. Investigate CI under-coverage in confint benchmark (`confint-benchmark.R`)
 
 ---
 
@@ -300,6 +301,146 @@ Additional S3 methods for model diagnostics and comparison.
 
 ---
 
+### Phase 7: Architectural Refactoring (Future)
+
+#### 7.1 Modularize `pffr()` Main Function
+
+**Problem:** `pffr()` is 769 lines and does too many things, making it hard to maintain and test.
+
+**Current structure (R/pffr.R:242-1011):**
+1. Argument validation & environment setup (lines 257-309)
+2. Formula parsing (lines 356-363)
+3. Data shape detection (lines 370-392)
+4. Algorithm selection (lines 394-414)
+5. Y-index handling (lines 417-486)
+6. Formula transformation (lines 488-695)
+7. AR(1) setup (lines 774-791)
+8. Data preparation (lines 793-851)
+9. Model call construction (lines 796-861)
+10. Post-fit processing (lines 863-1008)
+
+**Proposed modular structure:**
+```r
+pffr <- function(formula, yind, data, ...) {
+
+  call <- match.call()
+
+
+  # Step 1: Validate inputs and setup environment
+  env <- pffr_setup_environment(call, formula, data, ...)
+
+  # Step 2: Detect data structure (dense vs sparse, grid sizes)
+  data_info <- pffr_detect_data_structure(env)
+
+  # Step 3: Parse and transform formula
+  # (already partially done in pffr-formula.R)
+  transformed <- pffr_transform_formula(env, data_info)
+
+  # Step 4: Build mgcv-compatible data and formula
+  mgcv_args <- pffr_build_mgcv_call(transformed, data_info, ...)
+
+  # Step 5: Fit the model
+  fit <- pffr_fit_model(mgcv_args)
+
+  # Step 6: Post-process and attach pffr metadata
+  pffr_postprocess(fit, transformed, call)
+}
+```
+
+**Implementation steps:**
+- [ ] Extract `pffr_setup_environment()` - argument validation, call modification
+- [ ] Extract `pffr_detect_data_structure()` - sparse/dense detection, grid inference
+- [ ] Consolidate formula transformation (already in `pffr-formula.R`)
+- [ ] Extract `pffr_build_mgcv_call()` - construct gam/bam/gamm call
+- [ ] Extract `pffr_fit_model()` - execute fitting with error handling
+- [ ] Extract `pffr_postprocess()` - attach pffr class and metadata
+- [ ] Add unit tests for each extracted function
+- [ ] Verify all existing tests still pass
+
+#### 7.2 Unify `pffr()` and `pffr_gls()`
+
+**Problem:** `pffr_gls()` (599 lines) duplicates most of `pffr()` structure with only GLS-specific differences.
+
+**Duplicated code:**
+- Formula parsing and data setup (~135 lines)
+- Formula transformation (~240 lines)
+- mgcv formula building (~10 lines)
+
+**GLS-specific code:**
+- Covariance matrix conditioning (`compute_sqrt_sigma_inv`)
+- Design matrix decorrelation (`decorrelate_gam_matrices`)
+- Post-fit covariance correction
+
+**Proposed approach:**
+```r
+pffr_gls <- function(formula, yind, hatSigma, data, ...) {
+  # Reuse pffr's internal parsing/transformation
+  pffr_internals <- pffr_prepare(formula, yind, data, ...)
+
+  # GLS-specific: compute decorrelation matrix
+
+  sqrt_sigma_inv <- compute_sqrt_sigma_inv(hatSigma, cond.cutoff)
+
+  # GLS-specific: decorrelate and fit
+  fit <- pffr_fit_gls(pffr_internals, sqrt_sigma_inv, ...)
+
+  # Reuse pffr's postprocessing
+  pffr_postprocess(fit, pffr_internals, call, gls_info = list(...))
+}
+```
+
+**Implementation steps:**
+- [ ] Create `pffr_prepare()` that returns parsed/transformed formula + data
+- [ ] Modify `pffr()` to use `pffr_prepare()` internally
+- [ ] Modify `pffr_gls()` to call `pffr_prepare()` then add GLS steps
+- [ ] Extract GLS-specific functions (already done: `compute_sqrt_sigma_inv`, `decorrelate_gam_matrices`)
+- [ ] Remove duplicated code from `pffr_gls()`
+- [ ] Add integration tests verifying identical results
+
+#### 7.3 Refactor `coef.pffr()` Nested Functions
+
+**Problem:** `coef.pffr()` (258 lines) contains 4 large nested functions that should be standalone.
+
+**Current nested functions:**
+- `getCoefs()` - extract coefficients from smooth objects
+- `safeRange()` - compute range handling edge cases
+- `makeDataGrid()` - generate evaluation grids for different term types
+- `getP()` - compute predictions on grids
+
+**Implementation steps:**
+- [x] Extract `coef_pffr_make_grid()` - standalone grid generation
+- [x] Extract `coef_pffr_get_predictions()` - standalone prediction computation
+- [x] Simplify main `coef.pffr()` to orchestrate these helpers
+- [x] Add documentation for extracted functions
+- [x] Verify existing coef.pffr tests pass
+
+#### 7.4 Variable Naming Improvements
+
+**Problem:** Many internal variables use cryptic abbreviations.
+
+**Key renames in pffr.R:**
+| Current | Proposed | Location |
+|---------|----------|----------|
+| `yindvecname` | `yindex_vec_name` | line 451 |
+| `stackpattern` | `obs_repeat_indices` | line 460 |
+| `missingind` | `missing_indices` | line 472 |
+| `newfrmlenv` | `formula_env` | line 309 |
+| `sparseOrNongrid` | `is_sparse` | line 370 |
+
+**Key renames in coef.pffr():**
+| Current | Proposed | Location |
+|---------|----------|----------|
+| `trm` | `smooth_term` | throughout |
+| `P` | `predictions` | line 770 |
+| `d` | `eval_data` | line 847 |
+
+**Implementation:**
+- [x] Rename variables in pffr.R
+- [x] Rename variables in coef.pffr()
+- [x] Run full test suite to verify no regressions
+
+---
+
 ## Verification Checklist
 
 After each phase:
@@ -366,7 +507,6 @@ effect <- (L * X) %*% beta_st
 
  # Phase 3: refactor
   /ralph-loop:ralph-loop "Read PLAN.md. Implement Phase 3 (refactor & test pffr + utilities). Check boxes as done." --completion-promise "Phase 3 checkboxes marked [x] and devtools::test() passes" --max-iterations 10
-
 
 
 
