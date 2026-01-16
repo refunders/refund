@@ -276,12 +276,15 @@ Extract modular functions from `pffr()` for better maintainability and testing.
 - [ ] Larger default spline bases (current `bs.yindex k=5` is small)
 - [ ] Consider `gaulss` or `pffrGLS` by default
 - [ ] Smarter automatic algorithm selection
+- [ ] Implement pffrGLS support for irregular data
+- [ ] Investigate coverage etc for non-iid residuals: pffrGLS vs sandwich correction via vcov(..., sandwich=TRUE) vs AR
+- [ ] Compare new mgcv-based sandwich correction with old Chen et al. (2013) approach (removed in refactor)
 
 ---
 
 ### Phase 5: Better Inference (Future)
 
-- [ ] Simultaneous confidence bands
+- [ ] Simultaneous confidence bands ([Liebl & Reimherr 2020](https://link.springer.com/chapter/10.1007/978-3-030-47756-1_21))
 - [ ] Conformal prediction intervals
 
 ---

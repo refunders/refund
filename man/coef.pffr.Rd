@@ -14,7 +14,6 @@
   n1 = 100,
   n2 = 40,
   n3 = 20,
-  Ktt = NULL,
   ...
 )
 }
@@ -28,8 +27,9 @@
 \item{freq}{logical, defaults to FALSE. If FALSE, use posterior variance \code{object$Vp} for variability estimates,
 else use \code{object$Ve}. See \code{\link[mgcv]{gamObject}}}
 
-\item{sandwich}{logical, defaults to FALSE. Use a Sandwich-estimator for approximate variances? See Details.
-THIS IS AN EXPERIMENTAL FEATURE, USE A YOUR OWN RISK.}
+\item{sandwich}{logical, defaults to FALSE. Use sandwich-corrected covariance for standard errors.
+Uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE}. If the model was fitted with
+\code{sandwich=TRUE}, the pre-computed covariance matrices are used.}
 
 \item{seWithMean}{logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?}
 
@@ -39,10 +39,6 @@ THIS IS AN EXPERIMENTAL FEATURE, USE A YOUR OWN RISK.}
 
 \item{n3}{\code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
 used in the marginal equidistant grids over the range of the covariates at which the estimated effects are evaluated.}
-
-\item{Ktt}{(optional) an estimate of the covariance operator of the residual process \eqn{\epsilon_i(t) \sim N(0, K(t,t'))},
-evaluated on \code{yind} of \code{object}. If not supplied, this is estimated from the crossproduct matrices of the
-observed residual vectors. Only relevant for sandwich CIs.}
 
 \item{...}{other arguments, not used.}
 }
@@ -67,17 +63,9 @@ Not implemented for smooths in more than 3 dimensions.
 }
 \details{
 The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
-The \code{sandwich}-options works as follows: Assuming that the residual vectors \eqn{\epsilon_i(t), i=1,\dots,n} are i.i.d.
-realizations of a mean zero Gaussian process with covariance \eqn{K(t,t')}, we can construct an estimator for
-\eqn{K(t,t')} from the \eqn{n} replicates of the observed residual vectors. The covariance matrix of the stacked observations
-vec\eqn{(Y_i(t))} is then given by a block-diagonal matrix with \eqn{n} copies of the estimated \eqn{K(t,t')} on the diagonal.
-This block-diagonal matrix is used to construct the "meat" of a sandwich covariance estimator, similar to Chen et al. (2012),
-see reference below.
-}
-\references{
-Chen, H., Wang, Y., Paik, M.C., and Choi, A. (2013).
-A marginal approach to reduced-rank penalized spline smoothing with application to multilevel functional data.
-\emph{Journal of the American Statistical Association}, 101, 1216--1229.
+The \code{sandwich}-option uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE} to compute
+robust standard errors. If the model was fitted with \code{sandwich=TRUE} in \code{\link{pffr}},
+the pre-computed sandwich covariance matrices are used directly.
 }
 \seealso{
 \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is

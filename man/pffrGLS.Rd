@@ -8,9 +8,11 @@ pffrGLS(
   formula,
   yind,
   hatSigma,
+  data = NULL,
+  ydata = NULL,
   algorithm = NA,
   method = "REML",
-  tensortype = c("te", "t2"),
+  tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
   cond.cutoff = 500,
@@ -25,6 +27,10 @@ see \code{\link[refund]{pffr}}}
 
 \item{hatSigma}{(an estimate of) the within-observation covariance (along the responses' index), evaluated at \code{yind}. See Details.}
 
+\item{data}{an (optional) \code{data.frame} or named list containing the data.}
+
+\item{ydata}{an (optional) \code{data.frame} for sparse/irregular functional responses. See \code{\link[refund]{pffr}}.}
+
 \item{algorithm}{the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
 and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4" (see \code{\link[gamm4]{gamm4}}) are valid options as well.}
 
@@ -36,7 +42,7 @@ and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and
 
 \item{bs.int}{See \code{\link[refund]{pffr}}}
 
-\item{cond.cutoff}{if the condition number of \code{hatSigma} is greater than this,  \code{hatSigma} is
+\item{cond.cutoff}{if the condition number of \code{hatSigma} is greater than this, \code{hatSigma} is
 made ``more'' positive-definite via \code{\link[Matrix]{nearPD}} to ensure a condition number equal to cond.cutoff. Defaults to 500.}
 
 \item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. See \code{\link[refund]{pffr}}.}

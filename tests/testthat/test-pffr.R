@@ -1809,3 +1809,50 @@ test_that("pffrGLS errors on sparse data (not yet implemented)", {
     "sparse data not yet"
   )
 })
+
+###############################################################################
+# Sandwich Correction Tests
+###############################################################################
+
+test_that("pffr with sandwich=TRUE yields corrected covariance matrices", {
+  skip_on_cran()
+  set.seed(215)
+
+  dat <- sim_xlin_data(n = 30, nygrid = 25, SNR = 50)
+  t <- attr(dat, "yindex")
+
+  # Fit without sandwich correction
+  m_std <- pffr(Y ~ xlin, yind = t, data = dat)
+
+  # Fit with sandwich correction
+  m_sw <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
+
+  # Verify sandwich flag is stored correctly
+
+  expect_false(m_std$pffr$sandwich)
+  expect_true(m_sw$pffr$sandwich)
+
+  # Verify covariance matrices differ from uncorrected model
+  expect_false(identical(m_std$Vp, m_sw$Vp))
+  expect_false(identical(m_std$Vc, m_sw$Vc))
+  expect_false(identical(m_std$Ve, m_sw$Ve))
+
+  # Verify sandwich Vp/Vc match manual computation from uncorrected model
+  expected_Vp <- vcov(m_std, sandwich = TRUE)
+  expect_equal(m_sw$Vp, expected_Vp)
+  expect_equal(m_sw$Vc, expected_Vp) # Vc should equal Vp with sandwich
+
+  # Coefficients should be identical (only covariance changes)
+  expect_equal(coef(m_std, raw = TRUE), coef(m_sw, raw = TRUE))
+
+  # Verify summary shows sandwich info
+  summ_std <- summary(m_std)
+  summ_sw <- summary(m_sw)
+  expect_false(summ_std$sandwich)
+  expect_true(summ_sw$sandwich)
+
+  # Verify coef.pffr with sandwich=TRUE gives same results from both models
+  coef_std_sw <- coef(m_std, sandwich = TRUE)
+  coef_sw_sw <- coef(m_sw, sandwich = TRUE)
+  expect_equal(coef_std_sw$pterms[, "se"], coef_sw_sw$pterms[, "se"])
+})

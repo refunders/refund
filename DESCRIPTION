@@ -103,6 +103,7 @@ Collate:
     'pffr-pcre.R'
     'pffr-robust.R'
     'pffr-sff.R'
+    'pffr-formula.R'
     'pffr-utilities.R'
     'pffr.R'
     'pfr.R'

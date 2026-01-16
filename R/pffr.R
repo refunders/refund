@@ -144,6 +144,11 @@
 #'   "\code{\link[mgcv]{ti}}" or "\code{\link[mgcv]{t2}}", defaults to
 #'   \code{ti}. \code{t2}-type terms do not enforce the more suitable special
 #'   constraints for functional regression, see Details.
+#' @param sandwich logical; if \code{TRUE}, apply sandwich correction to
+#'   covariance matrices to obtain robust standard errors. This can improve
+#'   inference when residuals are heteroscedastic or correlated. Uses
+#'   \code{\link[mgcv]{vcov.gam}} with \code{sandwich = TRUE}. Default is
+#'   \code{FALSE}.
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}},
 #'   \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
 #'   \code{'\link[mgcv]{jagam}'}. \code{subset} is not implemented.
@@ -236,6 +241,7 @@ pffr <- function(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)), # only bs, k, m are propagated...
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)), # only bs, k, m are propagated...
+  sandwich = FALSE,
   ...
 ) {
   # TODO: subset args!
@@ -890,7 +896,8 @@ pffr <- function(
     pcreterms = pcreterms,
     missingind = missingind,
     sparseOrNongrid = sparseOrNongrid,
-    ydata = ydata
+    ydata = ydata,
+    sandwich = sandwich
   )
 
   if (as.character(algorithm) %in% c("gamm4", "gamm")) {
@@ -900,5 +907,19 @@ pffr <- function(
     m$pffr <- ret
     class(m) <- c("pffr", class(m))
   }
+
+  # Apply sandwich correction if requested
+  if (sandwich) {
+    gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
+    # Overwrite both the frequentist and the Bayesian covariance matrix
+    gam_obj$Vp <- gam_obj$Vc <- stats::vcov(gam_obj, sandwich = TRUE)
+    gam_obj$Ve <- stats::vcov(gam_obj, sandwich = TRUE, freq = TRUE)
+    if (as.character(algorithm) %in% c("gamm4", "gamm")) {
+      m$gam <- gam_obj
+    } else {
+      m <- gam_obj
+    }
+  }
+
   return(m)
 } # end pffr()

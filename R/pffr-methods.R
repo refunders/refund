@@ -616,12 +616,9 @@ plot.pffr <- function(x, ...) {
 #' Not implemented for smooths in more than 3 dimensions.
 #'
 #' The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
-#' The \code{sandwich}-options works as follows: Assuming that the residual vectors \eqn{\epsilon_i(t), i=1,\dots,n} are i.i.d.
-#' realizations of a mean zero Gaussian process with covariance \eqn{K(t,t')}, we can construct an estimator for
-#' \eqn{K(t,t')} from the \eqn{n} replicates of the observed residual vectors. The covariance matrix of the stacked observations
-#' vec\eqn{(Y_i(t))} is then given by a block-diagonal matrix with \eqn{n} copies of the estimated \eqn{K(t,t')} on the diagonal.
-#' This block-diagonal matrix is used to construct the "meat" of a sandwich covariance estimator, similar to Chen et al. (2012),
-#' see reference below.
+#' The \code{sandwich}-option uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE} to compute
+#' robust standard errors. If the model was fitted with \code{sandwich=TRUE} in \code{\link{pffr}},
+#' the pre-computed sandwich covariance matrices are used directly.
 #'
 #'
 #' @param object a fitted \code{pffr}-object
@@ -629,16 +626,14 @@ plot.pffr <- function(x, ...) {
 #' @param se logical, defaults to TRUE. Return estimated standard error of the estimates?
 #' @param freq logical, defaults to FALSE. If FALSE, use posterior variance \code{object$Vp} for variability estimates,
 #'  else use \code{object$Ve}. See \code{\link[mgcv]{gamObject}}
-#' @param sandwich logical, defaults to FALSE. Use a Sandwich-estimator for approximate variances? See Details.
-#' 	THIS IS AN EXPERIMENTAL FEATURE, USE A YOUR OWN RISK.
+#' @param sandwich logical, defaults to FALSE. Use sandwich-corrected covariance for standard errors.
+#'   Uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE}. If the model was fitted with
+#'   \code{sandwich=TRUE}, the pre-computed covariance matrices are used.
 #' @param seWithMean logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?
 #' @param n1 see below
 #' @param n2 see below
 #' @param n3 \code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
 #' used in the marginal equidistant grids over the range of the covariates at which the estimated effects are evaluated.
-#' @param Ktt (optional) an estimate of the covariance operator of the residual process \eqn{\epsilon_i(t) \sim N(0, K(t,t'))},
-#' evaluated on \code{yind} of \code{object}. If not supplied, this is estimated from the crossproduct matrices of the
-#' observed residual vectors. Only relevant for sandwich CIs.
 #' @param ... other arguments, not used.
 #'
 #' @return If \code{raw==FALSE}, a list containing \itemize{
@@ -653,13 +648,9 @@ plot.pffr <- function(x, ...) {
 #'          \item \code{dim} the dimensionality of the effect
 #'          \item \code{main} the label of the smooth term (a short label, same as the one used in \code{summary.pffr})
 #' }}
-#' @references Chen, H., Wang, Y., Paik, M.C., and Choi, A. (2013).
-#' A marginal approach to reduced-rank penalized spline smoothing with application to multilevel functional data.
-#' \emph{Journal of the American Statistical Association}, 101, 1216--1229.
 #' @method coef pffr
 #' @export
 #' @importFrom mgcv PredictMat get.var
-#' @importFrom Matrix Diagonal kronecker t
 #' @seealso \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
 #'   based on.
 #' @author Fabian Scheipl
@@ -673,7 +664,6 @@ coef.pffr <- function(
   n1 = 100,
   n2 = 40,
   n3 = 20,
-  Ktt = NULL,
   ...
 ) {
   if (raw) {
@@ -882,32 +872,18 @@ coef.pffr <- function(
       return(P)
     }
 
-    bread <- if (freq) {
-      object$Ve
-    } else {
-      object$Vp
-    }
     if (sandwich) {
-      X <- predict(object, type = "lpmatrix", reformat = FALSE)
-      bread <- bread / object$sig2
-      res <- residuals(object)
-      if (is.null(Ktt)) {
-        # get estimate of Cov(eps_i(t)) = K(t,t')
-        # stopifnot(require(Matrix))
-        Ktt <- Reduce(
-          "+",
-          lapply(1:nrow(res), function(i) tcrossprod(res[i, ]))
-        ) /
-          nrow(res)
+      # Use sandwich-corrected covariance matrix
+      # If model was fitted with sandwich=TRUE, use stored matrices
+      # Otherwise, compute sandwich correction now
+      model_has_sandwich <- isTRUE(object$pffr$sandwich)
+      if (model_has_sandwich) {
+        covmat <- if (freq) object$Ve else object$Vp
+      } else {
+        covmat <- stats::vcov(object, sandwich = TRUE, freq = freq)
       }
-      #Chen/Wang, Sec. 2.1: M = X' V^-1 (Y-eta)(Y-eta)' V^-1 X  with V ^-1 = diag(sigma^-2)
-      # since the estimate is under working independence....
-      meat <- (t(X) %*% kronecker(Diagonal(nrow(res)), Ktt)) %*%
-        X /
-        (object$scale^2)
-      covmat <- as.matrix(bread %*% meat %*% bread)
     } else {
-      covmat <- bread
+      covmat <- if (freq) object$Ve else object$Vp
     }
 
     ret <- list()
@@ -1008,6 +984,7 @@ summary.pffr <- function(object, ...) {
   } else {
     ret$n <- paste(ret$n, " (in ", object$pffr$nobs, " curves)", sep = "")
   }
+  ret$sandwich <- isTRUE(object$pffr$sandwich)
   return(ret)
 }
 
@@ -1079,6 +1056,9 @@ print.summary.pffr <- function(
     "\n",
     sep = ""
   )
+  if (isTRUE(x$sandwich)) {
+    cat("Sandwich correction applied to covariance matrices.\n")
+  }
   invisible(x)
 }
 
