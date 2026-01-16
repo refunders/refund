@@ -343,7 +343,7 @@ simplify_term_label <- function(term_name, yindname) {
 #'                effects = list(X1 = "cosine", xlin = "dnorm", xsmoo = "sine"))
 #'
 #' # Legacy scenario interface (deprecated)
-#' dat_legacy <- pffrSim(scenario = "ff", n = 50)
+#' dat_legacy <- suppressWarnings(pffrSim(scenario = "ff", n = 50))
 #'
 #' # Access true coefficients
 #' truth <- attr(dat, "truth")

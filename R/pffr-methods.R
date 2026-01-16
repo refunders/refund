@@ -667,7 +667,7 @@ coef.pffr <- function(
   ...
 ) {
   # Warn if deprecated Ktt argument is passed
- if ("Ktt" %in% names(list(...))) {
+  if ("Ktt" %in% names(list(...))) {
     warning(
       "The 'Ktt' argument is deprecated and ignored. ",
       "Use sandwich=TRUE for robust standard errors via mgcv::vcov.gam().",
