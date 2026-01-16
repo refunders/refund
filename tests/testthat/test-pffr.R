@@ -50,11 +50,8 @@ sim_xlin_data <- function(n, nygrid, SNR = 50, family = gaussian()) {
 
 test_that("all major pffr terms are working (legacy scenario='all')", {
   set.seed(9312)
-  # First legacy call triggers deprecation warning (once per session)
-  data2 <- expect_warning(
-    pffrSim(scenario = "all", n = 30),
-    "scenario.*deprecated"
-  )
+  # Legacy scenario call may trigger deprecation warning (once per session)
+  data2 <- suppressWarnings(pffrSim(scenario = "all", n = 30))
   argvals <- attr(data2, "yindex")
   s <- attr(data2, "xindex")
 
