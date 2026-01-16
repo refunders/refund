@@ -61,6 +61,80 @@ list2df <- function(l) {
   return(ret)
 }
 
+
+# =============================================================================
+# Matrix Window Operations for ff() Terms with Limits
+# =============================================================================
+
+#' Extract row-wise windows from a matrix
+#'
+#' For each row of a matrix, extracts elements at indices specified by the
+#' corresponding row of `windows`. Used for `ff()` terms with integration limits
+#' to reduce matrix size by keeping only the relevant integration region.
+#'
+#' @param X Matrix to extract windows from.
+#' @param windows Integer matrix where each row specifies column indices to
+#'   extract from the corresponding row of `X`.
+#' @returns Matrix with same number of rows as `X` and same number of columns
+#'   as columns in `windows`.
+#' @keywords internal
+shift_and_shorten_matrix <- function(X, windows) {
+  t(vapply(
+    seq_len(nrow(X)),
+    function(i) X[i, windows[i, ]],
+    FUN.VALUE = numeric(ncol(windows))
+  ))
+}
+
+
+#' Compute integration window bounds from a boolean mask
+#'
+#' For `ff()` terms with limits (e.g., `limits = "s<t"`), computes the column
+#' range containing TRUE values for each row of the mask.
+#'
+#' @param use_mask Logical matrix indicating which (s,t) pairs are within the
+#'   integration limits.
+#' @returns Integer matrix with 3 columns: start index, end index, and width
+#'   for each row.
+#' @keywords internal
+compute_integration_windows <- function(use_mask) {
+  windows <- t(apply(use_mask, 1, function(row) {
+    indices <- which(row)
+    # Edge case: no integration region (all FALSE)
+    if (length(indices) == 0) return(c(1L, 1L))
+    range(indices)
+  }))
+  # Add width column
+  cbind(windows, windows[, 2] - windows[, 1] + 1L)
+}
+
+
+#' Expand windows to uniform width
+#'
+#' Expands each window to have the same width (the maximum observed width),
+#' extending in whichever direction has room. This enables efficient matrix
+#' operations on uniformly-sized windows.
+#'
+#' @param windows Integer matrix from [compute_integration_windows()] with
+#'   columns: start, end, width.
+#' @param max_col Maximum valid column index (typically `ncol(smat)`).
+#' @returns Integer matrix where each row contains the column indices for the
+#'   expanded window.
+#' @keywords internal
+expand_windows_to_maxwidth <- function(windows, max_col) {
+  max_width <- max(windows[, 3])
+  t(apply(windows, 1, function(window) {
+    width <- window[3]
+    # Extend toward end if possible, otherwise toward start
+    if ((window[2] + max_width - width) <= max_col) {
+      window[1]:(window[2] + max_width - width)
+    } else {
+      (window[1] + width - max_width):window[2]
+    }
+  }))
+}
+
+
 #' Create short labels for pffr terms at model fit time
 #'
 #' Creates a named vector mapping mgcv smooth labels to human-readable pffr labels.

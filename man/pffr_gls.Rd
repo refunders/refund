@@ -70,6 +70,31 @@ Please see \code{\link[refund]{pffr}} for details on model specification and
 implementation. \cr THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
 }
 
+\examples{
+\dontrun{
+# Simulate data with correlated residuals
+set.seed(1234)
+n <- 50
+nygrid <- 30
+yind <- seq(0, 1, length.out = nygrid)
+
+# Create covariate and response
+xlin <- rnorm(n)
+beta_t <- sin(2 * pi * yind)
+Y <- outer(xlin, beta_t) + matrix(rnorm(n * nygrid, sd = 0.5), n, nygrid)
+dat <- data.frame(Y = I(Y), xlin = xlin)
+
+# Fit initial model to estimate residual covariance
+m1 <- pffr(Y ~ xlin, yind = yind, data = dat)
+resid_mat <- residuals(m1)
+hat_sigma <- cov(resid_mat)
+
+# Fit GLS model with estimated covariance
+m2 <- pffr_gls(Y ~ xlin, yind = yind, data = dat, hatSigma = hat_sigma)
+summary(m2)
+}
+
+}
 \seealso{
 \code{\link[refund]{pffr}}, \code{\link[refund]{fpca.sc}}
 }

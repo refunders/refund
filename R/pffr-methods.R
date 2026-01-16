@@ -181,36 +181,20 @@ predict.pffr <- function(
                   use <- ff$limits(smat, tmat)
                   LX_stacked <- LX_stacked * use
 
-                  # Find windows for each row
-                  windows <- t(apply(use, 1, function(x) {
-                    use_this <- which(x)
-                    if (!any(use_this)) return(c(1, 1))
-                    range(use_this)
-                  }))
-                  windows <- cbind(windows, windows[, 2] - windows[, 1] + 1)
-                  maxwidth <- max(windows[, 3])
-
-                  # Reduce matrix size if possible (same logic as in pffr fitting)
-                  if (maxwidth < ncol(smat)) {
-                    eff.windows <- t(apply(
+                  # Find windows and reduce matrix size if possible
+                  windows <- compute_integration_windows(use)
+                  max_width <- max(windows[, 3])
+                  if (max_width < ncol(smat)) {
+                    eff_windows <- expand_windows_to_maxwidth(
                       windows,
-                      1,
-                      function(window, maxw = maxwidth, maxind = ncol(smat)) {
-                        width <- window[3]
-                        if ((window[2] + maxw - width) <= maxind) {
-                          window[1]:(window[2] + maxw - width)
-                        } else {
-                          (window[1] + width - maxw):window[2]
-                        }
-                      }
-                    ))
-
-                    shift_and_shorten <- function(X, eff.windows) {
-                      t(sapply(1:(nrow(X)), function(i) X[i, eff.windows[i, ]]))
-                    }
-                    smat <- shift_and_shorten(smat, eff.windows)
-                    tmat <- shift_and_shorten(tmat, eff.windows)
-                    LX_stacked <- shift_and_shorten(LX_stacked, eff.windows)
+                      ncol(smat)
+                    )
+                    smat <- shift_and_shorten_matrix(smat, eff_windows)
+                    tmat <- shift_and_shorten_matrix(tmat, eff_windows)
+                    LX_stacked <- shift_and_shorten_matrix(
+                      LX_stacked,
+                      eff_windows
+                    )
                   }
                 }
 

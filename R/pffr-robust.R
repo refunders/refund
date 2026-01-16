@@ -676,6 +676,31 @@ extract_smooth_label <- function(x) {
 #'
 #' @return a fitted \code{pffr}-object, see \code{\link[refund]{pffr}}.
 #' @seealso \code{\link[refund]{pffr}}, \code{\link[refund]{fpca.sc}}
+#'
+#' @examples
+#' \dontrun{
+#' # Simulate data with correlated residuals
+#' set.seed(1234)
+#' n <- 50
+#' nygrid <- 30
+#' yind <- seq(0, 1, length.out = nygrid)
+#'
+#' # Create covariate and response
+#' xlin <- rnorm(n)
+#' beta_t <- sin(2 * pi * yind)
+#' Y <- outer(xlin, beta_t) + matrix(rnorm(n * nygrid, sd = 0.5), n, nygrid)
+#' dat <- data.frame(Y = I(Y), xlin = xlin)
+#'
+#' # Fit initial model to estimate residual covariance
+#' m1 <- pffr(Y ~ xlin, yind = yind, data = dat)
+#' resid_mat <- residuals(m1)
+#' hat_sigma <- cov(resid_mat)
+#'
+#' # Fit GLS model with estimated covariance
+#' m2 <- pffr_gls(Y ~ xlin, yind = yind, data = dat, hatSigma = hat_sigma)
+#' summary(m2)
+#' }
+#'
 #' @export
 #' @importFrom Matrix nearPD
 #' @importFrom mgcv gam bam gamm gam.fit3
@@ -914,34 +939,17 @@ pffr_gls <- function(
       if (!is.null(x$limits)) {
         use <- x$limits(smat, tmat)
         LStacked <- LStacked * use
-        windows <- t(apply(use, 1, function(x) {
-          use_this <- which(x)
-          if (!any(use_this)) return(c(1, 1))
-          range(use_this)
-        }))
-        windows <- cbind(windows, windows[, 2] - windows[, 1] + 1)
-        maxwidth <- max(windows[, 3])
-        if (maxwidth < ncol(smat)) {
-          eff.windows <- t(apply(
-            windows,
-            1,
-            function(window, maxw = maxwidth, maxind = ncol(smat)) {
-              width <- window[3]
-              if ((window[2] + maxw - width) <= maxind) {
-                window[1]:(window[2] + maxw - width)
-              } else {
-                (window[1] + width - maxw):window[2]
-              }
-            }
-          ))
-          shift_and_shorten <- function(X, eff.windows) {
-            t(sapply(1:(nrow(X)), function(i) X[i, eff.windows[i, ]]))
-          }
-          smat <- shift_and_shorten(smat, eff.windows)
-          tmat <- shift_and_shorten(tmat, eff.windows)
-          LStacked <- shift_and_shorten(LStacked, eff.windows)
+
+        # Find windows and reduce matrix size if possible
+        windows <- compute_integration_windows(use)
+        max_width <- max(windows[, 3])
+        if (max_width < ncol(smat)) {
+          eff_windows <- expand_windows_to_maxwidth(windows, ncol(smat))
+          smat <- shift_and_shorten_matrix(smat, eff_windows)
+          tmat <- shift_and_shorten_matrix(tmat, eff_windows)
+          LStacked <- shift_and_shorten_matrix(LStacked, eff_windows)
           if (is.null(x$LX)) {
-            XStacked <- shift_and_shorten(XStacked, eff.windows)
+            XStacked <- shift_and_shorten_matrix(XStacked, eff_windows)
           }
         }
       }

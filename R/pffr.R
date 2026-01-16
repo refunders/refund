@@ -549,41 +549,19 @@ pffr <- function(
         use <- x$limits(smat, tmat)
         LStacked <- LStacked * use
 
-        # find indices for row-wise int-range & maximal occuring width:
-        windows <- t(apply(use, 1, function(x) {
-          use_this <- which(x)
-          # edge case: no integration
-          if (!any(use_this)) return(c(1, 1))
-          range(use_this)
-        }))
-        windows <- cbind(windows, windows[, 2] - windows[, 1] + 1)
-        maxwidth <- max(windows[, 3])
-        # reduce size of matrix-covariates if possible:
-        if (maxwidth < ncol(smat)) {
-          # all windows have to have same length, so modify windows:
-          eff.windows <- t(apply(
-            windows,
-            1,
-            function(window, maxw = maxwidth, maxind = ncol(smat)) {
-              width <- window[3]
-              if ((window[2] + maxw - width) <= maxind) {
-                window[1]:(window[2] + maxw - width)
-              } else {
-                (window[1] + width - maxw):window[2]
-              }
-            }
-          ))
+        # find indices for row-wise int-range & maximal width
+        windows <- compute_integration_windows(use)
+        max_width <- max(windows[, 3])
 
-          # extract relevant parts of each row and stack'em
-          shift_and_shorten <- function(X, eff.windows) {
-            t(sapply(1:(nrow(X)), function(i) X[i, eff.windows[i, ]]))
-          }
-          smat <- shift_and_shorten(smat, eff.windows)
-          tmat <- shift_and_shorten(tmat, eff.windows)
-          LStacked <- shift_and_shorten(LStacked, eff.windows)
+        # reduce size of matrix-covariates if possible
+        if (max_width < ncol(smat)) {
+          eff_windows <- expand_windows_to_maxwidth(windows, ncol(smat))
+          smat <- shift_and_shorten_matrix(smat, eff_windows)
+          tmat <- shift_and_shorten_matrix(tmat, eff_windows)
+          LStacked <- shift_and_shorten_matrix(LStacked, eff_windows)
           if (is.null(x$LX)) {
             # sff
-            XStacked <- shift_and_shorten(XStacked, eff.windows)
+            XStacked <- shift_and_shorten_matrix(XStacked, eff_windows)
           }
         }
       }
