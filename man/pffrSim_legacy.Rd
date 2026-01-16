@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr-utilities.R
 \name{pffrSim_legacy}
 \alias{pffrSim_legacy}
-\title{Legacy pffrSim implementation}
+\title{Legacy pffr_simulate implementation}
 \usage{
 pffrSim_legacy(
   scenario = "all",
@@ -34,7 +34,7 @@ Ignored if \code{yind} is provided.}
 e.g., \code{function(s, t) s < t}.}
 }
 \description{
-Internal function preserving the original pffrSim behavior for backward
+Internal function preserving the original pffr_simulate behavior for backward
 compatibility. This is called when the deprecated \code{scenario} argument
 is used.
 }

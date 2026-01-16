@@ -12,7 +12,7 @@ test_that("pffrSim handles sparse data with propmissing", {
   nygrid <- 40
   propmissing <- 0.3
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ s(xsmoo),
     n = n,
     nygrid = nygrid,
@@ -42,7 +42,7 @@ test_that("pffrSim respects xind/yind grid sizes", {
   nygrid1 <- 25
   s1 <- seq(0, 1, length.out = nxgrid1)
 
-  dat1 <- pffrSim(
+  dat1 <- pffr_simulate(
     Y ~ ff(X1, xind = s1),
     n = n,
     nxgrid = nxgrid1,
@@ -59,7 +59,7 @@ test_that("pffrSim respects xind/yind grid sizes", {
   nygrid2 <- 60
   s2 <- seq(0, 1, length.out = nxgrid2)
 
-  dat2 <- pffrSim(
+  dat2 <- pffr_simulate(
     Y ~ ff(X1, xind = s2),
     n = n,
     nxgrid = nxgrid2,
@@ -80,7 +80,7 @@ test_that("pffrSim formula interface returns valid truth structure", {
   nygrid <- 40
   nxgrid <- 25
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s) + xlin,
     n = n,
     nxgrid = nxgrid,
@@ -114,7 +114,7 @@ test_that("pffrSim with family=binomial() produces binary responses", {
   n <- 50
   nygrid <- 30
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ xlin,
     n = n,
     nygrid = nygrid,
@@ -139,7 +139,7 @@ test_that("pffrSim with family=poisson() produces count responses", {
   n <- 50
   nygrid <- 30
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ xlin,
     n = n,
     nygrid = nygrid,
@@ -160,7 +160,7 @@ test_that("pffrSim rejects unsupported families with clear error", {
   set.seed(62)
 
   expect_error(
-    pffrSim(Y ~ xlin, n = 10, nygrid = 10, SNR = 5, family = mgcv::nb()),
+    pffr_simulate(Y ~ xlin, n = 10, nygrid = 10, SNR = 5, family = mgcv::nb()),
     "does not support family"
   )
 })
@@ -179,7 +179,7 @@ test_that("pffrSim effect selection via %||% works", {
 
   custom_effect <- function(t) sin(2 * pi * t)
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ xlin,
     n = n,
     nygrid = nygrid,
@@ -200,7 +200,7 @@ test_that("intercept presets work correctly", {
   nygrid <- 30
 
   for (intercept_type in c("constant", "beta", "sine", "zero")) {
-    dat <- pffrSim(
+    dat <- pffr_simulate(
       Y ~ 1,
       n = n,
       nygrid = nygrid,
@@ -234,7 +234,7 @@ test_that("factor terms with custom 2-arg function work", {
     outer(fac_numeric, sin(2 * pi * t))
   }
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ xfactor,
     n = n,
     nygrid = nygrid,
@@ -253,7 +253,7 @@ test_that("pffrSim respects explicit intercept removal (Y ~ 0 + ...)", {
   n <- 30
   nygrid <- 25
 
-  dat_with <- pffrSim(
+  dat_with <- pffr_simulate(
     Y ~ xlin,
     n = n,
     nygrid = nygrid,
@@ -263,7 +263,7 @@ test_that("pffrSim respects explicit intercept removal (Y ~ 0 + ...)", {
   truth_with <- attr(dat_with, "truth")
   expect_true("intercept" %in% names(truth_with$etaTerms))
 
-  dat_without <- pffrSim(
+  dat_without <- pffr_simulate(
     Y ~ 0 + xlin,
     n = n,
     nygrid = nygrid,
@@ -273,7 +273,7 @@ test_that("pffrSim respects explicit intercept removal (Y ~ 0 + ...)", {
   truth_without <- attr(dat_without, "truth")
   expect_false("intercept" %in% names(truth_without$etaTerms))
 
-  dat_minus1 <- pffrSim(
+  dat_minus1 <- pffr_simulate(
     Y ~ -1 + xlin,
     n = n,
     nygrid = nygrid,
@@ -293,7 +293,7 @@ test_that("pffrSim handles empty term sets (Y ~ 0) without error", {
   n <- 20
   nygrid <- 25
 
-  dat <- pffrSim(Y ~ 0, n = n, nygrid = nygrid, SNR = 10)
+  dat <- pffr_simulate(Y ~ 0, n = n, nygrid = nygrid, SNR = 10)
 
   Y <- dat$Y
   truth <- attr(dat, "truth")
@@ -303,7 +303,7 @@ test_that("pffrSim handles empty term sets (Y ~ 0) without error", {
   expect_equal(max(abs(truth$eta)), 0)
   expect_gt(sd(Y), 0)
 
-  dat2 <- pffrSim(Y ~ -1, n = n, nygrid = nygrid, SNR = 10)
+  dat2 <- pffr_simulate(Y ~ -1, n = n, nygrid = nygrid, SNR = 10)
   expect_equal(dim(dat2$Y), c(n, nygrid))
 })
 
@@ -314,7 +314,7 @@ test_that("numeric smooth effects produce correct dimensions", {
   n <- 25
   nygrid <- 30
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ s(xsmoo),
     n = n,
     nygrid = nygrid,
@@ -340,7 +340,7 @@ test_that("unwrapped te/ti/t2 uses all covariates", {
   n <- 30
   nygrid <- 25
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ te(xte1, xte2),
     n = n,
     nygrid = nygrid,
@@ -357,7 +357,7 @@ test_that("unwrapped te/ti/t2 uses all covariates", {
     outer(x1 * x2, sin(2 * pi * t))
   }
 
-  dat2 <- pffrSim(
+  dat2 <- pffr_simulate(
     Y ~ te(xte1, xte2),
     n = n,
     nygrid = nygrid,

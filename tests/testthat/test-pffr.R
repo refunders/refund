@@ -34,7 +34,7 @@ expect_recovers_eta <- function(model, truth, cor_threshold = 0.9, label = "") {
 }
 
 sim_xlin_data <- function(n, nygrid, SNR = 50, family = gaussian()) {
-  pffrSim(
+  pffr_simulate(
     Y ~ xlin,
     n = n,
     nygrid = nygrid,
@@ -51,7 +51,7 @@ sim_xlin_data <- function(n, nygrid, SNR = 50, family = gaussian()) {
 test_that("all major pffr terms are working (legacy scenario='all')", {
   set.seed(9312)
   # Legacy scenario call may trigger deprecation warning (once per session)
-  data2 <- suppressWarnings(pffrSim(scenario = "all", n = 30))
+  data2 <- suppressWarnings(pffr_simulate(scenario = "all", n = 30))
   argvals <- attr(data2, "yindex")
   s <- attr(data2, "xindex")
 
@@ -75,7 +75,7 @@ test_that("all major pffr terms are working (legacy scenario='all')", {
 
 test_that("convenience functions are working", {
   set.seed(9313)
-  data2 <- pffrSim(scenario = "all", n = 30)
+  data2 <- pffr_simulate(scenario = "all", n = 30)
   argvals <- attr(data2, "yindex")
   s <- attr(data2, "xindex")
 
@@ -100,7 +100,7 @@ test_that("convenience functions are working", {
 
   # predict on new data
   set.seed(9314)
-  preddata <- pffrSim(scenario = "all", n = 20)
+  preddata <- pffr_simulate(scenario = "all", n = 20)
   pred <- predict(m2, newdata = preddata)
   expect_true(is.matrix(pred))
   expect_equal(dim(pred), c(20, length(argvals)))
@@ -121,7 +121,7 @@ test_that("convenience functions are working", {
 
 test_that("pffr with sparse data works", {
   set.seed(88182004)
-  data3 <- pffrSim(scenario = c("int", "smoo"), n = 30, propmissing = 0.8)
+  data3 <- pffr_simulate(scenario = c("int", "smoo"), n = 30, propmissing = 0.8)
   t <- attr(data3, "yindex")
 
   # Verify sparse data structure
@@ -180,7 +180,7 @@ test_that("ffpc terms are working", {
 
 test_that("ff limits arg works", {
   set.seed(2121)
-  data <- pffrSim(
+  data <- pffr_simulate(
     scenario = "ff",
     n = 20,
     SNR = 100,
@@ -212,7 +212,7 @@ test_that("ff() rejects mismatched xind length", {
   nxgrid <- 25
   nygrid <- 30
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s),
     n = n,
     nxgrid = nxgrid,
@@ -286,7 +286,7 @@ test_that("sff terms are working", {
   skip_on_cran()
   set.seed(2121)
 
-  data <- pffrSim(scenario = "ff", n = 20, SNR = 100)
+  data <- pffr_simulate(scenario = "ff", n = 20, SNR = 100)
   t <- attr(data, "yindex")
   s <- attr(data, "xindex")
 
@@ -335,7 +335,7 @@ test_that("ff() term recovers beta(s,t)", {
   nxgrid <- 30
   nygrid <- 40
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s),
     n = n,
     nxgrid = nxgrid,
@@ -364,7 +364,7 @@ test_that("ff() with limits='s<t' recovers historical effect", {
   nxgrid <- 30
   nygrid <- 40
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s),
     n = n,
     nxgrid = nxgrid,
@@ -392,7 +392,7 @@ test_that("s() smooth term varying over t is recovered", {
   n <- 50
   nygrid <- 40
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ s(xsmoo),
     n = n,
     nygrid = nygrid,
@@ -417,7 +417,7 @@ test_that("c() constant-over-t terms are recovered", {
   n <- 50
   nygrid <- 40
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ c(xconst),
     n = n,
     nygrid = nygrid,
@@ -442,7 +442,7 @@ test_that("linear varying coefficient terms are recovered", {
   n <- 50
   nygrid <- 40
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ xlin,
     n = n,
     nygrid = nygrid,
@@ -468,7 +468,7 @@ test_that("sff() term works with new simulation", {
   nxgrid <- 25
   nygrid <- 35
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s),
     n = n,
     nxgrid = nxgrid,
@@ -610,7 +610,7 @@ test_that("predict() returns correct dimensions and values", {
   nxgrid <- 30
   nygrid <- 35
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s) + xlin,
     n = n,
     nxgrid = nxgrid,
@@ -633,7 +633,7 @@ test_that("predict() returns correct dimensions and values", {
 
   # Predict on new data
   set.seed(56)
-  newdat <- pffrSim(
+  newdat <- pffr_simulate(
     Y ~ ff(X1, xind = s) + xlin,
     n = 20,
     nxgrid = nxgrid,
@@ -654,7 +654,7 @@ test_that("predict(type='terms') returns valid term contributions", {
   nxgrid <- 30
   nygrid <- 35
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s) + xlin + c(xconst),
     n = n,
     nxgrid = nxgrid,
@@ -730,7 +730,7 @@ test_that("coef() extraction works correctly", {
   nxgrid <- 30
   nygrid <- 35
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s) + xlin,
     n = n,
     nxgrid = nxgrid,
@@ -763,7 +763,7 @@ test_that("summary() output contains expected components", {
   nxgrid <- 30
   nygrid <- 35
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s) + xlin,
     n = n,
     nxgrid = nxgrid,
@@ -857,7 +857,7 @@ test_that("c(te(x1, x2)) with gaussian_2d preset works", {
   n <- 40
   nygrid <- 30
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ c(te(xte1, xte2)),
     n = n,
     nygrid = nygrid,
@@ -886,7 +886,7 @@ test_that("multiple terms with mixed presets work", {
   nxgrid <- 25
   nygrid <- 30
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s) + xlin + s(xsmoo) + c(xconst),
     n = n,
     nxgrid = nxgrid,
@@ -926,7 +926,7 @@ test_that("unwrapped te/ti/t2 terms work without explicit effects", {
   nygrid <- 25
 
   # Bug fix test: te without c() should use smooth preset (sine), not gaussian_2d
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ te(xte1, xte2), # NOT wrapped in c()
     n = n,
     nygrid = nygrid,
@@ -950,7 +950,7 @@ test_that("factor linear terms work with default preset", {
   nygrid <- 30
 
   # Bug fix test: factor terms should work without custom 2-arg function
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ xfactor,
     n = n,
     nygrid = nygrid,
@@ -977,7 +977,7 @@ test_that("pffrSim respects custom response name from formula", {
   nygrid <- 25
 
   # Use custom response name
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     myresponse ~ xlin,
     n = n,
     nygrid = nygrid,
@@ -1091,7 +1091,11 @@ test_that("residuals.pffr returns correct dimensions and handles sparse data", {
 
   # Test sparse data residuals
   set.seed(104)
-  dat_sparse <- pffrSim(scenario = c("int", "smoo"), n = 30, propmissing = 0.5)
+  dat_sparse <- pffr_simulate(
+    scenario = c("int", "smoo"),
+    n = 30,
+    propmissing = 0.5
+  )
   t_sparse <- attr(dat_sparse, "yindex")
   m_sparse <- pffr(
     Y ~ s(xsmoo),
@@ -1136,7 +1140,7 @@ test_that("qq.pffr runs without error (smoke test)", {
   m <- pffr(Y ~ xlin, yind = t, data = dat)
 
   # Smoke test: qq.pffr should run without error
-  expect_silent(suppressWarnings(qq.pffr(m)))
+  expect_silent(suppressWarnings(pffr_qq(m)))
 })
 
 test_that("pffr.check runs without error (smoke test)", {
@@ -1152,7 +1156,7 @@ test_that("pffr.check runs without error (smoke test)", {
 
   # Smoke test: pffr.check should run without error
   # It produces output (diagnostics), so we just check it doesn't error
-  expect_no_error(suppressWarnings(pffr.check(m)))
+  expect_no_error(suppressWarnings(pffr_check(m)))
 })
 
 test_that("print.summary.pffr output contains expected information", {
@@ -1162,7 +1166,7 @@ test_that("print.summary.pffr output contains expected information", {
   n <- 30
   nygrid <- 25
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s) + xlin,
     n = n,
     nxgrid = 20,
@@ -1264,7 +1268,7 @@ test_that("model with single smooth term works correctly", {
   n <- 30
   nygrid <- 25
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ s(xsmoo),
     n = n,
     nygrid = nygrid,
@@ -1297,7 +1301,7 @@ test_that("predict.pffr with ff limits works on new data", {
   nygrid <- 30
 
   # Generate training data with limits
-  dat_train <- pffrSim(
+  dat_train <- pffr_simulate(
     Y ~ ff(X1, xind = s),
     n = n,
     nxgrid = nxgrid,
@@ -1315,7 +1319,7 @@ test_that("predict.pffr with ff limits works on new data", {
 
   # Generate new data for prediction
   set.seed(114)
-  dat_new <- pffrSim(
+  dat_new <- pffr_simulate(
     Y ~ ff(X1, xind = s),
     n = 15,
     nxgrid = nxgrid,
@@ -1516,7 +1520,7 @@ test_that("pffrGLS fits a simple model correctly", {
   rho <- 0.5
   hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
 
-  m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+  m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
 
   expect_s3_class(m, "pffr")
   expect_equal(dim(fitted(m)), c(n, nygrid))
@@ -1536,7 +1540,7 @@ test_that("pffrGLS has complete pffr slot", {
   rho <- 0.3
   hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
 
-  m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+  m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
 
   # Check pffr slot has all required fields
   expect_true(!is.null(m$pffr$shortlabels))
@@ -1560,7 +1564,7 @@ test_that("pffrGLS works with ff() terms", {
   nxgrid <- 20
   nygrid <- 25
 
-  dat <- pffrSim(
+  dat <- pffr_simulate(
     Y ~ ff(X1, xind = s),
     n = n,
     nxgrid = nxgrid,
@@ -1574,7 +1578,7 @@ test_that("pffrGLS works with ff() terms", {
   rho <- 0.5
   hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
 
-  m <- pffrGLS(Y ~ ff(X1, xind = s), yind = t, data = dat, hatSigma = hatSigma)
+  m <- pffr_gls(Y ~ ff(X1, xind = s), yind = t, data = dat, hatSigma = hatSigma)
 
   expect_s3_class(m, "pffr")
   expect_equal(dim(fitted(m)), c(n, nygrid))
@@ -1598,7 +1602,7 @@ test_that("pffrGLS summary and coef methods work", {
   rho <- 0.4
   hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
 
-  m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+  m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
 
   # Test summary
   summ <- summary(m)
@@ -1628,7 +1632,7 @@ test_that("pffrGLS handles poorly conditioned hatSigma", {
 
   # Should warn about condition number
   expect_warning(
-    m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma),
+    m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma),
     "condition number"
   )
 
@@ -1651,7 +1655,7 @@ test_that("pffrGLS rejects missing values in response", {
   hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
 
   expect_error(
-    pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma),
+    pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma),
     "missing values"
   )
 })
@@ -1669,7 +1673,7 @@ test_that("pffrGLS predict works correctly", {
   rho <- 0.4
   hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
 
-  m <- pffrGLS(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+  m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
 
   # Predict on training data
   pred <- predict(m)
@@ -1701,7 +1705,7 @@ test_that("coefboot.pffr runs on simple pffr model", {
   m <- pffr(Y ~ xlin, yind = t, data = dat)
 
   # Run bootstrap with small B for speed
-  boot_ci <- coefboot.pffr(m, B = 5, showProgress = FALSE)
+  boot_ci <- pffr_coefboot(m, B = 5, showProgress = FALSE)
 
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
@@ -1724,11 +1728,11 @@ test_that("coefboot.pffr residual resampling method works", {
   m <- pffr(Y ~ xlin, yind = t, data = dat)
 
   # Test residual method
-  boot_ci <- coefboot.pffr(m, B = 5, method = "residual", showProgress = FALSE)
+  boot_ci <- pffr_coefboot(m, B = 5, method = "residual", showProgress = FALSE)
   expect_true(is.list(boot_ci))
 
   # Test centered residual method
-  boot_ci_c <- coefboot.pffr(
+  boot_ci_c <- pffr_coefboot(
     m,
     B = 5,
     method = "residual.c",
@@ -1742,7 +1746,11 @@ test_that("coefboot.pffr works with sparse/irregular data", {
   set.seed(212)
 
   # Generate sparse data
-  dat_sparse <- pffrSim(scenario = c("int", "smoo"), n = 30, propmissing = 0.5)
+  dat_sparse <- pffr_simulate(
+    scenario = c("int", "smoo"),
+    n = 30,
+    propmissing = 0.5
+  )
   t <- attr(dat_sparse, "yindex")
 
   m_sparse <- pffr(
@@ -1753,7 +1761,7 @@ test_that("coefboot.pffr works with sparse/irregular data", {
   )
 
   # Run bootstrap with sparse data
-  boot_ci <- coefboot.pffr(m_sparse, B = 5, showProgress = FALSE)
+  boot_ci <- pffr_coefboot(m_sparse, B = 5, showProgress = FALSE)
 
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
@@ -1776,7 +1784,7 @@ test_that("coefboot.pffr works with gaulss family", {
   expect_s3_class(m_gaulss, "pffr")
 
   # Run bootstrap
-  boot_ci <- coefboot.pffr(m_gaulss, B = 5, showProgress = FALSE)
+  boot_ci <- pffr_coefboot(m_gaulss, B = 5, showProgress = FALSE)
 
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
@@ -1788,7 +1796,11 @@ test_that("pffrGLS errors on sparse data (not yet implemented)", {
   set.seed(214)
 
   # Generate sparse data
-  dat_sparse <- pffrSim(scenario = c("int", "smoo"), n = 30, propmissing = 0.5)
+  dat_sparse <- pffr_simulate(
+    scenario = c("int", "smoo"),
+    n = 30,
+    propmissing = 0.5
+  )
   t <- attr(dat_sparse, "yindex")
 
   rho <- 0.5
@@ -1796,7 +1808,7 @@ test_that("pffrGLS errors on sparse data (not yet implemented)", {
 
   # pffrGLS with sparse data should error (not yet implemented)
   expect_error(
-    pffrGLS(
+    pffr_gls(
       Y ~ s(xsmoo),
       data = dat_sparse$data,
       ydata = dat_sparse$ydata,

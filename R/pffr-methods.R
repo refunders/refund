@@ -1099,7 +1099,7 @@ print.summary.pffr <- function(
 #' @inheritParams mgcv::qq.gam
 #' @importFrom mgcv qq.gam
 #' @export
-qq.pffr <- function(
+pffr_qq <- function(
   object,
   rep = 0,
   level = 0.9,
@@ -1119,6 +1119,43 @@ qq.pffr <- function(
   eval(call)
 }
 
+
+#' QQ plots for pffr model residuals (deprecated)
+#'
+#' @description
+#' **Deprecated**
+#'
+#' `qq.pffr()` was renamed to [pffr_qq()] for consistency with the
+#' package naming conventions.
+#'
+#' @inheritParams pffr_qq
+#' @export
+#' @keywords internal
+qq.pffr <- function(
+  object,
+  rep = 0,
+  level = 0.9,
+  s.rep = 10,
+  type = c("deviance", "pearson", "response"),
+  pch = ".",
+  rl.col = 2,
+  rep.col = "gray80",
+  ...
+) {
+  .Deprecated("pffr_qq")
+  pffr_qq(
+    object = object,
+    rep = rep,
+    level = level,
+    s.rep = s.rep,
+    type = type,
+    pch = pch,
+    rl.col = rl.col,
+    rep.col = rep.col,
+    ...
+  )
+}
+
 #' Some diagnostics for a fitted pffr model
 #'
 #' This is simply a wrapper for \code{\link[mgcv]{gam.check}()}.
@@ -1130,7 +1167,7 @@ qq.pffr <- function(
 #' @param rl.col passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
 #' @param rep.col passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
 #' @export
-pffr.check <- function(
+pffr_check <- function(
   b,
   old.style = FALSE,
   type = c("deviance", "pearson", "response"),
@@ -1149,4 +1186,43 @@ pffr.check <- function(
   call$b <- b
   call[[1]] <- mgcv::gam.check
   eval(call)
+}
+
+
+#' Some diagnostics for a fitted pffr model (deprecated)
+#'
+#' @description
+#' **Deprecated**
+#'
+#' `pffr.check()` was renamed to [pffr_check()] for consistency with the
+#' package naming conventions.
+#'
+#' @inheritParams pffr_check
+#' @export
+#' @keywords internal
+pffr.check <- function(
+  b,
+  old.style = FALSE,
+  type = c("deviance", "pearson", "response"),
+  k.sample = 5000,
+  k.rep = 200,
+  rep = 0,
+  level = 0.9,
+  rl.col = 2,
+  rep.col = "gray80",
+  ...
+) {
+  .Deprecated("pffr_check")
+  pffr_check(
+    b = b,
+    old.style = old.style,
+    type = type,
+    k.sample = k.sample,
+    k.rep = k.rep,
+    rep = rep,
+    level = level,
+    rl.col = rl.col,
+    rep.col = rep.col,
+    ...
+  )
 }

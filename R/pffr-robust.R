@@ -170,7 +170,7 @@ compute_boot_cis <- function(
 #' @importFrom boot boot boot.ci
 #' @importFrom parallel makePSOCKcluster clusterSetRNGStream parLapply mclapply stopCluster
 #' @export
-coefboot.pffr <- function(
+pffr_coefboot <- function(
   object,
   n1 = 100,
   n2 = 40,
@@ -268,6 +268,52 @@ coefboot.pffr <- function(
 
   structure(result, call = match.call())
 }
+
+
+#' Simple bootstrap CIs for pffr (deprecated)
+#'
+#' @description
+#' **Deprecated**
+#'
+#' `coefboot.pffr()` was renamed to [pffr_coefboot()] for consistency with the
+#' package naming conventions.
+#'
+#' @inheritParams pffr_coefboot
+#' @export
+#' @keywords internal
+coefboot.pffr <- function(
+  object,
+  n1 = 100,
+  n2 = 40,
+  n3 = 20,
+  B = 100,
+  ncpus = getOption("boot.ncpus", 1),
+  parallel = c("no", "multicore", "snow"),
+  cl = NULL,
+  conf = c(.9, .95),
+  type = "percent",
+  method = c("resample", "residual", "residual.c"),
+  showProgress = TRUE,
+  ...
+) {
+  .Deprecated("pffr_coefboot")
+  pffr_coefboot(
+    object = object,
+    n1 = n1,
+    n2 = n2,
+    n3 = n3,
+    B = B,
+    ncpus = ncpus,
+    parallel = parallel,
+    cl = cl,
+    conf = conf,
+    type = type,
+    method = method,
+    showProgress = showProgress,
+    ...
+  )
+}
+
 
 # Prepare model call for bootstrap resampling
 # @param object Fitted pffr model
@@ -606,7 +652,7 @@ extract_smooth_label <- function(x) {
 #'
 #' @section Details:
 #' Note that \code{hatSigma} has to be positive definite. If \code{hatSigma} is close to positive \emph{semi-}definite or badly conditioned,
-#' estimated standard errors become unstable (typically much too small). \code{pffrGLS} will try to diagnose this and issue a warning.
+#' estimated standard errors become unstable (typically much too small). \code{pffr_gls} will try to diagnose this and issue a warning.
 #' The danger is especially big if the number of functional observations is smaller than the number of gridpoints
 #' (i.e, \code{length(yind)}), since the raw covariance estimate will not have full rank.\cr
 #' Please see \code{\link[refund]{pffr}} for details on model specification and
@@ -637,7 +683,7 @@ extract_smooth_label <- function(x) {
 #' @importFrom lme4 lmer
 #' @importFrom stats terms.formula
 #' @author Fabian Scheipl
-pffrGLS <- function(
+pffr_gls <- function(
   formula,
   yind,
   hatSigma,
@@ -1236,4 +1282,47 @@ pffrGLS <- function(
   }
 
   return(m)
-} # end pffrGLS()
+} # end pffr_gls()
+
+
+#' Penalized function-on-function regression with non-i.i.d. residuals (deprecated)
+#'
+#' @description
+#' **Deprecated**
+#'
+#' `pffrGLS()` was renamed to [pffr_gls()] for consistency with the
+#' package naming conventions.
+#'
+#' @inheritParams pffr_gls
+#' @export
+#' @keywords internal
+pffrGLS <- function(
+  formula,
+  yind,
+  hatSigma,
+  data = NULL,
+  ydata = NULL,
+  algorithm = NA,
+  method = "REML",
+  tensortype = c("ti", "t2"),
+  bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+  bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+  cond.cutoff = 5e2,
+  ...
+) {
+  .Deprecated("pffr_gls")
+  pffr_gls(
+    formula = formula,
+    yind = yind,
+    hatSigma = hatSigma,
+    data = data,
+    ydata = ydata,
+    algorithm = algorithm,
+    method = method,
+    tensortype = tensortype,
+    bs.yindex = bs.yindex,
+    bs.int = bs.int,
+    cond.cutoff = cond.cutoff,
+    ...
+  )
+}

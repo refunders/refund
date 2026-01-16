@@ -268,11 +268,11 @@ simplify_term_label <- function(term_name, yindname) {
 #' Supports both a formula-based interface (recommended) and a legacy
 #' scenario-based interface for backward compatibility.
 #'
-#' **Formula Interface (New):**
+#' **Formula Interface (Recommended):**
 #' Specify a pffr-style formula and optional effect specifications:
 #' \preformatted{
-#' pffrSim(Y ~ ff(X1) + xlin + s(xsmoo), n = 100,
-#'         effects = list(X1 = "cosine", xlin = "dnorm"))
+#' pffr_simulate(Y ~ ff(X1) + xlin + s(xsmoo), n = 100,
+#'               effects = list(X1 = "cosine", xlin = "dnorm"))
 #' }
 #'
 #' **Scenario Interface (Deprecated):**
@@ -338,17 +338,17 @@ simplify_term_label <- function(term_name, yindname) {
 #' @importFrom stats dnorm rnorm runif dbeta gaussian var as.formula
 #'
 #' @examples
-#' # New formula interface
-#' dat <- pffrSim(Y ~ ff(X1) + xlin + s(xsmoo), n = 50,
-#'                effects = list(X1 = "cosine", xlin = "dnorm", xsmoo = "sine"))
+#' # Formula interface
+#' dat <- pffr_simulate(Y ~ ff(X1) + xlin + s(xsmoo), n = 50,
+#'                      effects = list(X1 = "cosine", xlin = "dnorm", xsmoo = "sine"))
 #'
 #' # Legacy scenario interface (deprecated)
-#' dat_legacy <- suppressWarnings(pffrSim(scenario = "ff", n = 50))
+#' dat_legacy <- suppressWarnings(pffr_simulate(scenario = "ff", n = 50))
 #'
 #' # Access true coefficients
 #' truth <- attr(dat, "truth")
 #' str(truth$beta)
-pffrSim <- function(
+pffr_simulate <- function(
   formula = NULL,
   scenario = NULL,
   n = 100,
@@ -396,14 +396,14 @@ pffrSim <- function(
   }
 
   # Issue deprecation warning once per session (not on every call)
-  if (is.null(getOption("refund.pffrSim.scenario.warned"))) {
+  if (is.null(getOption("refund.pffr_simulate.scenario.warned"))) {
     warning(
-      "The 'scenario' argument in pffrSim() is deprecated.\n",
+      "The 'scenario' argument in pffr_simulate() is deprecated.\n",
       "Use the formula interface instead, e.g.:\n",
-      "  pffrSim(Y ~ ff(X1) + xlin, effects = list(X1 = 'cosine'))",
+      "  pffr_simulate(Y ~ ff(X1) + xlin, effects = list(X1 = 'cosine'))",
       call. = FALSE
     )
-    options(refund.pffrSim.scenario.warned = TRUE)
+    options(refund.pffr_simulate.scenario.warned = TRUE)
   }
 
   # Use legacy implementation for backward compatibility
@@ -419,13 +419,64 @@ pffrSim <- function(
 }
 
 
-#' Legacy pffrSim implementation
+#' Simulate example data for pffr (deprecated)
 #'
-#' Internal function preserving the original pffrSim behavior for backward
+#' @description
+#' **Deprecated**
+#'
+#' `pffrSim()` was renamed to [pffr_simulate()] for consistency with the
+#' package naming conventions.
+#'
+#' @inheritParams pffr_simulate
+#' @export
+#' @keywords internal
+pffrSim <- function(
+  formula = NULL,
+  scenario = NULL,
+  n = 100,
+
+  nxgrid = 40,
+  nygrid = 60,
+
+  yind = NULL,
+  xind = NULL,
+  data = NULL,
+  effects = list(),
+  intercept = "beta",
+  SNR = 10,
+  family = gaussian(),
+  propmissing = 0,
+  limits = NULL,
+  seed = NULL
+) {
+  .Deprecated("pffr_simulate")
+  pffr_simulate(
+    formula = formula,
+    scenario = scenario,
+    n = n,
+    nxgrid = nxgrid,
+    nygrid = nygrid,
+    yind = yind,
+    xind = xind,
+    data = data,
+    effects = effects,
+    intercept = intercept,
+    SNR = SNR,
+    family = family,
+    propmissing = propmissing,
+    limits = limits,
+    seed = seed
+  )
+}
+
+
+#' Legacy pffr_simulate implementation
+#'
+#' Internal function preserving the original pffr_simulate behavior for backward
 #' compatibility. This is called when the deprecated \code{scenario} argument
 #' is used.
 #'
-#' @inheritParams pffrSim
+#' @inheritParams pffr_simulate
 #' @keywords internal
 pffrSim_legacy <- function(
   scenario = "all",

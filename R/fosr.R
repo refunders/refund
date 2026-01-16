@@ -131,7 +131,7 @@
 ##'
 ##' # Test use formula to fit fosr
 ##' set.seed(2121)
-##' data1 <- pffrSim(Y ~ xlin + s(xsmoo), n = 40)
+##' data1 <- pffr_simulate(Y ~ xlin + s(xsmoo), n = 40)
 ##' formod = fosr(Y~xlin+xsmoo, data=data1)
 ##' plot(formod, 1)
 ##'

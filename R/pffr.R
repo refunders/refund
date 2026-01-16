@@ -196,7 +196,7 @@
 #' # univariate model:
 #' # Y(t) = f(t)  + \int X1(s)\beta(s,t)ds + eps
 #' set.seed(2121)
-#' data1 <- pffrSim(Y ~ ff(X1), n=40)
+#' data1 <- pffr_simulate(Y ~ ff(X1), n=40)
 #' t <- attr(data1, "yindex")
 #' s <- attr(data1, "xindex")
 #' m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
@@ -208,7 +208,7 @@
 #' # multivariate model:
 #' # E(Y(t)) = \beta_0(t)  + \int X1(s)\beta_1(s,t)ds + xlin \beta_3(t) +
 #' #        f_1(xte1, xte2) + f_2(xsmoo, t) + \beta_4 xconst
-#' data2 <- pffrSim(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=200)
+#' data2 <- pffr_simulate(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=200)
 #' t <- attr(data2, "yindex")
 #' s <- attr(data2, "xindex")
 #' m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
@@ -222,7 +222,7 @@
 #' plot(m2)
 #' str(coef(m2))
 #' # convenience functions:
-#' preddata <- pffrSim(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=20)
+#' preddata <- pffr_simulate(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=20)
 #' str(predict(m2, newdata=preddata))
 #' str(predict(m2, type="terms"))
 #' cm2 <- coef(m2)
@@ -233,7 +233,7 @@
 #' #############################################################################
 #' # sparse data (80% missing on a regular grid):
 #' set.seed(88182004)
-#' data3 <- pffrSim(Y ~ 1 + s(xsmoo), n=100, propmissing=0.8)
+#' data3 <- pffr_simulate(Y ~ 1 + s(xsmoo), n=100, propmissing=0.8)
 #' t <- attr(data3, "yindex")
 #' m3.sparse <- pffr(Y ~ s(xsmoo), data=data3$data, ydata=data3$ydata, yind=t)
 #' summary(m3.sparse)
