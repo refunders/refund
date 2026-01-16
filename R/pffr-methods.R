@@ -919,6 +919,7 @@ coef.pffr <- function(
 summary.pffr <- function(object, ...) {
   call <- match.call()
   call[[1]] <- mgcv::summary.gam
+  ar1rho <- object$AR1.rho
   ## drop "pffr" class and replace <object> with changed value s.t. method dispatch works without glitches
   ## if we don't do this, summary.gam will call predict on the object if n>3000 & freq==TRUE
   ## and this predict-call gets dispatched to predict.pffr which dispatches back
@@ -985,6 +986,9 @@ summary.pffr <- function(object, ...) {
     ret$n <- paste(ret$n, " (in ", object$pffr$nobs, " curves)", sep = "")
   }
   ret$sandwich <- isTRUE(object$pffr$sandwich)
+  if (!is.null(ar1rho)) {
+    ret$AR1.rho <- ar1rho
+  }
   return(ret)
 }
 
@@ -1024,6 +1028,13 @@ print.summary.pffr <- function(
     )
   }
   cat("\n")
+  if (!is.null(x$AR1.rho) && is.finite(x$AR1.rho) && abs(x$AR1.rho) > 0) {
+    cat(
+      "AR(1) residual correlation (rho):",
+      formatC(x$AR1.rho, digits = digits, format = "fg"),
+      "\n\n"
+    )
+  }
   if (x$m > 0) {
     cat("Smooth terms & functional coefficients:\n")
     printCoefmat(

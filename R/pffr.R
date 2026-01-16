@@ -82,6 +82,14 @@
 #'   matrix is number of observations times number of evaluations of \eqn{Y(t)}
 #'   per observation.\cr
 #'
+#'   When a \code{rho} argument (as defined in \code{\link[mgcv]{bam}}) is supplied,
+#'   \code{pffr} automatically constructs the required \code{AR.start} indicator
+#'   so that residuals can follow an AR(1) process along the functional response.
+#'   This facility is available for \code{algorithm = "bam"} fits that use
+#'   \code{method = "fREML"}; non-Gaussian families must additionally enable
+#'   \code{discrete = TRUE}, mirroring the constraints documented in
+#'   \code{\link[mgcv]{bam}}.\cr
+#'
 #'   Note that \code{pffr} does not use \code{mgcv}'s default identifiability
 #'   constraints (i.e., \eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0} or
 #'   \eqn{\sum_{i,t} \hat f(x_i, t) = 0}) for tensor product terms whose
@@ -262,8 +270,15 @@ pffr <- function(
   ## warn if entries in ... aren't arguments for gam/gam.fit3/jagam or gamm4/lmer
   ## check for special case of gaulss family
   dots <- list(...)
+  rhoArg <- dots[["rho"]]
+  useAR <- FALSE
   gaulss <- FALSE
   if (length(dots)) {
+    if ("AR.start" %in% names(dots)) {
+      stop(
+        "Please do not supply `AR.start` directly; pffr constructs it automatically when `rho` is specified."
+      )
+    }
     validDots <- if (!is.na(algorithm) && algorithm == "gamm4") {
       c(names(formals(gamm4)), names(formals(lmer)))
     } else {
@@ -291,6 +306,45 @@ pffr <- function(
         paste(notUsed, collapse = ", "),
         "> supplied but not used."
       )
+  }
+
+  # Validate rho argument for AR(1) errors
+  if (!is.null(rhoArg)) {
+    if (!(is.numeric(rhoArg) && length(rhoArg) == 1 && !is.na(rhoArg))) {
+      stop("`rho` must be a single numeric value.")
+    }
+    if (abs(rhoArg) >= 1) {
+      stop("`rho` must have absolute value strictly less than 1.")
+    }
+    useAR <- abs(rhoArg) > 0
+  }
+  if (useAR) {
+    # Validate family constraints for AR(1) errors
+    familyObj <- gaussian()
+    if ("family" %in% names(dots) && !is.null(dots$family)) {
+      fam <- dots$family
+      if (is.character(fam)) {
+        if (length(fam) != 1) {
+          stop("Character `family` specifications must have length 1.")
+        }
+        fam <- match.fun(fam)
+      }
+      if (is.function(fam)) {
+        fam <- fam()
+      }
+      if (!is.list(fam) || is.null(fam$family) || is.null(fam$link)) {
+        stop("Unable to interpret `family` argument when `rho` is supplied.")
+      }
+      familyObj <- fam
+    }
+    gaussianIdentity <- identical(familyObj$family, "gaussian") &&
+      identical(familyObj$link, "identity")
+    discreteRequested <- isTRUE(dots$discrete)
+    if (!gaussianIdentity && !discreteRequested) {
+      stop(
+        "Autocorrelated errors (via `rho`) require either a Gaussian identity model or setting `discrete = TRUE` (see ?mgcv::bam)."
+      )
+    }
   }
 
   sparseOrNongrid <- !is.null(ydata)
@@ -351,6 +405,12 @@ pffr <- function(
   ## no te-terms possible in gamm4:
   if (as.character(algorithm) == "gamm4") {
     stopifnot(length(unlist(where.specials[c("te", "ti")])) < 1)
+  }
+  ## AR(1) errors only supported for bam
+  if (useAR && as.character(algorithm) != "bam") {
+    stop(
+      "Autocorrelated errors via `rho` are currently supported only when `algorithm = \"bam\"`."
+    )
   }
 
   if (!sparseOrNongrid) {
@@ -711,15 +771,38 @@ pffr <- function(
     newfrml <- list(newfrml, dots$varformula)
   }
 
+  # Build AR.start indicator if AR(1) errors requested
+  if (useAR) {
+    resp_long <- get(as.character(responsename), envir = newfrmlenv)
+    obs_ids <- stackpattern
+    valid_idx <- which(!is.na(resp_long))
+    if (!length(valid_idx)) {
+      stop("Cannot build AR.start because all responses are missing.")
+    }
+    start_idx <- rep(FALSE, length(resp_long))
+    splits <- split(valid_idx, obs_ids[valid_idx])
+    start_positions <- as.integer(vapply(
+      splits,
+      function(idx) idx[1],
+      integer(1)
+    ))
+    start_idx[start_positions] <- TRUE
+    assign("AR.start", value = start_idx, envir = newfrmlenv)
+  }
+
   # Build mgcv data using modular function
   pffrdata <- build_mgcv_data(newfrmlenv)
 
   newcall <- expand.call(pffr, call)
   newcall$yind <- newcall$tensortype <- newcall$bs.int <-
     newcall$bs.yindex <- newcall$algorithm <- newcall$ydata <- NULL
+  newcall$sandwich <- NULL
   newcall$formula <- newfrml
   newcall$data <- quote(pffrdata)
   newcall[[1]] <- algorithm
+  if (useAR) {
+    newcall$AR.start <- quote(pffrdata$AR.start)
+  }
   # make sure ...-args are taken from ..., not GlobalEnv:
   dotargs <- names(newcall)[names(newcall) %in% names(dots)]
   newcall[dotargs] <- dots[dotargs]

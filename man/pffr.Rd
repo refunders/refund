@@ -172,6 +172,14 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   matrix is number of observations times number of evaluations of \eqn{Y(t)}
   per observation.\cr
 
+  When a \code{rho} argument (as defined in \code{\link[mgcv]{bam}}) is supplied,
+  \code{pffr} automatically constructs the required \code{AR.start} indicator
+  so that residuals can follow an AR(1) process along the functional response.
+  This facility is available for \code{algorithm = "bam"} fits that use
+  \code{method = "fREML"}; non-Gaussian families must additionally enable
+  \code{discrete = TRUE}, mirroring the constraints documented in
+  \code{\link[mgcv]{bam}}.\cr
+
   Note that \code{pffr} does not use \code{mgcv}'s default identifiability
   constraints (i.e., \eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0} or
   \eqn{\sum_{i,t} \hat f(x_i, t) = 0}) for tensor product terms whose
