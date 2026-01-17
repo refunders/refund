@@ -9,7 +9,7 @@ build_mgcv_formula(
   intercept_string,
   term_strings,
   has_intercept,
-  newfrmlenv
+  formula_env
 )
 }
 \arguments{
@@ -21,7 +21,7 @@ build_mgcv_formula(
 
 \item{has_intercept}{Logical, whether model has intercept.}
 
-\item{newfrmlenv}{Environment for formula.}
+\item{formula_env}{Environment for formula.}
 }
 \value{
 Formula object for mgcv.
