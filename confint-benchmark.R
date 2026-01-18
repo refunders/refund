@@ -1,434 +1,339 @@
 # confint-benchmark.R
-#
-# Benchmark pointwise CI coverage/width from coef.pffr() under different
-# residual covariance structures and error distributions.
-#
+# Benchmark CI coverage/width from coef.pffr() under different error structures.
 # Methods: pffr, pffr_sandwich, pffr_gls_est, pffr_ar
 # Families: gaussian, gaulss, scat
-#
-# Key design:
-# - Loop over (dgp × rep), generate data ONCE per combo
-# - Fit base pffr once, reuse for sandwich/estimation of rho/hatSigma
-# - Return term-averaged metrics (not pointwise)
-# - Parallel over (dgp × rep), incremental saving
-
-# Setup ----
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+# Setup ----
+
 load_refund_dev <- function(pkg_dir = ".") {
- if (requireNamespace("devtools", quietly = TRUE) &&
-       file.exists(file.path(pkg_dir, "DESCRIPTION"))) {
+  if (requireNamespace("devtools", quietly = TRUE) &&
+      file.exists(file.path(pkg_dir, "DESCRIPTION"))) {
     devtools::load_all(pkg_dir, quiet = TRUE)
   } else {
     suppressPackageStartupMessages(library(refund))
   }
-  invisible(TRUE)
 }
 
-require_pkgs <- function(pkg_dir = ".") {
-  load_refund_dev(pkg_dir)
-  stopifnot(
-    requireNamespace("mgcv", quietly = TRUE),
-    requireNamespace("mvtnorm", quietly = TRUE),
-    requireNamespace("parallel", quietly = TRUE)
-  )
-  invisible(TRUE)
+require_pkgs <- function() {
+  load_refund_dev(".")
+  stopifnot(requireNamespace("mgcv", quietly = TRUE),
+            requireNamespace("mvtnorm", quietly = TRUE))
 }
 
-# Truth specification ----
+# Truth functions ----
 
 make_bs_spec <- function(x, df) {
-  basis <- splines::bs(x, df = df, intercept = TRUE)
-  list(
-    knots = attr(basis, "knots"),
-    boundary_knots = attr(basis, "Boundary.knots"),
-    degree = attr(basis, "degree"),
-    intercept = attr(basis, "intercept"),
-    df = df
-  )
+  B <- splines::bs(x, df = df, intercept = TRUE)
+  list(knots = attr(B, "knots"), bknots = attr(B, "Boundary.knots"),
+       degree = attr(B, "degree"), df = df)
 }
 
 eval_bs <- function(x, spec) {
   splines::bs(x, df = spec$df, knots = spec$knots,
-              Boundary.knots = spec$boundary_knots,
-              degree = spec$degree, intercept = spec$intercept)
+              Boundary.knots = spec$bknots, degree = spec$degree, intercept = TRUE)
 }
 
-make_truth_functions <- function(s_grid, t_grid, wiggliness, seed = NULL,
-                                  k_te = 5L, k_uni = 7L) {
+make_truth_functions <- function(s_grid, t_grid, z_range, wiggliness,
+                                  seed = NULL, k_te = 5L, k_uni = 7L) {
   if (!is.null(seed)) set.seed(seed)
 
-  rw_coef <- function(k, sd) {
-    coef <- cumsum(rnorm(k, sd = sd))
-    coef - mean(coef)
-  }
-  rw_coef_matrix <- function(k, sd) {
-    base <- matrix(rnorm(k * k, sd = sd), nrow = k)
-    mat <- apply(base, 2, cumsum)
-    mat <- t(apply(mat, 1, cumsum))
-    mat - mean(mat)
+  rw_coef <- function(k, sd) { c <- cumsum(rnorm(k, sd = sd)); c - mean(c) }
+  rw_coef_mat <- function(k, sd) {
+    m <- matrix(rnorm(k * k, sd = sd), k)
+    m <- apply(m, 2, cumsum); m <- t(apply(m, 1, cumsum)); m - mean(m)
   }
 
-  s_spec <- make_bs_spec(s_grid, df = k_te)
-  t_te_spec <- make_bs_spec(t_grid, df = k_te)
-  t_uni_spec <- make_bs_spec(t_grid, df = k_uni)
+  s_spec <- make_bs_spec(s_grid, k_te)
+  t_te_spec <- make_bs_spec(t_grid, k_te)
+  t_uni_spec <- make_bs_spec(t_grid, k_uni)
+  z_spec <- make_bs_spec(z_range, k_te)
 
-  coef_ff <- rw_coef_matrix(k_te, wiggliness)
-  coef_lin <- rw_coef(k_uni, wiggliness)
-  coef_mu <- rw_coef(k_uni, wiggliness)
+  cf_ff <- rw_coef_mat(k_te, wiggliness)
+  cf_con <- rw_coef(k_uni, wiggliness)
+  cf_lin <- rw_coef(k_uni, wiggliness)
+  cf_mu <- rw_coef(k_uni, wiggliness)
+  cf_smooth <- rw_coef_mat(k_te, wiggliness)
 
-  beta_ff <- function(s, t) {
-    Bs <- eval_bs(s, s_spec)
-    Bt <- eval_bs(t, t_te_spec)
-    drop(Bs %*% coef_ff %*% t(Bt))
-  }
-  beta_linear <- function(t) drop(eval_bs(t, t_uni_spec) %*% coef_lin)
-  mu_t <- function(t) drop(eval_bs(t, t_uni_spec) %*% coef_mu)
-
-  list(beta_ff = beta_ff, beta_linear = beta_linear, mu_t = mu_t,
-       spec = list(s = s_spec, t_te = t_te_spec, t_uni = t_uni_spec))
+  list(
+    beta_ff = function(s, t) drop(eval_bs(s, s_spec) %*% cf_ff %*% t(eval_bs(t, t_te_spec))),
+    beta_concurrent = function(t) drop(eval_bs(t, t_uni_spec) %*% cf_con),
+    beta_linear = function(t) drop(eval_bs(t, t_uni_spec) %*% cf_lin),
+    mu_t = function(t) drop(eval_bs(t, t_uni_spec) %*% cf_mu),
+    f_smooth = function(z, t) drop(eval_bs(z, z_spec) %*% cf_smooth %*% t(eval_bs(t, t_te_spec)))
+  )
 }
 
-# Effect computation ----
+# Integration weights ----
 
-ff_weights <- function(xind, method = "simpson") {
+ff_weights <- function(xind) {
   nx <- length(xind)
   if (nx < 2) return(1)
-  if (method == "simpson") {
-    return(((xind[nx] - xind[1]) / (nx - 1)) / 3 *
-             c(1, rep(c(4, 2), length = nx - 2), 1))
-  }
-  diffs <- diff(xind)
-  c(diffs[1] / 2, (diffs[-1] + diffs[-length(diffs)]) / 2,
-    diffs[length(diffs)] / 2)
+  ((xind[nx] - xind[1]) / (nx - 1)) / 3 * c(1, rep(c(4, 2), length = nx - 2), 1)
 }
 
-center_beta_ff <- function(beta_st, s_grid, weights = NULL) {
-  w <- weights %||% ff_weights(s_grid)
-  sweep(beta_st, 2, colSums(beta_st * w) / sum(w), "-")
-}
-
-compute_ff_effect <- function(X, beta_st, xind) {
-  w <- ff_weights(xind)
-  L <- matrix(rep(w, each = nrow(X)), nrow = nrow(X), byrow = FALSE)
-  (L * X) %*% beta_st
+center_beta_ff <- function(beta_mat, s_grid) {
+  w <- ff_weights(s_grid)
+  sweep(beta_mat, 2, colSums(beta_mat * w) / sum(w), "-")
 }
 
 # Error structure ----
 
-make_error_structure <- function(t_grid, corr_type = "iid", corr_param = NULL,
-                                  hetero_type = "none", hetero_param = NULL) {
+make_error_cov <- function(t_grid, corr_type, hetero_type) {
   ny <- length(t_grid)
 
-  make_pd <- function(mat) {
-    diag_mean <- mean(diag(mat))
-    if (!is.finite(diag_mean) || diag_mean <= 0) diag_mean <- 1
-    jitter <- 1e-10 * diag_mean
-    for (k in 1:8) {
-      ok <- tryCatch({ chol(mat + diag(jitter, nrow(mat))); TRUE },
-                     error = function(e) FALSE)
-      if (ok) return(mat + diag(jitter, nrow(mat)))
-      jitter <- jitter * 10
-    }
-    mat + diag(jitter, nrow(mat))
-  }
-
-  corr_mat <- switch(corr_type,
-    iid = diag(1, ny),
-    ar1 = {
-      rho <- corr_param %||% 0.4
-      rho^abs(outer(seq_len(ny), seq_len(ny), "-"))
-    },
-    gauss = {
-      phi <- corr_param %||% 0.15
-      dist_mat <- abs(outer(t_grid, t_grid, "-"))
-      exp(-(dist_mat^2) / (2 * phi^2))
-    },
+  corr <- switch(corr_type,
+    iid = diag(ny),
+    ar1 = 0.4^abs(outer(1:ny, 1:ny, "-")),
+    gauss = exp(-abs(outer(t_grid, t_grid, "-"))^2 / (2 * 0.15^2)),
     fourier = {
-      period1 <- corr_param %||% 0.33
-      B <- cbind(sin(2 * pi * t_grid / period1), cos(2 * pi * t_grid / period1),
-                 sin(2 * pi * t_grid / 0.17), cos(2 * pi * t_grid / 0.17))
+      B <- cbind(sin(2*pi*t_grid/0.33), cos(2*pi*t_grid/0.33),
+                 sin(2*pi*t_grid/0.17), cos(2*pi*t_grid/0.17))
       B <- scale(B, center = TRUE, scale = FALSE)
-      stats::cov2cor(B %*% t(B) + diag(0.25, ny))
+      cov2cor(tcrossprod(B) + diag(0.25, ny))
     }
   )
-  corr_mat <- make_pd(corr_mat)
 
   sigma_t <- switch(hetero_type,
     none = rep(1, ny),
-    linear = 1 + (hetero_param %||% 0.6) * (t_grid - mean(t_grid)),
-    u = {
-      shape <- (t_grid - 0.5)^2
-      1 + (hetero_param %||% 0.9) * shape / max(shape)
-    },
-    bump = 1 + (hetero_param %||% 1.0) * exp(-0.5 * ((t_grid - 0.7) / 0.10)^2)
+    bump = 1 + exp(-0.5 * ((t_grid - 0.7) / 0.10)^2)
   )
-  sigma_t <- pmax(sigma_t, 1e-6)
 
-  cov_mat <- diag(sigma_t) %*% corr_mat %*% diag(sigma_t)
-  cov_mat <- make_pd(cov_mat)
-
-  list(corr_mat = corr_mat, cov_mat = cov_mat, sigma_t = sigma_t,
-       rho = if (corr_type == "ar1") (corr_param %||% 0.4) else NA_real_)
+  cov_mat <- diag(sigma_t) %*% corr %*% diag(sigma_t)
+  cov_mat + diag(1e-8, ny)  # ensure PD
 }
 
-sample_errors <- function(n, cov_mat, error_dist = "gaussian") {
+sample_errors <- function(n, cov_mat, error_dist) {
   ny <- nrow(cov_mat)
   if (error_dist == "gaussian") {
-    return(mvtnorm::rmvnorm(n, mean = rep(0, ny), sigma = cov_mat))
+    mvtnorm::rmvnorm(n, rep(0, ny), cov_mat)
+  } else {
+    mvtnorm::rmvt(n, cov_mat * 4/6, df = 6, delta = rep(0, ny))
   }
-  df <- 6
-  sigma_scale <- cov_mat * (df - 2) / df
-  mvtnorm::rmvt(n, sigma = sigma_scale, df = df, delta = rep(0, ny))
 }
 
-# Dataset simulation ----
+# Data simulation ----
 
-simulate_dataset <- function(n, nxgrid, nygrid, snr, wiggliness,
-                              error_dist = "gaussian", corr_type = "iid",
-                              corr_param = NULL, hetero_type = "none",
-                              hetero_param = NULL, seed = NULL,
-                              terms = c("ff", "linear")) {
-  if (!is.null(seed)) set.seed(seed)
+simulate_dataset <- function(n, nxgrid, nygrid, snr, wiggliness, error_dist,
+                              corr_type, hetero_type, seed, terms) {
+  set.seed(seed)
 
   s_grid <- seq(0, 1, length.out = nxgrid)
   t_grid <- seq(0, 1, length.out = nygrid)
+  z_range <- c(-2, 2)
 
-  truth <- make_truth_functions(s_grid, t_grid, wiggliness,
-                                 seed = if (!is.null(seed)) seed + 1e5L else NULL)
+  truth_funs <- make_truth_functions(s_grid, t_grid, z_range, wiggliness, seed + 1e5L)
 
-  # Covariates
-  X1 <- if ("ff" %in% terms) {
-    X <- splines::bs(s_grid, df = 15, intercept = TRUE)
-    coef_mat <- matrix(rnorm(n * 15), nrow = 15)
-    mat <- t(X %*% coef_mat)
-    sweep(mat, 2, colMeans(mat), "-")  # center per s
-  } else NULL
+  # Generate covariates (centered)
+  gen_X <- function() { m <- matrix(rnorm(n * nxgrid), n); sweep(m, 2, colMeans(m)) }
+  gen_z <- function() { z <- rnorm(n); z - mean(z) }
 
-  zlin <- if ("linear" %in% terms) {
-    z <- rnorm(n)
-    z - mean(z)
-  } else NULL
+  dat <- data.frame(id = 1:n)
+  eta <- matrix(truth_funs$mu_t(t_grid), n, nygrid, byrow = TRUE)  # intercept
+  beta <- list()
 
-  # True effects
-  mu_t <- truth$mu_t(t_grid)
-  eta_int <- matrix(rep(mu_t, each = n), nrow = n)
+  if ("ff" %in% terms) {
+    dat$X1 <- I(gen_X())
+    beta$ff <- center_beta_ff(truth_funs$beta_ff(s_grid, t_grid), s_grid)
+    w <- ff_weights(s_grid)
+    eta <- eta + (dat$X1 * rep(w, each = n)) %*% beta$ff
+  }
+  if ("concurrent" %in% terms) {
+    dat$Xc <- I(gen_X())
+    beta$concurrent <- truth_funs$beta_concurrent(t_grid)
+    eta <- eta + sweep(dat$Xc, 2, beta$concurrent, "*")
+  }
+  if ("linear" %in% terms) {
+    dat$zlin <- gen_z()
+    beta$linear <- truth_funs$beta_linear(t_grid)
+    eta <- eta + outer(dat$zlin, beta$linear)
+  }
+  if ("smooth" %in% terms) {
+    dat$zsmoo <- gen_z() * diff(z_range)/4  # scale to z_range
+    beta$smooth <- truth_funs$f_smooth  # function, not matrix
+    sm_contrib <- t(sapply(dat$zsmoo, function(z) truth_funs$f_smooth(z, t_grid)))
+    sm_contrib <- sweep(sm_contrib, 2, colMeans(sm_contrib))  # center per t
+    eta <- eta + sm_contrib
+  }
 
-  w_s <- if ("ff" %in% terms) ff_weights(s_grid) else NULL
-  beta_st <- if ("ff" %in% terms) center_beta_ff(truth$beta_ff(s_grid, t_grid), s_grid, w_s) else NULL
-  eta_ff <- if ("ff" %in% terms) compute_ff_effect(X1, beta_st, s_grid) else NULL
-
-  beta_lin <- if ("linear" %in% terms) truth$beta_linear(t_grid) else NULL
-  eta_lin <- if ("linear" %in% terms) outer(zlin, beta_lin) else NULL
-
-  eta_total <- eta_int
-  if (!is.null(eta_ff)) eta_total <- eta_total + eta_ff
-  if (!is.null(eta_lin)) eta_total <- eta_total + eta_lin
-
-  # Errors
-  err <- make_error_structure(t_grid, corr_type, corr_param, hetero_type, hetero_param)
-  eps <- sample_errors(n, err$cov_mat, error_dist)
-
-  # Scale to target SNR
-  var_eta <- var(as.vector(eta_total))
-  var_eps <- var(as.vector(eps))
-  scale_fac <- sqrt(var_eta / (snr * var_eps))
+  # Errors scaled to SNR
+  cov_mat <- make_error_cov(t_grid, corr_type, hetero_type)
+  eps <- sample_errors(n, cov_mat, error_dist)
+  scale_fac <- sqrt(var(as.vector(eta)) / (snr * var(as.vector(eps))))
   eps <- eps * scale_fac
-  err$cov_mat <- err$cov_mat * scale_fac^2
 
-  Y <- eta_total + eps
+  dat$Y <- I(eta + eps)
 
-  dat <- data.frame(id = seq_len(n))
-  dat$Y <- I(Y)
-  if (!is.null(X1)) dat$X1 <- I(X1)
-  if (!is.null(zlin)) dat$zlin <- zlin
-
-  truth_out <- list(
-    eta = eta_total,
-    beta = list(intercept = mu_t, X1 = beta_st, zlin = beta_lin),
-    truth_funs = list(beta_ff = truth$beta_ff, beta_linear = truth$beta_linear, mu_t = truth$mu_t),
-    ff_weights = w_s,
-    terms = terms
+  list(
+    data = dat, s_grid = s_grid, t_grid = t_grid,
+    truth = list(eta = eta, beta = beta, funs = truth_funs, terms = terms),
+    rho = if (corr_type == "ar1") 0.4 else NA
   )
-
-  list(data = dat, s_grid = s_grid, t_grid = t_grid, err = err, truth = truth_out)
 }
 
 # Fitting helpers ----
 
-fit_family_object <- function(fit_family) {
-  switch(fit_family,
-    gaussian = stats::gaussian(),
-    gaulss = mgcv::gaulss(),
-    scat = mgcv::scat(),
-    stop("Unknown family: ", fit_family)
-  )
+get_family <- function(name) {
+ switch(name, gaussian = gaussian(), gaulss = mgcv::gaulss(), scat = mgcv::scat())
+}
+
+estimate_rho <- function(fit, dat) {
+  r <- as.matrix(dat$Y) - fitted(fit)
+  ny <- ncol(r)
+  rho <- cor(as.vector(r[, -ny]), as.vector(r[, -1]))
+  max(-0.99, min(0.99, ifelse(is.finite(rho), rho, 0)))
 }
 
 estimate_hatSigma <- function(fit, dat) {
-  y_mat <- as.matrix(dat$Y)
-  fit_mat <- tryCatch(fitted(fit, which = "mean"), error = function(e) fitted(fit))
-  if (is.list(fit_mat) && !is.null(fit_mat$mean)) fit_mat <- fit_mat$mean
-  resid_mat <- y_mat - as.matrix(fit_mat)
-  hatSigma <- cov(resid_mat)
-  hatSigma <- 0.5 * (hatSigma + t(hatSigma))
-  hatSigma + diag(1e-8 * mean(diag(hatSigma)), nrow(hatSigma))
-}
-
-estimate_rho <- function(fit, dat, clamp = 0.99) {
-  y_mat <- as.matrix(dat$Y)
-  fit_mat <- tryCatch(fitted(fit, which = "mean"), error = function(e) fitted(fit))
-  if (is.list(fit_mat) && !is.null(fit_mat$mean)) fit_mat <- fit_mat$mean
-  resid_mat <- y_mat - as.matrix(fit_mat)
-  ny <- ncol(resid_mat)
-  if (ny < 2) return(0)
-  r1 <- as.vector(resid_mat[, 2:ny])
-  r0 <- as.vector(resid_mat[, 1:(ny - 1)])
-  rho <- suppressWarnings(cor(r0, r1))
-  if (!is.finite(rho)) rho <- 0
-  max(-clamp, min(clamp, rho))
+  r <- as.matrix(dat$Y) - fitted(fit)
+  S <- cov(r); S <- 0.5 * (S + t(S))
+  S + diag(1e-8 * mean(diag(S)), nrow(S))
 }
 
 # Scoring ----
 
-score_fit <- function(fit, truth, s_grid, t_grid, use_sandwich = FALSE,
-                      alpha = 0.10, terms = c("ff", "linear")) {
-  # Extract coefficients with SEs
+score_fit <- function(fit, truth, s_grid, t_grid, use_sandwich, alpha, terms) {
   coefs <- suppressMessages(coef(fit, sandwich = use_sandwich,
                                   n1 = length(t_grid), n2 = length(s_grid), n3 = 20))
-
-  z_crit <- qnorm(1 - alpha / 2)
+  z <- qnorm(1 - alpha/2)
   results <- list()
 
-  # Score each term
-  for (term in terms) {
-    sm_name <- if (term == "ff") "X1" else if (term == "linear") "zlin" else term
-    sm_idx <- grep(sm_name, names(coefs$smterms), fixed = TRUE)
-    if (length(sm_idx) == 0) next
+  term_map <- c(ff = "X1", concurrent = "Xc", linear = "zlin", smooth = "zsmoo")
 
+  for (term in terms) {
+    sm_idx <- grep(term_map[term], names(coefs$smterms), fixed = TRUE)
+    if (length(sm_idx) == 0) next
     sm <- coefs$smterms[[sm_idx[1]]]
     est <- sm$coef[, "value"]
     se <- sm$coef[, "se"]
 
-    # Get truth on same grid
+    # Evaluate truth on the EXACT grid from coef()
     if (term == "ff") {
-      truth_raw <- truth$truth_funs$beta_ff(sm$coef[, 1], sm$coef[, 2])
-      truth_vec <- as.vector(center_beta_ff(truth_raw, sm$coef[, 1], truth$ff_weights))
+      eval_s <- unique(sm$coef[, 1])
+      eval_t <- unique(sm$coef[, 2])
+      truth_mat <- truth$funs$beta_ff(eval_s, eval_t)
+      truth_mat <- center_beta_ff(truth_mat, eval_s)  # center on eval grid!
+      truth_vec <- as.vector(truth_mat)
+    } else if (term == "concurrent") {
+      truth_vec <- truth$funs$beta_concurrent(sm$coef[, 1])
     } else if (term == "linear") {
-      truth_vec <- truth$truth_funs$beta_linear(sm$coef[, 1])
+      truth_vec <- truth$funs$beta_linear(sm$coef[, 1])
+    } else if (term == "smooth") {
+      eval_z <- unique(sm$coef[, 1])
+      eval_t <- unique(sm$coef[, 2])
+      truth_mat <- outer(eval_z, eval_t, function(z, t) truth$funs$f_smooth(z, t))
+      truth_mat <- sweep(truth_mat, 2, colMeans(truth_mat))  # center per t
+      truth_vec <- as.vector(truth_mat)
     } else next
 
-    lower <- est - z_crit * se
-    upper <- est + z_crit * se
-    covered <- (truth_vec >= lower) & (truth_vec <= upper)
-
+    covered <- (truth_vec >= est - z*se) & (truth_vec <= est + z*se)
     results[[term]] <- data.frame(
-      term_type = term,
-      coverage = mean(covered),
-      width = mean(2 * z_crit * se),
-      rmse = sqrt(mean((est - truth_vec)^2)),
-      n_grid = length(est)
+      term_type = term, coverage = mean(covered),
+      width = mean(2*z*se), rmse = sqrt(mean((est - truth_vec)^2))
     )
   }
 
-  # Score E(y)
+  # E(y) metrics
   pred <- predict(fit, se.fit = TRUE)
-  if (is.list(pred) && !is.null(pred$fit)) {
-    fit_vals <- as.vector(pred$fit)
-    se_vals <- as.vector(pred$se.fit)
-  } else {
-    fit_vals <- as.vector(pred)
-    se_vals <- rep(NA_real_, length(fit_vals))
-  }
-
+  if (is.list(pred)) { fv <- pred$fit; se_fv <- pred$se.fit }
+  else { fv <- pred; se_fv <- NA }
   truth_eta <- as.vector(truth$eta)
-  if (length(fit_vals) == length(truth_eta) && all(!is.na(se_vals))) {
-    lower_ey <- fit_vals - z_crit * se_vals
-    upper_ey <- fit_vals + z_crit * se_vals
-    covered_ey <- (truth_eta >= lower_ey) & (truth_eta <= upper_ey)
+  fv <- as.vector(fv); se_fv <- as.vector(se_fv)
 
+  if (length(fv) == length(truth_eta) && !any(is.na(se_fv))) {
+    cov_ey <- (truth_eta >= fv - z*se_fv) & (truth_eta <= fv + z*se_fv)
     results$Ey <- data.frame(
-      term_type = "Ey",
-      coverage = mean(covered_ey),
-      width = mean(2 * z_crit * se_vals),
-      rmse = sqrt(mean((fit_vals - truth_eta)^2)),
-      n_grid = length(fit_vals)
+      term_type = "Ey", coverage = mean(cov_ey),
+      width = mean(2*z*se_fv), rmse = sqrt(mean((fv - truth_eta)^2))
     )
   }
 
   do.call(rbind, results)
 }
 
-# Fit all methods for one dataset ----
+# Core: fit all methods for one dataset + family ----
 
-fit_all_methods <- function(dat, formula, t_grid, s_grid, truth, methods,
-                            family, alpha = 0.10, fit_args = list()) {
-  results <- list()
+fit_and_score <- function(sim, family, methods, alpha, fit_args) {
+  dat <- sim$data
+  t_grid <- sim$t_grid
+  s_grid <- sim$s_grid
+  truth <- sim$truth
   terms <- truth$terms
+  is_gauss <- (family == "gaussian")
 
-  # Always fit base pffr first (needed for most methods)
-  t0 <- Sys.time()
-  fit_base <- tryCatch(
-    do.call(pffr, c(list(formula = formula, yind = t_grid, data = dat,
-                         family = fit_family_object(family)), fit_args)),
-    error = function(e) { message("pffr failed: ", e$message); NULL }
+  # Build formula
+  fterms <- c(
+    if ("ff" %in% terms) "ff(X1, xind = s_grid)" else NULL,
+    if ("concurrent" %in% terms) "Xc" else NULL,
+    if ("linear" %in% terms) "zlin" else NULL,
+    if ("smooth" %in% terms) "s(zsmoo, k = 10)" else NULL
   )
-  time_base <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+  formula <- as.formula(paste("Y ~", paste(fterms, collapse = " + ")))
+  fam_obj <- get_family(family)
 
-  if (is.null(fit_base)) return(NULL)
+  # === FIT ALL MODELS (not in a loop!) ===
+  fits <- list()
+  times <- list()
 
-  # Estimate rho and hatSigma from base fit
-  rho_est <- estimate_rho(fit_base, dat)
-  hatSigma_est <- estimate_hatSigma(fit_base, dat)
+  # 1. Base pffr
+  t0 <- Sys.time()
+  fits$pffr <- tryCatch(
+    do.call(pffr, c(list(formula = formula, yind = t_grid, data = dat, family = fam_obj), fit_args)),
+    error = function(e) NULL
+  )
+  times$pffr <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+  if (is.null(fits$pffr)) return(NULL)
 
-  for (method in methods) {
+  # 2. pffr_sandwich = same fit object
+  fits$pffr_sandwich <- fits$pffr
+  times$pffr_sandwich <- times$pffr
+
+  # 3. Estimate rho/hatSigma from base fit
+  rho_est <- estimate_rho(fits$pffr, dat)
+  hatSigma_est <- estimate_hatSigma(fits$pffr, dat)
+
+  # 4. pffr_gls_est (gaussian only)
+  if (is_gauss && "pffr_gls_est" %in% methods) {
     t0 <- Sys.time()
-
-    fit <- NULL
-    use_sandwich <- FALSE
-
-    if (method == "pffr") {
-      fit <- fit_base
-      time_fit <- time_base
-    } else if (method == "pffr_sandwich") {
-      fit <- fit_base
-      use_sandwich <- TRUE
-      time_fit <- time_base
-    } else if (method == "pffr_gls_est") {
-      if (family != "gaussian") next  # GLS only for gaussian
-      fit <- tryCatch(
-        do.call(pffr_gls, c(list(formula = formula, yind = t_grid, data = dat,
-                                  hatSigma = hatSigma_est), fit_args)),
-        error = function(e) { message("pffr_gls_est failed: ", e$message); NULL }
-      )
-      time_fit <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-    } else if (method == "pffr_ar") {
-      if (family != "gaussian") next  # AR only for gaussian with bam
-      fit <- tryCatch(
-        do.call(pffr, c(list(formula = formula, yind = t_grid, data = dat,
-                             family = fit_family_object(family),
-                             algorithm = "bam", rho = rho_est), fit_args)),
-        error = function(e) { message("pffr_ar failed: ", e$message); NULL }
-      )
-      time_fit <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-    } else next
-
-    if (is.null(fit)) next
-
-    t0_score <- Sys.time()
-    scored <- tryCatch(
-      score_fit(fit, truth, s_grid, t_grid, use_sandwich, alpha, terms),
-      error = function(e) { message("score_fit failed: ", e$message); NULL }
+    fits$pffr_gls_est <- tryCatch(
+      do.call(pffr_gls, c(list(formula = formula, yind = t_grid, data = dat,
+                               hatSigma = hatSigma_est), fit_args)),
+      error = function(e) NULL
     )
-    time_score <- as.numeric(difftime(Sys.time(), t0_score, units = "secs"))
+    times$pffr_gls_est <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+  }
+
+  # 5. pffr_ar (gaussian only)
+  if (is_gauss && "pffr_ar" %in% methods) {
+    t0 <- Sys.time()
+    fits$pffr_ar <- tryCatch(
+      do.call(pffr, c(list(formula = formula, yind = t_grid, data = dat,
+                           family = fam_obj, algorithm = "bam", rho = rho_est), fit_args)),
+      error = function(e) NULL
+    )
+    times$pffr_ar <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+  }
+
+  # === SCORE ALL MODELS ===
+  results <- list()
+  for (method in intersect(methods, names(fits))) {
+    if (is.null(fits[[method]])) next
+    use_sw <- (method == "pffr_sandwich")
+
+    t0 <- Sys.time()
+    scored <- tryCatch(
+      score_fit(fits[[method]], truth, s_grid, t_grid, use_sw, alpha, terms),
+      error = function(e) NULL
+    )
+    time_score <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
     if (!is.null(scored)) {
       scored$method <- method
       scored$family <- family
-      scored$time_fit_sec <- time_fit
+      scored$time_fit_sec <- times[[method]]
       scored$time_score_sec <- time_score
-      results[[paste(method, family, sep = "_")]] <- scored
+      results[[method]] <- scored
     }
   }
 
@@ -436,7 +341,43 @@ fit_all_methods <- function(dat, formula, t_grid, s_grid, truth, methods,
   do.call(rbind, results)
 }
 
-# Main benchmark ----
+# Run one (dgp, rep) ----
+
+get_families <- function(dgp) {
+  fams <- "gaussian"
+  if (dgp$hetero_type != "none") fams <- c(fams, "gaulss", "scat")
+  else if (dgp$error_dist == "t6") fams <- c(fams, "scat")
+  fams
+}
+
+run_one <- function(dgp, rep_id, seed, methods, alpha, terms, fit_args) {
+  sim <- simulate_dataset(
+    n = dgp$n, nxgrid = dgp$nxgrid, nygrid = dgp$nygrid,
+    snr = dgp$snr, wiggliness = dgp$wiggliness,
+    error_dist = dgp$error_dist, corr_type = dgp$corr_type,
+    hetero_type = dgp$hetero_type, seed = seed, terms = terms
+  )
+
+  results <- list()
+  for (fam in get_families(dgp)) {
+    res <- fit_and_score(sim, fam, methods, alpha, fit_args)
+    if (!is.null(res)) results[[fam]] <- res
+  }
+  if (length(results) == 0) return(NULL)
+
+  out <- do.call(rbind, results)
+  out$dgp_id <- dgp$dgp_id
+  out$rep_id <- rep_id
+  out$snr <- dgp$snr
+  out$wiggliness <- dgp$wiggliness
+  out$error_dist <- dgp$error_dist
+  out$corr_type <- dgp$corr_type
+  out$hetero_type <- dgp$hetero_type
+  rownames(out) <- NULL
+  out
+}
+
+# Grids ----
 
 make_dgp_grid <- function() {
   expand.grid(
@@ -450,68 +391,16 @@ make_dgp_grid <- function() {
 }
 
 make_test_grid <- function() {
-  # Smart edge-case coverage, not full cartesian
-  rbind(
-    data.frame(n=30L, nxgrid=15L, nygrid=20L, snr=10, wiggliness=2,
-               error_dist="gaussian", corr_type="iid", hetero_type="none"),
-    data.frame(n=30L, nxgrid=15L, nygrid=20L, snr=10, wiggliness=2,
-               error_dist="gaussian", corr_type="ar1", hetero_type="none"),
-    data.frame(n=30L, nxgrid=15L, nygrid=20L, snr=10, wiggliness=2,
-               error_dist="gaussian", corr_type="iid", hetero_type="bump"),
-    data.frame(n=30L, nxgrid=15L, nygrid=20L, snr=10, wiggliness=2,
-               error_dist="t6", corr_type="iid", hetero_type="none"),
-    data.frame(n=30L, nxgrid=15L, nygrid=20L, snr=10, wiggliness=2,
-               error_dist="t6", corr_type="ar1", hetero_type="bump")
+  data.frame(
+    n = 30L, nxgrid = 15L, nygrid = 20L, snr = 10, wiggliness = 2,
+    error_dist = c("gaussian", "gaussian", "gaussian", "t6", "t6"),
+    corr_type = c("iid", "ar1", "iid", "iid", "ar1"),
+    hetero_type = c("none", "none", "bump", "none", "bump"),
+    stringsAsFactors = FALSE
   )
 }
 
-get_families_for_dgp <- function(dgp) {
-  fams <- "gaussian"
-  if (dgp$hetero_type != "none") fams <- c(fams, "gaulss", "scat")
-  else if (dgp$error_dist == "t6") fams <- c(fams, "scat")
-  fams
-}
-
-run_one_dgp_rep <- function(dgp, rep_id, seed, methods, alpha, terms, fit_args) {
-  sim <- simulate_dataset(
-    n = dgp$n, nxgrid = dgp$nxgrid, nygrid = dgp$nygrid,
-    snr = dgp$snr, wiggliness = dgp$wiggliness,
-    error_dist = dgp$error_dist, corr_type = dgp$corr_type,
-    hetero_type = dgp$hetero_type, seed = seed, terms = terms
-  )
-
-  # Build formula
-  formula_terms <- c(
-    if ("ff" %in% terms) "ff(X1, xind = s_grid)" else NULL,
-    if ("linear" %in% terms) "zlin" else NULL
-  )
-  formula <- as.formula(paste("Y ~", paste(formula_terms, collapse = " + ")))
-
-  families <- get_families_for_dgp(dgp)
-  results <- list()
-
-  for (fam in families) {
-    res <- fit_all_methods(
-      dat = sim$data, formula = formula,
-      t_grid = sim$t_grid, s_grid = sim$s_grid,
-      truth = sim$truth, methods = methods,
-      family = fam, alpha = alpha, fit_args = fit_args
-    )
-    if (!is.null(res)) results[[fam]] <- res
-  }
-
-  if (length(results) == 0) return(NULL)
-
-  out <- do.call(rbind, results)
-  out$dgp_id <- dgp$dgp_id
-  out$rep_id <- rep_id
-  out$snr <- dgp$snr
-  out$wiggliness <- dgp$wiggliness
-  out$error_dist <- dgp$error_dist
-  out$corr_type <- dgp$corr_type
-  out$hetero_type <- dgp$hetero_type
-  out
-}
+# Main benchmark ----
 
 run_benchmark <- function(dgp_grid, n_rep = 10L,
                           methods = c("pffr", "pffr_sandwich", "pffr_gls_est", "pffr_ar"),
@@ -519,141 +408,108 @@ run_benchmark <- function(dgp_grid, n_rep = 10L,
                           output_dir = NULL, terms = c("ff", "linear"),
                           fit_args = list()) {
   require_pkgs()
-
   dgp_grid$dgp_id <- seq_len(nrow(dgp_grid))
 
-  # Build task list: all (dgp_id, rep_id) combinations
   tasks <- expand.grid(dgp_idx = seq_len(nrow(dgp_grid)), rep_id = seq_len(n_rep))
-  tasks$task_id <- seq_len(nrow(tasks))
   tasks$seed <- seed + 1000L * tasks$dgp_idx + tasks$rep_id
-
   n_tasks <- nrow(tasks)
-  cat(sprintf("\n=== BENCHMARK: %d DGP settings x %d reps = %d tasks ===\n",
+
+  cat(sprintf("\n=== BENCHMARK: %d DGPs x %d reps = %d tasks ===\n",
               nrow(dgp_grid), n_rep, n_tasks))
-  cat(sprintf("Methods: %s\n", paste(methods, collapse = ", ")))
-  cat(sprintf("Terms: %s\n", paste(terms, collapse = ", ")))
-  cat(sprintf("Workers: %d\n\n", n_workers))
+  cat(sprintf("Methods: %s | Terms: %s | Workers: %d\n\n",
+              paste(methods, collapse=", "), paste(terms, collapse=", "), n_workers))
 
-  if (!is.null(output_dir) && !dir.exists(output_dir)) {
+  if (!is.null(output_dir) && !dir.exists(output_dir))
     dir.create(output_dir, recursive = TRUE)
+
+  do_task <- function(i) {
+    dgp <- dgp_grid[tasks$dgp_idx[i], , drop = FALSE]
+    run_one(dgp, tasks$rep_id[i], tasks$seed[i], methods, alpha, terms, fit_args)
   }
 
-  run_task <- function(task_row) {
-    dgp <- dgp_grid[task_row$dgp_idx, , drop = FALSE]
-    run_one_dgp_rep(dgp, task_row$rep_id, task_row$seed, methods, alpha, terms, fit_args)
-  }
-
-  start_time <- Sys.time()
-  all_results <- list()
+  start <- Sys.time()
+  all_res <- vector("list", n_tasks)
 
   if (n_workers > 1 && .Platform$OS.type != "windows") {
-    # Parallel execution with mclapply
-    chunk_size <- max(1, n_workers * 2)
-    task_chunks <- split(seq_len(n_tasks), ceiling(seq_len(n_tasks) / chunk_size))
-
-    for (chunk_idx in seq_along(task_chunks)) {
-      chunk_tasks <- task_chunks[[chunk_idx]]
-      chunk_results <- parallel::mclapply(chunk_tasks, function(i) {
-        run_task(tasks[i, , drop = FALSE])
-      }, mc.cores = n_workers)
-
-      for (j in seq_along(chunk_tasks)) {
-        task_i <- chunk_tasks[j]
-        res <- chunk_results[[j]]
-        if (!is.null(res)) {
-          all_results[[task_i]] <- res
-          # Log summary
-          dgp <- dgp_grid[tasks$dgp_idx[task_i], ]
-          summary_str <- paste(sapply(split(res, res$method), function(m) {
-            sprintf("%s:%.2f", m$method[1], mean(m$coverage))
-          }), collapse = " | ")
-          cat(sprintf("[%d/%d] dgp=%d rep=%d %s/%s/%s | %s\n",
-                      task_i, n_tasks, dgp$dgp_id, tasks$rep_id[task_i],
-                      dgp$corr_type, dgp$hetero_type, dgp$error_dist, summary_str))
+    # Parallel in chunks for incremental logging
+    chunks <- split(seq_len(n_tasks), ceiling(seq_len(n_tasks) / (n_workers * 2)))
+    for (ch in chunks) {
+      ch_res <- parallel::mclapply(ch, do_task, mc.cores = n_workers)
+      for (j in seq_along(ch)) {
+        i <- ch[j]
+        all_res[[i]] <- ch_res[[j]]
+        if (!is.null(ch_res[[j]])) {
+          dgp <- dgp_grid[tasks$dgp_idx[i], ]
+          cov_str <- paste(sapply(split(ch_res[[j]], ch_res[[j]]$method),
+                                  function(m) sprintf("%s:%.2f", m$method[1], mean(m$coverage))),
+                           collapse=" | ")
+          cat(sprintf("[%d/%d] dgp=%d rep=%d %s/%s/%s | %s\n", i, n_tasks,
+                      dgp$dgp_id, tasks$rep_id[i], dgp$corr_type, dgp$hetero_type,
+                      dgp$error_dist, cov_str))
         }
       }
-
-      # Incremental save after each chunk
+      # Incremental save
       if (!is.null(output_dir)) {
-        combined <- do.call(rbind, all_results[!sapply(all_results, is.null)])
-        if (!is.null(combined) && nrow(combined) > 0) {
-          saveRDS(combined, file.path(output_dir, "results_partial.rds"))
-        }
+        partial <- do.call(rbind, all_res[!sapply(all_res, is.null)])
+        if (!is.null(partial)) saveRDS(partial, file.path(output_dir, "results_partial.rds"))
       }
     }
   } else {
-    # Sequential execution
     for (i in seq_len(n_tasks)) {
-      res <- tryCatch(run_task(tasks[i, , drop = FALSE]),
-                      error = function(e) { message("Task ", i, " failed: ", e$message); NULL })
-      if (!is.null(res)) {
-        all_results[[i]] <- res
+      all_res[[i]] <- tryCatch(do_task(i), error = function(e) NULL)
+      if (!is.null(all_res[[i]])) {
         dgp <- dgp_grid[tasks$dgp_idx[i], ]
-        summary_str <- paste(sapply(split(res, res$method), function(m) {
-          sprintf("%s:%.2f", m$method[1], mean(m$coverage))
-        }), collapse = " | ")
-        cat(sprintf("[%d/%d] dgp=%d rep=%d %s/%s/%s | %s\n",
-                    i, n_tasks, dgp$dgp_id, tasks$rep_id[i],
-                    dgp$corr_type, dgp$hetero_type, dgp$error_dist, summary_str))
-
-        # Incremental save
-        if (!is.null(output_dir) && i %% 5 == 0) {
-          combined <- do.call(rbind, all_results[!sapply(all_results, is.null)])
-          if (!is.null(combined)) saveRDS(combined, file.path(output_dir, "results_partial.rds"))
-        }
+        cov_str <- paste(sapply(split(all_res[[i]], all_res[[i]]$method),
+                                function(m) sprintf("%s:%.2f", m$method[1], mean(m$coverage))),
+                         collapse=" | ")
+        cat(sprintf("[%d/%d] dgp=%d rep=%d %s/%s/%s | %s\n", i, n_tasks,
+                    dgp$dgp_id, tasks$rep_id[i], dgp$corr_type, dgp$hetero_type,
+                    dgp$error_dist, cov_str))
+      }
+      if (!is.null(output_dir) && i %% 5 == 0) {
+        partial <- do.call(rbind, all_res[!sapply(all_res, is.null)])
+        if (!is.null(partial)) saveRDS(partial, file.path(output_dir, "results_partial.rds"))
       }
     }
   }
 
-  elapsed <- difftime(Sys.time(), start_time, units = "mins")
-  cat(sprintf("\n=== COMPLETE: %.1f minutes ===\n", as.numeric(elapsed)))
+  elapsed <- as.numeric(difftime(Sys.time(), start, units = "mins"))
+  cat(sprintf("\n=== COMPLETE: %.1f min ===\n", elapsed))
 
-  combined <- do.call(rbind, all_results[!sapply(all_results, is.null)])
-  rownames(combined) <- NULL
+  results <- do.call(rbind, all_res[!sapply(all_res, is.null)])
+  rownames(results) <- NULL
 
-  if (!is.null(output_dir)) {
-    saveRDS(combined, file.path(output_dir, "results_final.rds"))
-    write.csv(combined, file.path(output_dir, "results_final.csv"), row.names = FALSE)
-    cat(sprintf("Saved to: %s\n", output_dir))
+  if (!is.null(output_dir) && !is.null(results)) {
+    saveRDS(results, file.path(output_dir, "results_final.rds"))
+    write.csv(results, file.path(output_dir, "results_final.csv"), row.names = FALSE)
+    cat("Saved to:", output_dir, "\n")
   }
 
-  combined
+  results
 }
 
 # Summary ----
 
-summarize_results <- function(results) {
-  agg_vars <- c("method", "family", "term_type", "snr", "wiggliness",
-                "error_dist", "corr_type", "hetero_type")
-
-  agg <- aggregate(
-    cbind(coverage, width, rmse, time_fit_sec) ~ method + family + term_type +
-      snr + wiggliness + error_dist + corr_type + hetero_type,
-    data = results, FUN = mean
-  )
-  agg$n_rep <- as.vector(table(interaction(results[, agg_vars], drop = TRUE)))
-  agg
+summarize_results <- function(res) {
+  aggregate(cbind(coverage, width, rmse, time_fit_sec, time_score_sec) ~
+              method + family + term_type + snr + wiggliness +
+              error_dist + corr_type + hetero_type,
+            data = res, FUN = mean)
 }
 
-# Run if sourced directly ----
+# Auto-run test if sourced ----
 
 if (sys.nframe() == 0) {
   require_pkgs()
-
-  output_dir <- file.path(getwd(), "ci-benchmark")
-  dgp_grid <- make_test_grid()
-
-  results <- run_benchmark(
-    dgp_grid, n_rep = 1L,
+  res <- run_benchmark(
+    make_test_grid(), n_rep = 1L,
     methods = c("pffr", "pffr_sandwich", "pffr_gls_est", "pffr_ar"),
-    alpha = 0.10, seed = 2024L, n_workers = 1L,
-    output_dir = output_dir, terms = c("ff", "linear")
+    terms = c("ff", "linear"),
+    output_dir = file.path(getwd(), "ci-benchmark")
   )
-
-  if (!is.null(results) && nrow(results) > 0) {
+  if (!is.null(res)) {
     cat("\n=== SUMMARY ===\n")
-    summary_df <- summarize_results(results)
-    print(summary_df[, c("method", "family", "term_type", "corr_type",
-                         "hetero_type", "coverage", "width", "rmse")])
+    print(summarize_results(res)[, c("method","family","term_type","corr_type",
+                                      "hetero_type","coverage","time_fit_sec")])
   }
 }
