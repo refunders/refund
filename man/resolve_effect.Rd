@@ -4,17 +4,28 @@
 \alias{resolve_effect}
 \title{Resolve an effect specification to a coefficient function/matrix}
 \usage{
-resolve_effect(spec, term_type, xind = NULL, yind = NULL)
+resolve_effect(
+  spec,
+  term_type,
+  xind = NULL,
+  yind = NULL,
+  random_generator = NULL
+)
 }
 \arguments{
 \item{spec}{Effect specification: a string (preset name), function, numeric,
-or list with `fun` and additional parameters.}
+or list with `fun` and additional parameters. The special preset `"random"`
+uses the random_generator to create reproducible random effects.}
 
-\item{term_type}{Character string: one of "ff", "smooth", "const", "intercept", "linear".}
+\item{term_type}{Character string: one of "ff", "smooth", "const", "intercept",
+"linear", or "concurrent".}
 
 \item{xind}{Numeric vector of x evaluation points (for ff terms).}
 
 \item{yind}{Numeric vector of y (response) evaluation points.}
+
+\item{random_generator}{Optional random truth generator from
+[make_random_truth_generator()], required when spec = "random".}
 }
 \value{
 Evaluated coefficient: matrix for ff/smooth terms, vector for others.

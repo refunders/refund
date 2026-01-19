@@ -18,6 +18,6 @@ Numeric matrix (n x length(yind)) of effect contributions.
 }
 \description{
 Compute the integral effect: integral of X(s) * beta(s,t) ds
-using rectangular integration weights consistent with `ff()` defaults.
+using Simpson integration weights consistent with `ff()` defaults.
 }
 \keyword{internal}
