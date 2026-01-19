@@ -772,7 +772,7 @@ run_benchmark <- function(
         }
         source("ci-benchmark/benchmark-utils.R", local = TRUE)
 
-        tryCatch(
+        res <- tryCatch(
           run_one_dgp_rep(row, alpha),
           error = function(e) {
             warning(
@@ -786,6 +786,16 @@ run_benchmark <- function(
             NULL
           }
         )
+        if (!is.null(res) && nrow(res) > 0) {
+          print(res)
+          # Incremental save
+          save_path <- file.path(
+            output_dir,
+            sprintf("dgp%03d_rep%03d.rds", row$dgp_id, row$rep_id)
+          )
+          saveRDS(res, save_path)
+        }
+        res
       },
       .options = furrr::furrr_options(seed = TRUE),
       .progress = TRUE
@@ -920,7 +930,7 @@ if (sys.nframe() == 0) {
     dgp_settings = make_dgp_settings("tiny"),
     n_rep = 2,
     seed = 2024,
-    parallel = FALSE
+    parallel = TRUE
   )
 
   summary_df <- summarize_benchmark(results)
