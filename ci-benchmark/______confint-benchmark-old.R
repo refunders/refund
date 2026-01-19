@@ -1956,12 +1956,13 @@ require_pkgs()
 output_dir <- file.path(getwd(), "ci-benchmark")
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
-dgp_grid <- make_dgp_grid()
+dgp_grid <- make_dgp_grid_tiny()
+
 bench_grid <- make_benchmark_grid(
   dgp_grid = dgp_grid,
-  n_rep = 10L,
+  n_rep = 1,
   fit_families = c("gaussian", "gaulss", "scat"),
-  methods = c("pffr", "pffr_gls", "pffr_gls_est", "pffr_ar", "pffr_sandwich"),
+  methods = c("pffr", "pffr_gls", "pffr_ar", "pffr_sandwich"), #c("pffr", "pffr_gls", "pffr_gls_est", "pffr_ar", "pffr_sandwich"),
   seed = 2024L
 )
 
@@ -1981,15 +1982,16 @@ cat("==============================================================\n\n")
 start_time <- Sys.time()
 cat("Started at:", format(start_time), "\n\n")
 
+
 scored <- run_benchmark(
   dgp_grid,
-  n_rep = 10L,
+  n_rep = 1,
   fit_families = c("gaussian", "gaulss", "scat"),
   methods = c("pffr", "pffr_gls", "pffr_gls_est", "pffr_ar", "pffr_sandwich"),
   alpha = 0.10,
   seed = 2024L,
   parallel = TRUE,
-  n_workers = 3L,
+  n_workers = 1,
   bench_grid = bench_grid,
   output_dir = output_dir,
   save_prefix = "ci_bench"
