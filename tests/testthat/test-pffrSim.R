@@ -368,3 +368,226 @@ test_that("unwrapped te/ti/t2 uses all covariates", {
   truth2 <- attr(dat2, "truth")
   expect_equal(dim(truth2$eta), c(n, nygrid))
 })
+
+
+###############################################################################
+# Random Preset Tests
+###############################################################################
+
+test_that("random preset generates reproducible truth", {
+  skip_on_cran()
+
+  d1 <- pffr_simulate(
+    Y ~ ff(X1) + z,
+    seed = 42,
+    n = 30,
+    nygrid = 25,
+    effects = list(X1 = "random", z = "random"),
+    intercept = "random"
+  )
+
+  d2 <- pffr_simulate(
+    Y ~ ff(X1) + z,
+    seed = 42,
+    n = 30,
+    nygrid = 25,
+    effects = list(X1 = "random", z = "random"),
+    intercept = "random"
+  )
+
+  expect_equal(attr(d1, "truth")$beta, attr(d2, "truth")$beta)
+  expect_equal(attr(d1, "truth")$eta, attr(d2, "truth")$eta)
+})
+
+test_that("random preset produces non-zero effects", {
+  skip_on_cran()
+  set.seed(101)
+
+  dat <- pffr_simulate(
+    Y ~ ff(X1) + xlin,
+    n = 30,
+    nygrid = 25,
+    effects = list(X1 = "random", xlin = "random"),
+    intercept = "random",
+    seed = 123
+  )
+
+  truth <- attr(dat, "truth")
+  expect_valid_truth(dat, 30, 25)
+
+  # Random effects should have non-zero variance
+  expect_gt(sd(as.vector(truth$beta[["ff(X1)"]])), 0.1)
+  expect_gt(sd(truth$beta$intercept), 0.1)
+  expect_gt(sd(truth$beta$xlin), 0.1)
+})
+
+test_that("wiggliness parameter affects truth curvature", {
+  skip_on_cran()
+
+  d_smooth <- pffr_simulate(
+    Y ~ ff(X1),
+    seed = 1,
+    n = 30,
+    nygrid = 25,
+    wiggliness = 0.001,
+    effects = list(X1 = "random")
+  )
+
+  d_wiggly <- pffr_simulate(
+    Y ~ ff(X1),
+    seed = 1,
+    n = 30,
+    nygrid = 25,
+    wiggliness = 10,
+    effects = list(X1 = "random")
+  )
+
+  beta_smooth <- attr(d_smooth, "truth")$beta[["ff(X1)"]]
+  beta_wiggly <- attr(d_wiggly, "truth")$beta[["ff(X1)"]]
+
+  # Both should have non-trivial variation
+  expect_gt(sd(beta_smooth), 0.1)
+  expect_gt(sd(beta_wiggly), 0.1)
+
+  # Wiggly should have more zero crossings (higher curvature)
+  count_zero_crossings <- function(x) sum(diff(sign(x)) != 0)
+  crossings_smooth <- count_zero_crossings(rowMeans(beta_smooth))
+  crossings_wiggly <- count_zero_crossings(rowMeans(beta_wiggly))
+  expect_gt(crossings_wiggly, crossings_smooth)
+})
+
+test_that("k_truth parameter controls basis dimensions", {
+  skip_on_cran()
+
+  dat <- pffr_simulate(
+    Y ~ ff(X1),
+    seed = 99,
+    n = 30,
+    nygrid = 25,
+    effects = list(X1 = "random"),
+    k_truth = list(ff_s = 10, ff_t = 10)
+  )
+
+  expect_valid_truth(dat, 30, 25)
+  # Should still produce valid output
+  truth <- attr(dat, "truth")
+  expect_true(is.matrix(truth$beta[["ff(X1)"]]))
+})
+
+test_that("random intercept works", {
+  skip_on_cran()
+
+  dat <- pffr_simulate(
+    Y ~ 1,
+    seed = 55,
+    n = 30,
+    nygrid = 25,
+    intercept = "random"
+  )
+
+  truth <- attr(dat, "truth")
+  expect_true("intercept" %in% names(truth$etaTerms))
+  expect_gt(sd(truth$beta$intercept), 0.1)
+})
+
+
+###############################################################################
+# Concurrent Term Tests
+###############################################################################
+
+test_that("concurrent term generates functional covariate effect", {
+  skip_on_cran()
+
+  dat <- pffr_simulate(
+    Y ~ ff(X1) + Xc,
+    seed = 99,
+    n = 30,
+    nygrid = 25,
+    effects = list(
+      X1 = "cosine",
+      Xc = list(type = "concurrent", effect = "sine")
+    )
+  )
+
+  expect_true("Xc" %in% names(dat))
+  expect_true(is.matrix(dat$Xc))
+  expect_equal(ncol(dat$Xc), length(attr(dat, "yindex")))
+  expect_equal(nrow(dat$Xc), 30)
+  expect_valid_truth(dat, 30, 25)
+})
+
+test_that("concurrent term with random effect works", {
+  skip_on_cran()
+
+  dat <- pffr_simulate(
+    Y ~ Xc,
+    seed = 123,
+    n = 30,
+    nygrid = 25,
+    effects = list(Xc = list(type = "concurrent", effect = "random"))
+  )
+
+  expect_true("Xc" %in% names(dat))
+  expect_valid_truth(dat, 30, 25)
+  truth <- attr(dat, "truth")
+  expect_true("Xc" %in% names(truth$beta))
+  expect_gt(sd(truth$beta$Xc), 0.1)
+})
+
+test_that("concurrent covariate is centered", {
+  skip_on_cran()
+
+  dat <- pffr_simulate(
+    Y ~ Xc,
+    seed = 88,
+    n = 50,
+    nygrid = 30,
+    effects = list(Xc = list(type = "concurrent", effect = "sine"))
+  )
+
+  Xc <- dat$Xc
+  # Column means should be close to 0 (centered)
+  expect_lt(max(abs(colMeans(Xc))), 1e-10)
+})
+
+test_that("concurrent preset options work", {
+  skip_on_cran()
+
+  presets <- c("dnorm", "sine", "cosine", "constant", "linear")
+
+  for (preset in presets) {
+    dat <- pffr_simulate(
+      Y ~ Xc,
+      seed = 42,
+      n = 20,
+      nygrid = 20,
+      effects = list(Xc = list(type = "concurrent", effect = preset))
+    )
+    expect_valid_truth(dat, 20, 20)
+  }
+})
+
+test_that("mixed random and preset effects work together", {
+  skip_on_cran()
+
+  dat <- pffr_simulate(
+    Y ~ ff(X1) + xlin + s(xsmoo),
+    seed = 42,
+    n = 30,
+    nygrid = 25,
+    effects = list(
+      X1 = "random",
+      xlin = "dnorm",
+      xsmoo = "random"
+    ),
+    intercept = "beta"
+  )
+
+  expect_valid_truth(dat, 30, 25)
+
+  truth <- attr(dat, "truth")
+  # xlin should use dnorm preset (deterministic shape)
+  # X1 and xsmoo should be random
+  expect_true(is.matrix(truth$beta[["ff(X1)"]]))
+  expect_true(is.numeric(truth$beta$xlin))
+})

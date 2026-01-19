@@ -19,7 +19,9 @@ pffrSim(
   family = gaussian(),
   propmissing = 0,
   limits = NULL,
-  seed = NULL
+  seed = NULL,
+  wiggliness = 1,
+  k_truth = list()
 )
 }
 \arguments{
@@ -64,6 +66,14 @@ value. See Details.}
 e.g., \code{function(s, t) s < t}.}
 
 \item{seed}{Optional random seed for reproducibility.}
+
+\item{wiggliness}{Controls smoothness for the "random" preset (default: 1).
+Higher values produce more wiggly truth functions. Typical range: 0.001
+(very smooth) to 10 (very wiggly).}
+
+\item{k_truth}{Named list of basis dimensions for random truth generation.
+Defaults: \code{list(ff_s = 8, ff_t = 8, smooth_z = 8, smooth_t = 8,
+linear = 15, intercept = 15, concurrent = 15)}.}
 }
 \description{
 **Deprecated**

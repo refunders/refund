@@ -15,7 +15,9 @@ pffrSim_formula(
   SNR = 10,
   family = gaussian(),
   propmissing = 0,
-  limits = NULL
+  limits = NULL,
+  wiggliness = 1,
+  k_truth = list()
 )
 }
 \arguments{
@@ -29,7 +31,8 @@ pffrSim_formula(
 
 \item{data}{Optional data frame with pre-generated covariates.}
 
-\item{effects}{Named list mapping term names to effect specifications.}
+\item{effects}{Named list mapping term names to effect specifications.
+For concurrent terms, use list syntax: `list(Xc = list(type = "concurrent", effect = "sine"))`.}
 
 \item{intercept}{Intercept specification (preset name, function, or numeric).}
 
@@ -40,6 +43,10 @@ pffrSim_formula(
 \item{propmissing}{Proportion of missing values in response.}
 
 \item{limits}{Optional limits function for ff terms.}
+
+\item{wiggliness}{Controls smoothness for "random" preset (default: 1).}
+
+\item{k_truth}{Named list of basis dimensions for random truth generation.}
 }
 \value{
 A data frame with simulated data and truth attributes.

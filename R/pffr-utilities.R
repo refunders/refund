@@ -387,6 +387,12 @@ simplify_term_label <- function(term_name, yindname) {
 #' @param limits A function defining integration limits for \code{ff()} terms,
 #'   e.g., \code{function(s, t) s < t}.
 #' @param seed Optional random seed for reproducibility.
+#' @param wiggliness Controls smoothness for the "random" preset (default: 1).
+#'   Higher values produce more wiggly truth functions. Typical range: 0.001
+#'   (very smooth) to 10 (very wiggly).
+#' @param k_truth Named list of basis dimensions for random truth generation.
+#'   Defaults: \code{list(ff_s = 8, ff_t = 8, smooth_z = 8, smooth_t = 8,
+#'   linear = 15, intercept = 15, concurrent = 15)}.
 #'
 #' @returns A data frame (or list if \code{propmissing > 0}) with simulated
 #'   data and attributes:
@@ -399,13 +405,21 @@ simplify_term_label <- function(term_name, yindname) {
 #'   }
 #'
 #' @section Effect Presets:
-#' For \code{ff()} terms: "cosine", "product", "gaussian", "separable", "historical"
+#' For \code{ff()} terms: "cosine", "product", "gaussian", "separable", "historical", "random"
 #'
-#' For \code{s()} terms: "beta", "dnorm", "sine", "cosine", "polynomial", "step"
+#' For \code{s()} terms: "beta", "dnorm", "sine", "cosine", "polynomial", "step", "random"
 #'
 #' For \code{c()} terms: "constant", "gaussian_2d", "linear"
 #'
-#' For intercept: "constant", "beta", "sine", "zero"
+#' For intercept: "constant", "beta", "sine", "zero", "random"
+#'
+#' For linear terms: "dnorm", "sine", "cosine", "constant", "linear", "random"
+#'
+#' For concurrent terms: "dnorm", "sine", "cosine", "constant", "linear", "random"
+#'
+#' The "random" preset generates reproducible random truth functions by
+#' sampling from P-spline priors. Use \code{wiggliness} to control the
+#' smoothness (curvature).
 #'
 #' @export
 #' @importFrom splines spline.des
@@ -437,7 +451,9 @@ pffr_simulate <- function(
   family = gaussian(),
   propmissing = 0,
   limits = NULL,
-  seed = NULL
+  seed = NULL,
+  wiggliness = 1,
+  k_truth = list()
 ) {
   # Set seed if provided
   if (!is.null(seed)) set.seed(seed)
@@ -460,7 +476,9 @@ pffr_simulate <- function(
       SNR = SNR,
       family = family,
       propmissing = propmissing,
-      limits = limits
+      limits = limits,
+      wiggliness = wiggliness,
+      k_truth = k_truth
     ))
   }
 
@@ -521,7 +539,9 @@ pffrSim <- function(
   family = gaussian(),
   propmissing = 0,
   limits = NULL,
-  seed = NULL
+  seed = NULL,
+  wiggliness = 1,
+  k_truth = list()
 ) {
   .Deprecated("pffr_simulate")
   pffr_simulate(
@@ -539,7 +559,9 @@ pffrSim <- function(
     family = family,
     propmissing = propmissing,
     limits = limits,
-    seed = seed
+    seed = seed,
+    wiggliness = wiggliness,
+    k_truth = k_truth
   )
 }
 
@@ -903,6 +925,243 @@ parse_single_term <- function(term_str, specials) {
 
 
 # ------------------------------------------------------------------------------
+# P-spline Prior Sampling for Random Truth Generation
+# ------------------------------------------------------------------------------
+
+#' Sample coefficients from 1D P-spline prior
+#'
+#' Samples coefficients from N(0, P^{-1}) where
+#' P = (1/wiggliness) * K'K + I and K is a 2nd-order difference matrix.
+#'
+#' @param k Number of basis functions.
+#' @param wiggliness Controls smoothness. Higher = more wiggly.
+#' @returns Numeric vector of coefficients (length k).
+#' @keywords internal
+sample_pspline_coef_1d <- function(k, wiggliness) {
+  K <- diff(diag(k), differences = 2)
+  P <- (1 / wiggliness) * crossprod(K) + diag(k)
+  z <- rnorm(k)
+  backsolve(chol(P), z)
+}
+
+#' Sample coefficients from 2D tensor P-spline prior
+#'
+#' Samples from tensor product P-spline prior with additive penalties:
+#' P = (1/wiggliness) * (P_s ⊗ I_t + I_s ⊗ P_t) + I
+#'
+#' @param k_s Basis dimension for first margin.
+#' @param k_t Basis dimension for second margin.
+#' @param wiggliness Controls smoothness.
+#' @returns Matrix of coefficients (k_s x k_t).
+#' @keywords internal
+sample_pspline_coef_2d <- function(k_s, k_t, wiggliness) {
+  K_s <- diff(diag(k_s), differences = 2)
+  K_t <- diff(diag(k_t), differences = 2)
+
+  P_s <- crossprod(K_s)
+  P_t <- crossprod(K_t)
+
+  I_s <- diag(k_s)
+  I_t <- diag(k_t)
+  P_tensor <- kronecker(P_s, I_t) + kronecker(I_s, P_t)
+
+  k_total <- k_s * k_t
+  P <- (1 / wiggliness) * P_tensor + diag(k_total)
+
+  z <- rnorm(k_total)
+  coef_vec <- backsolve(chol(P), z)
+  matrix(coef_vec, nrow = k_s, ncol = k_t)
+}
+
+#' Create B-spline specification for evaluation at new points
+#'
+#' Stores the knots and degree of a B-spline basis so it can be re-evaluated
+#' at new points while maintaining the same basis functions.
+#'
+#' @param x Numeric vector of points to build the basis on.
+#' @param k Number of basis functions.
+#' @returns List with knots, boundary_knots, and degree.
+#' @keywords internal
+make_bs_spec <- function(x, k) {
+  B <- splines::bs(x, df = k, degree = 3, intercept = TRUE)
+  list(
+    knots = attr(B, "knots"),
+    boundary_knots = attr(B, "Boundary.knots"),
+    degree = attr(B, "degree"),
+    k = k
+  )
+}
+
+#' Evaluate B-spline at new points using stored specification
+#'
+#' @param x Numeric vector of evaluation points.
+#' @param spec Specification from [make_bs_spec()].
+#' @returns B-spline basis matrix.
+#' @keywords internal
+eval_bs <- function(x, spec) {
+  splines::bs(
+    x,
+    df = spec$k,
+    knots = spec$knots,
+    Boundary.knots = spec$boundary_knots,
+    degree = spec$degree,
+    intercept = TRUE
+  )
+}
+
+#' Generate 1D random function from P-spline prior
+#'
+#' Samples from the P-spline prior and evaluates on a fixed grid.
+#' Returns a numeric vector scaled to unit SD.
+#'
+#' @param grid Numeric vector of evaluation points.
+#' @param k Number of B-spline basis functions.
+#' @param wiggliness Controls smoothness. Higher = more wiggly.
+#' @returns Numeric vector, scaled to unit SD.
+#' @keywords internal
+gen_random_1d <- function(grid, k, wiggliness) {
+  B <- splines::bs(grid, df = k, degree = 3, intercept = TRUE)
+  coef <- sample_pspline_coef_1d(k, wiggliness)
+  f <- as.vector(B %*% coef)
+  as.vector(scale(f))
+}
+
+#' Generate 2D random surface from tensor P-spline prior
+#'
+#' Samples from tensor product P-spline prior and evaluates on fixed grids.
+#' Returns a matrix scaled to unit SD.
+#'
+#' @param s_grid First dimension evaluation points.
+#' @param t_grid Second dimension evaluation points.
+#' @param k_s Basis dimension for s.
+#' @param k_t Basis dimension for t.
+#' @param wiggliness Controls smoothness.
+#' @returns Matrix (length(s_grid) x length(t_grid)), scaled to unit SD.
+#' @keywords internal
+gen_random_2d <- function(s_grid, t_grid, k_s, k_t, wiggliness) {
+  B_s <- splines::bs(s_grid, df = k_s, degree = 3, intercept = TRUE)
+  B_t <- splines::bs(t_grid, df = k_t, degree = 3, intercept = TRUE)
+
+  coef_mat <- sample_pspline_coef_2d(k_s, k_t, wiggliness)
+  f_mat <- B_s %*% coef_mat %*% t(B_t)
+
+  f_centered <- f_mat - mean(f_mat)
+  f_centered / sd(f_centered)
+}
+
+#' Create 2D random surface function from P-spline prior
+#'
+#' Returns a function that can be evaluated at arbitrary (s, t) points.
+#' The surface is scaled to unit SD on the reference grids.
+#'
+#' @param s_ref Reference grid for first dimension (for scaling).
+#' @param t_ref Reference grid for second dimension (for scaling).
+#' @param k_s Basis dimension for s.
+#' @param k_t Basis dimension for t.
+#' @param wiggliness Controls smoothness.
+#' @returns Function(s, t) returning a matrix.
+#' @keywords internal
+make_random_2d_fn <- function(s_ref, t_ref, k_s, k_t, wiggliness) {
+  # Store basis specs for evaluation at arbitrary points
+  s_spec <- make_bs_spec(s_ref, k_s)
+  t_spec <- make_bs_spec(t_ref, k_t)
+
+  # Sample coefficients
+  coef_mat <- sample_pspline_coef_2d(k_s, k_t, wiggliness)
+
+  # Compute scaling factor on reference grid
+  B_s_ref <- eval_bs(s_ref, s_spec)
+  B_t_ref <- eval_bs(t_ref, t_spec)
+  f_ref <- B_s_ref %*% coef_mat %*% t(B_t_ref)
+  scale_center <- mean(f_ref)
+  scale_sd <- sd(f_ref)
+
+  # Return function that evaluates at arbitrary points
+  function(s, t) {
+    B_s <- eval_bs(s, s_spec)
+    B_t <- eval_bs(t, t_spec)
+    f_mat <- B_s %*% coef_mat %*% t(B_t)
+    (f_mat - scale_center) / scale_sd
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Random Truth Generator for Reproducible Random Effects
+# ------------------------------------------------------------------------------
+
+#' Create random truth generator with P-spline prior
+#'
+#' Generates reproducible random truth functions by sampling from P-spline priors.
+#' Uses the same penalty structure as mgcv, so wiggliness maps to effective
+#' degrees of freedom. Truth is in the B-spline span, avoiding approximation bias.
+#'
+#' @param yind Response grid points.
+#' @param xind Functional covariate grid points.
+#' @param z_ref Reference z values for smooth terms.
+#' @param wiggliness Controls smoothness (default: 1). Higher = more wiggly.
+#'   Typical range: 0.001 (very smooth) to 10 (very wiggly).
+#' @param k_truth List with basis dimensions per term type. Defaults:
+#'   ff_s = 8, ff_t = 8, smooth_z = 8, smooth_t = 8,
+#'   linear = 15, intercept = 15, concurrent = 15.
+#' @returns List with generator functions for each term type.
+#' @keywords internal
+make_random_truth_generator <- function(
+  yind,
+  xind,
+  z_ref = NULL,
+  wiggliness = 1,
+  k_truth = list()
+) {
+  # Merge with defaults
+  k <- modifyList(
+    list(
+      ff_s = 8L,
+      ff_t = 8L,
+      smooth_z = 8L,
+      smooth_t = 8L,
+      linear = 15L,
+      intercept = 15L,
+      concurrent = 15L
+    ),
+    k_truth
+  )
+
+  z_ref <- z_ref %||% seq(-2, 2, length.out = 20)
+
+  # Pre-generate random functions (deterministic order for reproducibility)
+  # 1D functions are evaluated on fixed yind grid
+  f_intercept <- gen_random_1d(yind, k = k$intercept, wiggliness = wiggliness)
+  f_linear <- gen_random_1d(yind, k = k$linear, wiggliness = wiggliness)
+  f_concurrent <- gen_random_1d(yind, k = k$concurrent, wiggliness = wiggliness)
+
+  # 2D ff is evaluated on fixed xind x yind grid
+  f_ff <- gen_random_2d(
+    xind,
+    yind,
+    k_s = k$ff_s,
+    k_t = k$ff_t,
+    wiggliness = wiggliness
+  )
+
+  # Smooth needs to evaluate at arbitrary z values, so return a function
+  f_smooth_fn <- make_random_2d_fn(
+    z_ref,
+    yind,
+    k_s = k$smooth_z,
+    k_t = k$smooth_t,
+    wiggliness = wiggliness
+  )
+
+  list(
+    intercept = function(t) f_intercept,
+    ff = function(s, t) f_ff,
+    linear = function(t) f_linear,
+    concurrent = function(t) f_concurrent,
+    smooth = f_smooth_fn
+  )
+}
+
+# ------------------------------------------------------------------------------
 # Preset Effect Libraries (Internal, not exported)
 # ------------------------------------------------------------------------------
 
@@ -1001,6 +1260,30 @@ linear_presets <- list(
   }
 )
 
+#' Concurrent functional effect presets
+#'
+#' Named list of preset beta_c(t) functions for concurrent functional covariates.
+#' These are varying coefficients where Xc(t) * beta_c(t) contributes to the response.
+#' Each function takes argument t and returns a vector.
+#' @keywords internal
+concurrent_presets <- list(
+  dnorm = function(t) {
+    as.vector(scale(-dnorm(4 * (t - 0.2))))
+  },
+  sine = function(t) {
+    sin(2 * pi * t)
+  },
+  cosine = function(t) {
+    cos(2 * pi * t)
+  },
+  constant = function(t) {
+    rep(1, length(t))
+  },
+  linear = function(t) {
+    t - 0.5
+  }
+)
+
 #' Intercept presets for mu(t)
 #'
 #' Named list of preset intercept functions mu(t).
@@ -1028,15 +1311,24 @@ intercept_presets <- list(
 #' and return the evaluated coefficient function/matrix.
 #'
 #' @param spec Effect specification: a string (preset name), function, numeric,
-#'   or list with `fun` and additional parameters.
-#' @param term_type Character string: one of "ff", "smooth", "const", "intercept", "linear".
+#'   or list with `fun` and additional parameters. The special preset `"random"`
+#'   uses the random_generator to create reproducible random effects.
+#' @param term_type Character string: one of "ff", "smooth", "const", "intercept",
+#'   "linear", or "concurrent".
 #' @param xind Numeric vector of x evaluation points (for ff terms).
 #' @param yind Numeric vector of y (response) evaluation points.
+#' @param random_generator Optional random truth generator from
+#'   [make_random_truth_generator()], required when spec = "random".
 #' @returns Evaluated coefficient: matrix for ff/smooth terms, vector for others.
 #' @keywords internal
-resolve_effect <- function(spec, term_type, xind = NULL, yind = NULL) {
+resolve_effect <- function(
+  spec,
+  term_type,
+  xind = NULL,
+  yind = NULL,
+  random_generator = NULL
+) {
   # Get the appropriate preset library
-
   presets <- switch(
     term_type,
     ff = ff_presets,
@@ -1044,23 +1336,39 @@ resolve_effect <- function(spec, term_type, xind = NULL, yind = NULL) {
     const = const_presets,
     intercept = intercept_presets,
     linear = linear_presets,
+    concurrent = concurrent_presets,
     NULL
   )
 
+  # Track whether spec is from random generator (returns full matrix, not scalar)
+  is_random <- FALSE
+
   # Handle different spec types
   if (is.character(spec)) {
-    # Preset name
-    if (is.null(presets) || !spec %in% names(presets)) {
-      stop("Unknown preset '", spec, "' for term type '", term_type, "'")
+    if (spec == "random") {
+      # Use random generator for reproducible random effects
+      if (is.null(random_generator)) {
+        stop("'random' preset requires random_generator")
+      }
+      fn <- random_generator[[term_type]]
+      if (is.null(fn)) {
+        stop("Random generator does not support term type '", term_type, "'")
+      }
+      is_random <- TRUE
+    } else {
+      # Standard preset name
+      if (is.null(presets) || !spec %in% names(presets)) {
+        stop("Unknown preset '", spec, "' for term type '", term_type, "'")
+      }
+      fn <- presets[[spec]]
     }
-    fn <- presets[[spec]]
   } else if (is.function(spec)) {
     fn <- spec
   } else if (is.numeric(spec)) {
     # Constant value - return as-is for const type, replicate for others
     if (term_type == "ff") {
       return(matrix(spec, nrow = length(xind), ncol = length(yind)))
-    } else if (term_type %in% c("smooth", "linear")) {
+    } else if (term_type %in% c("smooth", "linear", "concurrent")) {
       return(matrix(spec, nrow = 1, ncol = length(yind)))
     } else if (term_type == "const") {
       # For const terms, return numeric as-is (will be used by compute_const_effect)
@@ -1070,16 +1378,36 @@ resolve_effect <- function(spec, term_type, xind = NULL, yind = NULL) {
     }
   } else if (is.list(spec) && "fun" %in% names(spec)) {
     fn <- spec$fun
+  } else if (is.list(spec) && "type" %in% names(spec)) {
+    # Handle list syntax for concurrent: list(type = "concurrent", effect = ...)
+    # Return the spec itself for later processing
+    return(spec)
   } else {
     stop("Invalid effect specification for term type '", term_type, "'")
   }
 
   # Evaluate the function
   if (term_type == "ff") {
-    outer(xind, yind, fn)
+    if (is_random) {
+      # Random generator functions take vectors and return full matrix
+      fn(xind, yind)
+    } else {
+      # Preset functions are designed for outer() (take scalars)
+      outer(xind, yind, fn)
+    }
+  } else if (term_type == "smooth") {
+    if (is_random) {
+      # Random generator returns full matrix function
+      fn
+    } else {
+      fn
+    }
   } else if (term_type == "intercept") {
     fn(yind)
   } else if (term_type == "const") {
+    fn
+  } else if (term_type == "concurrent") {
+    # Concurrent: return function for later evaluation at yind
     fn
   } else {
     fn
@@ -1087,14 +1415,101 @@ resolve_effect <- function(spec, term_type, xind = NULL, yind = NULL) {
 }
 
 
-# ==============================================================================
-# Phase 1: Effect Computation Functions (Section 1.2)
-# ==============================================================================
+# Centering helpers for pffr identifiability ----------------------------------
+
+#' Center functional covariate column-wise
+#'
+#' Centers X so that colMeans(X) = 0, i.e., each evaluation point s has
+#' mean 0 across observations. This is the recommended centering for ff terms
+#' so the intercept can be interpreted as the global mean function.
+#'
+#' @param X Numeric matrix (n x n_xind) of functional covariate.
+#' @returns Centered matrix with same dimensions.
+#' @keywords internal
+center_functional_covariate <- function(X) {
+  sweep(X, 2, colMeans(X), "-")
+}
+
+#' Compute Simpson integration weights
+#'
+#' Computes Simpson's rule weights for numerical integration on an equidistant
+#' grid. This matches pffr's default integration method in ff() terms.
+#' Note: pffr uses (b-a)/n/3 (divides by grid length n), not (b-a)/(n-1)/3.
+#'
+#' @param xind Numeric vector of evaluation points.
+#' @returns Numeric vector of Simpson weights.
+#' @keywords internal
+simpson_weights <- function(xind) {
+  n <- length(xind)
+  if (n < 2) return(1)
+  # pffr's formula: ((xind[n] - xind[1]) / n) / 3 * [1, 4, 2, ..., 1]
+  ((xind[n] - xind[1]) / n / 3) * c(1, rep(c(4, 2), length.out = n - 2), 1)
+}
+
+#' Center beta(s,t) surface for ff identifiability
+#'
+#' Centers beta so that weighted sum over s equals 0 for each t:
+#' sum_s w(s) * beta(s, t) = 0 for all t.
+#' This matches pffr's identifiability constraint for ff terms.
+#' Uses Simpson weights to be consistent with pffr's default integration.
+#'
+#' @param beta_st Numeric matrix (n_xind x n_yind) coefficient surface.
+#' @param xind Numeric vector of x evaluation points (for integration weights).
+#' @returns Centered beta matrix with same dimensions.
+#' @keywords internal
+center_ff_beta <- function(beta_st, xind) {
+  # Use Simpson integration weights (consistent with ff() defaults)
+  w <- simpson_weights(xind)
+  w_sum <- sum(w)
+  # Weighted column means
+  col_means <- colSums(beta_st * w) / w_sum
+  sweep(beta_st, 2, col_means, "-")
+}
+
+#' Center effect matrix column-wise for smooth term identifiability
+#'
+#' Centers effect matrix so that colMeans(effect) = 0, i.e., for each t,
+#' the effect averages to 0 across observations: sum_i f(z_i, t) = 0 for all t.
+#' This matches pffr's identifiability constraint for smooth varying coefficient terms.
+#'
+#' @param effect Numeric matrix (n x n_yind) of effect values.
+#' @returns Centered matrix with same dimensions.
+#' @keywords internal
+center_smooth_effect <- function(effect) {
+  sweep(effect, 2, colMeans(effect), "-")
+}
+
+#' Center concurrent functional covariate column-wise
+#'
+#' Centers Xc so that colMeans(Xc) = 0 for each t. This ensures the intercept
+#' can be interpreted as the mean response function.
+#'
+#' @param Xc Numeric matrix (n x n_yind) of concurrent functional covariate.
+#' @returns Centered matrix with same dimensions.
+#' @keywords internal
+center_concurrent_covariate <- function(Xc) {
+  sweep(Xc, 2, colMeans(Xc), "-")
+}
+
+#' Compute concurrent functional effect: Xc(t) * beta_c(t)
+#'
+#' Computes the pointwise product of a concurrent functional covariate
+#' with a varying coefficient function.
+#'
+#' @param Xc Numeric matrix (n x n_yind) of concurrent covariate values.
+#' @param beta_t Numeric vector (length n_yind) of concurrent coefficient.
+#' @returns Numeric matrix (n x n_yind) of effect contributions.
+#' @keywords internal
+compute_concurrent_effect <- function(Xc, beta_t) {
+  sweep(Xc, 2, beta_t, "*")
+}
+
+# Effect computation helpers --------------------------------------------------
 
 #' Compute function-on-function effect
 #'
 #' Compute the integral effect: integral of X(s) * beta(s,t) ds
-#' using rectangular integration weights consistent with `ff()` defaults.
+#' using Simpson integration weights consistent with `ff()` defaults.
 #'
 #' @param X Numeric matrix (n x length(xind)) of functional covariate values.
 #' @param beta_st Numeric matrix (length(xind) x length(yind)) coefficient surface.
@@ -1103,11 +1518,10 @@ resolve_effect <- function(spec, term_type, xind = NULL, yind = NULL) {
 #' @keywords internal
 compute_ff_effect <- function(X, beta_st, xind) {
   n <- nrow(X)
-  n_xind <- length(xind)
 
-  # Rectangular integration weights (consistent with ff() defaults)
-  dx <- if (length(xind) > 1) diff(xind)[1] else 1
-  L <- matrix(dx, nrow = n, ncol = n_xind)
+  # Simpson integration weights (consistent with ff() defaults)
+  w <- simpson_weights(xind)
+  L <- matrix(w, nrow = n, ncol = length(xind), byrow = TRUE)
 
   # Compute integral: (L * X) %*% beta_st
   (L * X) %*% beta_st
@@ -1349,11 +1763,14 @@ scenario_to_formula <- function(scenario, nxgrid, nygrid, limits = NULL) {
 #' @param xind Numeric vector of x (functional covariate) evaluation points.
 #' @param data Optional data frame with pre-generated covariates.
 #' @param effects Named list mapping term names to effect specifications.
+#'   For concurrent terms, use list syntax: `list(Xc = list(type = "concurrent", effect = "sine"))`.
 #' @param intercept Intercept specification (preset name, function, or numeric).
 #' @param SNR Signal-to-noise ratio.
 #' @param family A family object for response distribution.
 #' @param propmissing Proportion of missing values in response.
 #' @param limits Optional limits function for ff terms.
+#' @param wiggliness Controls smoothness for "random" preset (default: 1).
+#' @param k_truth Named list of basis dimensions for random truth generation.
 #' @returns A data frame with simulated data and truth attributes.
 #' @keywords internal
 pffrSim_formula <- function(
@@ -1367,7 +1784,9 @@ pffrSim_formula <- function(
   SNR = 10,
   family = gaussian(),
   propmissing = 0,
-  limits = NULL
+  limits = NULL,
+  wiggliness = 1,
+  k_truth = list()
 ) {
   nygrid <- length(yind)
   nxgrid <- length(xind)
@@ -1378,18 +1797,134 @@ pffrSim_formula <- function(
   # Check if formula requests intercept (respects Y ~ 0 + ... or Y ~ -1 + ...)
   has_intercept <- attr(terms(formula), "intercept") == 1L
 
-  # Initialize data and eta terms
+  # Check if any effect uses "random"
+  uses_random <- function(spec) {
+    if (is.character(spec) && spec == "random") return(TRUE)
+    if (is.list(spec) && isTRUE(spec$effect == "random")) return(TRUE)
+    FALSE
+  }
+  needs_random <- any(vapply(effects, uses_random, logical(1))) ||
+    (is.character(intercept) && intercept == "random")
+
+  # Initialize data
   if (is.null(data)) {
     data <- list()
   } else {
     data <- as.list(data)
   }
+
+  # ---------------------------------------------------------------------------
+
+  # Phase 1: Pre-generate covariates to determine z-range for smooth terms
+  # This ensures B-spline bases cover the actual data range
+  # ---------------------------------------------------------------------------
+  z_values_all <- numeric(0)
+
+  for (term_label in names(parsed$terms)) {
+    term_info <- parsed$terms[[term_label]]
+    term_type <- term_info$type
+    varname <- term_info$varname
+    wrapped <- isTRUE(term_info$wrapped)
+
+    effect_spec <- effects[[term_label]] %||%
+      effects[[varname]] %||%
+      get_default_effect(term_type, varname, wrapped)
+
+    is_concurrent <- is.list(effect_spec) &&
+      isTRUE(effect_spec$type == "concurrent")
+
+    if (is_concurrent) {
+      # Concurrent: functional covariate on yind grid
+      if (is.null(data[[varname]])) {
+        data[[varname]] <- I(generate_functional_covariate(n, yind))
+      }
+    } else if (term_type == "ff" || term_type == "sff") {
+      # FF: functional covariate on xind grid
+      if (is.null(data[[varname]])) {
+        data[[varname]] <- I(generate_functional_covariate(n, xind))
+      }
+    } else if (term_type == "s" && !wrapped) {
+      # Smooth: scalar covariate - collect z values for B-spline range
+      if (is.null(data[[varname]])) {
+        data[[varname]] <- I(generate_scalar_covariate(n, "normal"))
+      }
+      x_centered <- data[[varname]] - mean(data[[varname]])
+      data[[varname]] <- I(x_centered)
+      z_values_all <- c(z_values_all, as.vector(x_centered))
+    } else if (term_type == "te" || term_type == "ti" || term_type == "t2") {
+      # Tensor product terms
+      if (!is.null(term_info$call)) {
+        vars <- all.vars(term_info$call)
+      } else {
+        vars <- varname
+      }
+      for (v in vars) {
+        if (is.null(data[[v]])) {
+          data[[v]] <- I(generate_scalar_covariate(n, "normal"))
+        }
+      }
+      if (!wrapped) {
+        # Varying over t - these are smooth-like, collect z values
+        for (v in vars) {
+          x_centered <- data[[v]] - mean(data[[v]])
+          data[[v]] <- I(x_centered)
+          z_values_all <- c(z_values_all, as.vector(x_centered))
+        }
+      }
+    } else if (wrapped || term_type == "c") {
+      # Constant over t
+      if (is.null(data[[varname]])) {
+        data[[varname]] <- I(generate_scalar_covariate(n, "normal"))
+      }
+    } else if (term_type == "linear") {
+      # Linear varying coefficient
+      if (is.null(data[[varname]])) {
+        if (grepl("factor", varname, ignore.case = TRUE)) {
+          data[[varname]] <- generate_scalar_covariate(n, "factor", levels = 3)
+        } else {
+          data[[varname]] <- I(generate_scalar_covariate(n, "normal"))
+        }
+      }
+    }
+  }
+
+  # ---------------------------------------------------------------------------
+  # Phase 2: Create random generator with actual z-range (if needed)
+  # ---------------------------------------------------------------------------
+  random_generator <- if (needs_random) {
+    # Compute z_ref from actual data range with 10% padding
+    if (length(z_values_all) > 0) {
+      z_range <- range(z_values_all)
+      z_pad <- 0.1 * diff(z_range)
+      z_ref <- seq(z_range[1] - z_pad, z_range[2] + z_pad, length.out = 25)
+    } else {
+      z_ref <- NULL # Use default in make_random_truth_generator
+    }
+    make_random_truth_generator(
+      yind,
+      xind,
+      z_ref = z_ref,
+      wiggliness = wiggliness,
+      k_truth = k_truth
+    )
+  } else {
+    NULL
+  }
+
+  # ---------------------------------------------------------------------------
+  # Phase 3: Compute effects using pre-generated covariates
+  # ---------------------------------------------------------------------------
   etaTerms <- list()
   beta_coefs <- list()
 
   # Compute intercept only if formula includes it
   if (has_intercept) {
-    mu_t <- resolve_effect(intercept, "intercept", yind = yind)
+    mu_t <- resolve_effect(
+      intercept,
+      "intercept",
+      yind = yind,
+      random_generator = random_generator
+    )
     etaTerms$intercept <- compute_intercept(mu_t, n)
     beta_coefs$intercept <- mu_t
   }
@@ -1406,33 +1941,69 @@ pffrSim_formula <- function(
       effects[[varname]] %||%
       get_default_effect(term_type, varname, wrapped)
 
-    if (term_type == "ff" || term_type == "sff") {
-      # Function-on-function term
-      if (is.null(data[[varname]])) {
-        data[[varname]] <- I(generate_functional_covariate(n, xind))
+    # Check if this is a concurrent term specified via list syntax
+    is_concurrent <- is.list(effect_spec) &&
+      isTRUE(effect_spec$type == "concurrent")
+
+    if (is_concurrent) {
+      # Concurrent functional covariate: Xc(t) * beta_c(t)
+      # Covariate already generated in Phase 1
+      # Center concurrent covariate column-wise for identifiability
+      Xc_centered <- center_concurrent_covariate(as.matrix(data[[varname]]))
+      data[[varname]] <- I(Xc_centered)
+
+      # Get the effect specification
+      conc_effect_spec <- effect_spec$effect %||% "sine"
+      beta_t <- resolve_effect(
+        conc_effect_spec,
+        "concurrent",
+        yind = yind,
+        random_generator = random_generator
+      )
+      if (is.function(beta_t)) {
+        beta_vec <- beta_t(yind)
+      } else if (is.matrix(beta_t)) {
+        beta_vec <- beta_t[1, ]
+      } else {
+        beta_vec <- beta_t
       }
-      beta_st <- resolve_effect(effect_spec, "ff", xind, yind)
+      etaTerms[[term_label]] <- compute_concurrent_effect(Xc_centered, beta_vec)
+      beta_coefs[[term_label]] <- beta_vec
+    } else if (term_type == "ff" || term_type == "sff") {
+      # Function-on-function term - covariate already generated in Phase 1
+      # Center functional covariate column-wise for identifiability
+      X_centered <- center_functional_covariate(as.matrix(data[[varname]]))
+      data[[varname]] <- I(X_centered)
+
+      beta_st <- resolve_effect(
+        effect_spec,
+        "ff",
+        xind,
+        yind,
+        random_generator = random_generator
+      )
       if (!is.null(limits)) {
         limit_mask <- outer(xind, yind, limits)
         beta_st <- beta_st * limit_mask
       }
-      etaTerms[[term_label]] <- compute_ff_effect(
-        data[[varname]],
-        beta_st,
-        xind
-      )
+      # Center beta surface for pffr identifiability constraint
+      beta_st <- center_ff_beta(beta_st, xind)
+
+      etaTerms[[term_label]] <- compute_ff_effect(X_centered, beta_st, xind)
       beta_coefs[[term_label]] <- beta_st
     } else if (term_type == "s" && !wrapped) {
-      # Smooth varying coefficient term
-      if (is.null(data[[varname]])) {
-        data[[varname]] <- I(generate_scalar_covariate(n, "normal"))
-      }
-      f_xt <- resolve_effect(effect_spec, "smooth", yind = yind)
-      etaTerms[[term_label]] <- compute_smooth_effect(
-        data[[varname]],
-        f_xt,
-        yind
+      # Smooth varying coefficient term - covariate already centered in Phase 1
+      x_centered <- data[[varname]]
+
+      f_xt <- resolve_effect(
+        effect_spec,
+        "smooth",
+        yind = yind,
+        random_generator = random_generator
       )
+      effect_raw <- compute_smooth_effect(x_centered, f_xt, yind)
+      # Center effect column-wise for pffr identifiability constraint
+      etaTerms[[term_label]] <- center_smooth_effect(effect_raw)
       beta_coefs[[term_label]] <- f_xt
     } else if (term_type == "te" || term_type == "ti" || term_type == "t2") {
       # Tensor product term - extract variable names from call
@@ -1449,7 +2020,12 @@ pffrSim_formula <- function(
             data[[v]] <- I(generate_scalar_covariate(n, "normal"))
           }
         }
-        f_x <- resolve_effect(effect_spec, "const", yind = yind)
+        f_x <- resolve_effect(
+          effect_spec,
+          "const",
+          yind = yind,
+          random_generator = random_generator
+        )
         # Get all covariate vectors
         cov_list <- lapply(vars, function(v) data[[v]])
         etaTerms[[term_label]] <- do.call(
@@ -1464,7 +2040,12 @@ pffrSim_formula <- function(
             data[[v]] <- I(generate_scalar_covariate(n, "normal"))
           }
         }
-        f_xt <- resolve_effect(effect_spec, "smooth", yind = yind)
+        f_xt <- resolve_effect(
+          effect_spec,
+          "smooth",
+          yind = yind,
+          random_generator = random_generator
+        )
 
         if (is.function(f_xt)) {
           # Check if function accepts multiple x variables
@@ -1493,7 +2074,12 @@ pffrSim_formula <- function(
       if (is.null(data[[varname]])) {
         data[[varname]] <- I(generate_scalar_covariate(n, "normal"))
       }
-      f_x <- resolve_effect(effect_spec, "const", yind = yind)
+      f_x <- resolve_effect(
+        effect_spec,
+        "const",
+        yind = yind,
+        random_generator = random_generator
+      )
       if (is.function(f_x)) {
         etaTerms[[term_label]] <- compute_const_effect(
           data[[varname]],
@@ -1520,9 +2106,14 @@ pffrSim_formula <- function(
       }
 
       if (is.factor(data[[varname]])) {
-        # Factor term - varying effect by level
+        # Factor term - varying effect by level (no centering for factors)
         fac <- data[[varname]]
-        fac_effect <- resolve_effect(effect_spec, "linear", yind = yind)
+        fac_effect <- resolve_effect(
+          effect_spec,
+          "linear",
+          yind = yind,
+          random_generator = random_generator
+        )
         if (is.function(fac_effect)) {
           # Check if function expects 2 args (custom) or 1 arg (preset)
           n_args <- length(formals(fac_effect))
@@ -1543,7 +2134,16 @@ pffrSim_formula <- function(
         beta_coefs[[term_label]] <- "factor"
       } else {
         # Numeric linear term with varying coefficient
-        beta_t <- resolve_effect(effect_spec, "linear", yind = yind)
+        # Center scalar covariate for identifiability (recommended by pffr docs)
+        x_centered <- data[[varname]] - mean(data[[varname]])
+        data[[varname]] <- I(x_centered)
+
+        beta_t <- resolve_effect(
+          effect_spec,
+          "linear",
+          yind = yind,
+          random_generator = random_generator
+        )
         if (is.function(beta_t)) {
           beta_vec <- beta_t(yind)
         } else if (is.matrix(beta_t)) {
@@ -1551,10 +2151,7 @@ pffrSim_formula <- function(
         } else {
           beta_vec <- beta_t
         }
-        etaTerms[[term_label]] <- compute_linear_effect(
-          data[[varname]],
-          beta_vec
-        )
+        etaTerms[[term_label]] <- compute_linear_effect(x_centered, beta_vec)
         beta_coefs[[term_label]] <- beta_vec
       }
     }
