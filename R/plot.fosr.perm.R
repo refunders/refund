@@ -1,7 +1,7 @@
 #' @export
 #' @rdname fosr.perm
 plot.fosr.perm <-
-function(x, level=.05, xlabel="", title=NULL,...) {
+function(x, level=NULL, xlabel="", title=NULL,...) {
 	if (is.null(level)) {
 		if (is.null(x$level)) stop("Must specify level at which to test")
 		else testobj = x
