@@ -9,11 +9,15 @@
 #   - pffr_gls (GLS with estimated hatSigma)
 #   - pffr_ar (AR(1) residuals via bam)
 #
-# Metrics per term type (ff, concurrent, linear, smooth):
+# Metrics per term type (ff, concurrent, linear, smooth, intercept, E(Y)):
 #   - coverage: fraction of grid points where CI contains truth
 #   - mean_width: average CI width across grid
 #   - rmse: root mean squared error of estimates
 #   - fit_time_total: fitting time (includes pilot for gls/ar)
+#
+# Additional metrics:
+#   - intercept: coverage/width/RMSE for the functional intercept mu(t)
+#   - E(Y): coverage/width/RMSE for fitted values vs true linear predictor
 
 # Setup -----------------------------------------------------------------------
 
@@ -77,7 +81,7 @@ make_dgp_settings <- function(size = c("tiny", "small", "full")) {
       dgp_id = row_number(),
       corr_param = NA_real_,
       hetero_param = NA_real_,
-      terms = list(c("ff", "linear", "smooth")) # concurrent needs special handling
+      terms = list(c("ff", "linear", "smooth", "concurrent"))
     )
 }
 
@@ -145,15 +149,18 @@ generate_benchmark_data <- function(
   formula_parts <- c(
     if ("ff" %in% terms) "ff(X1)" else NULL,
     if ("linear" %in% terms) "zlin" else NULL,
-    if ("smooth" %in% terms) "s(zsmoo)" else NULL
+    if ("smooth" %in% terms) "s(zsmoo)" else NULL,
+    if ("concurrent" %in% terms) "Xconc" else NULL
   )
   formula <- as.formula(paste("Y ~", paste(formula_parts, collapse = " + ")))
 
   # Use "random" effects with specified wiggliness for reproducible random truth
+  # Concurrent terms need list syntax: list(type = "concurrent", effect = "random")
   effects <- list(
     X1 = "random",
     zlin = "random",
-    zsmoo = "random"
+    zsmoo = "random",
+    Xconc = list(type = "concurrent", effect = "random")
   )
 
   # Generate base data with pffr_simulate (iid gaussian errors, SNR applied)
@@ -225,16 +232,29 @@ generate_benchmark_data <- function(
 #'
 #' @param sim Simulation result from generate_benchmark_data().
 #' @param s_grid s evaluation grid (for ff xind).
-#' @param k_smooth Basis dimension for smooth terms.
+#' @param k_smooth Basis dimension for smooth terms (default 12).
+#' @param k_ff Basis dimensions for ff term as c(k_s, k_t) (default c(12, 12)).
 #' @returns Formula object with environment containing s_grid.
-build_pffr_formula <- function(sim, s_grid, k_smooth = 10) {
+#' @details Default basis dimensions are set larger than truth generation
+#'   defaults (k=8 for all terms) to avoid smoothing bias.
+build_pffr_formula <- function(sim, s_grid, k_smooth = 12, k_ff = c(12, 12)) {
   terms <- sim$terms
 
   # xind for ff is passed via s_grid variable
+  # Use larger k for ff term to reduce smoothing bias
   formula_parts <- c(
-    if ("ff" %in% terms) "ff(X1, xind = s_grid)" else NULL,
+    if ("ff" %in% terms) {
+      sprintf(
+        "ff(X1, xind = s_grid, splinepars = list(bs = 'ps', k = c(%d, %d)))",
+        k_ff[1],
+        k_ff[2]
+      )
+    } else {
+      NULL
+    },
     if ("linear" %in% terms) "zlin" else NULL,
-    if ("smooth" %in% terms) sprintf("s(zsmoo, k = %d)", k_smooth) else NULL
+    if ("smooth" %in% terms) sprintf("s(zsmoo, k = %d)", k_smooth) else NULL,
+    if ("concurrent" %in% terms) "Xconc" else NULL
   )
 
   frml <- as.formula(paste("Y ~", paste(formula_parts, collapse = " + ")))
@@ -251,20 +271,26 @@ build_pffr_formula <- function(sim, s_grid, k_smooth = 10) {
 #'
 #' @param sim Simulation result.
 #' @param methods Character vector of methods to fit.
+#' @param k_yindex Basis dimension for varying coefficient terms (default 12).
 #' @returns List with fits and timings.
-fit_all_methods <- function(sim, methods) {
+#' @details Default k_yindex must be larger than truth generation default
+#'   (k=8 for all terms) to avoid smoothing bias.
+fit_all_methods <- function(sim, methods, k_yindex = 12) {
   dat <- sim$data
   t_grid <- sim$t_grid
   s_grid <- sim$s_grid
 
-  formula <- build_pffr_formula(sim, s_grid)
+  formula <- build_pffr_formula(sim, s_grid, k_smooth = 12, k_ff = c(12, 12))
+
+  # Use larger basis for varying coefficient terms to reduce smoothing bias
+  bs_yindex <- list(bs = "ps", k = k_yindex, m = c(2, 1))
 
   fits <- list()
   timings <- list()
 
   # Always fit pffr first (pilot for GLS/AR)
   t0 <- Sys.time()
-  fits$pffr <- pffr(formula, yind = t_grid, data = dat)
+  fits$pffr <- pffr(formula, yind = t_grid, data = dat, bs.yindex = bs_yindex)
   pffr_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
   timings$pffr <- pffr_time
 
@@ -281,7 +307,8 @@ fit_all_methods <- function(sim, methods) {
       formula,
       yind = t_grid,
       data = dat,
-      family = mgcv::gaulss()
+      family = mgcv::gaulss(),
+      bs.yindex = bs_yindex
     )
     gaulss_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     timings$pffr_gaulss <- gaulss_time
@@ -295,7 +322,8 @@ fit_all_methods <- function(sim, methods) {
       formula,
       yind = t_grid,
       data = dat,
-      hatSigma = hatSigma
+      hatSigma = hatSigma,
+      bs.yindex = bs_yindex
     )
     gls_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     timings$pffr_gls <- pffr_time + gls_time
@@ -311,7 +339,8 @@ fit_all_methods <- function(sim, methods) {
       yind = t_grid,
       data = dat,
       algorithm = "bam",
-      rho = rho
+      rho = rho,
+      bs.yindex = bs_yindex
     )
     ar_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     timings$pffr_ar <- pffr_time + ar_time
@@ -326,7 +355,7 @@ fit_all_methods <- function(sim, methods) {
 #' Find term index in coef.pffr output by term type
 #'
 #' @param sm_names Names of smterms from coef().
-#' @param term_type One of "ff", "linear", "smooth".
+#' @param term_type One of "ff", "linear", "smooth", "intercept", "concurrent".
 #' @returns Integer index or NULL.
 find_term_index <- function(sm_names, term_type) {
   for (i in seq_along(sm_names)) {
@@ -334,6 +363,8 @@ find_term_index <- function(sm_names, term_type) {
     if (term_type == "ff" && grepl("ff\\(x1\\)", nm)) return(i)
     if (term_type == "linear" && grepl("zlin", nm)) return(i)
     if (term_type == "smooth" && grepl("zsmoo", nm)) return(i)
+    if (term_type == "intercept" && grepl("^intercept\\(", nm)) return(i)
+    if (term_type == "concurrent" && grepl("xconc", nm)) return(i)
   }
   NULL
 }
@@ -364,6 +395,7 @@ should_center_ff_truth <- function(fit) {
 #' @param term_info Coefficient term info from coef.pffr.
 #' @param s_grid Original s grid from simulation.
 #' @param t_grid Original t grid from simulation.
+#' @param data Data frame used for fitting (needed for smooth term centering).
 #' @param fit Optional pffr fit used to decide whether to apply centering
 #'   constraints when evaluating truth.
 #' @param center_ff One of "match_fit", "always", "never". If "match_fit",
@@ -375,6 +407,7 @@ evaluate_truth_on_grid <- function(
   term_info,
   s_grid,
   t_grid,
+  data = NULL,
   fit = NULL,
   center_ff = c("match_fit", "always", "never")
 ) {
@@ -473,11 +506,49 @@ evaluate_truth_on_grid <- function(
     }
 
     # Center per t to match pffr constraints
-    if (is.matrix(f_eval)) {
-      f_eval <- sweep(f_eval, 2, colMeans(f_eval), "-")
+    # Must use actual observed z values, not the evaluation grid
+    if (is.matrix(f_eval) && is.function(f_zt)) {
+      z_obs <- if (!is.null(data) && !is.null(data$zsmoo)) {
+        as.vector(data$zsmoo)
+      } else {
+        warning(
+          "No z observations available for smooth centering, using eval grid"
+        )
+        x_eval
+      }
+      f_on_obs <- f_zt(z_obs, y_eval)
+      f_eval <- sweep(f_eval, 2, colMeans(f_on_obs), "-")
     }
 
     return(as.vector(f_eval))
+  }
+
+  if (term_type == "intercept") {
+    # mu(t) - stored as 1D vector over t
+    beta_t <- beta$intercept
+    if (is.null(beta_t)) return(NULL)
+
+    # Interpolate to evaluation grid if needed
+    if (!is.null(x_eval) && length(x_eval) != length(beta_t)) {
+      beta_eval <- stats::approx(t_grid, beta_t, xout = x_eval, rule = 2)$y
+    } else {
+      beta_eval <- beta_t
+    }
+    return(beta_eval)
+  }
+
+  if (term_type == "concurrent") {
+    # beta(t) for concurrent term - stored as 1D vector
+    beta_t <- beta$Xconc
+    if (is.null(beta_t)) return(NULL)
+
+    # Interpolate to evaluation grid if needed
+    if (!is.null(x_eval) && length(x_eval) != length(beta_t)) {
+      beta_eval <- stats::approx(t_grid, beta_t, xout = x_eval, rule = 2)$y
+    } else {
+      beta_eval <- beta_t
+    }
+    return(beta_eval)
   }
 
   NULL
@@ -492,6 +563,7 @@ evaluate_truth_on_grid <- function(
 #' @param use_sandwich Use sandwich SEs?
 #' @param s_grid s evaluation points (for ff).
 #' @param t_grid t evaluation points.
+#' @param data Data frame used for fitting (needed for smooth term centering).
 #' @returns Tibble with one row of metrics, or NULL if term not found.
 compute_term_metrics <- function(
   fit,
@@ -501,6 +573,7 @@ compute_term_metrics <- function(
   use_sandwich = FALSE,
   s_grid = NULL,
   t_grid = NULL,
+  data = NULL,
   coefs = NULL
 ) {
   # Extract coefficients
@@ -543,6 +616,7 @@ compute_term_metrics <- function(
     term_info,
     s_grid,
     t_grid,
+    data = data,
     fit = fit
   )
   if (is.null(truth_vals)) {
@@ -575,6 +649,45 @@ compute_term_metrics <- function(
     coverage = mean(covered, na.rm = TRUE),
     mean_width = mean(width, na.rm = TRUE),
     rmse = sqrt(mean((est - truth_vals)^2, na.rm = TRUE)),
+    n_grid = sum(!is.na(covered))
+  )
+}
+
+#' Compute E(Y) metrics (fitted values vs true eta)
+#'
+#' @param fit A pffr fit.
+#' @param truth Truth list from simulation.
+#' @param alpha Significance level for CI.
+#' @returns Tibble with one row of E(Y) metrics.
+compute_ey_metrics <- function(fit, truth, alpha = 0.10) {
+  # Get fitted values with SE
+  pred <- tryCatch(
+    predict(fit, se.fit = TRUE, type = "link"),
+    error = function(e) NULL
+  )
+  if (is.null(pred)) return(NULL)
+
+  # Truth is the full eta matrix (n x nyindex)
+  eta_true <- truth$eta
+  if (is.null(eta_true)) return(NULL)
+
+  # Ensure dimensions match
+  fit_mat <- matrix(pred$fit, nrow = nrow(eta_true), ncol = ncol(eta_true))
+  se_mat <- matrix(pred$se.fit, nrow = nrow(eta_true), ncol = ncol(eta_true))
+
+  # Compute pointwise CIs
+  z <- qnorm(1 - alpha / 2)
+  lower <- fit_mat - z * se_mat
+  upper <- fit_mat + z * se_mat
+
+  # Coverage, width, RMSE
+  covered <- (eta_true >= lower) & (eta_true <= upper)
+
+  tibble(
+    term_type = "E(Y)",
+    coverage = mean(covered, na.rm = TRUE),
+    mean_width = mean(2 * z * se_mat, na.rm = TRUE),
+    rmse = sqrt(mean((fit_mat - eta_true)^2, na.rm = TRUE)),
     n_grid = sum(!is.na(covered))
   )
 }
@@ -624,6 +737,7 @@ compute_all_metrics <- function(
       use_sandwich = use_sandwich,
       s_grid = sim$s_grid,
       t_grid = sim$t_grid,
+      data = sim$data,
       coefs = coefs
     )
     if (!is.null(metrics)) {
@@ -631,6 +745,30 @@ compute_all_metrics <- function(
     }
     metrics
   })
+
+  # Add intercept metrics (always present in pffr models)
+  intercept_metrics <- compute_term_metrics(
+    fit,
+    truth,
+    "intercept",
+    alpha = alpha,
+    use_sandwich = use_sandwich,
+    s_grid = sim$s_grid,
+    t_grid = sim$t_grid,
+    data = sim$data,
+    coefs = coefs
+  )
+  if (!is.null(intercept_metrics)) {
+    intercept_metrics$method <- method
+    results <- bind_rows(results, intercept_metrics)
+  }
+
+  # Add E(Y) metrics (fitted values vs true eta)
+  ey_metrics <- compute_ey_metrics(fit, truth, alpha)
+  if (!is.null(ey_metrics)) {
+    ey_metrics$method <- method
+    results <- bind_rows(results, ey_metrics)
+  }
 
   results
 }
@@ -920,6 +1058,17 @@ summarize_timings <- function(results) {
 }
 
 # Main Execution (when sourced) -----------------------------------------------
+
+if (FALSE) {
+  # LRZ, 26/01/20
+  results <- run_benchmark(
+    dgp_settings = make_dgp_settings("full"),
+    n_rep = 10,
+    seed = 2026,
+    parallel = TRUE,
+    n_workers = 10
+  )
+}
 
 if (sys.nframe() == 0) {
   # Running as script

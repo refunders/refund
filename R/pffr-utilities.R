@@ -392,7 +392,7 @@ simplify_term_label <- function(term_name, yindname) {
 #'   (very smooth) to 10 (very wiggly).
 #' @param k_truth Named list of basis dimensions for random truth generation.
 #'   Defaults: \code{list(ff_s = 8, ff_t = 8, smooth_z = 8, smooth_t = 8,
-#'   linear = 15, intercept = 15, concurrent = 15)}.
+#'   linear = 8, intercept = 8, concurrent = 8)}.
 #'
 #' @returns A data frame (or list if \code{propmissing > 0}) with simulated
 #'   data and attributes:
@@ -1102,7 +1102,7 @@ make_random_2d_fn <- function(s_ref, t_ref, k_s, k_t, wiggliness) {
 #'   Typical range: 0.001 (very smooth) to 10 (very wiggly).
 #' @param k_truth List with basis dimensions per term type. Defaults:
 #'   ff_s = 8, ff_t = 8, smooth_z = 8, smooth_t = 8,
-#'   linear = 15, intercept = 15, concurrent = 15.
+#'   linear = 8, intercept = 8, concurrent = 8.
 #' @returns List with generator functions for each term type.
 #' @keywords internal
 make_random_truth_generator <- function(
@@ -1113,15 +1113,16 @@ make_random_truth_generator <- function(
   k_truth = list()
 ) {
   # Merge with defaults
+  # Use k=8 for all terms so wiggliness parameter has consistent meaning
   k <- modifyList(
     list(
       ff_s = 8L,
       ff_t = 8L,
       smooth_z = 8L,
       smooth_t = 8L,
-      linear = 15L,
-      intercept = 15L,
-      concurrent = 15L
+      linear = 8L,
+      intercept = 8L,
+      concurrent = 8L
     ),
     k_truth
   )
