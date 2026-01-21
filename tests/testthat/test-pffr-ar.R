@@ -4,8 +4,8 @@
 
 test_that("pffr builds AR.start for dense data when rho is supplied", {
   skip_on_cran()
-  set.seed(2501)
-  sim <- pffr_simulate(scenario = "int", n = 8, nygrid = 12)
+
+  sim <- get_ar_data()
   tgrid <- attr(sim, "yindex")
   fit <- pffr(
     Y ~ c(1),
@@ -33,8 +33,8 @@ test_that("pffr builds AR.start for dense data when rho is supplied", {
 
 test_that("unsupported AR settings throw informative errors", {
   skip_on_cran()
-  set.seed(2502)
-  sim <- pffr_simulate(scenario = "int", n = 4, nygrid = 6)
+
+  sim <- get_ar_data()
   tgrid <- attr(sim, "yindex")
 
   expect_error(
@@ -67,8 +67,8 @@ test_that("unsupported AR settings throw informative errors", {
 
 test_that("pffr AR fits match mgcv::bam on stacked data", {
   skip_on_cran()
-  set.seed(2503)
-  sim <- pffr_simulate(scenario = "int", n = 9, nygrid = 10)
+
+  sim <- get_ar_data()
   tgrid <- attr(sim, "yindex")
   fit <- pffr(
     Y ~ c(1),

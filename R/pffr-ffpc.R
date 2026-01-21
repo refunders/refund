@@ -84,12 +84,16 @@ ffpc <- function(
   decomppars = list(pve = .99, useSymm = TRUE),
   npc.max = 15
 ) {
-  # check & format index for Y
-  #     if(!missing(yind))
-  #         if(is.null(dim(yind))){
-  #             yind <- t(t(yind))
-  #         }
-  #     nygrid <- length(yind)
+  # Deprecation warning for yind
+  if (!is.null(yind)) {
+    .Deprecated(
+      msg = paste0(
+        "The 'yind' argument in ffpc() is deprecated and ignored. ",
+        "The y-index is now obtained automatically from pffr()."
+      )
+    )
+  }
+
   nxgrid <- length(xind)
 
   # check & format index for X

@@ -21,43 +21,43 @@ PFFR_SPECIALS <- c("s", "te", "ti", "t2", "ff", "c", "sff", "ffpc", "pcre")
 #' @param ydata Optional sparse/irregular response data (unused).
 #' @returns A list with:
 #'   - `tf`: The terms object
-#'   - `trmstrings`: Character vector of term labels
+#'   - `term_strings`: Character vector of term labels
 #'   - `terms`: Named list of parsed term calls
-#'   - `frmlenv`: Formula environment
-#'   - `where.specials`: Named list of term indices by type
-#'   - `responsename`: Response variable name
+#'   - `frml_env`: Formula environment
+#'   - `where_specials`: Named list of term indices by type
+#'   - `response_name`: Response variable name
 #'   - `has_intercept`: Logical, whether formula has intercept
 #' @keywords internal
 parse_pffr_model_formula <- function(formula, data = NULL, ydata = NULL) {
   tf <- terms.formula(formula, specials = PFFR_SPECIALS)
-  trmstrings <- attr(tf, "term.labels")
+  term_strings <- attr(tf, "term.labels")
 
   # Parse each term string into a call
-  terms <- lapply(trmstrings, \(trm) as.call(parse(text = trm))[[1]])
-  names(terms) <- trmstrings
+  terms <- lapply(term_strings, \(trm) as.call(parse(text = trm))[[1]])
+  names(terms) <- term_strings
 
   # Classify terms by type
-  where.specials <- lapply(
+  where_specials <- lapply(
     PFFR_SPECIALS,
     \(sp) attr(tf, "specials")[[sp]] - 1
   )
-  names(where.specials) <- PFFR_SPECIALS
+  names(where_specials) <- PFFR_SPECIALS
 
   # Parametric terms are those not in any special category
   all_special_indices <- unlist(attr(tf, "specials")) - 1
-  where.specials$par <- if (length(trmstrings)) {
-    which(!seq_along(trmstrings) %in% all_special_indices)
+  where_specials$par <- if (length(term_strings)) {
+    which(!seq_along(term_strings) %in% all_special_indices)
   } else {
     numeric(0)
   }
 
   list(
     tf = tf,
-    trmstrings = trmstrings,
+    term_strings = term_strings,
     terms = terms,
-    frmlenv = environment(formula),
-    where.specials = where.specials,
-    responsename = attr(tf, "variables")[2][[1]],
+    frml_env = environment(formula),
+    where_specials = where_specials,
+    response_name = attr(tf, "variables")[2][[1]],
     has_intercept = attr(tf, "intercept") == 1
   )
 }
@@ -66,20 +66,20 @@ parse_pffr_model_formula <- function(formula, data = NULL, ydata = NULL) {
 #'
 #' Creates an s() smooth term for the functional intercept.
 #'
-#' @param yindvecname Name of the y-index vector variable (character).
+#' @param yind_vec_name Name of the y-index vector variable (character).
 #' @param bs_int Spline basis specification for intercept (named list).
-#' @param yindname Name of y-index for labeling.
+#' @param yind_name Name of y-index for labeling.
 #' @returns List with `term_string` and `label`.
 #' @keywords internal
-transform_intercept_term <- function(yindvecname, bs_int, yindname) {
-  # Build: s(yindvecname, bs=..., k=..., m=...)
+transform_intercept_term <- function(yind_vec_name, bs_int, yind_name) {
+  # Build: s(yind_vec_name, bs=..., k=..., m=...)
   intcall <- as.call(c(
-    list(as.name("s"), as.name(yindvecname)),
+    list(as.name("s"), as.name(yind_vec_name)),
     bs_int
   ))
 
   intstring <- safeDeparse(intcall)
-  names(intstring) <- paste0("Intercept(", yindname, ")")
+  names(intstring) <- paste0("Intercept(", yind_name, ")")
 
   list(term_string = intstring, label = names(intstring))
 }
@@ -99,7 +99,7 @@ transform_c_term <- function(term_string) {
 #' include the functional response index.
 #'
 #' @param term The term call object.
-#' @param yindvecname Name of y-index vector (character).
+#' @param yind_vec_name Name of y-index vector (character).
 #' @param bs_yindex Default basis spec for y-index (named list).
 #' @param tensortype Type of tensor product (symbol: ti or t2).
 #' @param algorithm Fitting algorithm name (character or symbol).
@@ -107,7 +107,7 @@ transform_c_term <- function(term_string) {
 #' @keywords internal
 transform_smooth_term <- function(
   term,
-  yindvecname,
+  yind_vec_name,
   bs_yindex,
   tensortype,
   algorithm
@@ -123,7 +123,7 @@ transform_smooth_term <- function(
   xnew$d <- get_smooth_dimensions(term, term_type)
 
   # Add y-index as last variable
-  xnew[[length(xnew) + 1]] <- as.name(yindvecname)
+  xnew[[length(xnew) + 1]] <- as.name(yind_vec_name)
 
   # Get term-specific or default bs.yindex
   this_bs_yindex <- term$bs.yindex %||% bs_yindex
@@ -235,27 +235,27 @@ get_smooth_k <- function(term, d, bs_yindex) {
 #' Converts scalar covariates to smooth varying coefficient terms.
 #'
 #' @param term The term (call or symbol).
-#' @param yindvecname Name of y-index vector (character).
+#' @param yind_vec_name Name of y-index vector (character).
 #' @param bs_yindex Basis spec for y-index (named list).
 #' @returns Transformed term string.
 #' @keywords internal
-transform_par_term <- function(term, yindvecname, bs_yindex) {
-  xnew <- as.call(c(quote(s), as.name(yindvecname), by = term, bs_yindex))
+transform_par_term <- function(term, yind_vec_name, bs_yindex) {
+  xnew <- as.call(c(quote(s), as.name(yind_vec_name), by = term, bs_yindex))
   safeDeparse(xnew)
 }
 
 #' Build the mgcv data frame from pffr components
 #'
-#' @param newfrmlenv Environment containing the transformed variables.
+#' @param newfrml_env Environment containing the transformed variables.
 #' @returns A data frame for mgcv fitting.
 #' @keywords internal
-build_mgcv_data <- function(newfrmlenv) {
-  list2df(as.list(newfrmlenv))
+build_mgcv_data <- function(newfrml_env) {
+  list2df(as.list(newfrml_env))
 }
 
 #' Build the final mgcv formula from transformed terms
 #'
-#' @param responsename Response variable name (symbol or character).
+#' @param response_name Response variable name (symbol or character).
 #' @param intercept_string Intercept term string (or NULL if no intercept).
 #' @param term_strings Character vector of transformed term strings.
 #' @param has_intercept Logical, whether model has intercept.
@@ -263,16 +263,16 @@ build_mgcv_data <- function(newfrmlenv) {
 #' @returns Formula object for mgcv.
 #' @keywords internal
 build_mgcv_formula <- function(
-  responsename,
+  response_name,
   intercept_string,
   term_strings,
   has_intercept,
   formula_env
 ) {
   frml_str <- if (has_intercept && !is.null(intercept_string)) {
-    paste(responsename, "~", intercept_string)
+    paste(response_name, "~", intercept_string)
   } else {
-    paste(responsename, "~ 0")
+    paste(response_name, "~ 0")
   }
 
   if (length(term_strings) > 0) {

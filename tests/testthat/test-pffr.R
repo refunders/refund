@@ -49,44 +49,21 @@ sim_xlin_data <- function(n, nygrid, SNR = 50, family = gaussian()) {
 ###############################################################################
 
 test_that("all major pffr terms are working (legacy scenario='all')", {
-  set.seed(9312)
-  # Legacy scenario call may trigger deprecation warning (once per session)
-  data2 <- suppressWarnings(pffr_simulate(scenario = "all", n = 30))
-  argvals <- attr(data2, "yindex")
-  s <- attr(data2, "xindex")
-
-  m2 <- pffr(
-    Y ~
-      ff(X1, xind = s) +
-        xlin +
-        c(te(xte1, xte2)) +
-        s(xsmoo) +
-        c(xconst),
-    yind = argvals,
-    data = data2
-  )
+  m2 <- get_all_scenario_model()
+  dat <- get_all_scenario_data()
+  argvals <- attr(dat, "yindex")
 
   expect_s3_class(m2, "pffr")
-  # Verify model produces reasonable fitted values
-
   expect_equal(dim(fitted(m2)), c(30, length(argvals)))
   expect_false(any(is.na(fitted(m2))))
 })
 
 test_that("convenience functions are working", {
-  set.seed(9313)
-  data2 <- pffr_simulate(scenario = "all", n = 30)
+  m2 <- get_all_scenario_model()
+  data2 <- get_all_scenario_data()
   argvals <- attr(data2, "yindex")
-  s <- attr(data2, "xindex")
-
-  m2 <- pffr(
-    Y ~ ff(X1, xind = s) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst),
-    yind = argvals,
-    data = data2
-  )
 
   # summary
-
   summ <- summary(m2)
   expect_s3_class(summ, "summary.pffr")
   expect_true(!is.null(summ$s.table))
@@ -100,7 +77,7 @@ test_that("convenience functions are working", {
 
   # predict on new data
   set.seed(9314)
-  preddata <- pffr_simulate(scenario = "all", n = 20)
+  preddata <- suppressWarnings(pffr_simulate(scenario = "all", n = 20))
   pred <- predict(m2, newdata = preddata)
   expect_true(is.matrix(pred))
   expect_equal(dim(pred), c(20, length(argvals)))
@@ -120,22 +97,13 @@ test_that("convenience functions are working", {
 })
 
 test_that("pffr with sparse data works", {
-  set.seed(88182004)
-  data3 <- pffr_simulate(scenario = c("int", "smoo"), n = 30, propmissing = 0.8)
-  t <- attr(data3, "yindex")
+  data3 <- get_sparse_data()
+  m3.sparse <- get_sparse_model()
 
   # Verify sparse data structure
-
   expect_true(is.list(data3))
   expect_true("ydata" %in% names(data3))
   expect_true("data" %in% names(data3))
-
-  m3.sparse <- pffr(
-    Y ~ s(xsmoo),
-    data = data3$data,
-    ydata = data3$ydata,
-    yind = t
-  )
 
   expect_s3_class(m3.sparse, "pffr")
   summ <- summary(m3.sparse)
@@ -1033,7 +1001,7 @@ test_that("factor with 3 levels works as varying coefficient", {
   expect_true(is.list(coefs))
 
   # shortlabels should include distinct level names
-  shortlabels <- m$pffr$shortlabels
+  shortlabels <- m$pffr$short_labels
   expect_true(length(shortlabels) >= length(levels(dat$xfactor3)))
   expect_true(all(vapply(
     levels(dat$xfactor3),
@@ -1069,15 +1037,12 @@ test_that("factor in interaction with smooth terms", {
 
 test_that("residuals.pffr returns correct dimensions and handles sparse data", {
   skip_on_cran()
-  set.seed(103)
 
+  # Regular data - use shared fixture
+  m <- get_xlin_model()
+  dat <- get_xlin_data()
   n <- 30
   nygrid <- 25
-
-  # Regular data
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-  m <- pffr(Y ~ xlin, yind = t, data = dat)
 
   # Test reformatted residuals
   resid_mat <- residuals(m, reformat = TRUE)
@@ -1089,20 +1054,8 @@ test_that("residuals.pffr returns correct dimensions and handles sparse data", {
   expect_true(is.vector(resid_vec))
   expect_equal(length(resid_vec), n * nygrid)
 
-  # Test sparse data residuals
-  set.seed(104)
-  dat_sparse <- pffr_simulate(
-    scenario = c("int", "smoo"),
-    n = 30,
-    propmissing = 0.5
-  )
-  t_sparse <- attr(dat_sparse, "yindex")
-  m_sparse <- pffr(
-    Y ~ s(xsmoo),
-    data = dat_sparse$data,
-    ydata = dat_sparse$ydata,
-    yind = t_sparse
-  )
+  # Test sparse data residuals - use shared fixture
+  m_sparse <- get_sparse_model()
 
   resid_sparse <- residuals(m_sparse, reformat = TRUE)
   expect_true(is.data.frame(resid_sparse))
@@ -1115,14 +1068,7 @@ test_that("plot.pffr runs without error (smoke test)", {
   # The plot.pffr method itself works but has object name scoping issues
   skip("plot.pffr has known mgcv object dispatch issues")
 
-  set.seed(105)
-
-  n <- 25
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-  m <- pffr(Y ~ xlin, yind = t, data = dat)
+  m <- get_xlin_model()
 
   # Smoke test: plot should run without error
   expect_no_error(suppressWarnings(plot(m, pages = 1)))
@@ -1130,14 +1076,8 @@ test_that("plot.pffr runs without error (smoke test)", {
 
 test_that("qq.pffr runs without error (smoke test)", {
   skip_on_cran()
-  set.seed(106)
 
-  n <- 25
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-  m <- pffr(Y ~ xlin, yind = t, data = dat)
+  m <- get_xlin_model()
 
   # Smoke test: qq.pffr should run without error
   expect_silent(suppressWarnings(pffr_qq(m)))
@@ -1145,14 +1085,8 @@ test_that("qq.pffr runs without error (smoke test)", {
 
 test_that("pffr.check runs without error (smoke test)", {
   skip_on_cran()
-  set.seed(107)
 
-  n <- 25
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-  m <- pffr(Y ~ xlin, yind = t, data = dat)
+  m <- get_xlin_model()
 
   # Smoke test: pffr.check should run without error
   # It produces output (diagnostics), so we just check it doesn't error
@@ -1161,23 +1095,8 @@ test_that("pffr.check runs without error (smoke test)", {
 
 test_that("print.summary.pffr output contains expected information", {
   skip_on_cran()
-  set.seed(108)
 
-  n <- 30
-  nygrid <- 25
-
-  dat <- pffr_simulate(
-    Y ~ ff(X1, xind = s) + xlin,
-    n = n,
-    nxgrid = 20,
-    nygrid = nygrid,
-    effects = list(X1 = "cosine", xlin = "dnorm"),
-    SNR = 50
-  )
-  s <- attr(dat, "xindex")
-  t <- attr(dat, "yindex")
-
-  m <- pffr(Y ~ ff(X1, xind = s) + xlin, yind = t, data = dat)
+  m <- get_basic_pffr_model()
   summ <- summary(m)
 
   # Capture print output
@@ -1204,14 +1123,10 @@ test_that("print.summary.pffr output contains expected information", {
 
 test_that("se.fit = TRUE in predict.pffr returns correct structure", {
   skip_on_cran()
-  set.seed(109)
 
+  m <- get_xlin_model()
   n <- 30
   nygrid <- 25
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-  m <- pffr(Y ~ xlin, yind = t, data = dat)
 
   # Test se.fit = TRUE
   pred_se <- predict(m, se.fit = TRUE)
@@ -1387,16 +1302,10 @@ test_that("coef.pffr works with pcre terms with 3 FPCs", {
 
 test_that("fitted.pffr with gaulss family returns mean/scale correctly", {
   skip_on_cran()
-  set.seed(112)
 
+  m <- get_gaulss_model()
   n <- 30
   nygrid <- 25
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  # Fit gaulss model
-  m <- pffr(Y ~ xlin, yind = t, data = dat, family = mgcv::gaulss())
 
   expect_s3_class(m, "pffr")
 
@@ -1432,18 +1341,11 @@ test_that("fitted.pffr with gaulss family returns mean/scale correctly", {
 
 test_that("gaulss model has correct shortlabels for scale parameter", {
   skip_on_cran()
-  set.seed(113)
 
-  n <- 30
-  nygrid <- 25
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  m <- pffr(Y ~ xlin, yind = t, data = dat, family = mgcv::gaulss())
+  m <- get_gaulss_model()
 
   # Check shortlabels includes log(SD) label
-  shortlabels <- m$pffr$shortlabels
+  shortlabels <- m$pffr$short_labels
   expect_true(any(grepl("log\\(SD\\)", shortlabels)))
 
   # Summary should show log(SD)(t) instead of NA
@@ -1475,10 +1377,10 @@ test_that("create_shortlabels handles complex scale formulas for gaulss", {
   mock_family <- list(nlp = 2)
 
   result <- create_shortlabels(
-    labelmap = mock_labelmap,
-    m.smooth = mock_smooth,
-    yindname = "t",
-    where.specials = mock_where,
+    label_map = mock_labelmap,
+    m_smooth = mock_smooth,
+    yind_name = "t",
+    where_specials = mock_where,
     family = mock_family
   )
 
@@ -1490,10 +1392,10 @@ test_that("create_shortlabels handles complex scale formulas for gaulss", {
 
   # Without gaulss family, scale smooths should NOT be labeled
   result_gaussian <- create_shortlabels(
-    labelmap = mock_labelmap,
-    m.smooth = mock_smooth,
-    yindname = "t",
-    where.specials = mock_where,
+    label_map = mock_labelmap,
+    m_smooth = mock_smooth,
+    yind_name = "t",
+    where_specials = mock_where,
     family = list(nlp = 1) # Regular family
   )
 
@@ -1508,19 +1410,10 @@ test_that("create_shortlabels handles complex scale formulas for gaulss", {
 
 test_that("pffrGLS fits a simple model correctly", {
   skip_on_cran()
-  set.seed(200)
 
+  m <- get_gls_model()
   n <- 30
   nygrid <- 25
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  # Construct AR(1) covariance matrix
-  rho <- 0.5
-  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
-
-  m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
 
   expect_s3_class(m, "pffr")
   expect_equal(dim(fitted(m)), c(n, nygrid))
@@ -1529,23 +1422,13 @@ test_that("pffrGLS fits a simple model correctly", {
 
 test_that("pffrGLS has complete pffr slot", {
   skip_on_cran()
-  set.seed(201)
 
-  n <- 25
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  rho <- 0.3
-  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
-
-  m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+  m <- get_gls_model()
 
   # Check pffr slot has all required fields
-  expect_true(!is.null(m$pffr$shortlabels))
-  expect_true(!is.null(m$pffr$labelmap))
-  expect_true(!is.null(m$pffr$termmap))
+  expect_true(!is.null(m$pffr$short_labels))
+  expect_true(!is.null(m$pffr$label_map))
+  expect_true(!is.null(m$pffr$term_map))
   expect_true(!is.null(m$pffr$nobs))
   expect_true(!is.null(m$pffr$nyindex))
   expect_true(!is.null(m$pffr$yind))
@@ -1591,18 +1474,8 @@ test_that("pffrGLS works with ff() terms", {
 
 test_that("pffrGLS summary and coef methods work", {
   skip_on_cran()
-  set.seed(203)
 
-  n <- 25
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  rho <- 0.4
-  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
-
-  m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+  m <- get_gls_model()
 
   # Test summary
   summ <- summary(m)
@@ -1662,18 +1535,11 @@ test_that("pffrGLS rejects missing values in response", {
 
 test_that("pffrGLS predict works correctly", {
   skip_on_cran()
-  set.seed(206)
 
+  m <- get_gls_model()
+  dat <- get_xlin_data()
   n <- 30
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  rho <- 0.4
-  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
-
-  m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma)
+  nygrid <- 25
 
   # Predict on training data
   pred <- predict(m)
@@ -1694,15 +1560,8 @@ test_that("pffrGLS predict works correctly", {
 
 test_that("coefboot.pffr runs on simple pffr model", {
   skip_on_cran()
-  set.seed(210)
 
-  n <- 30
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  m <- pffr(Y ~ xlin, yind = t, data = dat)
+  m <- get_xlin_model()
 
   # Run bootstrap with small B for speed
   boot_ci <- pffr_coefboot(m, B = 5, showProgress = FALSE)
@@ -1717,15 +1576,8 @@ test_that("coefboot.pffr runs on simple pffr model", {
 
 test_that("coefboot.pffr residual resampling method works", {
   skip_on_cran()
-  set.seed(211)
 
-  n <- 25
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  m <- pffr(Y ~ xlin, yind = t, data = dat)
+  m <- get_xlin_model()
 
   # Test residual method
   boot_ci <- pffr_coefboot(m, B = 5, method = "residual", showProgress = FALSE)
@@ -1743,22 +1595,8 @@ test_that("coefboot.pffr residual resampling method works", {
 
 test_that("coefboot.pffr works with sparse/irregular data", {
   skip_on_cran()
-  set.seed(212)
 
-  # Generate sparse data
-  dat_sparse <- pffr_simulate(
-    scenario = c("int", "smoo"),
-    n = 30,
-    propmissing = 0.5
-  )
-  t <- attr(dat_sparse, "yindex")
-
-  m_sparse <- pffr(
-    Y ~ s(xsmoo),
-    data = dat_sparse$data,
-    ydata = dat_sparse$ydata,
-    yind = t
-  )
+  m_sparse <- get_sparse_model()
 
   # Run bootstrap with sparse data
   boot_ci <- pffr_coefboot(m_sparse, B = 5, showProgress = FALSE)
@@ -1770,16 +1608,8 @@ test_that("coefboot.pffr works with sparse/irregular data", {
 
 test_that("coefboot.pffr works with gaulss family", {
   skip_on_cran()
-  set.seed(213)
 
-  n <- 30
-  nygrid <- 20
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  # Fit gaulss model
-  m_gaulss <- pffr(Y ~ xlin, yind = t, data = dat, family = mgcv::gaulss())
+  m_gaulss <- get_gaulss_model()
 
   expect_s3_class(m_gaulss, "pffr")
 
@@ -1793,14 +1623,8 @@ test_that("coefboot.pffr works with gaulss family", {
 
 test_that("pffrGLS errors on sparse data (not yet implemented)", {
   skip_on_cran()
-  set.seed(214)
 
-  # Generate sparse data
-  dat_sparse <- pffr_simulate(
-    scenario = c("int", "smoo"),
-    n = 30,
-    propmissing = 0.5
-  )
+  dat_sparse <- get_sparse_data()
   t <- attr(dat_sparse, "yindex")
 
   rho <- 0.5
@@ -1825,19 +1649,19 @@ test_that("pffrGLS errors on sparse data (not yet implemented)", {
 
 test_that("pffr with sandwich=TRUE yields corrected covariance matrices", {
   skip_on_cran()
-  set.seed(215)
 
-  dat <- sim_xlin_data(n = 30, nygrid = 25, SNR = 50)
+  # Use shared data but need both sandwich and non-sandwich models
+  dat <- get_xlin_data()
   t <- attr(dat, "yindex")
 
-  # Fit without sandwich correction
-  m_std <- pffr(Y ~ xlin, yind = t, data = dat)
+  # Standard model is shared fixture
 
-  # Fit with sandwich correction
+  m_std <- get_xlin_model()
+
+  # Fit with sandwich correction (needs separate fit)
   m_sw <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
 
   # Verify sandwich flag is stored correctly
-
   expect_false(m_std$pffr$sandwich)
   expect_true(m_sw$pffr$sandwich)
 

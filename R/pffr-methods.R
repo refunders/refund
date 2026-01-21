@@ -85,7 +85,7 @@ predict.pffr <- function(
     # and dispatch immediately if so (need this so summary works as expected!)
     if (
       !(all(names(newdata) %in% names(object$model))) |
-        !(paste0(object$pffr$yindname, ".vec") %in% names(newdata))
+        !(paste0(object$pffr$yind_name, ".vec") %in% names(newdata))
     ) {
       # check lengths
       stopifnot(
@@ -99,20 +99,20 @@ predict.pffr <- function(
       #        covnames <- mapply(gsub,
       #                pattern=c(".[st]mat$"),
       #                replacement="", x=unique(unlist(sapply(object$smooth, function(x) x$term))))
-      #        covnames <- unique(covnames[covnames != paste(object$pffr$yindname, ".vec", sep="")])
+      #        covnames <- unique(covnames[covnames != paste(object$pffr$yind_name, ".vec", sep="")])
       #        stopifnot(all(covnames %in% names(newdata)))
 
       #get newdata into the shape expected by predict gam:
       gamdata <- list()
       #y-index
-      gamdata[[paste(object$pffr$yindname, ".vec", sep = "")]] <- rep(
+      gamdata[[paste(object$pffr$yind_name, ".vec", sep = "")]] <- rep(
         object$pffr$yind,
         times = nobs
       )
 
       # which covariates occur in which terms?
       varmap <- sapply(
-        names(object$pffr$labelmap),
+        names(object$pffr$label_map),
         function(x) all.vars(formula(paste("~", x)))
       )
 
@@ -616,7 +616,7 @@ coef_safe_range <- function(x) {
 #'
 #' @param trm A smooth term object from object$smooth.
 #' @param model_data The model data frame (object$model).
-#' @param pffr_info List with pffr metadata: yindname, pcreterms.
+#' @param pffr_info List with pffr metadata: yind_name, pcre_terms.
 #' @param grid_sizes Named list with n1, n2, n3 grid sizes.
 #' @param is_pcre Logical, is this a pcre term?
 #' @returns A data frame suitable for PredictMat, with xm/ym/zm attributes.
@@ -648,9 +648,9 @@ coef_make_data_grid <- function(
     xg <- if (is.factor(x)) unique(x) else seq(min(x), max(x), length = ng)
 
     which_pcre <- which(
-      sapply(pffr_info$pcreterms, `[[`, "idname") == trm$term[1]
+      sapply(pffr_info$pcre_terms, `[[`, "idname") == trm$term[1]
     )
-    pcreterm <- pffr_info$pcreterms[[which_pcre]]
+    pcreterm <- pffr_info$pcre_terms[[which_pcre]]
     yg <- seq(min(pcreterm$yind), max(pcreterm$yind), l = ng)
 
     # Interpolate eigenfunctions to grid values
@@ -666,7 +666,7 @@ coef_make_data_grid <- function(
     colnames(efcts_grid) <- colnames(pcreterm$efunctions)
 
     d <- cbind(expand.grid(xg, yg), efcts_grid)
-    colnames(d)[1:2] <- c(trm$term[1], paste0(pffr_info$yindname, ".vec"))
+    colnames(d)[1:2] <- c(trm$term[1], paste0(pffr_info$yind_name, ".vec"))
     attr(d, "xm") <- xg
     attr(d, "ym") <- yg
     return(finalize_grid_by_var(d, trm))
@@ -716,7 +716,7 @@ finalize_grid_by_var <- function(d, trm) {
 #' @param trm Smooth term object.
 #' @param data_grid Data frame from coef_make_data_grid.
 #' @param object_info List with: coefficients, cmX, Vp.
-#' @param pffr_info List with: yindname.
+#' @param pffr_info List with: yind_name.
 #' @param covmat Covariance matrix for SE computation.
 #' @param se Logical, compute standard errors?
 #' @param seWithMean Logical, include mean uncertainty?
@@ -739,7 +739,7 @@ coef_get_predictions <- function(
   # For pcre terms, temporarily adjust term for axis setup
   if (is_pcre) {
     trm$dim <- 2
-    trm$term[2] <- paste0(pffr_info$yindname, ".vec")
+    trm$term[2] <- paste0(pffr_info$yind_name, ".vec")
   }
 
   # Build result structure based on dimensionality
@@ -904,8 +904,8 @@ coef.pffr <- function(
   } else {
     # Prepare info structures for helper functions
     pffr_info <- list(
-      yindname = object$pffr$yindname,
-      pcreterms = object$pffr$pcreterms
+      yind_name = object$pffr$yind_name,
+      pcre_terms = object$pffr$pcre_terms
     )
     grid_sizes <- list(n1 = n1, n2 = n2, n3 = n3)
     object_info <- list(
@@ -926,7 +926,7 @@ coef.pffr <- function(
       if (trm$dim > 3 && !is_pcre) {
         warning(
           "can't deal with smooths with more than 3 dimensions, returning NULL for ",
-          shrtlbls[names(object$smooth)[i] == unlist(object$pffr$labelmap)]
+          shrtlbls[names(object$smooth)[i] == unlist(object$pffr$label_map)]
         )
         return(NULL)
       }
@@ -952,14 +952,14 @@ coef.pffr <- function(
 
       # Add proper labeling
       P$main <- shrtlbls[
-        names(object$smooth)[i] == unlist(object$pffr$labelmap)
+        names(object$smooth)[i] == unlist(object$pffr$label_map)
       ]
 
       # Fix axis labels for ff and sff terms
-      which <- match(names(object$smooth)[i], object$pffr$labelmap)
+      which <- match(names(object$smooth)[i], object$pffr$label_map)
       if (which %in% object$pffr$where$ff) {
         which_ff <- which(object$pffr$where$ff == which)
-        P$ylab <- object$pffr$yindname
+        P$ylab <- object$pffr$yind_name
         xlab <- deparse(
           as.call(formula(paste("~", names(object$pffr$ff)[which_ff]))[[
             2
@@ -969,7 +969,7 @@ coef.pffr <- function(
       }
       if (which %in% object$pffr$where$sff) {
         which_sff <- which(object$pffr$where$sff == which)
-        P$ylab <- object$pffr$yindname
+        P$ylab <- object$pffr$yind_name
         xlab <- deparse(
           as.call(formula(paste("~", names(object$pffr$ff)[which_sff]))[[
             2
@@ -1006,7 +1006,7 @@ coef.pffr <- function(
     ret$pterms <- cbind(value = object$coefficients[-smind])
     if (se) ret$pterms <- cbind(ret$pterms, se = sqrt(diag(covmat)[-smind]))
 
-    shrtlbls <- object$pffr$shortlabels
+    shrtlbls <- object$pffr$short_labels
 
     ret$smterms <- lapply(1:length(object$smooth), getCoefs)
     names(ret$smterms) <- sapply(seq_along(ret$smterms), function(i) {
@@ -1045,7 +1045,7 @@ summary.pffr <- function(object, ...) {
   ret$formula <- object$pffr$formula
 
   # Use pre-computed short labels
-  shrtlbls <- object$pffr$shortlabels
+  shrtlbls <- object$pffr$short_labels
 
   if (!is.null(ret$s.table)) {
     rownames(ret$s.table) <- vapply(
@@ -1056,7 +1056,7 @@ summary.pffr <- function(object, ...) {
           shrtlbls[[x]]
         } else {
           # Fallback: try partial match against labelmap for backwards compat
-          idx <- pmatch(x, unlist(object$pffr$labelmap))
+          idx <- pmatch(x, unlist(object$pffr$label_map))
           if (!is.na(idx)) shrtlbls[[idx]] else x
         }
       },

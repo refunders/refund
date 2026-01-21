@@ -135,57 +135,175 @@ expand_windows_to_maxwidth <- function(windows, max_col) {
 }
 
 
+# =============================================================================
+# Shared Utilities for ff/sff Terms
+# =============================================================================
+
+#' Compute integration weights for ff/sff terms
+#'
+#' Computes numerical integration weights using Simpson's rule, trapezoidal
+#' rule, or Riemann sums. Used by [ff()] and [sff()] for constructing
+#' functional regression terms.
+#'
+#' @param xind Matrix of x-index values (n x nxgrid). Each row contains the
+#'   evaluation points for one observation.
+#' @param integration Character: "simpson", "trapezoidal", or "riemann".
+#' @returns Matrix of integration weights (n x nxgrid).
+#' @keywords internal
+compute_integration_weights <- function(xind, integration = "simpson") {
+  n <- nrow(xind)
+  nxgrid <- ncol(xind)
+
+  switch(
+    integration,
+    simpson = {
+      # Simpson's rule: int^b_a f(t) dt ≈ (b-a)/(3n) * [f(a) + 4f(t_1) + 2f(t_2) + ...]
+      ((xind[, nxgrid] - xind[, 1]) / nxgrid) /
+        3 *
+        matrix(
+          c(1, rep(c(4, 2), length.out = nxgrid - 2), 1),
+          nrow = n,
+          ncol = nxgrid,
+          byrow = TRUE
+        )
+    },
+    trapezoidal = {
+      # Trapezoidal rule
+      diffs <- t(apply(xind, 1, diff))
+      0.5 *
+        cbind(
+          diffs[, 1],
+          t(apply(diffs, 1, filter, filter = c(1, 1)))[, -(nxgrid - 1)],
+          diffs[, nxgrid - 1]
+        )
+    },
+    riemann = {
+      # Simple Riemann sums
+      diffs <- t(apply(xind, 1, diff))
+      cbind(rep(mean(diffs), n), diffs)
+    }
+  )
+}
+
+
+#' Validate and expand xind to matrix form
+#'
+#' Validates that xind has the correct dimensions and is in increasing order,
+#' then expands a vector or single-row matrix to a full n x nxgrid matrix.
+#' Used by [ff()] and [sff()].
+#'
+#' @param xind Vector or matrix of x-index values.
+#' @param n Number of observations.
+#' @param nxgrid Number of grid points (columns expected).
+#' @param arg_name Name of the argument for error messages.
+#' @returns Matrix of x-index values (n x nxgrid).
+#' @keywords internal
+validate_and_expand_xind <- function(xind, n, nxgrid, arg_name = "xind") {
+  # Convert to matrix if needed
+
+  if (is.null(dim(xind))) {
+    xind <- t(as.matrix(xind))
+  }
+
+  # Check column count
+  if (ncol(xind) != nxgrid) {
+    cli::cli_abort(
+      "{.arg {arg_name}} must have {nxgrid} columns, not {ncol(xind)}."
+    )
+  }
+
+  # Expand single-row matrix to full matrix
+  if (nrow(xind) == 1) {
+    xind <- matrix(as.vector(xind), nrow = n, ncol = nxgrid, byrow = TRUE)
+  } else if (nrow(xind) != n) {
+    cli::cli_abort(
+      "{.arg {arg_name}} must be a vector, single-row matrix, or have {n} rows."
+    )
+  }
+
+  # Check ordering
+  if (!identical(order(xind[1, ]), seq_len(nxgrid))) {
+    cli::cli_abort("{.arg {arg_name}} values must be in increasing order.")
+  }
+
+  xind
+}
+
+
+#' Convert limits argument to a function
+#'
+#' Parses the `limits` argument for [ff()] and [sff()] terms. Accepts
+#' `NULL` (no limits), a function, or string shortcuts "s<t" / "s<=t".
+#'
+#' @param limits Either `NULL`, a function(s, t) returning logical, or
+#'   a string "s<t" or "s<=t".
+#' @returns A function(s, t) returning logical, or `NULL`.
+#' @keywords internal
+build_limits_function <- function(limits) {
+  if (is.null(limits) || is.function(limits)) {
+    return(limits)
+  }
+
+  switch(
+    limits,
+    "s<t" = \(s, t) s < t,
+    "s<=t" = \(s, t) (s < t) | (s == t),
+    cli::cli_abort("Unknown {.arg limits} value: {.val {limits}}.")
+  )
+}
+
+
 #' Create short labels for pffr terms at model fit time
 #'
 #' Creates a named vector mapping mgcv smooth labels to human-readable pffr labels.
 #' This is called during `pffr()` fitting and stored in `object$pffr$shortlabels`.
 #'
-#' @param labelmap Named list mapping original term names to mgcv smooth labels.
-#' @param m.smooth List of smooth objects from the fitted model.
-#' @param yindname Name of the y-index variable.
-#' @param where.specials List indicating which terms are which type (par, ff, ffpc, etc.).
+#' @param label_map Named list mapping original term names to mgcv smooth labels.
+#' @param m_smooth List of smooth objects from the fitted model.
+#' @param yind_name Name of the y-index variable.
+#' @param where_specials List indicating which terms are which type (par, ff, ffpc, etc.).
 #' @param family The model family object (used to detect location-scale families).
 #' @returns Named character vector: names are mgcv smooth labels, values are short labels.
 #' @keywords internal
 create_shortlabels <- function(
-  labelmap,
-  m.smooth,
-  yindname,
-  where.specials,
+  label_map,
+  m_smooth,
+  yind_name,
+  where_specials,
   family = NULL
 ) {
-  # Build result: one short label per smooth in m.smooth
+  # Build result: one short label per smooth in m_smooth
 
   shortlabels <- character()
 
-  for (term_name in names(labelmap)) {
-    mgcv_labels <- labelmap[[term_name]]
+  for (term_name in names(label_map)) {
+    mgcv_labels <- label_map[[term_name]]
 
     # Skip if no labels (shouldn't happen)
     if (length(mgcv_labels) == 0 || all(is.na(mgcv_labels))) next
 
-    # Check term type based on name patterns and where.specials
-    term_idx <- match(term_name, names(labelmap))
-    is_par <- term_idx %in% where.specials$par
+    # Check term type based on name patterns and where_specials
+    term_idx <- match(term_name, names(label_map))
+    is_par <- term_idx %in% where_specials$par
     is_ffpc <- grepl("^ffpc", term_name)
-    is_ff <- term_idx %in% where.specials$ff
-    is_sff <- term_idx %in% where.specials$sff
+    is_ff <- term_idx %in% where_specials$ff
+    is_sff <- term_idx %in% where_specials$sff
 
     for (i in seq_along(mgcv_labels)) {
       mgcv_label <- mgcv_labels[i]
       if (is.na(mgcv_label)) next
 
       sm <- NULL
-      if (!is.null(names(m.smooth)) && mgcv_label %in% names(m.smooth)) {
-        sm <- m.smooth[[mgcv_label]]
+      if (!is.null(names(m_smooth)) && mgcv_label %in% names(m_smooth)) {
+        sm <- m_smooth[[mgcv_label]]
       } else {
         sm_idx <- which(vapply(
-          m.smooth,
+          m_smooth,
           \(x) identical(x$label, mgcv_label),
           logical(1)
         ))
         if (length(sm_idx) > 0) {
-          sm <- m.smooth[[sm_idx[1]]]
+          sm <- m_smooth[[sm_idx[1]]]
         }
       }
 
@@ -193,13 +311,13 @@ create_shortlabels <- function(
       if (is_par && length(mgcv_labels) > 1) {
         # Factor varying coefficient: extract factor level from smooth
         if (!is.null(sm) && !is.null(sm$by.level)) {
-          short <- paste0(sm$by, sm$by.level, "(", yindname, ")")
+          short <- paste0(sm$by, sm$by.level, "(", yind_name, ")")
         } else {
-          short <- paste0(term_name, "(", yindname, ")")
+          short <- paste0(term_name, "(", yind_name, ")")
         }
       } else if (is_par) {
         # Scalar varying coefficient
-        short <- paste0(term_name, "(", yindname, ")")
+        short <- paste0(term_name, "(", yind_name, ")")
       } else if (is_ffpc) {
         # ffpc: extract PC number and variable name
         # mgcv_label looks like "s(yindex.vec):X.PC1"
@@ -211,14 +329,14 @@ create_shortlabels <- function(
           var_name <- gsub("[\\(\\)]", "", var_match)
           short <- paste0("ffpc(", var_name, ")", pc_num)
         } else {
-          short <- simplify_term_label(term_name, yindname)
+          short <- simplify_term_label(term_name, yind_name)
         }
       } else if (is_ff || is_sff) {
         # ff/sff: use simplified version of original term
-        short <- simplify_term_label(term_name, yindname)
+        short <- simplify_term_label(term_name, yind_name)
       } else {
         # Other terms (s, te, t2, c-wrapped, intercept)
-        short <- simplify_term_label(term_name, yindname)
+        short <- simplify_term_label(term_name, yind_name)
       }
 
       shortlabels[mgcv_label] <- short
@@ -226,14 +344,14 @@ create_shortlabels <- function(
   }
 
   # Handle location-scale family smooths (e.g., gaulss)
-  # These have labels like "s.1(...)" for scale parameter and aren't in labelmap
+  # These have labels like "s.1(...)" for scale parameter and aren't in label_map
   # Only do this for families with multiple linear predictors
   is_location_scale <- !is.null(family) &&
     !is.null(family$nlp) &&
     family$nlp > 1
 
   if (is_location_scale) {
-    all_smooth_labels <- vapply(m.smooth, \(x) x$label, character(1))
+    all_smooth_labels <- vapply(m_smooth, \(x) x$label, character(1))
     unlabeled <- setdiff(all_smooth_labels, names(shortlabels))
 
     for (mgcv_label in unlabeled) {
@@ -245,7 +363,7 @@ create_shortlabels <- function(
         # Extract the base term by removing the .N suffix
         base_label <- sub("^(s|te|ti|t2)\\.([0-9]+)", "\\1", mgcv_label)
 
-        # Check if this is just the intercept (yindname only) or has covariates
+        # Check if this is just the intercept (yind_name only) or has covariates
         has_by <- grepl(":", mgcv_label)
 
         if (has_by) {
@@ -256,12 +374,12 @@ create_shortlabels <- function(
             "log(SD): ",
             by_part,
             "(",
-            yindname,
+            yind_name,
             ")"
           )
         } else {
           # Simple case: intercept-only scale
-          shortlabels[mgcv_label] <- paste0("log(SD)(", yindname, ")")
+          shortlabels[mgcv_label] <- paste0("log(SD)(", yind_name, ")")
         }
       }
     }
@@ -273,10 +391,10 @@ create_shortlabels <- function(
 #' Simplify a term label for display
 #'
 #' @param term_name Original term name string.
-#' @param yindname Name of the y-index variable.
+#' @param yind_name Name of the y-index variable.
 #' @returns Simplified label string.
 #' @keywords internal
-simplify_term_label <- function(term_name, yindname) {
+simplify_term_label <- function(term_name, yind_name) {
   # Handle special cases
   if (grepl("^Intercept\\(", term_name)) {
     return(term_name)
@@ -289,8 +407,8 @@ simplify_term_label <- function(term_name, yindname) {
   )
 
   if (is.null(expr)) {
-    # Simple variable name: add (yindname)
-    return(paste0(term_name, "(", yindname, ")"))
+    # Simple variable name: add (yind_name)
+    return(paste0(term_name, "(", yind_name, ")"))
   }
 
   # For function calls, simplify by removing extra arguments
@@ -309,14 +427,14 @@ simplify_term_label <- function(term_name, yindname) {
     # Build simplified label
     if (fn_name %in% c("s", "te", "ti", "t2")) {
       if (length(vars) == 1) {
-        return(paste0(fn_name, "(", vars[1], ",", yindname, ")"))
+        return(paste0(fn_name, "(", vars[1], ",", yind_name, ")"))
       } else {
         return(paste0(
           fn_name,
           "(",
           paste(vars, collapse = ","),
           ",",
-          yindname,
+          yind_name,
           ")"
         ))
       }
@@ -325,15 +443,15 @@ simplify_term_label <- function(term_name, yindname) {
     } else {
       # Default: just use the function call with main variables
       if (length(vars) == 1) {
-        return(paste0(vars[1], "(", yindname, ")"))
+        return(paste0(vars[1], "(", yind_name, ")"))
       } else {
         return(paste0(fn_name, "(", paste(vars, collapse = ","), ")"))
       }
     }
   }
 
-  # Fallback: return as-is with yindname
-  paste0(term_name, "(", yindname, ")")
+  # Fallback: return as-is with yind_name
+  paste0(term_name, "(", yind_name, ")")
 }
 
 #' Simulate example data for pffr
