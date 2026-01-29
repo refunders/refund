@@ -24,8 +24,10 @@
 
 \item{se}{logical, defaults to TRUE. Return estimated standard error of the estimates?}
 
-\item{freq}{logical, defaults to FALSE. If FALSE, use posterior variance \code{object$Vp} for variability estimates,
-else use \code{object$Ve}. See \code{\link[mgcv]{gamObject}}}
+\item{freq}{logical, defaults to FALSE. If FALSE, use Bayesian posterior covariance for
+variability estimates: \code{object$Vc} if available (includes correction for smoothing
+parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
+covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.}
 
 \item{sandwich}{logical, defaults to FALSE. Use sandwich-corrected covariance for standard errors.
 Uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE}. If the model was fitted with

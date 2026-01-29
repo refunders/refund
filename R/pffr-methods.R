@@ -849,8 +849,10 @@ compute_coef_se <- function(X, trmind, trm, object_info, covmat, seWithMean) {
 #' @param object a fitted \code{pffr}-object
 #' @param raw logical, defaults to FALSE. If TRUE, the function simply returns \code{object$coefficients}
 #' @param se logical, defaults to TRUE. Return estimated standard error of the estimates?
-#' @param freq logical, defaults to FALSE. If FALSE, use posterior variance \code{object$Vp} for variability estimates,
-#'  else use \code{object$Ve}. See \code{\link[mgcv]{gamObject}}
+#' @param freq logical, defaults to FALSE. If FALSE, use Bayesian posterior covariance for
+#'   variability estimates: \code{object$Vc} if available (includes correction for smoothing
+#'   parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
+#'   covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.
 #' @param sandwich logical, defaults to FALSE. Use sandwich-corrected covariance for standard errors.
 #'   Uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE}. If the model was fitted with
 #'   \code{sandwich=TRUE}, the pre-computed covariance matrices are used.
@@ -988,7 +990,7 @@ coef.pffr <- function(
       # Otherwise, compute sandwich correction now
       model_has_sandwich <- isTRUE(object$pffr$sandwich)
       if (model_has_sandwich) {
-        covmat <- if (freq) object$Ve else object$Vp
+        covmat <- if (freq) object$Ve else (object$Vc %||% object$Vp)
       } else {
         # Strip pffr class to avoid predict.pffr warnings during vcov
         object_stripped <- object
@@ -996,7 +998,8 @@ coef.pffr <- function(
         covmat <- stats::vcov(object_stripped, sandwich = TRUE, freq = freq)
       }
     } else {
-      covmat <- if (freq) object$Ve else object$Vp
+      # Prefer Vc (includes smoothing parameter uncertainty) over Vp if available
+      covmat <- if (freq) object$Ve else (object$Vc %||% object$Vp)
     }
 
     ret <- list()
