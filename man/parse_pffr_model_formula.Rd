@@ -16,11 +16,11 @@ parse_pffr_model_formula(formula, data = NULL, ydata = NULL)
 \value{
 A list with:
   - `tf`: The terms object
-  - `trmstrings`: Character vector of term labels
+  - `term_strings`: Character vector of term labels
   - `terms`: Named list of parsed term calls
-  - `frmlenv`: Formula environment
-  - `where.specials`: Named list of term indices by type
-  - `responsename`: Response variable name
+  - `frml_env`: Formula environment
+  - `where_specials`: Named list of term indices by type
+  - `response_name`: Response variable name
   - `has_intercept`: Logical, whether formula has intercept
 }
 \description{

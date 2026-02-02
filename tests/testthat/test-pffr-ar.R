@@ -49,9 +49,31 @@ test_that("unsupported AR settings throw informative errors", {
     pffr(Y ~ c(1), data = sim, yind = tgrid, algorithm = "gam", rho = 0.2),
     "Autocorrelated errors via `rho` are currently supported only when `algorithm = \"bam\"`\\."
   )
+  sim_bin <- sim
+  sim_bin$Y <- I(1L * (sim$Y > 0))
+  fit <- pffr(
+    Y ~ c(1),
+    data = sim_bin,
+    yind = tgrid,
+    rho = 0.2,
+    family = binomial(),
+    bs.int = list(bs = "ps", k = length(tgrid), m = c(2, 1))
+  )
+  expect_true(isTRUE(fit$call$discrete))
   expect_error(
-    pffr(Y ~ c(1), data = sim, yind = tgrid, rho = 0.2, family = binomial()),
-    "Autocorrelated errors \\(via `rho`\\) require either a Gaussian identity model or setting `discrete = TRUE`"
+    pffr(
+      Y ~ c(1),
+      data = sim,
+      yind = tgrid,
+      rho = 0.2,
+      family = binomial(),
+      discrete = FALSE
+    ),
+    "Autocorrelated errors \\(via `rho`\\) require either a Gaussian identity model or `discrete = TRUE`"
+  )
+  expect_error(
+    pffr(Y ~ c(1), data = sim, yind = tgrid, rho = 0.2, method = "REML"),
+    "Autocorrelated errors via `rho` require `method = \"fREML\"`"
   )
   expect_error(
     pffr(

@@ -141,7 +141,8 @@ generate_benchmark_data <- function(
   hetero_param = NA,
   terms = c("ff", "linear", "smooth"),
   wiggliness = 3,
-  seed = NULL
+  seed = NULL,
+  balance_terms = TRUE
 ) {
   if (!is.null(seed)) set.seed(seed)
 
@@ -180,37 +181,96 @@ generate_benchmark_data <- function(
   t_grid <- attr(dat, "yindex")
   truth <- attr(dat, "truth")
 
+  # Balance term contributions if requested (done before generating errors so the
+  # requested SNR applies to the final linear predictor).
+  balance_term_contributions <- function(
+    truth,
+    term_labels = names(truth$etaTerms),
+    target = c("median", "mean"),
+    measure = c("sd", "rms")
+  ) {
+    target <- match.arg(target)
+    measure <- match.arg(measure)
+
+    term_magnitude <- function(x) {
+      v <- as.vector(x)
+      v <- v[is.finite(v)]
+      if (!length(v)) return(NA_real_)
+      if (measure == "sd") return(stats::sd(v))
+      sqrt(mean(v^2))
+    }
+
+    eta_terms <- truth$etaTerms
+    term_labels <- intersect(term_labels, names(eta_terms))
+    term_labels <- term_labels[term_labels != "epsilon"]
+
+    mags <- vapply(
+      term_labels,
+      function(lbl) term_magnitude(eta_terms[[lbl]]),
+      numeric(1)
+    )
+    mags_ok <- mags[is.finite(mags) & mags > 0]
+    if (!length(mags_ok)) return(truth)
+
+    target_mag <- if (target == "median") stats::median(mags_ok) else
+      mean(mags_ok)
+    scales <- target_mag / mags
+    scales[!is.finite(scales)] <- 1
+
+    for (lbl in term_labels) {
+      sc <- unname(scales[[lbl]])
+      if (!is.finite(sc) || sc == 1) next
+
+      eta_terms[[lbl]] <- eta_terms[[lbl]] * sc
+
+      b <- truth$beta[[lbl]]
+      if (is.function(b)) {
+        truth$beta[[lbl]] <- local({
+          b0 <- b
+          sc0 <- sc
+          function(...) sc0 * b0(...)
+        })
+      } else {
+        truth$beta[[lbl]] <- b * sc
+      }
+    }
+
+    truth$etaTerms <- eta_terms
+    truth$eta <- Reduce(`+`, eta_terms[term_labels])
+    truth$term_scales <- as.list(scales)
+    truth
+  }
+
+  if (isTRUE(balance_terms)) {
+    truth <- balance_term_contributions(
+      truth,
+      term_labels = c("intercept", "ff(X1)", "zlin", "s(zsmoo)", "Xconc"),
+      target = "median",
+      measure = "sd"
+    )
+  }
+
   # Get the signal (eta) before adding errors
   eta <- truth$eta
 
-  # If non-iid or non-gaussian errors requested, replace errors
-  if (corr_type != "iid" || hetero_type != "none" || error_dist != "gaussian") {
-    # Create error structure
-    err_struct <- make_error_structure(
-      t_grid = t_grid,
-      corr_type = corr_type,
-      corr_param = if (is.na(corr_param)) NULL else corr_param,
-      hetero_type = hetero_type,
-      hetero_param = if (is.na(hetero_param)) NULL else hetero_param
-    )
+  # Generate errors with the requested structure, then scale to achieve target SNR.
+  err_struct <- make_error_structure(
+    t_grid = t_grid,
+    corr_type = corr_type,
+    corr_param = if (is.na(corr_param)) NULL else corr_param,
+    hetero_type = hetero_type,
+    hetero_param = if (is.na(hetero_param)) NULL else hetero_param
+  )
 
-    # Sample new errors
-    eps_new <- sample_errors(n, err_struct$cov_mat, error_dist)
+  eps_new <- sample_errors(n, err_struct$cov_mat, error_dist)
 
-    # Scale to achieve target SNR
-    scale_fac <- compute_snr_scale_factor(eps_new, eta, snr)
-    eps_new <- eps_new * scale_fac
-    err_struct$cov_mat <- err_struct$cov_mat * scale_fac^2
+  scale_fac <- compute_snr_scale_factor(eps_new, eta, snr)
+  eps_new <- eps_new * scale_fac
+  err_struct$cov_mat <- err_struct$cov_mat * scale_fac^2
 
-    # Replace response
-    dat$Y <- I(eta + eps_new)
-    truth$epsilon <- eps_new
-  } else {
-    err_struct <- list(
-      cov_mat = diag(stats::var(as.vector(truth$epsilon)), nygrid),
-      rho = NA_real_
-    )
-  }
+  dat$Y <- I(eta + eps_new)
+  truth$epsilon <- eps_new
+  attr(dat, "truth") <- truth
 
   # Note: Do NOT center covariates after data generation - this would break
   # the relationship between the stored truth and actual effect values.
@@ -644,11 +704,21 @@ compute_term_metrics <- function(
   # Check coverage
   covered <- (truth_vals >= lower) & (truth_vals <= upper)
 
+  err <- est - truth_vals
+  z_score <- ifelse(is.finite(se) & se > 0, err / se, NA_real_)
+
   tibble(
     term_type = term_type,
     coverage = mean(covered, na.rm = TRUE),
     mean_width = mean(width, na.rm = TRUE),
     rmse = sqrt(mean((est - truth_vals)^2, na.rm = TRUE)),
+    bias = mean(err, na.rm = TRUE),
+    mean_abs_error = mean(abs(err), na.rm = TRUE),
+    mean_se = mean(se, na.rm = TRUE),
+    median_se = stats::median(se, na.rm = TRUE),
+    z_mean = mean(z_score, na.rm = TRUE),
+    z_sd = stats::sd(z_score, na.rm = TRUE),
+    z2_mean = mean(z_score^2, na.rm = TRUE),
     n_grid = sum(!is.na(covered))
   )
 }
@@ -683,11 +753,21 @@ compute_ey_metrics <- function(fit, truth, alpha = 0.10) {
   # Coverage, width, RMSE
   covered <- (eta_true >= lower) & (eta_true <= upper)
 
+  err <- fit_mat - eta_true
+  z_score <- ifelse(is.finite(se_mat) & se_mat > 0, err / se_mat, NA_real_)
+
   tibble(
     term_type = "E(Y)",
     coverage = mean(covered, na.rm = TRUE),
     mean_width = mean(2 * z * se_mat, na.rm = TRUE),
     rmse = sqrt(mean((fit_mat - eta_true)^2, na.rm = TRUE)),
+    bias = mean(err, na.rm = TRUE),
+    mean_abs_error = mean(abs(err), na.rm = TRUE),
+    mean_se = mean(se_mat, na.rm = TRUE),
+    median_se = stats::median(se_mat, na.rm = TRUE),
+    z_mean = mean(z_score, na.rm = TRUE),
+    z_sd = stats::sd(as.vector(z_score), na.rm = TRUE),
+    z2_mean = mean(z_score^2, na.rm = TRUE),
     n_grid = sum(!is.na(covered))
   )
 }

@@ -22,7 +22,7 @@ coef_get_predictions(
 
 \item{object_info}{List with: coefficients, cmX, Vp.}
 
-\item{pffr_info}{List with: yindname.}
+\item{pffr_info}{List with: yind_name.}
 
 \item{covmat}{Covariance matrix for SE computation.}
 

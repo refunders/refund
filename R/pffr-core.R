@@ -9,9 +9,9 @@
 NULL
 
 
-# =============================================================================
+#--------------------------------------
 # Step 1: Argument Validation
-# =============================================================================
+#--------------------------------------
 
 #' Validate pffr arguments and process dots
 #'
@@ -106,12 +106,18 @@ pffr_validate_dots <- function(call, algorithm, dots, check_ar = TRUE) {
 
     gaussian_identity <- identical(family_obj$family, "gaussian") &&
       identical(family_obj$link, "identity")
+    discrete_specified <- "discrete" %in% names(dots)
     discrete_requested <- isTRUE(dots$discrete)
 
-    if (!gaussian_identity && !discrete_requested) {
-      stop(
-        "Autocorrelated errors (via `rho`) require either a Gaussian identity model or setting `discrete = TRUE` (see ?mgcv::bam)."
-      )
+    if (!gaussian_identity) {
+      if (discrete_specified && !discrete_requested) {
+        stop(
+          "Autocorrelated errors (via `rho`) require either a Gaussian identity model or `discrete = TRUE` (see ?mgcv::bam)."
+        )
+      }
+      if (!discrete_specified) {
+        dots$discrete <- TRUE
+      }
     }
   }
 
@@ -138,9 +144,9 @@ pffr_validate_ydata <- function(ydata) {
 }
 
 
-# =============================================================================
+#--------------------------------------
 # Step 2: Data Structure Detection
-# =============================================================================
+#--------------------------------------
 
 #' Detect data dimensions for pffr
 #'
@@ -148,12 +154,17 @@ pffr_validate_ydata <- function(ydata) {
 #' @param data The data argument.
 #' @param response_name The response variable name (symbol).
 #' @param frml_env The formula environment.
-#' @param call The matched call.
+#' @param eval_env Evaluation environment/list used to resolve variables.
 #' @returns A list with nobs, nyindex, ntotal, is_sparse.
 #' @keywords internal
-pffr_get_dimensions <- function(ydata, data, response_name, frml_env, call) {
+pffr_get_dimensions <- function(
+  ydata,
+  data,
+  response_name,
+  frml_env,
+  eval_env
+) {
   is_sparse <- !is.null(ydata)
-  eval_env <- if ("data" %in% names(call)) eval.parent(call$data) else NULL
 
   if (is_sparse) {
     nobs <- length(unique(ydata$.obs))
@@ -220,9 +231,9 @@ pffr_configure_algorithm <- function(
 }
 
 
-# =============================================================================
+#--------------------------------------
 # Step 3: Y-index Handling
-# =============================================================================
+#--------------------------------------
 
 #' Setup y-index for sparse data
 #'
@@ -252,6 +263,8 @@ pffr_setup_yind_sparse <- function(ydata) {
 #' @param eval_env Evaluation environment.
 #' @param frml_env Formula environment.
 #' @param data The data argument.
+#' @param yind_expr The yind expression from the original `pffr()` call
+#'   (used only for naming/lookup; optional).
 #' @returns A list with yind, yind_name.
 #' @keywords internal
 pffr_setup_yind_dense <- function(
@@ -262,7 +275,8 @@ pffr_setup_yind_dense <- function(
   terms,
   eval_env,
   frml_env,
-  data
+  data,
+  yind_expr = NULL
 ) {
   if (yind_missing) {
     if (length(c(where_specials$ff, where_specials$sff))) {
@@ -283,15 +297,18 @@ pffr_setup_yind_dense <- function(
       yind_name <- "yindex"
     }
   } else {
-    if (is.symbol(substitute(yind)) || is.character(yind)) {
-      yind_name <- if (
+    if (is.null(yind_expr)) yind_expr <- quote(yind)
+    if (is.symbol(yind_expr) || is.character(yind)) {
+      yind_name <- deparse(yind_expr)
+      if (!is.null(data) && !is.null(data[[yind_name]])) {
+        yind <- data[[yind_name]]
+      } else if (
         is.character(yind) && length(yind) == 1 && !is.null(data[[yind]])
       ) {
-        tmp <- yind
-        yind <- data[[tmp]]
-        tmp
+        yind_name <- yind
+        yind <- data[[yind_name]]
       } else {
-        "yindex"
+        yind_name <- "yindex"
       }
     } else {
       yind_name <- "yindex"
@@ -306,9 +323,9 @@ pffr_setup_yind_dense <- function(
 }
 
 
-# =============================================================================
+#--------------------------------------
 # Step 4: Response Data Setup
-# =============================================================================
+#--------------------------------------
 
 #' Setup response and indices for formula environment
 #'
@@ -371,9 +388,9 @@ pffr_setup_response <- function(
 }
 
 
-# =============================================================================
+#--------------------------------------
 # Step 5: AR.start Setup
-# =============================================================================
+#--------------------------------------
 
 #' Build AR.start indicator for AR(1) errors
 #'
@@ -399,9 +416,9 @@ pffr_build_ar_start <- function(response_name, formula_env, obs_indices) {
 }
 
 
-# =============================================================================
+#--------------------------------------
 # Step 6: Call Building
-# =============================================================================
+#--------------------------------------
 
 #' Build and configure the mgcv call
 #'
@@ -507,9 +524,9 @@ pffr_build_call <- function(
 }
 
 
-# =============================================================================
+#--------------------------------------
 # Step 7: Post-Processing
-# =============================================================================
+#--------------------------------------
 
 #' Build the label map from terms to smooth labels
 #'
@@ -679,9 +696,9 @@ pffr_attach_metadata <- function(m, algorithm, ret) {
 }
 
 
-# =============================================================================
+#--------------------------------------
 # Step 8: Formula Term Processing (shared by pffr and pffr_gls)
-# =============================================================================
+#--------------------------------------
 
 #' Process ff/sff terms and assign to formula environment
 #'
@@ -904,9 +921,9 @@ pffr_expand_variables <- function(
 }
 
 
-# =============================================================================
+#--------------------------------------
 # Step 9: Sandwich Correction
-# =============================================================================
+#--------------------------------------
 
 #' Apply sandwich correction to model covariance matrices
 #'
@@ -922,8 +939,12 @@ apply_sandwich_correction <- function(m, algorithm) {
   class(gam_obj_stripped) <- setdiff(class(gam_obj_stripped), "pffr")
 
   # Overwrite covariance matrices
-  gam_obj$Vp <- gam_obj$Vc <- stats::vcov(gam_obj_stripped, sandwich = TRUE)
-  gam_obj$Ve <- stats::vcov(gam_obj_stripped, sandwich = TRUE, freq = TRUE)
+  gam_obj$Vp <- gam_obj$Vc <- mgcv::vcov.gam(
+    gam_obj_stripped,
+    sandwich = TRUE,
+    freq = FALSE
+  )
+  gam_obj$Ve <- mgcv::vcov.gam(gam_obj_stripped, sandwich = TRUE, freq = TRUE)
 
   if (as.character(algorithm) %in% c("gamm4", "gamm")) {
     m$gam <- gam_obj
@@ -932,4 +953,331 @@ apply_sandwich_correction <- function(m, algorithm) {
   }
 
   m
+}
+
+
+# =============================================================================
+# pffr() orchestration helpers
+# =============================================================================
+
+#' Prepare data, formula, and call for pffr()
+#'
+#' Internal helper that performs input validation, formula parsing and
+#' transformation, construction of the mgcv data object, and assembly of the
+#' mgcv call. The returned list contains everything required to fit and
+#' post-process a pffr model.
+#'
+#' @param call The matched call from pffr().
+#' @param formula The original pffr formula.
+#' @param yind The y-index argument (may be `NULL` if missing).
+#' @param yind_missing Logical, whether `yind` was missing in the original call.
+#' @param yind_expr The yind expression from the original call (for naming).
+#' @param data The data argument (list/data.frame).
+#' @param ydata Sparse response data (or `NULL`).
+#' @param algorithm User-specified algorithm (may be NA).
+#' @param method The requested mgcv method (character).
+#' @param tensortype Tensor product type (symbol).
+#' @param bs_yindex Basis specification for y-index.
+#' @param bs_int Basis specification for functional intercept.
+#' @param sandwich Logical, whether sandwich covariance is requested.
+#' @param dots The list of additional arguments (...).
+#' @returns A list with preparation outputs, including `new_call` and
+#'   `pffr_data`.
+#' @keywords internal
+pffr_prepare <- function(
+  call,
+  formula,
+  yind,
+  yind_missing,
+  yind_expr,
+  data,
+  ydata,
+  algorithm,
+  method,
+  tensortype,
+  bs_yindex,
+  bs_int,
+  sandwich,
+  dots
+) {
+  validated <- pffr_validate_dots(call, algorithm, dots, check_ar = TRUE)
+  dots <- validated$dots
+  use_ar <- validated$use_ar
+  gaulss <- validated$gaulss
+
+  pffr_validate_ydata(ydata)
+
+  parsed <- parse_pffr_model_formula(formula, data, ydata)
+  tf <- parsed$tf
+  term_strings <- parsed$term_strings
+  terms <- parsed$terms
+  frml_env <- parsed$frml_env
+  where_specials <- parsed$where_specials
+  response_name <- parsed$response_name
+
+  formula_env <- new.env()
+  eval_env <- data
+
+  dims <- pffr_get_dimensions(ydata, data, response_name, frml_env, eval_env)
+  is_sparse <- dims$is_sparse
+  nobs <- dims$nobs
+  nyindex <- dims$nyindex
+  ntotal <- dims$ntotal
+
+  if (is_sparse) {
+    yind_info <- pffr_setup_yind_sparse(ydata)
+    yind <- yind_info$yind
+    yind_name <- yind_info$yind_name
+    nyindex <- yind_info$nyindex
+  } else {
+    yind_info <- pffr_setup_yind_dense(
+      yind = if (yind_missing) NULL else yind,
+      yind_missing = yind_missing,
+      nyindex = nyindex,
+      where_specials = where_specials,
+      terms = terms,
+      eval_env = eval_env,
+      frml_env = frml_env,
+      data = data,
+      yind_expr = yind_expr
+    )
+    yind <- yind_info$yind
+    yind_name <- yind_info$yind_name
+  }
+
+  method_missing <- !("method" %in% names(call))
+  algorithm <- pffr_configure_algorithm(
+    algorithm = algorithm,
+    ntotal = ntotal,
+    call = call,
+    where_specials = where_specials,
+    use_ar = use_ar
+  )
+
+  if (use_ar) {
+    if (method_missing) {
+      call$method <- "fREML"
+    } else if (!identical(method, "fREML")) {
+      stop(
+        "Autocorrelated errors via `rho` require `method = \"fREML\"` (see ?mgcv::bam)."
+      )
+    }
+  } else if (as.character(algorithm) == "bam" && method_missing) {
+    call$method <- "fREML"
+  }
+
+  if (as.character(algorithm) == "bam" && !("chunk.size" %in% names(call))) {
+    call$chunk.size <- 10000
+  }
+
+  resp_info <- pffr_setup_response(
+    is_sparse = is_sparse,
+    ydata = ydata,
+    yind = yind,
+    yind_name = yind_name,
+    nobs = nobs,
+    nyindex = nyindex,
+    response_name = response_name,
+    eval_env = eval_env,
+    frml_env = frml_env,
+    formula_env = formula_env
+  )
+  yind_vec <- resp_info$yind_vec
+  yindex_vec_name <- resp_info$yindex_vec_name
+  obs_indices <- resp_info$obs_indices
+  missing_indices <- resp_info$missing_indices
+
+  new_term_strings <- attr(tf, "term.labels")
+
+  if (parsed$has_intercept) {
+    int_result <- transform_intercept_term(
+      yindex_vec_name,
+      bs_int,
+      yind_name
+    )
+    int_string <- int_result$term_string
+    add_f_int <- TRUE
+  } else {
+    add_f_int <- FALSE
+    int_string <- NULL
+  }
+
+  if (length(where_specials$c)) {
+    new_term_strings[where_specials$c] <- sapply(
+      term_strings[where_specials$c],
+      transform_c_term
+    )
+  }
+
+  if (length(c(where_specials$ff, where_specials$sff))) {
+    ff_terms <- lapply(
+      terms[c(where_specials$ff, where_specials$sff)],
+      \(x) eval(x, envir = eval_env, enclos = frml_env)
+    )
+    new_term_strings[c(where_specials$ff, where_specials$sff)] <- sapply(
+      ff_terms,
+      \(x) safeDeparse(x$call)
+    )
+    pffr_process_ff_terms(
+      ff_terms = ff_terms,
+      yind_vec = yind_vec,
+      obs_indices = obs_indices,
+      formula_env = formula_env
+    )
+  } else {
+    ff_terms <- NULL
+  }
+
+  if (length(where_specials$ffpc)) {
+    ffpc_terms <- lapply(
+      terms[where_specials$ffpc],
+      \(x) eval(x, envir = eval_env, enclos = frml_env)
+    )
+    new_term_strings[where_specials$ffpc] <- pffr_process_ffpc_terms(
+      ffpc_terms = ffpc_terms,
+      obs_indices = obs_indices,
+      yindex_vec_name = yindex_vec_name,
+      formula_env = formula_env
+    )
+    ffpc_terms <- lapply(ffpc_terms, \(x) x[names(x) != "data"])
+  } else {
+    ffpc_terms <- NULL
+  }
+
+  if (length(where_specials$pcre)) {
+    pcre_terms <- lapply(
+      terms[where_specials$pcre],
+      \(x) eval(x, envir = eval_env, enclos = frml_env)
+    )
+    new_term_strings[where_specials$pcre] <- pffr_process_pcre_terms(
+      pcre_terms = pcre_terms,
+      is_sparse = is_sparse,
+      yind = yind,
+      yind_vec = yind_vec,
+      nyindex = nyindex,
+      nobs = nobs,
+      obs_indices = obs_indices,
+      formula_env = formula_env
+    )
+  } else {
+    pcre_terms <- NULL
+  }
+
+  if (length(c(where_specials$s, where_specials$te, where_specials$t2))) {
+    new_term_strings[c(
+      where_specials$s,
+      where_specials$te,
+      where_specials$t2
+    )] <-
+      sapply(
+        terms[c(where_specials$s, where_specials$te, where_specials$t2)],
+        \(x)
+          transform_smooth_term(
+            x,
+            yindex_vec_name,
+            bs_yindex,
+            tensortype,
+            algorithm
+          )
+      )
+  }
+
+  if (length(where_specials$par)) {
+    new_term_strings[where_specials$par] <- sapply(
+      terms[where_specials$par],
+      \(x) transform_par_term(x, yindex_vec_name, bs_yindex)
+    )
+  }
+
+  if (!is.null(data)) {
+    var_env <- list2env(data, envir = new.env(parent = frml_env))
+  } else {
+    var_env <- frml_env
+  }
+  pffr_expand_variables(
+    terms = terms,
+    where_specials = where_specials,
+    is_sparse = is_sparse,
+    nyindex = nyindex,
+    nobs = nobs,
+    obs_indices = obs_indices,
+    eval_env = var_env,
+    formula_env = formula_env
+  )
+
+  new_formula <- build_mgcv_formula(
+    response_name = response_name,
+    intercept_string = if (add_f_int) int_string else NULL,
+    term_strings = new_term_strings,
+    has_intercept = add_f_int,
+    formula_env = formula_env
+  )
+
+  if (gaulss) {
+    if (is.null(dots$varformula)) {
+      dots$varformula <- formula(paste(
+        "~",
+        safeDeparse(as.call(c(
+          as.name("s"),
+          x = as.symbol(yindex_vec_name),
+          bs_int
+        )))
+      ))
+    }
+    environment(dots$varformula) <- formula_env
+    new_formula <- list(new_formula, dots$varformula)
+  }
+
+  if (use_ar) {
+    pffr_build_ar_start(response_name, formula_env, obs_indices)
+  }
+
+  pffr_data <- build_mgcv_data(formula_env)
+  new_call <- pffr_build_call(
+    call = call,
+    algorithm = algorithm,
+    new_formula = new_formula,
+    pffr_data = pffr_data,
+    dots = dots,
+    use_ar = use_ar,
+    nobs = nobs,
+    nyindex = nyindex,
+    obs_indices = obs_indices
+  )
+  new_call$data <- pffr_data
+  if (use_ar) {
+    new_call$AR.start <- pffr_data$AR.start
+  }
+
+  list(
+    call = call,
+    algorithm = algorithm,
+    use_ar = use_ar,
+    gaulss = gaulss,
+    sandwich = sandwich,
+    is_sparse = is_sparse,
+    nobs = nobs,
+    nyindex = nyindex,
+    ntotal = ntotal,
+    yind = yind,
+    yind_name = yind_name,
+    response_name = response_name,
+    terms = terms,
+    where_specials = where_specials,
+    term_strings = term_strings,
+    new_term_strings = new_term_strings,
+    add_f_int = add_f_int,
+    int_string = int_string,
+    ff_terms = ff_terms,
+    ffpc_terms = ffpc_terms,
+    pcre_terms = pcre_terms,
+    missing_indices = missing_indices,
+    ydata = ydata,
+    yindex_vec_name = yindex_vec_name,
+    formula_env = formula_env,
+    pffr_data = pffr_data,
+    new_call = new_call,
+    dots = dots,
+    new_formula = new_formula
+  )
 }

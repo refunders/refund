@@ -4,12 +4,12 @@
 \alias{simplify_term_label}
 \title{Simplify a term label for display}
 \usage{
-simplify_term_label(term_name, yindname)
+simplify_term_label(term_name, yind_name)
 }
 \arguments{
 \item{term_name}{Original term name string.}
 
-\item{yindname}{Name of the y-index variable.}
+\item{yind_name}{Name of the y-index variable.}
 }
 \value{
 Simplified label string.

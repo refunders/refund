@@ -4,14 +4,14 @@
 \alias{transform_intercept_term}
 \title{Transform intercept term to functional intercept}
 \usage{
-transform_intercept_term(yindvecname, bs_int, yindname)
+transform_intercept_term(yind_vec_name, bs_int, yind_name)
 }
 \arguments{
-\item{yindvecname}{Name of the y-index vector variable (character).}
+\item{yind_vec_name}{Name of the y-index vector variable (character).}
 
 \item{bs_int}{Spline basis specification for intercept (named list).}
 
-\item{yindname}{Name of y-index for labeling.}
+\item{yind_name}{Name of y-index for labeling.}
 }
 \value{
 List with `term_string` and `label`.

@@ -4,10 +4,10 @@
 \alias{build_mgcv_data}
 \title{Build the mgcv data frame from pffr components}
 \usage{
-build_mgcv_data(newfrmlenv)
+build_mgcv_data(newfrml_env)
 }
 \arguments{
-\item{newfrmlenv}{Environment containing the transformed variables.}
+\item{newfrml_env}{Environment containing the transformed variables.}
 }
 \value{
 A data frame for mgcv fitting.

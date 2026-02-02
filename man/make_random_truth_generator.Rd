@@ -24,7 +24,7 @@ Typical range: 0.001 (very smooth) to 10 (very wiggly).}
 
 \item{k_truth}{List with basis dimensions per term type. Defaults:
 ff_s = 8, ff_t = 8, smooth_z = 8, smooth_t = 8,
-linear = 15, intercept = 15, concurrent = 15.}
+linear = 8, intercept = 8, concurrent = 8.}
 }
 \value{
 List with generator functions for each term type.

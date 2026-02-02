@@ -4,12 +4,12 @@
 \alias{transform_par_term}
 \title{Transform parametric terms to varying coefficient terms}
 \usage{
-transform_par_term(term, yindvecname, bs_yindex)
+transform_par_term(term, yind_vec_name, bs_yindex)
 }
 \arguments{
 \item{term}{The term (call or symbol).}
 
-\item{yindvecname}{Name of y-index vector (character).}
+\item{yind_vec_name}{Name of y-index vector (character).}
 
 \item{bs_yindex}{Basis spec for y-index (named list).}
 }

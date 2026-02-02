@@ -79,7 +79,7 @@ sff <- function(
 
   # Validate X has no NA values
   if (anyNA(X)) {
-    cli::cli_abort("{.arg X} must not contain NA values.")
+    stop("`X` must not contain NA values.")
   }
 
   # Validate and expand xind to matrix form
@@ -109,7 +109,7 @@ sff <- function(
   # Compute integration weights
   if (!is.null(L)) {
     if (nrow(L) != n || ncol(L) != nxgrid) {
-      cli::cli_abort("{.arg L} must be a {n} x {nxgrid} matrix.")
+      stop("`L` must be a ", n, " x ", nxgrid, " matrix.")
     }
   } else {
     L <- compute_integration_weights(xind, integration)

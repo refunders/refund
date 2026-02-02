@@ -34,6 +34,7 @@ make_error_structure <- function(
   hetero_type <- match.arg(hetero_type)
   ny <- length(t_grid)
   dist_mat <- abs(outer(t_grid, t_grid, "-"))
+  corr_param_used <- corr_param
 
   make_pd <- function(mat) {
     diag_mean <- mean(diag(mat))
@@ -57,24 +58,69 @@ make_error_structure <- function(
     corr_type,
     iid = diag(1, ny),
     ar1 = {
-      rho <- corr_param %||% 0.4
+      rho <- if (!is.null(corr_param)) {
+        corr_param
+      } else {
+        # Choose rho so that Corr(t, t + 0.5 * range(t_grid)) ≈ 0.4.
+        # For an equally-spaced grid this corresponds to k_half ≈ 0.5 / dt steps.
+        dt <- mean(diff(t_grid))
+        k_half <- max(1L, as.integer(round(0.5 / dt)))
+        0.4^(1 / k_half)
+      }
+      corr_param_used <- rho
       rho^abs(outer(seq_len(ny), seq_len(ny), "-"))
     },
     gauss = {
-      phi <- corr_param %||% 0.15
+      phi <- if (!is.null(corr_param)) {
+        corr_param
+      } else {
+        # Choose phi so that Corr(t, t + 0.5 * range(t_grid)) ≈ 0.4 under the
+        # squared-exponential kernel exp(-d^2/(2*phi^2)).
+        d_half <- 0.5 * diff(range(t_grid))
+        if (!is.finite(d_half) || d_half <= 0) {
+          0.15
+        } else {
+          d_half / sqrt(2 * log(1 / 0.4))
+        }
+      }
+      corr_param_used <- phi
       exp(-(dist_mat^2) / (2 * phi^2))
     },
     fourier = {
-      period1 <- corr_param %||% 0.33
-      period2 <- 0.17
+      # Low-rank periodic correlation:
+      #   S_ij = cos(2*pi*(t_i - t_j)/period)
+      # obtained via 2D Fourier features [sin, cos]. We add a diagonal "nugget"
+      # and convert to correlation. The nugget shrinks all off-diagonals:
+      #   Corr_ij = S_ij / (1 + nugget).
+      #
+      # Default nugget is chosen so that the RMS off-diagonal correlation is
+      # ~0.4 (comparable strength to other defaults), while retaining a
+      # sinusoidal shape.
+      period <- 0.4
+
       B <- cbind(
-        sin(2 * pi * t_grid / period1),
-        cos(2 * pi * t_grid / period1),
-        sin(2 * pi * t_grid / period2),
-        cos(2 * pi * t_grid / period2)
+        sin(2 * pi * t_grid / period),
+        cos(2 * pi * t_grid / period)
       )
-      B <- scale(B, center = TRUE, scale = FALSE)
-      base_cov <- B %*% t(B) + diag(0.25, ny)
+      S <- B %*% t(B)
+
+      nugget <- if (!is.null(corr_param)) {
+        corr_param
+      } else if (ny < 2) {
+        0
+      } else {
+        r_target <- 0.4
+        off <- S[upper.tri(S, diag = FALSE)]
+        rms0 <- sqrt(mean(off^2))
+        if (!is.finite(rms0) || rms0 <= 0) {
+          0
+        } else {
+          max(0, rms0 / r_target - 1)
+        }
+      }
+      corr_param_used <- nugget
+
+      base_cov <- S + diag(nugget, ny)
       stats::cov2cor(base_cov)
     }
   )
@@ -108,13 +154,13 @@ make_error_structure <- function(
   list(
     t_grid = t_grid,
     corr_type = corr_type,
-    corr_param = corr_param,
+    corr_param = corr_param_used,
     hetero_type = hetero_type,
     hetero_param = hetero_param,
     sigma_t = sigma_t,
     corr_mat = corr_mat,
     cov_mat = cov_mat,
-    rho = if (corr_type == "ar1") (corr_param %||% 0.4) else NA_real_
+    rho = if (corr_type == "ar1") rho else NA_real_
   )
 }
 

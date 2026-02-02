@@ -1,6 +1,6 @@
-# =============================================================================
+#--------------------------------------
 # Bootstrap Resampling Helpers (pure functions)
-# =============================================================================
+#--------------------------------------
 
 # Resample grid data by observation indices
 # @param modcall Model call object to modify
@@ -74,9 +74,9 @@ resample_residuals <- function(
   modcall
 }
 
-# =============================================================================
+#--------------------------------------
 # Bootstrap CI Computation Helpers
-# =============================================================================
+#--------------------------------------
 
 # Extract coefficients from a fitted pffr model as a vector
 # @param model Fitted pffr model (or try-error)
@@ -105,12 +105,21 @@ extract_boot_coefficients <- function(model, n1, n2, n3, fallback) {
 compute_single_boot_ci <- function(boot_result, index, conf, type) {
   # boot.ci uses "perc" but returns "percent"
   type_arg <- if (type == "percent") "perc" else type
-  ci <- boot::boot.ci(boot_result, conf = conf, index = index, type = type_arg)
-  bounds <- ci[[type]][, 4:5, drop = FALSE]
-  if (is.null(bounds)) {
-    bounds <- matrix(NA, nrow = length(conf), ncol = 2)
-  }
-  as.vector(bounds)
+  out <- tryCatch(
+    {
+      ci <- boot::boot.ci(
+        boot_result,
+        conf = conf,
+        index = index,
+        type = type_arg
+      )
+      bounds <- ci[[type]]
+      if (is.null(bounds) || ncol(bounds) < 5) stop("CI bounds unavailable")
+      as.vector(bounds[, 4:5, drop = FALSE])
+    },
+    error = function(e) rep(NA_real_, 2 * length(conf))
+  )
+  out
 }
 
 # Compute bootstrap CIs for multiple coefficients
@@ -138,9 +147,9 @@ compute_boot_cis <- function(
   t(ci_matrix)
 }
 
-# =============================================================================
+#--------------------------------------
 # Main Exported Functions
-# =============================================================================
+#--------------------------------------
 
 #' Simple bootstrap CIs for pffr
 #'
@@ -485,9 +494,9 @@ attach_bootstrap_cis <- function(
   coef_template
 }
 
-# =============================================================================
+#--------------------------------------
 # GLS Decorrelation Helpers
-# =============================================================================
+#--------------------------------------
 
 # Compute square root of inverse covariance matrix for GLS decorrelation
 # @param hat_sigma Estimated covariance matrix
@@ -539,9 +548,9 @@ decorrelate_gam_matrices <- function(G, sqrt_sigma_inv, nobs, nyindex) {
   G
 }
 
-# =============================================================================
+#--------------------------------------
 # pffr Label Map Building Helpers
-# =============================================================================
+#--------------------------------------
 
 # Build label map connecting original terms to mgcv smooth labels
 # Extracted from pffr/pffrGLS for reusability

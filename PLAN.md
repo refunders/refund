@@ -1,512 +1,113 @@
-# pffr Refactoring Plan
+# pffr refactor: plan / status
 
-> **Implementation Note**: Use `/r-package-coding` skill for R package standards (naming, roxygen2, checkmate, cli).
+This file tracks what is implemented on this branch, what remains open, and the
+next intended refactor steps for the `pffr`/simulation work.
 
----
-
-## Goals
-
-1. Redesign `pffrSim` as a formula-driven data generator with customizable true effects
-2. Write comprehensive unit tests with ground truth comparison
-3. Refactor pffr formula parsing into modular functions
-4. (Future) Better defaults and inference
-5. Investigate CI under-coverage in confint benchmark (`confint-benchmark.R`)
-
----
-
-## Step-by-Step Implementation
-
-### Phase 1: pffrSim Redesign
-
-#### 1.1 Core Infrastructure
-
-- [x] Create `parse_pffr_formula()` in `R/pffr-utilities.R`
-  - Extract term types and variable names using `terms.formula()` with specials
-  - Return structured list: `list(terms = list(type, varname, options), response = "Y")`
-
-- [x] Create preset effect libraries (internal, not exported)
-  - `ff_presets`: `cosine`, `product`, `gaussian`, `separable`, `historical`
-  - `smooth_presets`: `beta`, `dnorm`, `sine`, `cosine`, `polynomial`, `step`
-  - `const_presets`: `constant`, `gaussian_2d`, `linear`
-  - `intercept_presets`: `constant`, `beta`, `sine`, `zero`
-
-- [x] Create `resolve_effect(spec, term_type, xind, yind)`
-  - Accept: preset string, custom function, or list with parameters
-  - Return: evaluated coefficient function/matrix
-
-#### 1.2 Effect Computation Functions
-
-- [x] `compute_ff_effect(X, beta_st, xind)` - Integral ∫X(s)β(s,t)ds
-  - Use rectangular integration weights (consistent with `ff()` defaults)
-
-- [x] `compute_linear_effect(x, beta_t, yind)` - Varying coefficient x·β(t)
-
-- [x] `compute_smooth_effect(x, f_xt, yind)` - Smooth f(x,t)
-
-- [x] `compute_const_effect(x, f_x)` - Constant over t
-
-- [x] `compute_intercept(mu_t, n)` - Functional intercept
-
-- [ ] (Later) `compute_sff_effect()`, `compute_ffpc_effect()`, `compute_pcre_effect()`
-
-#### 1.3 Covariate Generation
-
-- [x] `generate_functional_covariate(n, xind, type = "bspline")`
-  - Generate smooth random functions via B-spline basis
-
-- [x] `generate_scalar_covariate(n, type)` - Normal, uniform, or factor
-
-#### 1.4 Main pffrSim Function
-
-- [x] Implement new signature:
-  ```r
-  pffrSim(formula, n = 100, yind = seq(0,1,l=60), xind = seq(0,1,l=40),
-          data = NULL, effects = list(), intercept = "beta",
-          SNR = 10, family = gaussian(), propmissing = 0, seed = NULL)
-  ```
-
-- [x] Add noise generation:
-  - Gaussian: `SNR = var(eta) / var(epsilon)`
-  - Non-Gaussian: Use `family$linkinv(eta)` then `family$simulate()` if available
-
-- [x] Return structure with `truth` attribute:
-  ```r
-  attr(result, "truth") <- list(eta, etaTerms, beta, epsilon)
-  ```
-
-#### 1.5 Backward Compatibility
-
-- [x] Deprecate `scenario` argument with `.Deprecated()` warning
-
-- [x] Implement scenario-to-formula mappings:
-  | Scenario | Formula | Effects |
-  |----------|---------|---------|
-  | `"int"` | `Y ~ 1` | `intercept = "beta"` |
-  | `"ff"` | `Y ~ ff(X1)` | `list(X1 = "cosine")` |
-  | `"lin"` | `Y ~ xlin` | `list(xlin = "dnorm")` |
-  | `"smoo"` | `Y ~ s(xsmoo)` | `list(xsmoo = "sine")` |
-  | `"te"` | `Y ~ c(te(xte1, xte2))` | `list(\`te(xte1,xte2)\` = "gaussian_2d")` |
-  | `"const"` | `Y ~ c(xconst)` | `list(xconst = 1.5)` |
-  | `"all"` | Full formula | All combined |
-
-- [x] Verify legacy `pffrSim(scenario = "all")` produces identical output (via `pffrSim_legacy`)
-
-#### 1.6 Documentation
-
-- [x] Update roxygen docs in `R/pffr-utilities.R` with new API examples
-- [x] Update `NEWS.md` with new interface and deprecation notice
-- [x] Run `devtools::document()`
-
----
-
-### Phase 2: Unit Tests
-
-#### 2.1 Extend `tests/testthat/test-pffr.R`
-
-Add sections with clear headers. Use `skip_on_cran()` for slow tests.
-
-**Term Recovery Tests** (high SNR, check correlation > 0.9):
-- [x] `ff()` term recovers β(s,t)
-- [x] `ff()` with `limits="s<t"`
-- [x] `s()` smooth term varying over t
-- [x] `c()` constant-over-t terms
-- [x] Linear varying coefficient terms
-- [x] `sff()` term
-- [x] `ffpc()` term
-- [ ] Factor terms (covered in existing tests)
-- [ ] `pcre()` random effects (covered in existing tests)
-
-**Algorithm Tests** (`skip_on_cran()`, `skip_if_not_installed()`):
-- [x] `algorithm="bam"` for large data
-- [x] `algorithm="gamm"` with random effects
-- [x] `algorithm="gamm4"`
-
-**Data Structure Tests**:
-- [x] Sparse data (`propmissing > 0`)
-- [x] Different `xind`/`yind` grid sizes
-
-**Inference Tests**:
-- [x] `predict()` dimensions and values
-- [x] `predict(type="terms")`
-- [x] `coef()` extraction
-- [x] `summary()` output
-
-#### 2.2 Test Guidelines
-
-- Use `n = 20-50`, `nygrid = 30-50`, `nxgrid = 20-40`
-- Prefer correlation/RMSE over exact coefficient equality:
-  ```r
-  expect_gt(cor(as.vector(est), as.vector(true)), 0.9)
-  ```
-- Targeted runtimes: < 3 min locally (i.e.: prefer small data sets with high SNR)
-
-#### 2.3 Golden Snapshots (Optional)
-
-- [ ] Save reference mgcv formula and key data columns for backward compat checks
-- [ ] Store in `tests/testthat/fixtures/`
-
----
-
-### Phase 3: pffr Methods Refactoring & Test Coverage
-
-#### 3.1 Test Coverage Gaps
-
-**3.1.1 Factor Variables with >2 Levels**
-
-Problem: Current tests only use binary factors; no tests for 3+ level factors with default treatment contrasts.
-
-- [x] Add test: factor with 3 levels as varying coefficient (`xfactor` with levels A/B/C)
-- [x] Add test: factor in interaction with smooth terms
-- [x] Verify `coef.pffr` returns correct number of coefficients per level
-
-NOTE: possibly this requires different handling of centering constraints than other terms.
-If so, defer to future phase.
-
-**3.1.2 Untested Methods**
-
-Problem: Several pffr methods have 0% test coverage.
-
-- [x] `residuals.pffr`: test dimensions, reformatting, sparse data
-- [x] `plot.pffr`: smoke test (skipped due to known mgcv dispatch issue)
-- [x] `qq.pffr`: smoke test
-- [x] `pffr.check`: smoke test
-- [x] `print.summary.pffr`: capture output, verify key content present
-
-**3.1.3 Edge Cases**
-
-- [x] `se.fit = TRUE` in predict.pffr - verify SE dimensions and values
-- [x] Very small n (n=10) still fits without error (n=5 too small for default basis)
-- [x] Model with single smooth term
-
-#### 3.2 summary.pffr & shortlabels Refactoring
-
-**3.2.1 Replace get_summary_labels with Mapping-Based Approach**
-
-Problem: The old regex-based string parsing in `get_summary_labels()` (formerly `getShrtlbls`) was fragile and produced non-unique labels.
-
-Files: `R/pffr-utilities.R` (create_shortlabels), `R/pffr.R` (where shortlabels is created)
-
-Approach: Store term→label mapping at model fit time instead of reverse-engineering from term strings.
-
-- [x] In `pffr()`, create `object$pffr$shortlabels` as named vector: `c("s(x,y,by=g).g1" = "g1(t)", ...)`
-- [x] Modify `summary.pffr` to use `object$pffr$shortlabels` directly
-- [x] Remove old `get_summary_labels()` function entirely (methods now use shortlabels directly)
-- [x] Ensure unique labels even for `s(g, bs="re") + s(g, bs="mrf", ...)` (deferred: edge case, very rare in practice)
-
-**3.2.2 Test print.summary.pffr Output**
-
-- [x] Test that formula is printed correctly
-- [x] Test that smooth terms table has expected row names
-- [x] Test that R-squared and deviance explained are shown
-- [x] Test sample size format: "n = 1200 (40 x 30)"
-
-#### 3.3 predict.pffr Improvements
-
-**3.3.1 Implement Prediction with `limits`**
-
-Problem: `ff()` terms with `limits = "s<t"` cannot predict on new data (line 126 TODO in `R/pffr-methods.R`).
-
-- [x] Implement prediction for ff terms with limits
-- [x] Create test: fit model with `ff(X, limits="s<t")`, predict on new data
-- [x] Verify predicted values match expectations
-
-**3.3.2 Test `se.fit = TRUE`**
-
-- [x] Test `predict(model, se.fit = TRUE)` returns list with `fit` and `se.fit`
-- [x] Verify SE dimensions match fit dimensions
-- [x] Test with different prediction types (link, response, terms)
-
-#### 3.4 coef.pffr PCRE Fix (Optional)
-
-Problem: `coef.pffr` fails for pcre terms with more than 2 functional principal components (line 606 FIXME in `R/pffr-methods.R`).
-
-**NOTE**: Investigation shows this actually works! The FIXME comment appears to be outdated.
-
-- [x] Diagnose the specific failure mode for >2 FPCs - **Investigation shows it works correctly**
-- [x] If fix is straightforward: implement fix to handle arbitrary number of FPCs - **No fix needed**
-- [x] If fix is complex: document limitation and defer to future phase - **N/A**
-- [x] Add test: pcre term with 3 FPCs (either verifying fix or documenting expected failure)
-
-#### 3.5 fitted.pffr gaulss Handling
-
-Problem: `fitted.pffr` only returns means for gaulss, silently discarding scale predictions.
-
-- [x] Add parameter `which = c("mean", "scale", "both")` or similar
-- [x] Document the behavior for location-scale families
-- [x] Add test for gaulss fitted values extraction
-- [x] Fix shortlabel for gaulss scale parameters (was showing "NA" in summary)
-  - Smooth terms: `log(SD)(t)` for intercept, `log(SD): <covariate>(t)` for complex
-  - Parametric terms: `log(SD): (Intercept)`, `log(SD): <factorLevel>` in p.table
-  - Conditional on `family$nlp > 1` to avoid false matches on variables named `x.1`
-- [ ] **TODO**: Improve gaulss varformula support - allow users to specify `varformula` using pffr syntax (with `ff()`, `s()`, etc.) and automatically translate it the same way the mean formula is translated. Currently `varformula` is passed directly to mgcv without pffr's term transformations.
-
-#### 3.6 Formula Parsing Refactor
-
-Extract modular functions from `pffr()` for better maintainability and testing.
-
-- [x] Extract `parse_pffr_model_formula()` from `pffr()` (in `R/pffr-formula.R`)
-- [x] Extract term-specific transformers: `transform_intercept_term()`, `transform_smooth_term()`, `transform_par_term()`, `transform_c_term()`
-- [x] Extract `build_mgcv_data()` and `build_mgcv_formula()`
-- [x] Feature flag `use_modular_parser()` added (defaults to new modular code)
-- [x] Maintain identical outputs to existing tests (all 326 tests pass)
-
-#### Key Files to Modify
-
-| File | Changes |
-|------|---------|
-| `R/pffr.R` | Add shortlabels creation at fit time, extract modular parsing functions |
-| `R/pffr-utilities.R` | create_shortlabels (get_summary_labels removed) |
-| `R/pffr-methods.R` | predict limits, coef PCRE fix, fitted gaulss |
-| `R/pffr-formula.R` | (New) Extracted formula parsing functions |
-| `tests/testthat/test-pffr.R` | All new tests |
-
-#### Implementation Order
-
-1. Test coverage (3.1) - add tests without changing code (safety net)
-2. Formula parsing refactor (3.6) - biggest structural change, do first to avoid merge conflicts
-3. shortlabels refactor (3.2) - fits cleanly into new modular structure
-4. predict.pffr limits (3.3.1)
-5. coef.pffr PCRE fix (3.4) - if complexity is reasonable
-6. fitted.pffr gaulss (3.5)
-7. se.fit tests (3.3.2)
-
----
-
-### Phase 4: Better Defaults (Future)
-
-- [ ] Larger default spline bases (current `bs.yindex k=5` is small)
-- [ ] Consider `gaulss` or `pffrGLS` by default
-- [ ] Smarter automatic algorithm selection
-- [ ] Implement pffrGLS support for irregular data
-- [ ] Investigate coverage etc for non-iid residuals: pffrGLS vs sandwich correction via vcov(..., sandwich=TRUE) vs AR
-- [ ] Compare new mgcv-based sandwich correction with old Chen et al. (2013) approach (removed in refactor)
-
----
-
-### Phase 5: Better Inference (Future)
-
-- [ ] Simultaneous confidence bands ([Liebl & Reimherr 2020](https://link.springer.com/chapter/10.1007/978-3-030-47756-1_21))
-- [ ] Conformal prediction intervals
-
----
-
-### Phase 6: Statistical Methods (Future)
-
-Additional S3 methods for model diagnostics and comparison.
-
-- [ ] `vcov.pffr`: Check if exists, add tests or implement
-- [ ] `confint.pffr`: Confidence intervals for coefficients
-- [ ] `anova.pffr`: Model comparison (nested models, likelihood ratio tests)
-- [ ] `update.pffr`: Re-fit model with modified formula/data
-
----
-
-### Phase 7: Architectural Refactoring (Future)
-
-#### 7.1 Modularize `pffr()` Main Function
-
-**Problem:** `pffr()` is 769 lines and does too many things, making it hard to maintain and test.
-
-**Current structure (R/pffr.R:242-1011):**
-1. Argument validation & environment setup (lines 257-309)
-2. Formula parsing (lines 356-363)
-3. Data shape detection (lines 370-392)
-4. Algorithm selection (lines 394-414)
-5. Y-index handling (lines 417-486)
-6. Formula transformation (lines 488-695)
-7. AR(1) setup (lines 774-791)
-8. Data preparation (lines 793-851)
-9. Model call construction (lines 796-861)
-10. Post-fit processing (lines 863-1008)
-
-**Proposed modular structure:**
-```r
-pffr <- function(formula, yind, data, ...) {
-
-  call <- match.call()
-
-
-  # Step 1: Validate inputs and setup environment
-  env <- pffr_setup_environment(call, formula, data, ...)
-
-  # Step 2: Detect data structure (dense vs sparse, grid sizes)
-  data_info <- pffr_detect_data_structure(env)
-
-  # Step 3: Parse and transform formula
-  # (already partially done in pffr-formula.R)
-  transformed <- pffr_transform_formula(env, data_info)
-
-  # Step 4: Build mgcv-compatible data and formula
-  mgcv_args <- pffr_build_mgcv_call(transformed, data_info, ...)
-
-  # Step 5: Fit the model
-  fit <- pffr_fit_model(mgcv_args)
-
-  # Step 6: Post-process and attach pffr metadata
-  pffr_postprocess(fit, transformed, call)
-}
-```
-
-**Implementation steps:**
-- [ ] Extract `pffr_setup_environment()` - argument validation, call modification
-- [ ] Extract `pffr_detect_data_structure()` - sparse/dense detection, grid inference
-- [ ] Consolidate formula transformation (already in `pffr-formula.R`)
-- [ ] Extract `pffr_build_mgcv_call()` - construct gam/bam/gamm call
-- [ ] Extract `pffr_fit_model()` - execute fitting with error handling
-- [ ] Extract `pffr_postprocess()` - attach pffr class and metadata
-- [ ] Add unit tests for each extracted function
-- [ ] Verify all existing tests still pass
-
-#### 7.2 Unify `pffr()` and `pffr_gls()`
-
-**Problem:** `pffr_gls()` (599 lines) duplicates most of `pffr()` structure with only GLS-specific differences.
-
-**Duplicated code:**
-- Formula parsing and data setup (~135 lines)
-- Formula transformation (~240 lines)
-- mgcv formula building (~10 lines)
-
-**GLS-specific code:**
-- Covariance matrix conditioning (`compute_sqrt_sigma_inv`)
-- Design matrix decorrelation (`decorrelate_gam_matrices`)
-- Post-fit covariance correction
-
-**Proposed approach:**
-```r
-pffr_gls <- function(formula, yind, hatSigma, data, ...) {
-  # Reuse pffr's internal parsing/transformation
-  pffr_internals <- pffr_prepare(formula, yind, data, ...)
-
-  # GLS-specific: compute decorrelation matrix
-
-  sqrt_sigma_inv <- compute_sqrt_sigma_inv(hatSigma, cond.cutoff)
-
-  # GLS-specific: decorrelate and fit
-  fit <- pffr_fit_gls(pffr_internals, sqrt_sigma_inv, ...)
-
-  # Reuse pffr's postprocessing
-  pffr_postprocess(fit, pffr_internals, call, gls_info = list(...))
-}
-```
-
-**Implementation steps:**
-- [ ] Create `pffr_prepare()` that returns parsed/transformed formula + data
-- [ ] Modify `pffr()` to use `pffr_prepare()` internally
-- [ ] Modify `pffr_gls()` to call `pffr_prepare()` then add GLS steps
-- [ ] Extract GLS-specific functions (already done: `compute_sqrt_sigma_inv`, `decorrelate_gam_matrices`)
-- [ ] Remove duplicated code from `pffr_gls()`
-- [ ] Add integration tests verifying identical results
-
-#### 7.3 Refactor `coef.pffr()` Nested Functions
-
-**Problem:** `coef.pffr()` (258 lines) contains 4 large nested functions that should be standalone.
-
-**Current nested functions:**
-- `getCoefs()` - extract coefficients from smooth objects
-- `safeRange()` - compute range handling edge cases
-- `makeDataGrid()` - generate evaluation grids for different term types
-- `getP()` - compute predictions on grids
-
-**Implementation steps:**
-- [x] Extract `coef_pffr_make_grid()` - standalone grid generation
-- [x] Extract `coef_pffr_get_predictions()` - standalone prediction computation
-- [x] Simplify main `coef.pffr()` to orchestrate these helpers
-- [x] Add documentation for extracted functions
-- [x] Verify existing coef.pffr tests pass
-
-#### 7.4 Variable Naming Improvements
-
-**Problem:** Many internal variables use cryptic abbreviations.
-
-**Key renames in pffr.R:**
-| Current | Proposed | Location |
-|---------|----------|----------|
-| `yindvecname` | `yindex_vec_name` | line 451 |
-| `stackpattern` | `obs_repeat_indices` | line 460 |
-| `missingind` | `missing_indices` | line 472 |
-| `newfrmlenv` | `formula_env` | line 309 |
-| `sparseOrNongrid` | `is_sparse` | line 370 |
-
-**Key renames in coef.pffr():**
-| Current | Proposed | Location |
-|---------|----------|----------|
-| `trm` | `smooth_term` | throughout |
-| `P` | `predictions` | line 770 |
-| `d` | `eval_data` | line 847 |
-
-**Implementation:**
-- [x] Rename variables in pffr.R
-- [x] Rename variables in coef.pffr()
-- [x] Run full test suite to verify no regressions
-
----
-
-## Verification Checklist
-
-After each phase:
-- [x] `devtools::test()` passes (373 pass, 1 skip for known mgcv issue)
-- [ ] `devtools::check()` no new warnings/errors
-- [ ] Example models from documentation run correctly
-- [x] Legacy `pffrSim(scenario = ...)` produces same results (tested via pffrSim tests)
-
----
-
-## Reference
-
-### Key Files
-
-| File | Lines | Purpose |
-|------|-------|---------|
-| `R/pffr.R` | 229-931 | Main pffr function |
-| `R/pffr-utilities.R` | 152-291 | pffrSim (modify this) |
-| `R/pffr-ff.R` | - | ff() term constructor |
-| `R/pffr-sff.R` | - | sff() term constructor |
-| `R/pffr-ffpc.R` | - | ffpc() term constructor |
-| `R/pffr-pcre.R` | - | pcre() term constructor |
-| `tests/testthat/test-pffr.R` | - | Tests (extend this) |
-
-### Effects API: Term Label Matching
-
-1. Simple terms: variable name (`"xlin"` for `xlin`)
-2. ff/sff/ffpc: first argument (`"X1"` for `ff(X1, xind=s)`)
-3. c() wrappers: wrapped term (`"te(xte1,xte2)"` for `c(te(xte1,xte2))`)
-4. s()/te(): full term string (`"s(xsmoo)"`)
-5. Repeated variables: positional suffix (`"X1.1"`, `"X1.2"`)
-
-### Integration Weights
-
-Use rectangular rule consistent with `ff()` defaults:
-```r
-dx <- diff(xind)[1]
-L <- matrix(dx, nrow = n, ncol = length(xind))
-effect <- (L * X) %*% beta_st
-```
-
-### Noise Generation
-
-**Gaussian**: `sigma2 = var(eta) / SNR; Y = eta + rnorm(..., sd=sqrt(sigma2))`
-
-**Non-Gaussian**: `mu = family$linkinv(eta); Y = family$simulate(fitted.values=mu)`
-
-### Limitations
-
-- pffrSim uses regular grids only (same `yind`/`xind` for all observations)
-- For irregular data: use `propmissing` or construct manually
-
-
---------------------------------------
-
-# Phase 1a: Core infrastructure
-  ralph-loop "Read PLAN.md. Implement Phase 1 sections 1.1-1.3 (parse_pffr_formula, preset libraries, effect computation functions). Check boxes as done. Run Rscript -e 'devtools::load_all(); devtools::test()' to verify." --completion-promise "Sections 1.1-1.3 checkboxes marked [x] and devtools::test() passes" --max-iterations 50
-
-  # Phase 1b: Main function + backward compat
-  /raralph-loop "Read PLAN.md. Continue with Phase 1 sections 1.4-1.6 (main pffrSim, backward compat, docs). Check boxes as done." --completion-promise "All Phase 1 checkboxes marked [x] and devtools::test() passes" --max-iterations 50
-
-  # Phase 2: Tests
-  ralph-loop "Read PLAN.md. Implement Phase 2 (unit tests). Check boxes as done." --completion-promise "Phase 2 checkboxes marked [x] and devtools::test() passes" --max-iterations 8
-
- # Phase 3: refactor
-  /ralph-loop:ralph-loop "Read PLAN.md. Implement Phase 3 (refactor & test pffr + utilities). Check boxes as done." --completion-promise "Phase 3 checkboxes marked [x] and devtools::test() passes" --max-iterations 10
-
-
-
+## Status (as of 2026-01-26)
+
+### Implemented
+
+- Package metadata aligned with code:
+  - `Depends: R (>= 4.1.0)` (branch uses `\(x)` and `|>` syntax).
+  - `DESCRIPTION` `Collate:` updated to include `R/pffr-core.R` and `R/pffr-simulate.R`.
+- `pffr()` refactor groundwork:
+  - Formula parsing extracted to `R/pffr-formula.R`.
+  - Core fitting helpers extracted to `R/pffr-core.R`.
+  - `pffr()` uses core helpers for validation, call building, label mapping, and metadata.
+- AR(1) support (`rho`) tightened:
+  - Defaults to `algorithm = "bam"` when `rho` is used (unless user explicitly sets a non-bam algorithm, which errors).
+  - Enforces `method = "fREML"` when `rho` is used.
+  - For non-Gaussian families with `rho`, auto-sets `discrete = TRUE` unless user explicitly supplies `discrete = FALSE` (then errors).
+- `pffr_simulate()` redesign:
+  - Exported API is `pffr_simulate()` (formula interface recommended).
+  - Deprecated wrapper `pffrSim()` retained for compatibility.
+  - Entry points moved to `R/pffr-simulate.R`; supporting helpers remain in `R/pffr-utilities.R`.
+  - Effect key matching for term labels/calls is whitespace-insensitive.
+- Dependency hygiene:
+  - Removed accidental usage of `cli::cli_abort()` (back to base `stop()` messages).
+- Robust inference hardening:
+  - Bootstrap CI extraction (`boot::boot.ci()`) wrapped defensively to return `NA` bounds on failures.
+
+
+### Validation performed
+
+- Targeted tests re-run locally: `tests/testthat/test-pffr-ar.R`, `tests/testthat/test-pffrSim.R`, `tests/testthat/test-pffr.R` (with `NOT_CRAN=true` so `skip_on_cran()` blocks execute).
+- `R CMD build .` succeeds.
+
+## Roadmap
+
+### 1) `pffr_simulate()` (formula simulator)
+
+- [x] Formula parser for simulation (`parse_pffr_formula()` in `R/pffr-utilities.R`).
+- [x] Preset libraries + random truth generator, including `wiggliness` and `k_truth`.
+- [x] Formula simulation for: intercept, linear terms, `c()` constants, `s()` smooths, `te/ti/t2`, `ff()` and `sff()` (treated like `ff()`).
+- [x] Effect key normalization:
+  - For `effects=...` keys, spacing is ignored for term labels/calls.
+
+Open:
+- []  Remove backward compatibility layer
+  - `pffrSim()` deprecated wrapper can point to scenario-based simulation via `pffrSim_legacy()`.
+- [ ] Use `scenario_to_formula()` (`R/pffr-utilities.R`) for scenario-string to formula conversion.
+- [ ] Add formula-interface simulation support for `ffpc()` terms.
+- [ ] Add formula-interface simulation support for `pcre()` terms.
+- [ ] Add explicit documentation/examples for effect-key conventions beyond whitespace normalization.
+
+### 2) `pffr()` modularization and duplication reduction
+
+- [x] Core helper module introduced (`R/pffr-core.R`) and used by `pffr()`.
+- [x] Formula parsing helpers introduced (`R/pffr-formula.R`) and used by `pffr()` and `pffr_gls()`.
+
+Open:
+- [x] Replace remaining inline steps in `pffr()` with existing core helpers:
+  - dimension detection via `pffr_get_dimensions()`
+  - y-index handling via `pffr_setup_yind_dense()` / `pffr_setup_yind_sparse()`
+  - response setup via `pffr_setup_response()`
+- [x] Extract a single internal “prepare” step (`pffr_prepare()`) that returns:
+  - transformed mgcv formula,
+  - constructed `pffr_data`,
+  - configured mgcv call (from `pffr_build_call()`),
+  - postprocessing inputs (term/label mapping inputs, `where_specials`, etc.).
+  This should let `pffr()` become “prepare → fit → postprocess”.
+
+Deferred (affects `pffr_gls()`; not implemented in this change set):
+- [ ] Unify `pffr_gls()` with `pffr()` by reusing `pffr_prepare()` and related helpers.
+- [ ] Decide status of sparse `pffr_gls()` (implement vs explicitly unsupported).
+
+### 3) AR(1) (`rho`) behavior and docs
+
+- [x] Implementation now matches documented mgcv constraints (bam + fREML; discrete for non-Gaussian).
+
+Open:
+- [ ] Review user-facing docs in `R/pffr.R`/man pages for any remaining mismatches (esp. around automatic defaults vs user-supplied overrides).
+
+### 4) API consistency (naming/export surface)
+
+Open:
+- [ ] Decide on the long-term naming convention for exported helpers:
+  - This branch exports new snake_case helpers (with dotted legacy wrappers deprecated).
+  - Repo historically uses dotted exports; decide whether to standardize on one convention and update docs/deprecations accordingly.
+
+### 5) Tests and checks
+
+- [x] Added/updated tests for AR(1), simulation, and refactor touchpoints.
+
+Open:
+- [ ] Run full `devtools::test()` and `devtools::check()` locally before merge/release and resolve any new NOTES/WARNINGS.
+- [ ] Consider adding regression tests around `scenario_to_formula()` if it is kept/used.
+
+## Notes / conventions
+
+### Effect key matching (simulation)
+
+Current matching order in `pffrSim_formula()` for selecting a term’s effect:
+1. Exact term label (as produced by `terms.formula()`).
+2. Whitespace-normalized term label.
+3. If the term has a parsable call: exact `safeDeparse(call)`.
+4. If the term has a parsable call: whitespace-normalized `safeDeparse(call)`.
+5. Variable name fallback (first argument for `ff()`/`sff()`/`te()` etc).
+6. Type-specific default.
+
+### Integration weights (simulation)
+
+The simulator’s `ff()` effect computation uses simple numerical integration
+consistent with the `ff()` defaults (rectangular/riemann-style weights).

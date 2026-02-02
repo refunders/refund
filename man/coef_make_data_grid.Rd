@@ -11,7 +11,7 @@ coef_make_data_grid(trm, model_data, pffr_info, grid_sizes, is_pcre)
 
 \item{model_data}{The model data frame (object$model).}
 
-\item{pffr_info}{List with pffr metadata: yindname, pcreterms.}
+\item{pffr_info}{List with pffr metadata: yind_name, pcre_terms.}
 
 \item{grid_sizes}{Named list with n1, n2, n3 grid sizes.}
 

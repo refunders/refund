@@ -4,16 +4,22 @@
 \alias{create_shortlabels}
 \title{Create short labels for pffr terms at model fit time}
 \usage{
-create_shortlabels(labelmap, m.smooth, yindname, where.specials, family = NULL)
+create_shortlabels(
+  label_map,
+  m_smooth,
+  yind_name,
+  where_specials,
+  family = NULL
+)
 }
 \arguments{
-\item{labelmap}{Named list mapping original term names to mgcv smooth labels.}
+\item{label_map}{Named list mapping original term names to mgcv smooth labels.}
 
-\item{m.smooth}{List of smooth objects from the fitted model.}
+\item{m_smooth}{List of smooth objects from the fitted model.}
 
-\item{yindname}{Name of the y-index variable.}
+\item{yind_name}{Name of the y-index variable.}
 
-\item{where.specials}{List indicating which terms are which type (par, ff, ffpc, etc.).}
+\item{where_specials}{List indicating which terms are which type (par, ff, ffpc, etc.).}
 
 \item{family}{The model family object (used to detect location-scale families).}
 }

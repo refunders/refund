@@ -4,12 +4,12 @@
 \alias{transform_smooth_term}
 \title{Transform smooth terms (s, te, ti, t2) to include y-index}
 \usage{
-transform_smooth_term(term, yindvecname, bs_yindex, tensortype, algorithm)
+transform_smooth_term(term, yind_vec_name, bs_yindex, tensortype, algorithm)
 }
 \arguments{
 \item{term}{The term call object.}
 
-\item{yindvecname}{Name of y-index vector (character).}
+\item{yind_vec_name}{Name of y-index vector (character).}
 
 \item{bs_yindex}{Default basis spec for y-index (named list).}
 

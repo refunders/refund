@@ -8,7 +8,7 @@ generate_functional_covariate(
   n,
   xind,
   type = "bspline",
-  bs_dim = 7,
+  bs_dim = NULL,
   seed = NULL
 )
 }

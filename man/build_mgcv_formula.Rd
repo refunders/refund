@@ -5,7 +5,7 @@
 \title{Build the final mgcv formula from transformed terms}
 \usage{
 build_mgcv_formula(
-  responsename,
+  response_name,
   intercept_string,
   term_strings,
   has_intercept,
@@ -13,7 +13,7 @@ build_mgcv_formula(
 )
 }
 \arguments{
-\item{responsename}{Response variable name (symbol or character).}
+\item{response_name}{Response variable name (symbol or character).}
 
 \item{intercept_string}{Intercept term string (or NULL if no intercept).}
 
