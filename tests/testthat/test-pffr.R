@@ -1647,45 +1647,62 @@ test_that("pffrGLS errors on sparse data (not yet implemented)", {
 # Sandwich Correction Tests
 ###############################################################################
 
-test_that("pffr with sandwich=TRUE yields corrected covariance matrices", {
+test_that("pffr with sandwich=TRUE yields cluster-robust covariance", {
   skip_on_cran()
 
-  # Use shared data but need both sandwich and non-sandwich models
   dat <- get_xlin_data()
   t <- attr(dat, "yindex")
-
-  # Standard model is shared fixture
-
   m_std <- get_xlin_model()
 
-  # Fit with sandwich correction (needs separate fit)
-  m_sw <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
+  # Fit with cluster-robust sandwich (sandwich = TRUE)
+  m_cl <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
 
-  # Verify sandwich flag is stored correctly
+  # Verify sandwich flag stored correctly
   expect_false(m_std$pffr$sandwich)
-  expect_true(m_sw$pffr$sandwich)
+  expect_true(m_cl$pffr$sandwich)
 
-  # Verify covariance matrices differ from uncorrected model
-  expect_false(identical(m_std$Vp, m_sw$Vp))
-  expect_false(identical(m_std$Vc, m_sw$Vc))
-  expect_false(identical(m_std$Ve, m_sw$Ve))
+  # Covariance matrices differ from uncorrected model
+  expect_false(identical(m_std$Vp, m_cl$Vp))
+  expect_false(identical(m_std$Ve, m_cl$Ve))
 
-  # Verify sandwich Vp/Vc match manual computation from uncorrected model
-  expected_Vp <- vcov(m_std, sandwich = TRUE)
-  expect_equal(m_sw$Vp, expected_Vp)
-  expect_equal(m_sw$Vc, expected_Vp) # Vc should equal Vp with sandwich
+  # Cluster-robust differs from HC sandwich
+  m_std_stripped <- m_std
+  class(m_std_stripped) <- setdiff(class(m_std_stripped), "pffr")
+  hc_Vp <- vcov(m_std_stripped, sandwich = TRUE)
+  expect_false(identical(m_cl$Vp, hc_Vp))
 
-  # Coefficients should be identical (only covariance changes)
-  expect_equal(coef(m_std, raw = TRUE), coef(m_sw, raw = TRUE))
+  # Coefficients identical (only covariance changes)
+  expect_equal(coef(m_std, raw = TRUE), coef(m_cl, raw = TRUE))
 
-  # Verify summary shows sandwich info
+  # Summary shows sandwich type
   summ_std <- summary(m_std)
-  summ_sw <- summary(m_sw)
+  summ_cl <- summary(m_cl)
   expect_false(summ_std$sandwich)
-  expect_true(summ_sw$sandwich)
+  expect_true(summ_cl$sandwich)
 
-  # Verify coef.pffr with sandwich=TRUE gives same results from both models
-  coef_std_sw <- coef(m_std, sandwich = TRUE)
-  coef_sw_sw <- coef(m_sw, sandwich = TRUE)
-  expect_equal(coef_std_sw$pterms[, "se"], coef_sw_sw$pterms[, "se"])
+  # coef.pffr with sandwich=TRUE on fitted model uses stored matrices
+  coef_cl <- coef(m_cl, sandwich = TRUE)
+  # coef.pffr with sandwich=TRUE on un-sandwiched model computes on the fly
+  coef_std_cl <- coef(m_std, sandwich = TRUE)
+  expect_equal(coef_cl$pterms[, "se"], coef_std_cl$pterms[, "se"])
+})
+
+test_that("pffr with sandwich='hc' yields observation-level HC sandwich", {
+  skip_on_cran()
+
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+  m_std <- get_xlin_model()
+
+  # Fit with HC sandwich
+  m_hc <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "hc")
+
+  expect_identical(m_hc$pffr$sandwich, "hc")
+
+  # HC sandwich matches mgcv::vcov.gam(sandwich=TRUE) on uncorrected model
+  m_std_stripped <- m_std
+  class(m_std_stripped) <- setdiff(class(m_std_stripped), "pffr")
+  expected_Vp <- vcov(m_std_stripped, sandwich = TRUE)
+  expect_equal(m_hc$Vp, expected_Vp)
+  expect_equal(m_hc$Vc, expected_Vp)
 })

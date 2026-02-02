@@ -152,11 +152,14 @@
 #'   "\code{\link[mgcv]{ti}}" or "\code{\link[mgcv]{t2}}", defaults to
 #'   \code{ti}. \code{t2}-type terms do not enforce the more suitable special
 #'   constraints for functional regression, see Details.
-#' @param sandwich logical; if \code{TRUE}, apply sandwich correction to
-#'   covariance matrices to obtain robust standard errors. This can improve
-#'   inference if residuals are heteroscedastic or correlated (they usually
-#'   are for functional data!). Uses \code{\link[mgcv]{vcov.gam}} with
-#'   \code{sandwich = TRUE}. Default is \code{FALSE}.
+#' @param sandwich Controls sandwich correction for robust covariance
+#'   estimation. \code{FALSE} (default): no correction.
+#'   \code{TRUE}: cluster-robust sandwich clustering by curve, which handles
+#'   both heteroskedasticity and within-curve autocorrelation — the
+#'   recommended choice for functional data.
+#'   \code{"hc"}: observation-level HC sandwich via
+#'   \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
+#'   heteroskedasticity but ignores within-curve correlation.
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}},
 #'   \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
 #'   \code{'\link[mgcv]{jagam}'}. \code{subset} is not implemented.
@@ -337,8 +340,10 @@ pffr <- function(
 
   m <- pffr_attach_metadata(m, prep$algorithm, ret)
 
-  if (!sandwich) {
+  if (isFALSE(sandwich)) {
     return(m)
   }
-  apply_sandwich_correction(m, prep$algorithm)
+  sandwich_type <- if (isTRUE(sandwich)) "cluster" else
+    match.arg(sandwich, "hc")
+  apply_sandwich_correction(m, prep$algorithm, type = sandwich_type)
 }

@@ -925,26 +925,121 @@ pffr_expand_variables <- function(
 # Step 9: Sandwich Correction
 #--------------------------------------
 
+#' Cluster-robust sandwich covariance estimator
+#'
+#' Computes a cluster-robust (CR1) sandwich covariance matrix for a fitted
+#' GAM, clustering by curve. This handles both heteroskedasticity and
+#' within-curve autocorrelation, requiring only that curves are independent.
+#'
+#' The estimator is:
+#' \deqn{V_{CL} = c \cdot V_p \, M_{CL} \, V_p + B_2}
+#' where \eqn{M_{CL} = \sum_g u_g u_g'} is the clustered meat (with
+#' \eqn{u_g = \sum_{t \in g} s_{gt}} the cluster-aggregated scores),
+#' \eqn{c = n/(n-1)} is the HC1 small-sample correction, and
+#' \eqn{B_2 = V_p - V_e} (Bayesian) or \eqn{B_2 = 0} (frequentist).
+#'
+#' @param b Fitted GAM object (must not have class "pffr").
+#' @param cluster_id Integer vector of length `nrow(model.matrix(b))` mapping
+#'   each vectorized observation to its curve.
+#' @param freq If `TRUE`, use frequentist sandwich (`B2 = 0`).
+#'   If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).
+#' @returns A p x p covariance matrix.
+#' @keywords internal
+gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
+  B2 <- if (freq) 0 else b$Vp - b$Ve
+  X <- model.matrix(b)
+  n_clusters <- length(unique(cluster_id))
+
+  # For non-standard families, mgcv uses b$family$sandwich for score
+  # computation. Cluster-robust aggregation of those scores is not yet
+
+  # implemented — fall back to observation-level HC sandwich with a warning.
+  if (!is.null(b$family$sandwich)) {
+    warning(
+      "Cluster-robust sandwich not yet implemented for family '",
+      b$family$family,
+      "'. Falling back to observation-level HC sandwich via mgcv::vcov.gam().",
+      call. = FALSE
+    )
+    return(mgcv::vcov.gam(b, sandwich = TRUE, freq = freq))
+  }
+
+  # Standard Gaussian case: per-observation scores
+  mu <- b$fitted.values
+  w <- b$family$mu.eta(b$linear.predictors) *
+    (b$y - mu) /
+    (b$sig2 * b$family$variance(mu))
+  wX <- w * X # n_obs x p matrix of scores
+
+  # Aggregate scores by cluster (curve)
+  U <- rowsum(wX, cluster_id) # n_clusters x p
+
+  # Clustered meat
+  meat_cl <- crossprod(U) # p x p
+
+  # HC1 small-sample correction
+  hc1 <- n_clusters / (n_clusters - 1)
+
+  # Assemble sandwich
+  hc1 * b$Vp %*% meat_cl %*% b$Vp + B2
+}
+
+
 #' Apply sandwich correction to model covariance matrices
+#'
+#' Applies either observation-level HC sandwich (via [mgcv::vcov.gam()]) or
+#' cluster-robust sandwich (via [gam_sandwich_cluster()]) to a fitted pffr
+#' model.
 #'
 #' @param m Fitted model.
 #' @param algorithm Algorithm symbol.
+#' @param type Type of sandwich correction: `"cluster"` for cluster-robust
+#'   (default) or `"hc"` for observation-level HC.
 #' @returns Model with corrected covariance matrices.
 #' @keywords internal
-apply_sandwich_correction <- function(m, algorithm) {
+apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
   gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
 
   # Strip pffr class for vcov calls
   gam_obj_stripped <- gam_obj
   class(gam_obj_stripped) <- setdiff(class(gam_obj_stripped), "pffr")
 
-  # Overwrite covariance matrices
-  gam_obj$Vp <- gam_obj$Vc <- mgcv::vcov.gam(
-    gam_obj_stripped,
-    sandwich = TRUE,
-    freq = FALSE
-  )
-  gam_obj$Ve <- mgcv::vcov.gam(gam_obj_stripped, sandwich = TRUE, freq = TRUE)
+  if (type == "cluster") {
+    # Build cluster_id from pffr metadata
+    pffr_meta <- gam_obj$pffr
+    if (isTRUE(pffr_meta$is_sparse)) {
+      cluster_id <- pffr_meta$ydata$.obs
+    } else {
+      cluster_id <- rep(seq_len(pffr_meta$nobs), each = pffr_meta$nyindex)
+    }
+    # Remove entries for missing observations (NAs removed during fitting)
+    if (!is.null(pffr_meta$missing_indices)) {
+      cluster_id <- cluster_id[-pffr_meta$missing_indices]
+    }
+
+    gam_obj$Vp <- gam_obj$Vc <- gam_sandwich_cluster(
+      gam_obj_stripped,
+      cluster_id,
+      freq = FALSE
+    )
+    gam_obj$Ve <- gam_sandwich_cluster(
+      gam_obj_stripped,
+      cluster_id,
+      freq = TRUE
+    )
+  } else {
+    # Observation-level HC sandwich via mgcv
+    gam_obj$Vp <- gam_obj$Vc <- mgcv::vcov.gam(
+      gam_obj_stripped,
+      sandwich = TRUE,
+      freq = FALSE
+    )
+    gam_obj$Ve <- mgcv::vcov.gam(
+      gam_obj_stripped,
+      sandwich = TRUE,
+      freq = TRUE
+    )
+  }
 
   if (as.character(algorithm) %in% c("gamm4", "gamm")) {
     m$gam <- gam_obj

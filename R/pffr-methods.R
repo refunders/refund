@@ -841,8 +841,11 @@ compute_coef_se <- function(X, trmind, trm, object_info, covmat, seWithMean) {
 #' Not implemented for smooths in more than 3 dimensions.
 #'
 #' The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
-#' The \code{sandwich}-option uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE} to compute
-#' robust standard errors. If the model was fitted with \code{sandwich=TRUE} in \code{\link{pffr}},
+#' The \code{sandwich}-option computes robust standard errors. With
+#' \code{sandwich=TRUE}, a cluster-robust sandwich (clustering by curve) is
+#' used, which handles both heteroskedasticity and within-curve correlation.
+#' With \code{sandwich="hc"}, mgcv's observation-level HC sandwich is used.
+#' If the model was fitted with a sandwich option in \code{\link{pffr}},
 #' the pre-computed sandwich covariance matrices are used directly.
 #'
 #'
@@ -853,9 +856,12 @@ compute_coef_se <- function(X, trmind, trm, object_info, covmat, seWithMean) {
 #'   variability estimates: \code{object$Vc} if available (includes correction for smoothing
 #'   parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
 #'   covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.
-#' @param sandwich logical, defaults to FALSE. Use sandwich-corrected covariance for standard errors.
-#'   Uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE}. If the model was fitted with
-#'   \code{sandwich=TRUE}, the pre-computed covariance matrices are used.
+#' @param sandwich Controls sandwich-corrected covariance for standard errors.
+#'   \code{FALSE} (default): use model's default covariance.
+#'   \code{TRUE}: cluster-robust sandwich (clustering by curve).
+#'   \code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
+#'   If the model was fitted with a sandwich option, the pre-computed
+#'   covariance matrices are used directly.
 #' @param seWithMean logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?
 #' @param n1 see below
 #' @param n2 see below
@@ -984,15 +990,33 @@ coef.pffr <- function(
       P
     }
 
-    if (sandwich) {
-      # Use sandwich-corrected covariance matrix
-      # If model was fitted with sandwich=TRUE, use stored matrices
-      # Otherwise, compute sandwich correction now
-      model_has_sandwich <- isTRUE(object$pffr$sandwich)
+    if (!isFALSE(sandwich)) {
+      # Determine sandwich type: TRUE -> "cluster", "hc" -> "hc"
+      sandwich_type <- if (isTRUE(sandwich)) "cluster" else sandwich
+
+      # If model was already fitted with matching sandwich type, use stored matrices
+      model_sandwich <- object$pffr$sandwich
+      model_has_sandwich <- !isFALSE(model_sandwich) && !is.null(model_sandwich)
+
       if (model_has_sandwich) {
+        # Model was fitted with sandwich correction — use stored covariance
         covmat <- if (freq) object$Ve else (object$Vc %||% object$Vp)
+      } else if (sandwich_type == "cluster") {
+        # Compute cluster-robust sandwich on the fly
+        object_stripped <- object
+        class(object_stripped) <- setdiff(class(object_stripped), "pffr")
+        pffr_meta <- object$pffr
+        if (isTRUE(pffr_meta$is_sparse)) {
+          cluster_id <- pffr_meta$ydata$.obs
+        } else {
+          cluster_id <- rep(seq_len(pffr_meta$nobs), each = pffr_meta$nyindex)
+        }
+        if (!is.null(pffr_meta$missing_indices)) {
+          cluster_id <- cluster_id[-pffr_meta$missing_indices]
+        }
+        covmat <- gam_sandwich_cluster(object_stripped, cluster_id, freq = freq)
       } else {
-        # Strip pffr class to avoid predict.pffr warnings during vcov
+        # HC sandwich via mgcv
         object_stripped <- object
         class(object_stripped) <- setdiff(class(object_stripped), "pffr")
         covmat <- stats::vcov(object_stripped, sandwich = TRUE, freq = freq)
@@ -1108,7 +1132,7 @@ summary.pffr <- function(object, ...) {
   } else {
     ret$n <- paste(ret$n, " (in ", object$pffr$nobs, " curves)", sep = "")
   }
-  ret$sandwich <- isTRUE(object$pffr$sandwich)
+  ret$sandwich <- object$pffr$sandwich
   if (!is.null(ar1rho)) {
     ret$AR1.rho <- ar1rho
   }
@@ -1190,8 +1214,14 @@ print.summary.pffr <- function(
     "\n",
     sep = ""
   )
-  if (isTRUE(x$sandwich)) {
-    cat("Sandwich correction applied to covariance matrices.\n")
+  if (!isFALSE(x$sandwich) && !is.null(x$sandwich)) {
+    sw_type <- if (isTRUE(x$sandwich)) "cluster-robust" else x$sandwich
+    cat(
+      "Sandwich correction (",
+      sw_type,
+      ") applied to covariance matrices.\n",
+      sep = ""
+    )
   }
   invisible(x)
 }
