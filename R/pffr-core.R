@@ -950,9 +950,57 @@ gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
   X <- model.matrix(b)
   n_clusters <- length(unique(cluster_id))
 
-  # For non-standard families, mgcv uses b$family$sandwich for score
-  # computation. Cluster-robust aggregation of those scores is not yet
+  # gaulss family: manual per-observation score computation
+  # gaulss uses tau = 1/sigma with logb link, and defines family$sandwich
+  # (which prevents the generic GLM score path below). We compute scores
 
+  # analytically from the log-likelihood.
+  if (b$family$family == "gaulss") {
+    lpi <- attr(X, "lpi")
+    n_obs <- length(b$y)
+
+    # Reuse stored fitted values and linear predictors
+    mu <- b$fitted.values[1:n_obs]
+    tau <- b$fitted.values[(n_obs + 1):(2 * n_obs)]
+
+    eta1 <- b$linear.predictors[1:n_obs]
+    eta2 <- b$linear.predictors[(n_obs + 1):(2 * n_obs)]
+
+    r <- b$y - mu
+
+    # Scores w.r.t. natural parameters
+    dl_dmu <- tau^2 * r
+    dl_dtau <- 1 / tau - tau * r^2
+
+    # Chain rule: transform to LP space via link derivatives
+    dmu_deta1 <- b$family$linfo[[1]]$mu.eta(eta1)
+    dtau_deta2 <- b$family$linfo[[2]]$mu.eta(eta2)
+
+    w1 <- dl_dmu * dmu_deta1
+    w2 <- dl_dtau * dtau_deta2
+
+    # Apply prior weights if present and non-trivial
+    pw <- b$prior.weights
+    if (!is.null(pw) && !all(pw == 1)) {
+      w1 <- pw * w1
+      w2 <- pw * w2
+    }
+
+    # Build full score matrix (n_obs x p_total)
+    p <- ncol(X)
+    S <- matrix(0, nrow = n_obs, ncol = p)
+    S[, lpi[[1]]] <- w1 * X[, lpi[[1]], drop = FALSE]
+    S[, lpi[[2]]] <- w2 * X[, lpi[[2]], drop = FALSE]
+
+    # Aggregate by cluster and form sandwich
+    U <- rowsum(S, cluster_id)
+    meat_cl <- crossprod(U)
+    hc1 <- n_clusters / (n_clusters - 1)
+    return(hc1 * b$Vp %*% meat_cl %*% b$Vp + B2)
+  }
+
+  # For other non-standard families, mgcv uses b$family$sandwich for score
+  # computation. Cluster-robust aggregation of those scores is not yet
   # implemented — fall back to observation-level HC sandwich with a warning.
   if (!is.null(b$family$sandwich)) {
     warning(
@@ -964,7 +1012,7 @@ gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
     return(mgcv::vcov.gam(b, sandwich = TRUE, freq = freq))
   }
 
-  # Standard Gaussian case: per-observation scores
+  # Standard GLM case: per-observation scores
   mu <- b$fitted.values
   w <- b$family$mu.eta(b$linear.predictors) *
     (b$y - mu) /
