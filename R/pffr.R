@@ -152,10 +152,11 @@
 #'   "\code{\link[mgcv]{ti}}" or "\code{\link[mgcv]{t2}}", defaults to
 #'   \code{ti}. \code{t2}-type terms do not enforce the more suitable special
 #'   constraints for functional regression, see Details.
-#' @param sandwich Controls sandwich correction for robust covariance
-#'   estimation. \code{FALSE} (default): no correction.
-#'   \code{TRUE}: cluster-robust sandwich clustering by curve, which handles
-#'   both heteroskedasticity and within-curve autocorrelation — the
+#' @param sandwich Type of sandwich correction for robust covariance
+#'   estimation.
+#'   \code{"none"} (default): no correction.
+#'   \code{"cluster"}: cluster-robust sandwich clustering by curve, which
+#'   handles both heteroskedasticity and within-curve autocorrelation — the
 #'   recommended choice for functional data.
 #'   \code{"hc"}: observation-level HC sandwich via
 #'   \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
@@ -252,11 +253,14 @@ pffr <- function(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
-  sandwich = FALSE,
+  sandwich = c("none", "cluster", "hc"),
   ...
 ) {
   call <- match.call()
   tensortype <- as.symbol(match.arg(tensortype))
+  # Backward compat: TRUE -> "cluster", FALSE -> "none"
+  if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
+  sandwich <- match.arg(sandwich)
   yind_missing <- missing(yind)
 
   prep <- pffr_prepare(
@@ -340,10 +344,8 @@ pffr <- function(
 
   m <- pffr_attach_metadata(m, prep$algorithm, ret)
 
-  if (isFALSE(sandwich)) {
+  if (sandwich == "none") {
     return(m)
   }
-  sandwich_type <- if (isTRUE(sandwich)) "cluster" else
-    match.arg(sandwich, "hc")
-  apply_sandwich_correction(m, prep$algorithm, type = sandwich_type)
+  apply_sandwich_correction(m, prep$algorithm, type = sandwich)
 }

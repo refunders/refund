@@ -1647,19 +1647,18 @@ test_that("pffrGLS errors on sparse data (not yet implemented)", {
 # Sandwich Correction Tests
 ###############################################################################
 
-test_that("pffr with sandwich=TRUE yields cluster-robust covariance", {
+test_that("pffr with sandwich='cluster' yields cluster-robust covariance", {
   skip_on_cran()
 
   dat <- get_xlin_data()
   t <- attr(dat, "yindex")
   m_std <- get_xlin_model()
 
-  # Fit with cluster-robust sandwich (sandwich = TRUE)
-  m_cl <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
+  m_cl <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
 
-  # Verify sandwich flag stored correctly
-  expect_false(m_std$pffr$sandwich)
-  expect_true(m_cl$pffr$sandwich)
+  # Sandwich type stored as character
+  expect_identical(m_std$pffr$sandwich, "none")
+  expect_identical(m_cl$pffr$sandwich, "cluster")
 
   # Covariance matrices differ from uncorrected model
   expect_false(identical(m_std$Vp, m_cl$Vp))
@@ -1677,13 +1676,13 @@ test_that("pffr with sandwich=TRUE yields cluster-robust covariance", {
   # Summary shows sandwich type
   summ_std <- summary(m_std)
   summ_cl <- summary(m_cl)
-  expect_false(summ_std$sandwich)
-  expect_true(summ_cl$sandwich)
+  expect_identical(summ_std$sandwich, "none")
+  expect_identical(summ_cl$sandwich, "cluster")
 
-  # coef.pffr with sandwich=TRUE on fitted model uses stored matrices
-  coef_cl <- coef(m_cl, sandwich = TRUE)
-  # coef.pffr with sandwich=TRUE on un-sandwiched model computes on the fly
-  coef_std_cl <- coef(m_std, sandwich = TRUE)
+  # coef.pffr on fitted model uses stored matrices
+  coef_cl <- coef(m_cl, sandwich = "cluster")
+  # coef.pffr on un-sandwiched model computes on the fly
+  coef_std_cl <- coef(m_std, sandwich = "cluster")
   expect_equal(coef_cl$pterms[, "se"], coef_std_cl$pterms[, "se"])
 })
 
@@ -1694,7 +1693,6 @@ test_that("pffr with sandwich='hc' yields observation-level HC sandwich", {
   t <- attr(dat, "yindex")
   m_std <- get_xlin_model()
 
-  # Fit with HC sandwich
   m_hc <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "hc")
 
   expect_identical(m_hc$pffr$sandwich, "hc")
@@ -1705,4 +1703,87 @@ test_that("pffr with sandwich='hc' yields observation-level HC sandwich", {
   expected_Vp <- vcov(m_std_stripped, sandwich = TRUE)
   expect_equal(m_hc$Vp, expected_Vp)
   expect_equal(m_hc$Vc, expected_Vp)
+})
+
+test_that("sandwich backward compat: TRUE/FALSE still work", {
+  skip_on_cran()
+
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+
+  # TRUE -> "cluster"
+  m_true <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
+  expect_identical(m_true$pffr$sandwich, "cluster")
+
+  # FALSE -> "none"
+  m_false <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = FALSE)
+  expect_identical(m_false$pffr$sandwich, "none")
+
+  # coef.pffr also accepts TRUE/FALSE
+  coef_true <- coef(m_false, sandwich = TRUE)
+  coef_cluster <- coef(m_false, sandwich = "cluster")
+  expect_equal(coef_true$pterms[, "se"], coef_cluster$pterms[, "se"])
+})
+
+test_that("coef.pffr recomputes when sandwich type differs from fit", {
+  skip_on_cran()
+
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+
+  # Fit with HC, request cluster — should NOT reuse HC matrices
+  m_hc <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "hc")
+  coef_hc_stored <- coef(m_hc, sandwich = "hc")
+  coef_cl_from_hc <- coef(m_hc, sandwich = "cluster")
+
+  # Cluster SEs should differ from stored HC SEs
+  expect_false(identical(
+    coef_hc_stored$pterms[, "se"],
+    coef_cl_from_hc$pterms[, "se"]
+  ))
+
+  # Fit without sandwich, request cluster on the fly
+  m_none <- get_xlin_model()
+  coef_cl_from_none <- coef(m_none, sandwich = "cluster")
+  expect_true(all(is.finite(coef_cl_from_none$pterms[, "se"])))
+})
+
+test_that("gam_sandwich_cluster works for gaulss family", {
+  skip_on_cran()
+
+  set.seed(42)
+  n <- 60
+  T_grid <- 20
+  t_grid <- seq(0, 1, length.out = T_grid)
+  x <- rnorm(n)
+  beta1 <- cos(2 * pi * t_grid)
+  signal <- outer(rep(1, n), sin(2 * pi * t_grid)) + outer(x, beta1)
+  Y <- signal + matrix(rnorm(n * T_grid, sd = 0.5), n, T_grid)
+
+  dat <- data.frame(Y = I(Y), x = x)
+  m <- pffr(Y ~ x, yind = t_grid, data = dat, family = mgcv::gaulss())
+
+  # Covariance matrix should be symmetric and positive semi-definite
+  m_stripped <- m
+  class(m_stripped) <- setdiff(class(m_stripped), "pffr")
+  cluster_id <- build_cluster_id(m$pffr)
+  V <- gam_sandwich_cluster(m_stripped, cluster_id, freq = FALSE)
+  expect_equal(V, t(V), tolerance = 1e-12)
+  expect_true(all(diag(V) >= 0))
+
+  # Cluster sandwich should differ from HC sandwich
+  V_hc <- mgcv::vcov.gam(m_stripped, sandwich = TRUE, freq = FALSE)
+  expect_false(identical(V, V_hc))
+
+  # Cluster sandwich should work via coef.pffr without error
+  coef_cl <- coef(m, sandwich = "cluster")
+  expect_true(length(coef_cl$smterms) > 0)
+
+  # All SEs in all terms should be positive and finite
+  for (sm in coef_cl$smterms) {
+    if (!is.null(sm$coef$se)) {
+      expect_true(all(is.finite(sm$coef$se)))
+      expect_true(all(sm$coef$se > 0))
+    }
+  }
 })

@@ -925,20 +925,88 @@ pffr_expand_variables <- function(
 # Step 9: Sandwich Correction
 #--------------------------------------
 
+#' Build cluster ID vector from pffr metadata
+#'
+#' Maps each row of the vectorized model matrix back to its curve.
+#'
+#' @param pffr_meta The `pffr` metadata list from a fitted model.
+#' @returns Integer vector of length equal to the number of fitted rows.
+#' @keywords internal
+build_cluster_id <- function(pffr_meta) {
+  if (isTRUE(pffr_meta$is_sparse)) {
+    cluster_id <- pffr_meta$ydata$.obs
+  } else {
+    cluster_id <- rep(seq_len(pffr_meta$nobs), each = pffr_meta$nyindex)
+  }
+  if (!is.null(pffr_meta$missing_indices)) {
+    cluster_id <- cluster_id[-pffr_meta$missing_indices]
+  }
+  cluster_id
+}
+
+#' Compute per-observation scores for gaulss family
+#'
+#' gaulss uses `tau = 1/sigma` with logb link and defines `family$sandwich`,
+#' which prevents the generic GLM score path. Scores are computed analytically
+#' from the log-likelihood and transformed to linear predictor space.
+#'
+#' @param b Fitted GAM object.
+#' @param X Model matrix with `lpi` attribute.
+#' @returns Score matrix (n_obs x p).
+#' @keywords internal
+compute_gaulss_scores <- function(b, X) {
+  lpi <- attr(X, "lpi")
+  n_obs <- length(b$y)
+
+  mu <- b$fitted.values[seq_len(n_obs)]
+  tau <- b$fitted.values[n_obs + seq_len(n_obs)]
+  eta1 <- b$linear.predictors[seq_len(n_obs)]
+  eta2 <- b$linear.predictors[n_obs + seq_len(n_obs)]
+
+  r <- b$y - mu
+
+  # Scores w.r.t. natural parameters, transformed to LP space via chain rule
+  w1 <- (tau^2 * r) * b$family$linfo[[1]]$mu.eta(eta1)
+  w2 <- (1 / tau - tau * r^2) * b$family$linfo[[2]]$mu.eta(eta2)
+
+  pw <- b$prior.weights
+  if (!is.null(pw) && any(pw != 1)) {
+    w1 <- pw * w1
+    w2 <- pw * w2
+  }
+
+  # Use += to handle possible overlapping lpi indices (shared coefficients)
+  S <- matrix(0, nrow = n_obs, ncol = ncol(X))
+  S[, lpi[[1]]] <- S[, lpi[[1]]] + w1 * X[, lpi[[1]], drop = FALSE]
+  S[, lpi[[2]]] <- S[, lpi[[2]]] + w2 * X[, lpi[[2]], drop = FALSE]
+  S
+}
+
+#' Assemble cluster-robust sandwich from score matrix
+#'
+#' Given a per-observation score matrix, aggregates by cluster and forms
+#' \eqn{V_{CL} = c \cdot V_p M_{CL} V_p + B_2} with HC1 correction.
+#'
+#' @param scores Per-observation score matrix (n_obs x p).
+#' @param cluster_id Cluster membership vector.
+#' @param Vp Bayesian posterior covariance (p x p).
+#' @param B2 Bias correction matrix (p x p, or scalar 0).
+#' @returns A p x p covariance matrix.
+#' @keywords internal
+assemble_cluster_sandwich <- function(scores, cluster_id, Vp, B2) {
+  U <- rowsum(scores, cluster_id)
+  meat <- crossprod(U)
+  hc1 <- length(unique(cluster_id)) / (length(unique(cluster_id)) - 1)
+  hc1 * Vp %*% meat %*% Vp + B2
+}
+
 #' Cluster-robust sandwich covariance estimator
 #'
 #' Computes a cluster-robust (CR1) sandwich covariance matrix for a fitted
-#' GAM, clustering by curve. This handles both heteroskedasticity and
-#' within-curve autocorrelation, requiring only that curves are independent.
+#' GAM, clustering by curve. Handles both heteroskedasticity and within-curve
+#' autocorrelation, requiring only that curves are independent.
 #'
-#' The estimator is:
-#' \deqn{V_{CL} = c \cdot V_p \, M_{CL} \, V_p + B_2}
-#' where \eqn{M_{CL} = \sum_g u_g u_g'} is the clustered meat (with
-#' \eqn{u_g = \sum_{t \in g} s_{gt}} the cluster-aggregated scores),
-#' \eqn{c = n/(n-1)} is the HC1 small-sample correction, and
-#' \eqn{B_2 = V_p - V_e} (Bayesian) or \eqn{B_2 = 0} (frequentist).
-#'
-#' @param b Fitted GAM object (must not have class "pffr").
+#' @param b Fitted GAM object (must not have class `"pffr"`).
 #' @param cluster_id Integer vector of length `nrow(model.matrix(b))` mapping
 #'   each vectorized observation to its curve.
 #' @param freq If `TRUE`, use frequentist sandwich (`B2 = 0`).
@@ -948,60 +1016,14 @@ pffr_expand_variables <- function(
 gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
   B2 <- if (freq) 0 else b$Vp - b$Ve
   X <- model.matrix(b)
-  n_clusters <- length(unique(cluster_id))
 
-  # gaulss family: manual per-observation score computation
-  # gaulss uses tau = 1/sigma with logb link, and defines family$sandwich
-  # (which prevents the generic GLM score path below). We compute scores
-
-  # analytically from the log-likelihood.
   if (b$family$family == "gaulss") {
-    lpi <- attr(X, "lpi")
-    n_obs <- length(b$y)
-
-    # Reuse stored fitted values and linear predictors
-    mu <- b$fitted.values[1:n_obs]
-    tau <- b$fitted.values[(n_obs + 1):(2 * n_obs)]
-
-    eta1 <- b$linear.predictors[1:n_obs]
-    eta2 <- b$linear.predictors[(n_obs + 1):(2 * n_obs)]
-
-    r <- b$y - mu
-
-    # Scores w.r.t. natural parameters
-    dl_dmu <- tau^2 * r
-    dl_dtau <- 1 / tau - tau * r^2
-
-    # Chain rule: transform to LP space via link derivatives
-    dmu_deta1 <- b$family$linfo[[1]]$mu.eta(eta1)
-    dtau_deta2 <- b$family$linfo[[2]]$mu.eta(eta2)
-
-    w1 <- dl_dmu * dmu_deta1
-    w2 <- dl_dtau * dtau_deta2
-
-    # Apply prior weights if present and non-trivial
-    pw <- b$prior.weights
-    if (!is.null(pw) && !all(pw == 1)) {
-      w1 <- pw * w1
-      w2 <- pw * w2
-    }
-
-    # Build full score matrix (n_obs x p_total)
-    p <- ncol(X)
-    S <- matrix(0, nrow = n_obs, ncol = p)
-    S[, lpi[[1]]] <- w1 * X[, lpi[[1]], drop = FALSE]
-    S[, lpi[[2]]] <- w2 * X[, lpi[[2]], drop = FALSE]
-
-    # Aggregate by cluster and form sandwich
-    U <- rowsum(S, cluster_id)
-    meat_cl <- crossprod(U)
-    hc1 <- n_clusters / (n_clusters - 1)
-    return(hc1 * b$Vp %*% meat_cl %*% b$Vp + B2)
+    scores <- compute_gaulss_scores(b, X)
+    return(assemble_cluster_sandwich(scores, cluster_id, b$Vp, B2))
   }
 
-  # For other non-standard families, mgcv uses b$family$sandwich for score
-  # computation. Cluster-robust aggregation of those scores is not yet
-  # implemented — fall back to observation-level HC sandwich with a warning.
+  # Families that define family$sandwich (e.g. multinom, scat) use custom
+  # score computation — cluster aggregation not yet implemented for these.
   if (!is.null(b$family$sandwich)) {
     warning(
       "Cluster-robust sandwich not yet implemented for family '",
@@ -1012,26 +1034,15 @@ gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
     return(mgcv::vcov.gam(b, sandwich = TRUE, freq = freq))
   }
 
-  # Standard GLM case: per-observation scores
+  # Standard GLM case: per-observation scores via general score weight
+  # w = (d mu/d eta) * (y - mu) / (phi * V(mu))
   mu <- b$fitted.values
-  w <- b$family$mu.eta(b$linear.predictors) *
+  scores <- b$family$mu.eta(b$linear.predictors) *
     (b$y - mu) /
-    (b$sig2 * b$family$variance(mu))
-  wX <- w * X # n_obs x p matrix of scores
-
-  # Aggregate scores by cluster (curve)
-  U <- rowsum(wX, cluster_id) # n_clusters x p
-
-  # Clustered meat
-  meat_cl <- crossprod(U) # p x p
-
-  # HC1 small-sample correction
-  hc1 <- n_clusters / (n_clusters - 1)
-
-  # Assemble sandwich
-  hc1 * b$Vp %*% meat_cl %*% b$Vp + B2
+    (b$sig2 * b$family$variance(mu)) *
+    X
+  assemble_cluster_sandwich(scores, cluster_id, b$Vp, B2)
 }
-
 
 #' Apply sandwich correction to model covariance matrices
 #'
@@ -1041,30 +1052,18 @@ gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
 #'
 #' @param m Fitted model.
 #' @param algorithm Algorithm symbol.
-#' @param type Type of sandwich correction: `"cluster"` for cluster-robust
-#'   (default) or `"hc"` for observation-level HC.
+#' @param type `"cluster"` (default) for cluster-robust or `"hc"` for
+#'   observation-level HC.
 #' @returns Model with corrected covariance matrices.
 #' @keywords internal
 apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
   gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
 
-  # Strip pffr class for vcov calls
   gam_obj_stripped <- gam_obj
   class(gam_obj_stripped) <- setdiff(class(gam_obj_stripped), "pffr")
 
   if (type == "cluster") {
-    # Build cluster_id from pffr metadata
-    pffr_meta <- gam_obj$pffr
-    if (isTRUE(pffr_meta$is_sparse)) {
-      cluster_id <- pffr_meta$ydata$.obs
-    } else {
-      cluster_id <- rep(seq_len(pffr_meta$nobs), each = pffr_meta$nyindex)
-    }
-    # Remove entries for missing observations (NAs removed during fitting)
-    if (!is.null(pffr_meta$missing_indices)) {
-      cluster_id <- cluster_id[-pffr_meta$missing_indices]
-    }
-
+    cluster_id <- build_cluster_id(gam_obj$pffr)
     gam_obj$Vp <- gam_obj$Vc <- gam_sandwich_cluster(
       gam_obj_stripped,
       cluster_id,
@@ -1076,7 +1075,6 @@ apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
       freq = TRUE
     )
   } else {
-    # Observation-level HC sandwich via mgcv
     gam_obj$Vp <- gam_obj$Vc <- mgcv::vcov.gam(
       gam_obj_stripped,
       sandwich = TRUE,
@@ -1094,7 +1092,6 @@ apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
   } else {
     m <- gam_obj
   }
-
   m
 }
 
