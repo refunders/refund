@@ -9,7 +9,7 @@
   raw = FALSE,
   se = TRUE,
   freq = FALSE,
-  sandwich = FALSE,
+  sandwich = c("none", "cluster", "hc"),
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
@@ -29,9 +29,12 @@ variability estimates: \code{object$Vc} if available (includes correction for sm
 parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
 covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.}
 
-\item{sandwich}{logical, defaults to FALSE. Use sandwich-corrected covariance for standard errors.
-Uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE}. If the model was fitted with
-\code{sandwich=TRUE}, the pre-computed covariance matrices are used.}
+\item{sandwich}{Type of sandwich-corrected covariance for standard errors.
+\code{"none"} (default): use model's default covariance.
+\code{"cluster"}: cluster-robust sandwich (clustering by curve).
+\code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
+If the model was fitted with a matching sandwich type, the pre-computed
+covariance matrices are used directly.}
 
 \item{seWithMean}{logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?}
 
@@ -65,9 +68,12 @@ Not implemented for smooths in more than 3 dimensions.
 }
 \details{
 The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
-The \code{sandwich}-option uses \code{\link[mgcv]{vcov.gam}} with \code{sandwich=TRUE} to compute
-robust standard errors. If the model was fitted with \code{sandwich=TRUE} in \code{\link{pffr}},
-the pre-computed sandwich covariance matrices are used directly.
+The \code{sandwich}-option computes robust standard errors. With
+\code{sandwich="cluster"}, a cluster-robust sandwich (clustering by curve)
+is used, which handles both heteroskedasticity and within-curve correlation.
+With \code{sandwich="hc"}, mgcv's observation-level HC sandwich is used.
+If the model was fitted with a matching sandwich option in
+\code{\link{pffr}}, the pre-computed covariance matrices are used directly.
 }
 \seealso{
 \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is

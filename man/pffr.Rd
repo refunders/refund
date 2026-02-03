@@ -14,7 +14,7 @@ pffr(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
-  sandwich = FALSE,
+  sandwich = c("none", "cluster", "hc"),
   ...
 )
 }
@@ -63,11 +63,15 @@ the global functional intercept. Defaults to \code{list(bs="ps", k=20,
 m=c(2, 1))}, i.e. 20 cubic B-splines bases with first order difference
 penalty.}
 
-\item{sandwich}{logical; if \code{TRUE}, apply sandwich correction to
-covariance matrices to obtain robust standard errors. This can improve
-inference when residuals are heteroscedastic or correlated. Uses
-\code{\link[mgcv]{vcov.gam}} with \code{sandwich = TRUE}. Default is
-\code{FALSE}.}
+\item{sandwich}{Type of sandwich correction for robust covariance
+estimation.
+\code{"none"} (default): no correction.
+\code{"cluster"}: cluster-robust sandwich clustering by curve, which
+handles both heteroskedasticity and within-curve autocorrelation — the
+recommended choice for functional data.
+\code{"hc"}: observation-level HC sandwich via
+\code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
+heteroskedasticity but ignores within-curve correlation.}
 
 \item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}},
 \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
