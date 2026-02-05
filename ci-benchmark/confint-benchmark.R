@@ -112,7 +112,7 @@ make_dgp_settings <- function(size = c("tiny", "small", "full")) {
     )
   }
 
-  # Full design: ~72 DGPs
+  # Full design: 62 DGPs
 
   # Arm 1: Correlation (48 DGPs)
   # vary n, snr, wiggliness, rho, error_dist; hetero=none
@@ -145,8 +145,8 @@ make_dgp_settings <- function(size = c("tiny", "small", "full")) {
     hetero_param = NA_real_
   )
 
-  # Arm 3: Heteroskedasticity (16 DGPs)
-  # vary n, snr, wiggliness, hetero level; iid errors, gaussian
+  # Arm 3: Heteroskedasticity (8 DGPs)
+  # vary n, snr, wiggliness; strong hetero only; iid errors, gaussian
   arm3 <- tidyr::crossing(
     n = c(50L, 200L),
     snr = c(5, 25),
@@ -155,10 +155,10 @@ make_dgp_settings <- function(size = c("tiny", "small", "full")) {
     corr_param = NA_real_,
     error_dist = "gaussian",
     hetero_type = c("bump"),
-    hetero_param = c(1.0, 3.0)
+    hetero_param = 3.0
   )
 
-  # Arm 4: Interaction (4 DGPs)
+  # Arm 4: Interaction (2 DGPs)
   # correlation + heteroskedasticity at n=200, high SNR
   arm4 <- tidyr::crossing(
     n = 200L,
@@ -168,7 +168,7 @@ make_dgp_settings <- function(size = c("tiny", "small", "full")) {
     corr_param = c(0.3, 0.9),
     error_dist = "gaussian",
     hetero_type = "bump",
-    hetero_param = c(1.0, 3.0)
+    hetero_param = 3.0
   )
 
   base <- bind_rows(arm1_raw, arm2, arm3, arm4) |>
@@ -1610,10 +1610,10 @@ if (FALSE) {
   # Production run (Round 2)
   results <- run_benchmark(
     dgp_settings = make_dgp_settings("full"),
-    n_rep = 200,
+    n_rep = 100,
     seed = 2026,
     parallel = TRUE,
-    n_workers = 3
+    n_workers = 10
   )
 }
 
