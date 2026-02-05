@@ -1,23 +1,23 @@
 # confint-benchmark.R
 #
 # Benchmark CI coverage/width for pffr coefficient estimates under different
-# residual covariance structures and fitting methods.
+# residual covariance structures and fitting methods (Round 2).
 #
 # Methods compared:
-#   - pffr (default)
-#   - pffr_sandwich (robust SEs via sandwich correction)
-#   - pffr_gls (GLS with estimated hatSigma)
-#   - pffr_ar (AR(1) residuals via bam)
+#   - pffr (default Bayesian Vc from mgcv)
+#   - pffr_sandwich (cluster-robust sandwich SEs)
+#   - pffr_hc (observation-level HC sandwich SEs -- included to show it doesn't
+#     help under within-curve correlation)
+#   - pffr_ar (AR(1) residuals via bam, gaussian + correlated only)
+#   - pffr_gaulss (gaulss family, gaussian + heteroskedastic only)
 #
 # Metrics per term type (ff, concurrent, linear, smooth, intercept, E(Y)):
 #   - coverage: fraction of grid points where CI contains truth
+#   - coverage_high_var / coverage_low_var: region-specific coverage
 #   - mean_width: average CI width across grid
-#   - rmse: root mean squared error of estimates
-#   - fit_time_total: fitting time (includes pilot for gls/ar)
-#
-# Additional metrics:
-#   - intercept: coverage/width/RMSE for the functional intercept mu(t)
-#   - E(Y): coverage/width/RMSE for fitted values vs true linear predictor
+#   - rmse, bias, mean_abs_error, mean_se, median_se
+#   - z_mean, z_sd, z_kurtosis, z2_mean: z-score diagnostics
+#   - fit_time_total: fitting time
 
 # Setup -----------------------------------------------------------------------
 
@@ -37,74 +37,184 @@ source("ci-benchmark/benchmark-utils.R")
 
 #' Create DGP settings grid
 #'
+#' Targeted (not full factorial) design with 4 arms:
+#'   Arm 1 (correlation): vary rho with AR(1), no heteroskedasticity
+#'   Arm 2 (fourier_pos): non-monotonic correlation at two strengths
+#'   Arm 3 (heteroskedasticity): vary hetero under iid errors
+#'   Arm 4 (interaction): correlation + heteroskedasticity at large n
+#'
 #' @param size One of "tiny", "small", "full".
 #' @returns Tibble with DGP configurations.
 make_dgp_settings <- function(size = c("tiny", "small", "full")) {
   size <- match.arg(size)
 
-  base <- switch(
-    size,
-    tiny = tidyr::crossing(
+  # Fixed grid dimensions
+  NXGRID <- 30L
+  NYGRID <- 40L
+
+  if (size == "tiny") {
+    # Minimal for quick testing: 2 DGPs
+    base <- tibble(
       n = 50L,
-      nxgrid = 25L,
-      nygrid = 30L,
-      snr = 15,
-      wiggliness = .1,
+      nxgrid = NXGRID,
+      nygrid = NYGRID,
+      snr = 25,
+      wiggliness = 5,
       error_dist = "gaussian",
       corr_type = c("iid", "ar1"),
-      hetero_type = "none"
-    ),
-    small = tidyr::crossing(
-      n = 80L,
-      nxgrid = 30L,
-      nygrid = 40L,
-      snr = c(10, 25),
-      wiggliness = 3,
-      error_dist = "gaussian",
-      corr_type = c("iid", "ar1"),
-      hetero_type = c("none", "linear")
-    ),
-    full = tidyr::crossing(
-      n = 100L,
-      nxgrid = 35L,
-      nygrid = 45L,
-      snr = c(5, 15, 50),
-      wiggliness = c(1e-4, 1e-1, 10),
-      error_dist = c("gaussian", "t6"),
-      corr_type = c("iid", "ar1"),
-      hetero_type = c("none", "linear", "bump")
+      corr_param = c(NA_real_, 0.3),
+      hetero_type = "none",
+      hetero_param = NA_real_
     )
+    return(
+      base |>
+        mutate(
+          dgp_id = row_number(),
+          terms = list(c("ff", "linear", "smooth", "concurrent"))
+        )
+    )
+  }
+
+  if (size == "small") {
+    # Moderate for piloting: ~12 DGPs
+    base <- bind_rows(
+      # Correlation arm subset
+      tidyr::crossing(
+        n = c(50L, 200L),
+        snr = 25,
+        wiggliness = 5,
+        corr_type = "ar1",
+        corr_param = c(0, 0.3, 0.9),
+        hetero_type = "none",
+        hetero_param = NA_real_,
+        error_dist = "gaussian"
+      ),
+      # Hetero arm subset
+      tidyr::crossing(
+        n = 200L,
+        snr = 25,
+        wiggliness = 5,
+        corr_type = "iid",
+        corr_param = NA_real_,
+        hetero_type = c("bump"),
+        hetero_param = 3.0,
+        error_dist = "gaussian"
+      )
+    ) |>
+      mutate(nxgrid = NXGRID, nygrid = NYGRID)
+
+    return(
+      base |>
+        mutate(
+          dgp_id = row_number(),
+          terms = list(c("ff", "linear", "smooth", "concurrent"))
+        )
+    )
+  }
+
+  # Full design: ~72 DGPs
+
+  # Arm 1: Correlation (48 DGPs)
+  # vary n, snr, wiggliness, rho, error_dist; hetero=none
+  # Map rho=0 to corr_type="iid", rho>0 to "ar1"
+  arm1_raw <- tidyr::crossing(
+    n = c(50L, 200L),
+    snr = c(5, 25),
+    wiggliness = c(0.01, 5),
+    rho = c(0, 0.3, 0.9),
+    error_dist = c("gaussian", "t6")
+  ) |>
+    mutate(
+      corr_type = ifelse(rho == 0, "iid", "ar1"),
+      corr_param = ifelse(rho == 0, NA_real_, rho),
+      hetero_type = "none",
+      hetero_param = NA_real_
+    ) |>
+    select(-rho)
+
+  # Arm 2: Non-monotonic correlation (4 DGPs)
+  # fourier_pos at two period values, n={50, 200}
+  arm2 <- tidyr::crossing(
+    n = c(50L, 200L),
+    snr = 25,
+    wiggliness = 5,
+    corr_type = "fourier_pos",
+    corr_param = c(0.3, 0.6),
+    error_dist = "gaussian",
+    hetero_type = "none",
+    hetero_param = NA_real_
   )
+
+  # Arm 3: Heteroskedasticity (16 DGPs)
+  # vary n, snr, wiggliness, hetero level; iid errors, gaussian
+  arm3 <- tidyr::crossing(
+    n = c(50L, 200L),
+    snr = c(5, 25),
+    wiggliness = c(0.01, 5),
+    corr_type = "iid",
+    corr_param = NA_real_,
+    error_dist = "gaussian",
+    hetero_type = c("bump"),
+    hetero_param = c(1.0, 3.0)
+  )
+
+  # Arm 4: Interaction (4 DGPs)
+  # correlation + heteroskedasticity at n=200, high SNR
+  arm4 <- tidyr::crossing(
+    n = 200L,
+    snr = 25,
+    wiggliness = 5,
+    corr_type = "ar1",
+    corr_param = c(0.3, 0.9),
+    error_dist = "gaussian",
+    hetero_type = "bump",
+    hetero_param = c(1.0, 3.0)
+  )
+
+  base <- bind_rows(arm1_raw, arm2, arm3, arm4) |>
+    distinct() |>
+    mutate(nxgrid = NXGRID, nygrid = NYGRID)
 
   base |>
     mutate(
       dgp_id = row_number(),
-      corr_param = NA_real_,
-      hetero_param = NA_real_,
       terms = list(c("ff", "linear", "smooth", "concurrent"))
     )
 }
 
 #' Determine which methods are applicable for a DGP
 #'
+#' Methods:
+#'   pffr: default Bayesian Vc from mgcv (no sandwich)
+#'   pffr_sandwich: cluster-robust sandwich (sandwich = "cluster")
+#'   pffr_hc: observation-level HC sandwich (sandwich = "hc")
+#'   pffr_ar: bam with estimated AR(1) rho (gaussian + correlated only)
+#'   pffr_gaulss: gaulss family (gaussian + hetero != "none" only)
+#'
 #' @param corr_type Correlation type.
 #' @param hetero_type Heteroskedasticity type.
 #' @param error_dist Error distribution.
 #' @returns Character vector of method names.
 get_applicable_methods <- function(corr_type, hetero_type, error_dist) {
-  methods <- c("pffr", "pffr_sandwich")
+  # Be robust to factors / accidental whitespace / case
+  corr_type <- tolower(trimws(as.character(corr_type %||% "")))
+  hetero_type <- tolower(trimws(as.character(hetero_type %||% "")))
+  error_dist <- tolower(trimws(as.character(error_dist %||% "")))
 
-  # pffr_gaulss: use gaulss family to model heteroskedasticity (gaussian only, slow)
-  if (hetero_type != "none" && error_dist == "gaussian") {
-    methods <- c(methods, "pffr_gaulss")
+  # Core trio: always run default, cluster sandwich, and HC sandwich
+  # (HC is included to demonstrate it does NOT help under correlation)
+  methods <- c("pffr", "pffr_sandwich", "pffr_hc")
+
+  # pffr_ar: only meaningful under correlated errors, but can be run under any
+  # error distribution (it is still a valid fitting strategy under
+  # misspecification, e.g. t errors).
+  if (corr_type %in% c("ar1", "fourier_pos")) {
+    methods <- c(methods, "pffr_ar")
   }
 
-  # pffr_gls: robust to non-gaussian errors, useful for heteroskedastic/correlated
-  methods <- c(methods, "pffr_gls")
-
-  # pffr_ar: only for gaussian with AR1 correlation
-  if (error_dist == "gaussian" && corr_type == "ar1") {
-    methods <- c(methods, "pffr_ar")
+  # pffr_gaulss: gaussian + heteroskedastic only
+  if (hetero_type != "none" && error_dist == "gaussian") {
+    methods <- c(methods, "pffr_gaulss")
   }
 
   methods
@@ -165,6 +275,8 @@ generate_benchmark_data <- function(
   )
 
   # Generate base data with pffr_simulate (iid gaussian errors, SNR applied)
+  # k_truth = 6 for all terms to ensure k_model/k_truth ratio of 2x per margin
+  # (model uses k=12 for smooth/ff), reducing smoothing bias
   dat <- pffr_simulate(
     formula,
     n = n,
@@ -174,6 +286,15 @@ generate_benchmark_data <- function(
     effects = effects,
     intercept = "random",
     wiggliness = wiggliness,
+    k_truth = list(
+      ff_s = 6,
+      ff_t = 6,
+      smooth_z = 6,
+      smooth_t = 6,
+      linear = 6,
+      concurrent = 6,
+      intercept = 6
+    ),
     seed = seed
   )
 
@@ -354,10 +475,16 @@ fit_all_methods <- function(sim, methods, k_yindex = 12) {
   pffr_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
   timings$pffr <- pffr_time
 
-  # pffr_sandwich: same fit, different SE extraction
+  # pffr_sandwich: same fit, cluster-robust SE extraction
   if ("pffr_sandwich" %in% methods) {
     fits$pffr_sandwich <- fits$pffr
     timings$pffr_sandwich <- pffr_time
+  }
+
+  # pffr_hc: same fit, observation-level HC sandwich SE extraction
+  if ("pffr_hc" %in% methods) {
+    fits$pffr_hc <- fits$pffr
+    timings$pffr_hc <- pffr_time
   }
 
   # pffr_gaulss: fit with gaulss family to model heteroskedasticity
@@ -372,22 +499,6 @@ fit_all_methods <- function(sim, methods, k_yindex = 12) {
     )
     gaulss_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     timings$pffr_gaulss <- gaulss_time
-  }
-
-  # pffr_gls: requires pilot fit for hatSigma estimation
-  if ("pffr_gls" %in% methods) {
-    t0 <- Sys.time()
-    hatSigma <- estimate_hatSigma_from_fit(fits$pffr, dat)
-    fits$pffr_gls <- pffr_gls(
-      formula,
-      yind = t_grid,
-      data = dat,
-      hatSigma = hatSigma,
-      bs.yindex = bs_yindex
-    )
-    gls_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
-    timings$pffr_gls <- pffr_time + gls_time
-    timings$pffr_gls_only <- gls_time
   }
 
   # pffr_ar: requires pilot fit for rho estimation
@@ -614,18 +725,26 @@ evaluate_truth_on_grid <- function(
   NULL
 }
 
-#' Compute metrics for one term
+#' Extract coefficient estimates + CIs on coef.pffr grid
+#'
+#' Returns a tidy data frame on the exact grid used by `coef.pffr`, including
+#' point estimates, SEs, CIs, truth, and coverage indicators. This is useful
+#' for interactive exploration/plotting while using the same code-path as the
+#' benchmark metric computation.
 #'
 #' @param fit A pffr fit.
 #' @param truth Truth list from simulation.
-#' @param term_type One of "ff", "linear", "smooth".
+#' @param term_type One of "ff", "linear", "smooth", "intercept", "concurrent".
 #' @param alpha Significance level for CI.
-#' @param use_sandwich Use sandwich SEs?
+#' @param use_sandwich Sandwich type: FALSE, TRUE, "cluster", or "hc".
 #' @param s_grid s evaluation points (for ff).
 #' @param t_grid t evaluation points.
 #' @param data Data frame used for fitting (needed for smooth term centering).
-#' @returns Tibble with one row of metrics, or NULL if term not found.
-compute_term_metrics <- function(
+#' @param coefs Optional pre-computed coefficients from coef.pffr.
+#' @param center_ff One of "match_fit", "always", "never".
+#' @returns Tibble with columns x, y (if 2D), estimate, se, lower, upper, truth,
+#'   covered, error, z, term_type.
+extract_term_ci_df <- function(
   fit,
   truth,
   term_type,
@@ -634,10 +753,12 @@ compute_term_metrics <- function(
   s_grid = NULL,
   t_grid = NULL,
   data = NULL,
-  coefs = NULL
+  coefs = NULL,
+  center_ff = c("match_fit", "always", "never")
 ) {
-  # Extract coefficients
-  # Note: seWithMean = FALSE to suppress cat() messages from coef.pffr
+  use_sandwich <- normalize_sandwich_type(use_sandwich)
+  center_ff <- match.arg(center_ff)
+
   if (is.null(coefs)) {
     coefs <- tryCatch(
       coef(
@@ -648,15 +769,11 @@ compute_term_metrics <- function(
         n2 = 25,
         n3 = 15
       ),
-      error = function(e) {
-        message("coef error: ", e$message)
-        NULL
-      }
+      error = function(e) NULL
     )
   }
   if (is.null(coefs) || is.null(coefs$smterms)) return(NULL)
 
-  # Find the term
   sm_names <- names(coefs$smterms)
   term_idx <- find_term_index(sm_names, term_type)
   if (is.null(term_idx)) return(NULL)
@@ -664,12 +781,10 @@ compute_term_metrics <- function(
   term_info <- coefs$smterms[[term_idx]]
   if (is.null(term_info) || is.null(term_info$coef)) return(NULL)
 
-  # Get estimates and SEs
   est <- term_info$coef$value
   se <- term_info$coef$se
-  if (is.null(se) || length(se) == 0) return(NULL)
+  if (is.null(est) || is.null(se) || !length(se)) return(NULL)
 
-  # Get truth on same grid
   truth_vals <- evaluate_truth_on_grid(
     truth,
     term_type,
@@ -677,14 +792,11 @@ compute_term_metrics <- function(
     s_grid,
     t_grid,
     data = data,
-    fit = fit
+    fit = fit,
+    center_ff = center_ff
   )
-  if (is.null(truth_vals)) {
-    # Try with original grid dimensions
-    return(NULL)
-  }
+  if (is.null(truth_vals)) return(NULL)
 
-  # Handle length mismatch gracefully
   if (length(truth_vals) != length(est)) {
     warning(sprintf(
       "Length mismatch for %s: est=%d, truth=%d",
@@ -695,31 +807,146 @@ compute_term_metrics <- function(
     return(NULL)
   }
 
-  # Compute CI
-  z <- qnorm(1 - alpha / 2)
-  lower <- est - z * se
-  upper <- est + z * se
-  width <- 2 * z * se
-
-  # Check coverage
-  covered <- (truth_vals >= lower) & (truth_vals <= upper)
-
+  z_crit <- qnorm(1 - alpha / 2)
+  lower <- est - z_crit * se
+  upper <- est + z_crit * se
   err <- est - truth_vals
   z_score <- ifelse(is.finite(se) & se > 0, err / se, NA_real_)
+  covered <- (truth_vals >= lower) & (truth_vals <= upper)
+
+  is_2d <- !is.null(term_info$y)
+  if (is_2d) {
+    x_eval <- term_info$x
+    y_eval <- term_info$y
+    if (length(est) != length(x_eval) * length(y_eval)) return(NULL)
+    grid_df <- expand.grid(x = x_eval, y = y_eval)
+    return(tibble(
+      term_type = term_type,
+      x = grid_df$x,
+      y = grid_df$y,
+      estimate = est,
+      se = se,
+      lower = lower,
+      upper = upper,
+      truth = truth_vals,
+      covered = covered,
+      error = err,
+      z = z_score
+    ))
+  }
+
+  x_eval <- term_info$x
+  if (length(est) != length(x_eval)) return(NULL)
 
   tibble(
     term_type = term_type,
-    coverage = mean(covered, na.rm = TRUE),
-    mean_width = mean(width, na.rm = TRUE),
-    rmse = sqrt(mean((est - truth_vals)^2, na.rm = TRUE)),
-    bias = mean(err, na.rm = TRUE),
-    mean_abs_error = mean(abs(err), na.rm = TRUE),
-    mean_se = mean(se, na.rm = TRUE),
-    median_se = stats::median(se, na.rm = TRUE),
-    z_mean = mean(z_score, na.rm = TRUE),
-    z_sd = stats::sd(z_score, na.rm = TRUE),
-    z2_mean = mean(z_score^2, na.rm = TRUE),
-    n_grid = sum(!is.na(covered))
+    x = x_eval,
+    estimate = est,
+    se = se,
+    lower = lower,
+    upper = upper,
+    truth = truth_vals,
+    covered = covered,
+    error = err,
+    z = z_score
+  )
+}
+
+#' Compute metrics for one term
+#'
+#' @param fit A pffr fit.
+#' @param truth Truth list from simulation.
+#' @param term_type One of "ff", "linear", "smooth", "intercept", "concurrent".
+#' @param alpha Significance level for CI.
+#' @param use_sandwich Sandwich type: FALSE, "cluster", or "hc".
+#' @param s_grid s evaluation points (for ff).
+#' @param t_grid t evaluation points.
+#' @param data Data frame used for fitting (needed for smooth term centering).
+#' @param coefs Pre-computed coefficients from coef.pffr.
+#' @param err_struct Error structure from simulation (for region-specific coverage).
+#' @returns Tibble with one row of metrics, or NULL if term not found.
+compute_term_metrics <- function(
+  fit,
+  truth,
+  term_type,
+  alpha = 0.10,
+  use_sandwich = FALSE,
+  s_grid = NULL,
+  t_grid = NULL,
+  data = NULL,
+  coefs = NULL,
+  err_struct = NULL
+) {
+  use_sandwich <- normalize_sandwich_type(use_sandwich)
+
+  df <- extract_term_ci_df(
+    fit,
+    truth,
+    term_type,
+    alpha = alpha,
+    use_sandwich = use_sandwich,
+    s_grid = s_grid,
+    t_grid = t_grid,
+    data = data,
+    coefs = coefs
+  )
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+
+  z_finite <- df$z[is.finite(df$z)]
+
+  z_kurtosis <- if (length(z_finite) > 3) {
+    m4 <- mean((z_finite - mean(z_finite))^4)
+    s2 <- stats::var(z_finite)
+    if (s2 > 0) m4 / s2^2 - 3 else NA_real_
+  } else {
+    NA_real_
+  }
+
+  coverage_high_var <- NA_real_
+  coverage_low_var <- NA_real_
+
+  if (!is.null(err_struct) && err_struct$hetero_type != "none") {
+    sigma_t <- err_struct$sigma_t
+    sigma_median <- stats::median(sigma_t)
+    if (!is.null(df$y)) {
+      t_to_sigma <- stats::approx(t_grid, sigma_t, xout = df$y, rule = 2)$y
+      hi <- t_to_sigma >= sigma_median
+      lo <- t_to_sigma < sigma_median
+      if (any(hi, na.rm = TRUE)) {
+        coverage_high_var <- mean(df$covered[hi], na.rm = TRUE)
+      }
+      if (any(lo, na.rm = TRUE)) {
+        coverage_low_var <- mean(df$covered[lo], na.rm = TRUE)
+      }
+    } else if (!is.null(df$x)) {
+      t_to_sigma <- stats::approx(t_grid, sigma_t, xout = df$x, rule = 2)$y
+      hi <- t_to_sigma >= sigma_median
+      lo <- t_to_sigma < sigma_median
+      if (any(hi, na.rm = TRUE)) {
+        coverage_high_var <- mean(df$covered[hi], na.rm = TRUE)
+      }
+      if (any(lo, na.rm = TRUE)) {
+        coverage_low_var <- mean(df$covered[lo], na.rm = TRUE)
+      }
+    }
+  }
+
+  tibble(
+    term_type = term_type,
+    coverage = mean(df$covered, na.rm = TRUE),
+    coverage_high_var = coverage_high_var,
+    coverage_low_var = coverage_low_var,
+    mean_width = mean(df$upper - df$lower, na.rm = TRUE),
+    rmse = sqrt(mean(df$error^2, na.rm = TRUE)),
+    bias = mean(df$error, na.rm = TRUE),
+    mean_abs_error = mean(abs(df$error), na.rm = TRUE),
+    mean_se = mean(df$se, na.rm = TRUE),
+    median_se = stats::median(df$se, na.rm = TRUE),
+    z_mean = mean(z_finite),
+    z_sd = stats::sd(z_finite),
+    z_kurtosis = z_kurtosis,
+    z2_mean = mean(z_finite^2),
+    n_grid = sum(!is.na(df$covered))
   )
 }
 
@@ -728,11 +955,37 @@ compute_term_metrics <- function(
 #' @param fit A pffr fit.
 #' @param truth Truth list from simulation.
 #' @param alpha Significance level for CI.
+#' @param use_sandwich Sandwich type: FALSE, "cluster", or "hc". When specified,
+#'   applies sandwich correction to the fit's covariance matrices before
+#'   computing prediction SEs.
+#' @param err_struct Error structure from simulation (for region-specific coverage).
+#' @param t_grid t evaluation points (needed to map sigma_t to columns).
 #' @returns Tibble with one row of E(Y) metrics.
-compute_ey_metrics <- function(fit, truth, alpha = 0.10) {
-  # Get fitted values with SE
+compute_ey_metrics <- function(
+  fit,
+  truth,
+  alpha = 0.10,
+  use_sandwich = FALSE,
+  err_struct = NULL,
+  t_grid = NULL
+) {
+  use_sandwich <- normalize_sandwich_type(use_sandwich)
+
+  # Apply sandwich correction if requested
+  pred_fit <- fit
+  if (!isFALSE(use_sandwich)) {
+    algorithm <- fit$pffr$algorithm %||% "gam"
+    sandwich_fn <- if (exists("apply_sandwich_correction", mode = "function")) {
+      apply_sandwich_correction
+    } else {
+      refund:::apply_sandwich_correction
+    }
+    pred_fit <- sandwich_fn(fit, algorithm, type = use_sandwich)
+  }
+
+  # Get fitted values with SE (suppress gaulss reshape warnings)
   pred <- tryCatch(
-    predict(fit, se.fit = TRUE, type = "link"),
+    suppressWarnings(predict(pred_fit, se.fit = TRUE, type = "link")),
     error = function(e) NULL
   )
   if (is.null(pred)) return(NULL)
@@ -741,9 +994,22 @@ compute_ey_metrics <- function(fit, truth, alpha = 0.10) {
   eta_true <- truth$eta
   if (is.null(eta_true)) return(NULL)
 
-  # Ensure dimensions match
-  fit_mat <- matrix(pred$fit, nrow = nrow(eta_true), ncol = ncol(eta_true))
-  se_mat <- matrix(pred$se.fit, nrow = nrow(eta_true), ncol = ncol(eta_true))
+  n <- nrow(eta_true)
+  nygrid <- ncol(eta_true)
+
+  # predict.pffr returns n×nygrid matrices (even for gaulss, which internally
+  # truncates to the mu linear predictor). Use as-is if already a matrix with
+  # correct dimensions, otherwise reshape.
+  if (is.matrix(pred$fit) && nrow(pred$fit) == n && ncol(pred$fit) == nygrid) {
+    fit_mat <- pred$fit
+    se_mat <- pred$se.fit
+  } else {
+    # Fallback: vector output or unexpected shape — take first n*nygrid elements
+    fit_vec <- as.vector(pred$fit)[seq_len(n * nygrid)]
+    se_vec <- as.vector(pred$se.fit)[seq_len(n * nygrid)]
+    fit_mat <- matrix(fit_vec, nrow = n, ncol = nygrid)
+    se_mat <- matrix(se_vec, nrow = n, ncol = nygrid)
+  }
 
   # Compute pointwise CIs
   z <- qnorm(1 - alpha / 2)
@@ -755,19 +1021,56 @@ compute_ey_metrics <- function(fit, truth, alpha = 0.10) {
 
   err <- fit_mat - eta_true
   z_score <- ifelse(is.finite(se_mat) & se_mat > 0, err / se_mat, NA_real_)
+  z_finite <- as.vector(z_score[is.finite(z_score)])
+
+  z_kurtosis <- if (length(z_finite) > 3) {
+    m4 <- mean((z_finite - mean(z_finite))^4)
+    s2 <- stats::var(z_finite)
+    if (s2 > 0) m4 / s2^2 - 3 else NA_real_
+  } else {
+    NA_real_
+  }
+
+  # Region-specific coverage: split columns by sigma_t pattern
+  coverage_high_var <- NA_real_
+  coverage_low_var <- NA_real_
+
+  if (
+    !is.null(err_struct) && err_struct$hetero_type != "none" && !is.null(t_grid)
+  ) {
+    sigma_t <- err_struct$sigma_t
+    sigma_median <- stats::median(sigma_t)
+    # Map sigma_t (on original t_grid) to the nygrid columns of the covered matrix
+    # The response grid used by pffr may differ from t_grid, so use the fit's yindex
+    y_eval <- fit$pffr$yind %||% t_grid
+    if (length(y_eval) == nygrid) {
+      t_to_sigma <- stats::approx(t_grid, sigma_t, xout = y_eval, rule = 2)$y
+      high_cols <- which(t_to_sigma >= sigma_median)
+      low_cols <- which(t_to_sigma < sigma_median)
+      if (length(high_cols) > 0) {
+        coverage_high_var <- mean(covered[, high_cols], na.rm = TRUE)
+      }
+      if (length(low_cols) > 0) {
+        coverage_low_var <- mean(covered[, low_cols], na.rm = TRUE)
+      }
+    }
+  }
 
   tibble(
     term_type = "E(Y)",
     coverage = mean(covered, na.rm = TRUE),
+    coverage_high_var = coverage_high_var,
+    coverage_low_var = coverage_low_var,
     mean_width = mean(2 * z * se_mat, na.rm = TRUE),
-    rmse = sqrt(mean((fit_mat - eta_true)^2, na.rm = TRUE)),
+    rmse = sqrt(mean(err^2, na.rm = TRUE)),
     bias = mean(err, na.rm = TRUE),
     mean_abs_error = mean(abs(err), na.rm = TRUE),
     mean_se = mean(se_mat, na.rm = TRUE),
     median_se = stats::median(se_mat, na.rm = TRUE),
-    z_mean = mean(z_score, na.rm = TRUE),
-    z_sd = stats::sd(as.vector(z_score), na.rm = TRUE),
-    z2_mean = mean(z_score^2, na.rm = TRUE),
+    z_mean = mean(z_finite),
+    z_sd = stats::sd(z_finite),
+    z_kurtosis = z_kurtosis,
+    z2_mean = mean(z_finite^2),
     n_grid = sum(!is.na(covered))
   )
 }
@@ -777,21 +1080,23 @@ compute_ey_metrics <- function(fit, truth, alpha = 0.10) {
 #' @param fit A pffr fit.
 #' @param sim Simulation result.
 #' @param method Method name.
-#' @param use_sandwich Use sandwich SEs?
+#' @param use_sandwich Sandwich type: FALSE, "cluster", or "hc".
 #' @param alpha Significance level.
+#' @param err_struct Error structure from simulation (for region-specific coverage).
 #' @returns Tibble with one row per term.
 compute_all_metrics <- function(
   fit,
   sim,
   method,
   use_sandwich = FALSE,
-  alpha = 0.10
+  alpha = 0.10,
+  err_struct = NULL
 ) {
+  use_sandwich <- normalize_sandwich_type(use_sandwich)
   terms <- sim$terms
   truth <- sim$truth
 
   # Extract coefficients once per fit (coef.pffr can be expensive)
-  # Note: seWithMean = FALSE to suppress cat() messages from coef.pffr
   coefs <- tryCatch(
     coef(
       fit,
@@ -818,7 +1123,8 @@ compute_all_metrics <- function(
       s_grid = sim$s_grid,
       t_grid = sim$t_grid,
       data = sim$data,
-      coefs = coefs
+      coefs = coefs,
+      err_struct = err_struct
     )
     if (!is.null(metrics)) {
       metrics$method <- method
@@ -836,7 +1142,8 @@ compute_all_metrics <- function(
     s_grid = sim$s_grid,
     t_grid = sim$t_grid,
     data = sim$data,
-    coefs = coefs
+    coefs = coefs,
+    err_struct = err_struct
   )
   if (!is.null(intercept_metrics)) {
     intercept_metrics$method <- method
@@ -844,7 +1151,14 @@ compute_all_metrics <- function(
   }
 
   # Add E(Y) metrics (fitted values vs true eta)
-  ey_metrics <- compute_ey_metrics(fit, truth, alpha)
+  ey_metrics <- compute_ey_metrics(
+    fit,
+    truth,
+    alpha,
+    use_sandwich = use_sandwich,
+    err_struct = err_struct,
+    t_grid = sim$t_grid
+  )
   if (!is.null(ey_metrics)) {
     ey_metrics$method <- method
     results <- bind_rows(results, ey_metrics)
@@ -855,79 +1169,205 @@ compute_all_metrics <- function(
 
 # Benchmark Runner ------------------------------------------------------------
 
+#' Create a standardized failure metrics row
+#'
+#' @param row One-row tibble/list of benchmark settings (may include dgp_id/rep_id).
+#' @param error_msg Error message string.
+#' @returns Tibble with the same columns as successful benchmark output.
+make_failure_metrics_row <- function(row, error_msg) {
+  tibble(
+    term_type = NA_character_,
+    coverage = NA_real_,
+    coverage_high_var = NA_real_,
+    coverage_low_var = NA_real_,
+    mean_width = NA_real_,
+    rmse = NA_real_,
+    bias = NA_real_,
+    mean_abs_error = NA_real_,
+    mean_se = NA_real_,
+    median_se = NA_real_,
+    z_mean = NA_real_,
+    z_sd = NA_real_,
+    z_kurtosis = NA_real_,
+    z2_mean = NA_real_,
+    n_grid = NA_integer_,
+    method = NA_character_,
+    dgp_id = row$dgp_id %||% NA_integer_,
+    rep_id = row$rep_id %||% NA_integer_,
+    seed = row$seed %||% NA_integer_,
+    n = row$n %||% NA_integer_,
+    nxgrid = row$nxgrid %||% NA_integer_,
+    nygrid = row$nygrid %||% NA_integer_,
+    snr = row$snr %||% NA_real_,
+    wiggliness = row$wiggliness %||% NA_real_,
+    corr_type = row$corr_type %||% NA_character_,
+    corr_param = row$corr_param %||% NA_real_,
+    hetero_type = row$hetero_type %||% NA_character_,
+    hetero_param = row$hetero_param %||% NA_real_,
+    error_dist = row$error_dist %||% NA_character_,
+    fit_time_total = NA_real_,
+    fit_time_step_only = NA_real_,
+    pffr_pilot_time = NA_real_,
+    converged = FALSE,
+    error_msg = error_msg
+  )
+}
+
+#' Run one benchmark setting (data + fits + metrics)
+#'
+#' This is the shared core used by both the full benchmark runner and
+#' interactive exploration tools.
+#'
+#' @param row One-row tibble/list with benchmark settings. Must include at least
+#'   `n`, `nxgrid`, `nygrid`, `snr`, `wiggliness`, `corr_type`, `corr_param`,
+#'   `hetero_type`, `hetero_param`, `error_dist`, and `seed`. If `dgp_id` and
+#'   `rep_id` are present they are included in returned metrics.
+#' @param alpha Significance level.
+#' @param methods Optional character vector of methods to run. When provided,
+#'   it is intersected with `get_applicable_methods()` for the DGP.
+#' @returns List with `sim`, `fits`, `timings`, `pffr_pilot_time`, and `results`
+#'   (standardized metrics tibble). On failure, returns `results` containing
+#'   a single failure row and an `error` element.
+run_one_setting <- function(row, alpha = 0.10, methods = NULL) {
+  # Ensure row is list-like with $ access
+  if (inherits(row, "data.frame")) row <- as.list(row)
+
+  terms <- if (!is.null(row$terms)) {
+    if (is.list(row$terms)) row$terms[[1]] else row$terms
+  } else {
+    c("ff", "linear", "smooth", "concurrent")
+  }
+
+  tryCatch(
+    {
+      sim <- generate_benchmark_data(
+        n = row$n,
+        nxgrid = row$nxgrid,
+        nygrid = row$nygrid,
+        snr = row$snr,
+        error_dist = row$error_dist,
+        corr_type = row$corr_type,
+        corr_param = row$corr_param,
+        hetero_type = row$hetero_type,
+        hetero_param = row$hetero_param,
+        terms = terms,
+        wiggliness = row$wiggliness,
+        seed = row$seed
+      )
+
+      applicable <- get_applicable_methods(
+        row$corr_type,
+        row$hetero_type,
+        row$error_dist
+      )
+      if (is.null(methods)) {
+        methods <- applicable
+      } else {
+        methods <- intersect(unique(methods), applicable)
+        if (!length(methods)) {
+          stop(
+            "No requested methods are applicable for this DGP.",
+            call. = FALSE
+          )
+        }
+      }
+
+      # Fit
+      fit_result <- fit_all_methods(sim, methods)
+      fits <- fit_result$fits
+      timings <- fit_result$timings
+
+      # Compute metrics for each fit/method
+      results <- map_dfr(names(fits), function(method_name) {
+        sandwich_type <- switch(
+          method_name,
+          pffr_sandwich = "cluster",
+          pffr_hc = "hc",
+          FALSE
+        )
+        fit <- if (method_name %in% c("pffr_sandwich", "pffr_hc")) {
+          fits$pffr
+        } else {
+          fits[[method_name]]
+        }
+
+        metrics <- compute_all_metrics(
+          fit,
+          sim,
+          method_name,
+          use_sandwich = sandwich_type,
+          alpha = alpha,
+          err_struct = sim$err_struct
+        )
+        if (nrow(metrics) == 0) return(metrics)
+
+        fit_time <- timings[[method_name]]
+        step_time <- timings[[paste0(method_name, "_only")]] %||% fit_time
+
+        metrics |>
+          mutate(
+            dgp_id = row$dgp_id %||% NA_integer_,
+            rep_id = row$rep_id %||% NA_integer_,
+            seed = row$seed,
+            n = row$n,
+            nxgrid = row$nxgrid,
+            nygrid = row$nygrid,
+            snr = row$snr,
+            wiggliness = row$wiggliness,
+            corr_type = row$corr_type,
+            corr_param = row$corr_param,
+            hetero_type = row$hetero_type,
+            hetero_param = row$hetero_param,
+            error_dist = row$error_dist,
+            fit_time_total = fit_time,
+            fit_time_step_only = step_time,
+            pffr_pilot_time = fit_result$pffr_pilot_time,
+            converged = TRUE,
+            error_msg = NA_character_
+          )
+      })
+
+      list(
+        sim = sim,
+        fits = fits,
+        timings = timings,
+        pffr_pilot_time = fit_result$pffr_pilot_time,
+        results = results,
+        error = NULL
+      )
+    },
+    error = function(e) {
+      msg <- conditionMessage(e)
+      list(
+        sim = NULL,
+        fits = list(),
+        timings = list(),
+        pffr_pilot_time = NA_real_,
+        results = make_failure_metrics_row(row, msg),
+        error = msg
+      )
+    }
+  )
+}
+
 #' Run benchmark for one (dgp, rep) combination
 #'
 #' @param row One row of the benchmark grid.
 #' @param alpha Significance level.
 #' @returns Tibble with metrics for all methods and terms.
 run_one_dgp_rep <- function(row, alpha = 0.10) {
-  # Generate data
-  sim <- generate_benchmark_data(
-    n = row$n,
-    nxgrid = row$nxgrid,
-    nygrid = row$nygrid,
-    snr = row$snr,
-    error_dist = row$error_dist,
-    corr_type = row$corr_type,
-    corr_param = row$corr_param,
-    hetero_type = row$hetero_type,
-    hetero_param = row$hetero_param,
-    terms = row$terms[[1]],
-    wiggliness = row$wiggliness,
-    seed = row$seed
-  )
-
-  # Get applicable methods
-  methods <- get_applicable_methods(
-    row$corr_type,
-    row$hetero_type,
-    row$error_dist
-  )
-
-  # Fit all methods
-  fit_result <- fit_all_methods(sim, methods)
-  fits <- fit_result$fits
-  timings <- fit_result$timings
-
-  # Compute metrics for each method
-  results <- map_dfr(names(fits), function(method_name) {
-    use_sandwich <- (method_name == "pffr_sandwich")
-    fit <- if (method_name == "pffr_sandwich") fits$pffr else
-      fits[[method_name]]
-
-    metrics <- compute_all_metrics(fit, sim, method_name, use_sandwich, alpha)
-
-    if (nrow(metrics) > 0) {
-      # Get timing values before mutate to avoid column name confusion
-      fit_time <- timings[[method_name]]
-      step_time <- timings[[paste0(method_name, "_only")]] %||% fit_time
-      pilot_time <- fit_result$pffr_pilot_time
-
-      metrics <- metrics |>
-        mutate(
-          dgp_id = row$dgp_id,
-          rep_id = row$rep_id,
-          seed = row$seed,
-          n = row$n,
-          nxgrid = row$nxgrid,
-          nygrid = row$nygrid,
-          snr = row$snr,
-          wiggliness = row$wiggliness,
-          corr_type = row$corr_type,
-          corr_param = row$corr_param,
-          hetero_type = row$hetero_type,
-          hetero_param = row$hetero_param,
-          error_dist = row$error_dist,
-          fit_time_total = fit_time,
-          fit_time_step_only = step_time,
-          pffr_pilot_time = pilot_time
-        )
-    }
-
-    metrics
-  })
-
-  results
+  out <- run_one_setting(row, alpha = alpha)
+  if (!is.null(out$error)) {
+    warning(
+      "Failure in dgp_id=",
+      row$dgp_id,
+      " rep=",
+      row$rep_id,
+      ": ",
+      out$error
+    )
+  }
+  out$results
 }
 
 #' Run full benchmark
@@ -977,18 +1417,21 @@ run_benchmark <- function(
     rows <- split(grid, seq_len(nrow(grid)))
 
     # Detect if running in dev mode (via devtools::load_all)
+    # Capture absolute paths so workers don't depend on working directory
     is_dev_mode <- file.exists("DESCRIPTION")
+    pkg_dir <- normalizePath(".")
+    bench_utils_path <- normalizePath("ci-benchmark/benchmark-utils.R")
 
     results <- furrr::future_map_dfr(
       rows,
       function(row) {
-        # Load package in worker
+        # Load package in worker using absolute paths
         if (is_dev_mode) {
-          devtools::load_all(".", quiet = TRUE)
+          devtools::load_all(pkg_dir, quiet = TRUE)
         } else {
           library(refund)
         }
-        source("ci-benchmark/benchmark-utils.R", local = TRUE)
+        source(bench_utils_path, local = TRUE)
 
         res <- tryCatch(
           run_one_dgp_rep(row, alpha),
@@ -1077,7 +1520,23 @@ run_benchmark <- function(
 #' @param results Results tibble from run_benchmark().
 #' @returns Summary tibble.
 summarize_benchmark <- function(results) {
+  # Add converged column if missing (backward compatibility)
+  if (!"converged" %in% names(results)) {
+    results$converged <- TRUE
+  }
+
+  n_failures_total <- sum(!results$converged, na.rm = TRUE)
+  if (n_failures_total > 0) {
+    message(
+      "Note: ",
+      n_failures_total,
+      " failed row(s) excluded from summary statistics."
+    )
+  }
+
+  # Filter to converged rows for metric computation
   results |>
+    dplyr::filter(.data$converged) |>
     group_by(
       method,
       term_type,
@@ -1096,12 +1555,20 @@ summarize_benchmark <- function(results) {
     summarize(
       mean_coverage = mean(coverage, na.rm = TRUE),
       se_coverage = sd(coverage, na.rm = TRUE) / sqrt(n()),
+      mean_coverage_high_var = mean(coverage_high_var, na.rm = TRUE),
+      mean_coverage_low_var = mean(coverage_low_var, na.rm = TRUE),
       mean_width = mean(mean_width, na.rm = TRUE),
       mean_rmse = mean(rmse, na.rm = TRUE),
+      mean_bias = mean(bias, na.rm = TRUE),
+      mean_mean_se = mean(mean_se, na.rm = TRUE),
+      mean_z_mean = mean(z_mean, na.rm = TRUE),
+      # SE calibration: mean z_sd across reps (should be ~1 if SEs are correct)
+      mean_z_sd = mean(z_sd, na.rm = TRUE),
+      mean_z_kurtosis = mean(z_kurtosis, na.rm = TRUE),
       mean_fit_time_total = mean(fit_time_total, na.rm = TRUE),
       mean_fit_time_step = mean(fit_time_step_only, na.rm = TRUE),
       mean_pffr_pilot_time = mean(pffr_pilot_time, na.rm = TRUE),
-      n_rep = n(),
+      n_converged = n(),
       .groups = "drop"
     )
 }
@@ -1140,13 +1607,13 @@ summarize_timings <- function(results) {
 # Main Execution (when sourced) -----------------------------------------------
 
 if (FALSE) {
-  # LRZ, 26/01/20
+  # Production run (Round 2)
   results <- run_benchmark(
     dgp_settings = make_dgp_settings("full"),
-    n_rep = 10,
+    n_rep = 200,
     seed = 2026,
     parallel = TRUE,
-    n_workers = 10
+    n_workers = 3
   )
 }
 
@@ -1166,7 +1633,8 @@ if (sys.nframe() == 0) {
 
   cat("\nCoverage summary:\n")
   print(
-    summary_df |> select(method, term_type, mean_coverage, se_coverage, n_rep)
+    summary_df |>
+      select(method, term_type, mean_coverage, se_coverage, n_converged)
   )
 
   cat("\nTiming summary:\n")

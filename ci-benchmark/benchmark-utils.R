@@ -10,6 +10,30 @@
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+# Sandwich argument normalization ---------------------------------------------
+
+#' Normalize sandwich argument to expected pffr conventions
+#'
+#' Several scripts historically used `TRUE/FALSE` for sandwich SEs. The main CI
+#' benchmark uses explicit types: `"cluster"` and `"hc"`. This helper converts:
+#' - `FALSE`/`NULL` -> `FALSE`
+#' - `TRUE` -> `"cluster"`
+#' - `"cluster"`/`"hc"` -> unchanged
+#'
+#' @param sandwich One of FALSE/NULL, TRUE, "cluster", "hc".
+#' @returns `FALSE` or a character scalar ("cluster" or "hc").
+normalize_sandwich_type <- function(sandwich) {
+  if (is.null(sandwich) || isFALSE(sandwich)) return(FALSE)
+  if (isTRUE(sandwich)) return("cluster")
+  if (is.character(sandwich) && length(sandwich) == 1) {
+    if (sandwich %in% c("cluster", "hc")) return(sandwich)
+  }
+  stop(
+    "Invalid sandwich type. Use FALSE/NULL, TRUE, 'cluster', or 'hc'.",
+    call. = FALSE
+  )
+}
+
 # Error Structure Generation --------------------------------------------------
 
 #' Create error covariance structure
@@ -18,14 +42,14 @@
 #' errors in simulation studies.
 #'
 #' @param t_grid Numeric vector of response evaluation points.
-#' @param corr_type One of "iid", "ar1", "gauss", "fourier".
+#' @param corr_type One of "iid", "ar1", "gauss", "fourier", "fourier_pos".
 #' @param corr_param Correlation parameter (e.g., rho for AR1).
 #' @param hetero_type One of "none", "linear", "u", "bump".
 #' @param hetero_param Heteroskedasticity amplitude parameter.
 #' @returns List with t_grid, sigma_t, corr_mat, cov_mat, rho.
 make_error_structure <- function(
   t_grid,
-  corr_type = c("iid", "ar1", "gauss", "fourier"),
+  corr_type = c("iid", "ar1", "gauss", "fourier", "fourier_pos"),
   corr_param = NULL,
   hetero_type = c("none", "linear", "u", "bump"),
   hetero_param = NULL
@@ -37,21 +61,21 @@ make_error_structure <- function(
   corr_param_used <- corr_param
 
   make_pd <- function(mat) {
-    diag_mean <- mean(diag(mat))
-    if (!is.finite(diag_mean) || diag_mean <= 0) diag_mean <- 1
-    jitter <- 1e-10 * diag_mean
-    for (k in seq_len(8)) {
-      ok <- tryCatch(
-        {
-          chol(mat + diag(jitter, nrow(mat)))
-          TRUE
-        },
-        error = function(e) FALSE
-      )
-      if (ok) return(mat + diag(jitter, nrow(mat)))
-      jitter <- jitter * 10
-    }
-    mat + diag(jitter, nrow(mat))
+    # Check if already PD (fast path)
+    ok <- tryCatch(
+      {
+        chol(mat)
+        TRUE
+      },
+      error = function(e) FALSE
+    )
+    if (ok) return(mat)
+
+    # Project to nearest PD matrix (preserves structure better than jitter)
+    pd <- as.matrix(Matrix::nearPD(mat, corr = FALSE, keepDiag = TRUE)$mat)
+
+    # Add tiny jitter for numerical safety
+    pd + diag(1e-10 * mean(diag(pd)), nrow(pd))
   }
 
   corr_mat <- switch(
@@ -122,6 +146,18 @@ make_error_structure <- function(
 
       base_cov <- S + diag(nugget, ny)
       stats::cov2cor(base_cov)
+    },
+    fourier_pos = {
+      # Non-monotonic correlation clamped to be non-negative:
+      #   raw(d) = cos(2*pi*d/period), corr(d) = max(0, raw(d))
+      # This gives a periodic correlation that never goes negative,
+      # creating a non-monotonic but all-positive dependence structure.
+      period <- if (!is.null(corr_param)) corr_param else 0.4
+      corr_param_used <- period
+      raw_corr <- cos(2 * pi * dist_mat / period)
+      mat <- pmax(raw_corr, 0)
+      diag(mat) <- 1
+      mat
     }
   )
   corr_mat <- make_pd(corr_mat)
@@ -160,7 +196,7 @@ make_error_structure <- function(
     sigma_t = sigma_t,
     corr_mat = corr_mat,
     cov_mat = cov_mat,
-    rho = if (corr_type == "ar1") rho else NA_real_
+    rho = if (corr_type == "ar1") corr_param_used else NA_real_
   )
 }
 
