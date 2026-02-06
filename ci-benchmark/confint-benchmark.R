@@ -1402,6 +1402,32 @@ run_benchmark <- function(
   cat("Replications:", n_rep, "\n")
   cat("Output dir:", output_dir, "\n\n")
 
+  # Skip settings that already have saved results
+  existing_files <- list.files(output_dir, pattern = "^dgp\\d+_rep\\d+\\.rds$")
+  if (length(existing_files) > 0) {
+    existing_keys <- sub("\\.rds$", "", existing_files)
+    grid_keys <- sprintf("dgp%03d_rep%03d", grid$dgp_id, grid$rep_id)
+    already_done <- grid_keys %in% existing_keys
+    n_skip <- sum(already_done)
+    if (n_skip > 0) {
+      cat("Skipping", n_skip, "already-completed settings\n")
+      grid <- grid[!already_done, , drop = FALSE]
+    }
+  }
+
+  if (nrow(grid) == 0) {
+    cat("All settings already completed — loading from disk.\n")
+    all_files <- list.files(
+      output_dir,
+      pattern = "^dgp\\d+_rep\\d+\\.rds$",
+      full.names = TRUE
+    )
+    results <- bind_rows(lapply(all_files, readRDS))
+    saveRDS(results, file.path(output_dir, "results_combined.rds"))
+    cat("Saved combined results:", nrow(results), "rows\n")
+    return(results)
+  }
+
   # Run sequentially or in parallel
   if (
     parallel &&
@@ -1505,6 +1531,14 @@ run_benchmark <- function(
 
     results <- bind_rows(results)
   }
+
+  # Merge with previously completed results from disk
+  all_files <- list.files(
+    output_dir,
+    pattern = "^dgp\\d+_rep\\d+\\.rds$",
+    full.names = TRUE
+  )
+  results <- bind_rows(lapply(all_files, readRDS))
 
   # Save combined results
   saveRDS(results, file.path(output_dir, "results_combined.rds"))
