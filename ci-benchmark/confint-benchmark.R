@@ -1385,7 +1385,7 @@ run_benchmark <- function(
   n_rep = 10L,
   seed = 2024L,
   parallel = FALSE,
-  n_workers = parallel::detectCores() - 1,
+  n_workers = min(6L, parallel::detectCores() - 1L),
   output_dir = "ci-benchmark/results",
   alpha = 0.10
 ) {
@@ -1437,7 +1437,7 @@ run_benchmark <- function(
     old_plan <- future::plan()
     on.exit(future::plan(old_plan), add = TRUE)
 
-    future::plan(future::multisession, workers = n_workers)
+    future::plan(future::multicore, workers = n_workers)
 
     # Split to preserve list-columns (e.g., terms) as 1-row tibbles
     rows <- split(grid, seq_len(nrow(grid)))
@@ -1482,6 +1482,7 @@ run_benchmark <- function(
           )
           saveRDS(res, save_path)
         }
+        gc()
         res
       },
       .options = furrr::furrr_options(seed = TRUE),
@@ -1647,7 +1648,7 @@ if (FALSE) {
     n_rep = 100,
     seed = 2026,
     parallel = TRUE,
-    n_workers = 10
+    n_workers = 6
   )
 }
 
