@@ -1389,6 +1389,34 @@ run_benchmark <- function(
   output_dir = "ci-benchmark/results",
   alpha = 0.10
 ) {
+  row_signature <- function(row_df) {
+    fmt <- function(x) {
+      if (length(x) == 0 || is.null(x) || all(is.na(x))) return("NA")
+      if (is.numeric(x)) return(format(signif(x[[1]], 12), trim = TRUE))
+      as.character(x[[1]])
+    }
+
+    paste(
+      paste0("n=", fmt(row_df$n)),
+      paste0("nxgrid=", fmt(row_df$nxgrid)),
+      paste0("nygrid=", fmt(row_df$nygrid)),
+      paste0("snr=", fmt(row_df$snr)),
+      paste0("wiggliness=", fmt(row_df$wiggliness)),
+      paste0("corr_type=", fmt(row_df$corr_type)),
+      paste0("corr_param=", fmt(row_df$corr_param)),
+      paste0("hetero_type=", fmt(row_df$hetero_type)),
+      paste0("hetero_param=", fmt(row_df$hetero_param)),
+      paste0("error_dist=", fmt(row_df$error_dist)),
+      sep = "|"
+    )
+  }
+
+  file_signature <- function(path) {
+    x <- tryCatch(readRDS(path), error = function(e) NULL)
+    if (is.null(x) || nrow(x) == 0) return(NA_character_)
+    row_signature(x[1, , drop = FALSE])
+  }
+
   # Create output directory
   dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -1403,9 +1431,48 @@ run_benchmark <- function(
   cat("Output dir:", output_dir, "\n\n")
 
   # Skip settings that already have saved results
-  existing_files <- list.files(output_dir, pattern = "^dgp\\d+_rep\\d+\\.rds$")
+  existing_files <- list.files(
+    output_dir,
+    pattern = "^dgp\\d+_rep\\d+\\.rds$",
+    full.names = TRUE
+  )
   if (length(existing_files) > 0) {
-    existing_keys <- sub("\\.rds$", "", existing_files)
+    grid <- grid |>
+      mutate(
+        key = sprintf("dgp%03d_rep%03d", dgp_id, rep_id),
+        signature = NA_character_
+      )
+    grid$signature <- purrr::map_chr(
+      seq_len(nrow(grid)),
+      ~ row_signature(grid[.x, , drop = FALSE])
+    )
+
+    existing_tbl <- tibble(
+      path = existing_files,
+      key = sub("\\.rds$", "", basename(existing_files))
+    ) |>
+      dplyr::filter(key %in% grid$key)
+
+    expected_tbl <- grid |>
+      dplyr::select(key, signature_expected = signature)
+
+    checked_existing <- existing_tbl |>
+      dplyr::mutate(signature_file = purrr::map_chr(path, file_signature)) |>
+      dplyr::left_join(expected_tbl, by = "key") |>
+      dplyr::mutate(
+        is_match = !is.na(signature_file) & signature_file == signature_expected
+      )
+
+    existing_keys <- checked_existing$key[checked_existing$is_match]
+    stale_keys <- checked_existing$key[!checked_existing$is_match]
+    if (length(stale_keys) > 0) {
+      cat(
+        "Found",
+        length(stale_keys),
+        "stale/mismatched existing file(s); recomputing them.\n"
+      )
+    }
+
     grid_keys <- sprintf("dgp%03d_rep%03d", grid$dgp_id, grid$rep_id)
     already_done <- grid_keys %in% existing_keys
     n_skip <- sum(already_done)
@@ -1413,6 +1480,8 @@ run_benchmark <- function(
       cat("Skipping", n_skip, "already-completed settings\n")
       grid <- grid[!already_done, , drop = FALSE]
     }
+
+    grid <- dplyr::select(grid, -key, -signature)
   }
 
   if (nrow(grid) == 0) {
