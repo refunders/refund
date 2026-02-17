@@ -18,6 +18,10 @@
 library(tidyverse)
 library(ggplot2)
 
+# Ensure dplyr::filter wins over stats::filter (can be masked when
+# confint-benchmark.R or other package code is sourced beforehand)
+filter <- dplyr::filter
+
 theme_set(theme_bw(base_size = 12))
 
 NOMINAL_COVERAGE <- 0.90

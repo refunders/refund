@@ -1,5 +1,5 @@
 #' ---
-#' title: "pffr CI Benchmark: Round 2 Analysis"
+#' title: "pffr CI Benchmark: Gaussian (Round 2) + Non-Gaussian (Study 1)"
 #' author: "Benchmark Analysis"
 #' date: "`r Sys.Date()`"
 #' output:
@@ -1323,6 +1323,795 @@ findings |>
 #'
 #' 5. **`pffr_gaulss` (modeled variance)**: Specialized for heteroskedasticity
 #'    modeling when the variance pattern matters.
+#'
+#'
+#' ---
+#'
+#' # Study 1: Non-Gaussian Sandwich Coverage
+#'
+#' This section extends the Gaussian Round 2 benchmark above to **non-Gaussian**
+#' families: Poisson (log link) and Binomial (logit link). The DGP includes
+#' `ff(X1) + z_lin` with three within-curve correlation structures
+#' (IID, AR1(0.9), fourier_pos(0.3)) and two sample sizes (n = 200, 400).
+#'
+#' Three CI methods are compared:
+#'
+#' - **default**: standard mgcv Bayesian CIs (no sandwich correction)
+#' - **hc**: heteroscedasticity-consistent (HC) sandwich
+#' - **cluster**: cluster-robust sandwich (clusters = curves)
+#'
+#' **Key design notes:**
+#'
+#' - Poisson DGP: additive eps on linear predictor, log link is collapsible
+#'   (conditional beta = marginal beta). Intercept corrected for sigma_eps^2/2.
+#' - Binomial DGP: Gaussian copula preserves marginal beta (logit is NOT
+#'   collapsible). P(Y=1|X) = p exactly; within-curve correlation via copula.
+#' - Grid: 30 x 40 (s x t). Basis: k = c(12, 12) for ff, k = 12 for linear.
+#' - 150 replications per DGP cell (12 cells = 2 families x 3 corr x 2 n).
+#'
+
+#+ s1-colors
+COLORS_S1 <- c(
+  default = "#1b9e77",
+  hc = "#e6ab02",
+  cluster = "#d95f02"
+)
+
+# Redefine here in case Study 1 section is rendered standalone
+if (!exists("PRACTICAL_THRESHOLD")) PRACTICAL_THRESHOLD <- 0.05
+
+#'
+#' ## Study 1: Data Loading
+#'
+
+#+ s1-load-data
+s1_dir <- "ci-benchmark/study1-nongaussian"
+s1_files <- list.files(
+  s1_dir,
+  pattern = "^dgp\\d+_rep\\d+\\.rds$",
+  full.names = TRUE
+)
+s1_combined <- file.path(s1_dir, "results_combined.rds")
+
+s1 <- if (file.exists(s1_combined)) {
+  readRDS(s1_combined)
+} else if (length(s1_files) > 0) {
+  bind_rows(lapply(s1_files, readRDS))
+} else {
+  stop("No Study 1 results found in ", s1_dir)
+}
+
+s1 <- s1 |>
+  mutate(
+    method = factor(method, levels = c("default", "hc", "cluster")),
+    term_type = factor(term_type, levels = c("E(Y)", "ff", "linear")),
+    family_f = factor(
+      family,
+      levels = c("poisson", "binomial"),
+      labels = c("Poisson", "Binomial")
+    ),
+    corr_f = factor(
+      corr_type,
+      levels = c("iid", "ar1", "fourier_pos"),
+      labels = c("IID", "AR1(0.9)", "Fourier+(0.3)")
+    ),
+    n_f = factor(n)
+  )
+
+cat("Study 1 loaded:", nrow(s1), "rows\n")
+cat("Families:", paste(levels(s1$family_f), collapse = ", "), "\n")
+cat("Correlations:", paste(levels(s1$corr_f), collapse = ", "), "\n")
+cat("Methods:", paste(levels(s1$method), collapse = ", "), "\n")
+cat("Convergence:", sum(s1$converged), "/", nrow(s1), "\n")
+
+#'
+#' ## Study 1: Coverage Summary
+#'
+
+#+ s1-summary
+s1_summary <- s1 |>
+  filter(!is.na(coverage)) |>
+  group_by(family_f, corr_f, n_f, method, term_type) |>
+  summarize(
+    coverage = mean(coverage, na.rm = TRUE),
+    mc_se = sd(coverage, na.rm = TRUE) / sqrt(n()),
+    z_sd = mean(z_sd, na.rm = TRUE),
+    width = mean(mean_width, na.rm = TRUE),
+    rmse = mean(rmse, na.rm = TRUE),
+    bias = mean(bias, na.rm = TRUE),
+    fit_time = mean(fit_time, na.rm = TRUE),
+    n_reps = n(),
+    .groups = "drop"
+  )
+
+#+ s1-summary-table
+s1_summary |>
+  filter(term_type %in% c("ff", "linear")) |>
+  select(family_f, corr_f, n_f, method, term_type, coverage, mc_se, z_sd) |>
+  mutate(
+    coverage_fmt = fmt_coverage(coverage, mc_se),
+    z_sd = sprintf("%.2f", z_sd)
+  ) |>
+  select(family_f, corr_f, n_f, method, term_type, coverage_fmt, z_sd) |>
+  pivot_wider(
+    names_from = c(method),
+    values_from = c(coverage_fmt, z_sd),
+    names_glue = "{method}_{.value}"
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Study 1: Coverage by Family × Correlation × Method",
+    subtitle = "Coverage % (±95% MC interval) and z_sd (target = 1)"
+  ) |>
+  tab_spanner(label = "default", columns = starts_with("default_")) |>
+  tab_spanner(label = "HC", columns = starts_with("hc_")) |>
+  tab_spanner(label = "cluster", columns = starts_with("cluster_"))
+
+#'
+#' ## Study 1: Coverage Heatmap
+#'
+#' White = nominal (90%). Red = undercoverage. Blue = overcoverage.
+#'
+
+#+ s1-heatmap, fig.width = 12, fig.height = 8
+s1_summary |>
+  filter(term_type %in% c("ff", "linear")) |>
+  ggplot(aes(
+    x = method,
+    y = interaction(corr_f, paste0("n=", n_f)),
+    fill = coverage
+  )) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = sprintf("%.1f%%", coverage * 100)), size = 3) +
+  scale_fill_gradient2(
+    low = "#d73027",
+    mid = "white",
+    high = "#4575b4",
+    midpoint = NOMINAL_COVERAGE,
+    limits = c(0.4, 1),
+    labels = scales::percent
+  ) +
+  facet_grid(family_f ~ term_type) +
+  labs(
+    title = "Study 1: Coverage Heatmap",
+    subtitle = "Non-Gaussian families: Poisson (log) and Binomial (logit)",
+    x = "Method",
+    y = "Correlation × Sample Size",
+    fill = "Coverage"
+  ) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+#'
+#' ## Study 1: Coverage Improvement (cluster − default)
+#'
+#' Paired comparison: how much does cluster-robust improve over default CIs?
+#' Positive = cluster helps. Dotted lines at ±5pp practical significance.
+#'
+
+#+ s1-paired-diff, fig.width = 12, fig.height = 7
+s1_paired <- s1_summary |>
+  filter(
+    method %in% c("default", "cluster"),
+    term_type %in% c("ff", "linear")
+  ) |>
+  select(family_f, corr_f, n_f, method, term_type, coverage) |>
+  pivot_wider(names_from = method, values_from = coverage) |>
+  mutate(diff = cluster - default)
+
+ggplot(
+  s1_paired,
+  aes(
+    x = interaction(corr_f, paste0("n=", n_f)),
+    y = diff,
+    fill = family_f
+  )
+) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_hline(
+    yintercept = c(-PRACTICAL_THRESHOLD, PRACTICAL_THRESHOLD),
+    linetype = 3,
+    color = "gray50"
+  ) +
+  facet_wrap(~term_type) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Study 1: Coverage Improvement (cluster − default)",
+    subtitle = "Positive = cluster helps. Dotted = ±5pp threshold.",
+    x = "Correlation × n",
+    y = "Coverage Difference",
+    fill = "Family"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#'
+#' ## Study 1: Three-Way Method Comparison
+#'
+#' Direct comparison: default vs HC vs cluster, broken out by correlation.
+#' Under IID, all three should be near 90%. Under AR1/Fourier, only cluster
+#' should reach nominal.
+#'
+
+#+ s1-method-facet, fig.width = 12, fig.height = 8
+s1_summary |>
+  filter(term_type %in% c("ff", "linear")) |>
+  ggplot(aes(
+    x = corr_f,
+    y = coverage,
+    color = method,
+    group = method
+  )) +
+  geom_point(size = 3, position = position_dodge(width = 0.4)) +
+  geom_line(linewidth = 0.6, position = position_dodge(width = 0.4)) +
+  geom_errorbar(
+    aes(
+      ymin = coverage - 1.96 * mc_se,
+      ymax = coverage + 1.96 * mc_se
+    ),
+    width = 0.2,
+    linewidth = 0.5,
+    position = position_dodge(width = 0.4)
+  ) +
+  geom_hline(
+    yintercept = NOMINAL_COVERAGE,
+    linetype = "dashed",
+    color = "red"
+  ) +
+  facet_grid(family_f ~ term_type + n_f) +
+  scale_y_continuous(labels = scales::percent, limits = c(0.4, 1)) +
+  scale_color_manual(values = COLORS_S1) +
+  labs(
+    title = "Study 1: Coverage by Correlation Structure",
+    subtitle = "Error bars = 95% MC intervals. Red dashed = 90% nominal.",
+    x = "Correlation",
+    y = "Coverage",
+    color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+#'
+#' ## Study 1: SE Calibration (z_sd)
+#'
+#' z_sd = SD of (estimate − truth) / SE, averaged over grid points within each
+#' rep. Target = 1. Values > 1 mean SEs are too small (anti-conservative);
+#' values < 1 mean SEs are too large (conservative).
+#'
+
+#+ s1-zsd, fig.width = 12, fig.height = 8
+s1_summary |>
+  filter(term_type %in% c("ff", "linear")) |>
+  ggplot(aes(x = method, y = z_sd, color = corr_f, shape = term_type)) +
+  geom_point(size = 3.5, position = position_dodge(width = 0.4)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_hline(yintercept = c(0.85, 1.15), linetype = 3, color = "gray50") +
+  facet_grid(family_f ~ n_f) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    title = "Study 1: SE Calibration (z_sd, target = 1)",
+    subtitle = "Dotted band = ±0.15 tolerance. Deviations indicate SE miscalibration.",
+    x = "Method",
+    y = "z_sd",
+    color = "Correlation",
+    shape = "Term"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+#'
+#' ## Study 1: HC vs Cluster Under Correlation
+#'
+#' HC sandwich corrects for heteroscedasticity but NOT within-curve dependence.
+#' Under AR1/Fourier, HC should not reach nominal — only cluster should.
+#' This plot shows the coverage gain of each method over default.
+#'
+
+#+ s1-hc-vs-cluster, fig.width = 12, fig.height = 7
+s1_trio <- s1 |>
+  filter(term_type %in% c("ff", "linear")) |>
+  select(dgp_id, rep_id, term_type, method, coverage, family_f, corr_f, n_f) |>
+  pivot_wider(
+    names_from = method,
+    values_from = coverage,
+    names_prefix = "cov_"
+  ) |>
+  mutate(
+    gain_hc = (cov_hc - cov_default) * 100,
+    gain_cluster = (cov_cluster - cov_default) * 100
+  )
+
+s1_trio_long <- s1_trio |>
+  pivot_longer(
+    cols = c(gain_hc, gain_cluster),
+    names_to = "comparison",
+    values_to = "gain_pp"
+  ) |>
+  mutate(
+    comparison = factor(
+      comparison,
+      levels = c("gain_cluster", "gain_hc"),
+      labels = c("Cluster − Default", "HC − Default")
+    )
+  )
+
+ggplot(s1_trio_long, aes(x = corr_f, y = gain_pp, fill = comparison)) +
+  geom_boxplot(alpha = 0.7, outlier.size = 0.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  facet_grid(family_f ~ term_type) +
+  scale_fill_manual(
+    values = c(
+      "Cluster − Default" = "#d95f02",
+      "HC − Default" = "#e6ab02"
+    )
+  ) +
+  labs(
+    title = "Study 1: Coverage Gain Over Default by Correlation",
+    subtitle = "HC should NOT help under correlation. Only cluster addresses within-curve dependence.",
+    x = "Correlation",
+    y = "Coverage Gain (pp)",
+    fill = NULL
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+#'
+#' ## Study 1: Poisson IID — The Overdispersion Story
+#'
+#' Under IID errors, default pffr CIs should be near nominal for Binomial
+#' but undercover for Poisson. Why? The Poisson DGP adds latent eps on the
+#' log-linear predictor, creating overdispersion that mgcv's default SEs
+#' ignore. Both HC and cluster fix this since they are model-free variance
+#' estimators.
+#'
+
+#+ s1-iid-family-comparison, fig.width = 10, fig.height = 6
+s1_iid <- s1_summary |>
+  filter(corr_f == "IID", term_type %in% c("ff", "linear"))
+
+ggplot(s1_iid, aes(x = method, y = coverage, fill = family_f)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_errorbar(
+    aes(
+      ymin = coverage - 1.96 * mc_se,
+      ymax = coverage + 1.96 * mc_se
+    ),
+    position = position_dodge(width = 0.7),
+    width = 0.2
+  ) +
+  geom_hline(
+    yintercept = NOMINAL_COVERAGE,
+    linetype = "dashed",
+    color = "red"
+  ) +
+  facet_grid(term_type ~ n_f) +
+  scale_y_continuous(labels = scales::percent, limits = c(0.6, 1)) +
+  labs(
+    title = "Study 1: IID Coverage — Poisson vs Binomial",
+    subtitle = "IID errors only. Compare Poisson vs Binomial default coverage.",
+    x = "Method",
+    y = "Coverage",
+    fill = "Family"
+  ) +
+  theme(legend.position = "bottom")
+
+#'
+#' ## Study 1: Empirical DGP Verification
+#'
+#' Before interpreting coverage, verify that the DGPs produce the intended
+#' properties: overdispersion for Poisson, and within-curve correlation
+#' matching the AR1/Fourier specification.
+#'
+
+#+ s1-dgp-verify-setup
+# Source Study 1 DGP functions (guarded main blocks won't execute)
+if (file.exists("DESCRIPTION")) {
+  devtools::load_all(".", quiet = TRUE)
+} else {
+  library(refund)
+}
+source("ci-benchmark/benchmark-utils.R")
+source("ci-benchmark/confint-benchmark.R")
+source("ci-benchmark/sim-study-nongaussian-sandwich.R")
+# Re-assert dplyr::filter after sourcing (confint-benchmark.R can mask it)
+filter <- dplyr::filter
+
+#+ s1-dgp-overdispersion, fig.width = 10, fig.height = 5
+# Poisson IID: check realized overdispersion
+set.seed(42)
+dgp_check_results <- map_dfr(1:20, function(rep) {
+  # Poisson IID
+  sim_pois <- simulate_poisson_ff_linear(
+    n = 200,
+    corr_type = "iid",
+    seed = 42000 + rep
+  )
+  Y_pois <- sim_pois$data$Y
+  # Per-curve mean and variance (across t)
+  pois_disp <- tibble(
+    curve_mean = rowMeans(Y_pois),
+    curve_var = apply(Y_pois, 1, var),
+    family = "Poisson IID",
+    rep = rep
+  )
+
+  # Binomial IID
+  sim_binom <- simulate_binomial_ff_linear(
+    n = 200,
+    corr_type = "iid",
+    seed = 42000 + rep
+  )
+  Y_binom <- sim_binom$data$Y
+  p_hat <- rowMeans(Y_binom)
+  binom_disp <- tibble(
+    curve_mean = p_hat,
+    curve_var = apply(Y_binom, 1, var),
+    family = "Binomial IID",
+    rep = rep
+  )
+
+  bind_rows(pois_disp, binom_disp)
+})
+
+# Poisson: plot var vs mean, overlay Var=mu line
+p_disp_pois <- dgp_check_results |>
+  filter(family == "Poisson IID") |>
+  ggplot(aes(x = curve_mean, y = curve_var)) +
+  geom_point(alpha = 0.05, size = 0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Poisson IID: Realized Var vs Mean (per curve)",
+    subtitle = "Red = Var(Y) = E(Y) (Poisson assumption). Points above = overdispersion.",
+    x = "Curve Mean",
+    y = "Curve Variance"
+  )
+
+# Compute summary dispersion ratio
+pois_disp_ratio <- dgp_check_results |>
+  filter(family == "Poisson IID") |>
+  summarize(
+    mean_dispersion = mean(curve_var / curve_mean, na.rm = TRUE),
+    median_dispersion = median(curve_var / curve_mean, na.rm = TRUE),
+    q25 = quantile(curve_var / curve_mean, 0.25, na.rm = TRUE),
+    q75 = quantile(curve_var / curve_mean, 0.75, na.rm = TRUE)
+  )
+
+cat(sprintf(
+  "Poisson IID dispersion ratio (Var/Mean): median=%.2f, IQR=[%.2f, %.2f]\n",
+  pois_disp_ratio$median_dispersion,
+  pois_disp_ratio$q25,
+  pois_disp_ratio$q75
+))
+cat("(Poisson assumption: ratio = 1. Values > 1 confirm overdispersion.)\n\n")
+
+print(p_disp_pois)
+
+#+ s1-dgp-correlation, fig.width = 10, fig.height = 6
+# Within-curve correlation: sample residuals from a few datasets
+set.seed(43)
+corr_check <- map_dfr(c("iid", "ar1", "fourier_pos"), function(ct) {
+  cp <- switch(ct, ar1 = 0.9, fourier_pos = 0.3, NULL)
+  map_dfr(1:5, function(rep) {
+    sim <- simulate_poisson_ff_linear(
+      n = 200,
+      corr_type = ct,
+      corr_param = cp,
+      seed = 43000 + rep
+    )
+    Y <- sim$data$Y
+    # Compute residual correlation: subtract row means (crude detrending)
+    resid <- Y - rowMeans(Y)
+    # Average lag-1 correlation across curves
+    lag1_cors <- sapply(seq_len(nrow(resid)), function(i) {
+      cor(resid[i, -ncol(resid)], resid[i, -1])
+    })
+
+    tibble(
+      corr_type = ct,
+      rep = rep,
+      mean_lag1 = mean(lag1_cors, na.rm = TRUE),
+      sd_lag1 = sd(lag1_cors, na.rm = TRUE)
+    )
+  })
+}) |>
+  mutate(
+    corr_label = factor(
+      corr_type,
+      levels = c("iid", "ar1", "fourier_pos"),
+      labels = c("IID", "AR1(0.9)", "Fourier+(0.3)")
+    )
+  )
+
+corr_summary <- corr_check |>
+  group_by(corr_label) |>
+  summarize(
+    mean_lag1 = mean(mean_lag1),
+    sd_lag1 = mean(sd_lag1),
+    .groups = "drop"
+  )
+
+cat(
+  "Realized lag-1 within-curve correlation (Poisson, averaged over curves):\n"
+)
+print(corr_summary)
+cat("\n(IID should be ~0. AR1/Fourier realized lag-1 < nominal rho=0.9/0.3\n")
+cat("because Poisson count variance dilutes latent correlation.)\n")
+
+#+ s1-dgp-correlation-plot, fig.width = 8, fig.height = 4
+ggplot(corr_check, aes(x = corr_label, y = mean_lag1)) +
+  geom_point(size = 3) +
+  geom_errorbar(
+    aes(
+      ymin = mean_lag1 - 1.96 * sd_lag1 / sqrt(200),
+      ymax = mean_lag1 + 1.96 * sd_lag1 / sqrt(200)
+    ),
+    width = 0.2
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_hline(yintercept = 0.9, linetype = "dotted", color = "red") +
+  labs(
+    title = "Study 1: Realized Lag-1 Within-Curve Correlation",
+    subtitle = "5 replications each. Error bars = ±1.96 SE across curves. Dotted = nominal AR1.",
+    x = "DGP Correlation Type",
+    y = "Mean Lag-1 Correlation"
+  )
+
+#'
+#' ## Study 1: CI Width
+#'
+#' Cluster-robust CIs are wider (as expected — they account for within-curve
+#' dependence). The width premium is the cost of robustness.
+#'
+
+#+ s1-width, fig.width = 12, fig.height = 7
+s1_summary |>
+  filter(term_type %in% c("ff", "linear")) |>
+  ggplot(aes(x = method, y = width, fill = corr_f)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  facet_grid(family_f ~ term_type, scales = "free_y") +
+  scale_fill_brewer(palette = "Set1") +
+  labs(
+    title = "Study 1: Mean CI Width by Method and Correlation",
+    subtitle = "Cluster CIs are wider — the cost of accounting for within-curve dependence.",
+    x = "Method",
+    y = "Mean CI Width",
+    fill = "Correlation"
+  ) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+#'
+#' ## Study 1: Width vs Coverage Tradeoff
+#'
+
+#+ s1-width-coverage, fig.width = 10, fig.height = 7
+s1_summary |>
+  filter(term_type %in% c("ff", "linear")) |>
+  ggplot(aes(x = width, y = coverage, color = method, shape = corr_f)) +
+  geom_point(size = 3.5) +
+  geom_hline(
+    yintercept = NOMINAL_COVERAGE,
+    linetype = "dashed",
+    color = "red"
+  ) +
+  facet_grid(family_f ~ term_type, scales = "free_x") +
+  scale_y_continuous(labels = scales::percent, limits = c(0.4, 1)) +
+  scale_color_manual(values = COLORS_S1) +
+  labs(
+    title = "Study 1: Coverage vs CI Width Tradeoff",
+    subtitle = "Upper-left ideal (high coverage, narrow CIs).",
+    x = "Mean CI Width",
+    y = "Coverage",
+    color = "Method",
+    shape = "Correlation"
+  )
+
+#'
+#' ## Study 1: Timing
+#'
+
+#+ s1-timing
+s1_timing <- s1 |>
+  filter(term_type == "ff") |>
+  group_by(family_f, corr_f, n_f, method) |>
+  summarize(
+    mean_time = mean(fit_time, na.rm = TRUE),
+    median_time = median(fit_time, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#' Note: fit_time measures total pffr + CI extraction. The three methods share
+#' the same fitted model — timing differences come from SE computation only.
+#'
+
+s1_timing |>
+  pivot_wider(
+    names_from = method,
+    values_from = c(mean_time, median_time),
+    names_glue = "{method}_{.value}"
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Study 1: Computation Time (seconds)",
+    subtitle = "Per model fit — methods share the same pffr fit"
+  )
+
+#'
+#' ## Study 1: Sanity Checks
+#'
+
+#+ s1-sanity
+cat("=== Study 1 Sanity Checks ===\n\n")
+
+# Check 1: Under AR1, cluster >> default by >10pp
+s1_ar1 <- s1_summary |>
+  filter(
+    corr_f == "AR1(0.9)",
+    term_type %in% c("ff", "linear"),
+    method %in% c("default", "cluster")
+  ) |>
+  group_by(method) |>
+  summarize(cov = mean(coverage), .groups = "drop") |>
+  pivot_wider(names_from = method, values_from = cov)
+
+diff_ar1 <- s1_ar1$cluster - s1_ar1$default
+cat(sprintf(
+  "AR1: cluster − default = %.1fpp [%s]\n",
+  diff_ar1 * 100,
+  if (diff_ar1 > 0.10) "PASS" else "FAIL"
+))
+
+# Check 2: Under AR1, cluster >> hc
+s1_ar1_hc <- s1_summary |>
+  filter(
+    corr_f == "AR1(0.9)",
+    term_type %in% c("ff", "linear"),
+    method %in% c("hc", "cluster")
+  ) |>
+  group_by(method) |>
+  summarize(cov = mean(coverage), .groups = "drop") |>
+  pivot_wider(names_from = method, values_from = cov)
+
+diff_ar1_hc <- s1_ar1_hc$cluster - s1_ar1_hc$hc
+cat(sprintf(
+  "AR1: cluster − hc = %.1fpp (cluster should beat HC)\n",
+  diff_ar1_hc * 100
+))
+
+# Check 3: Poisson IID: hc and cluster should be near 90%
+s1_pois_iid <- s1_summary |>
+  filter(
+    family_f == "Poisson",
+    corr_f == "IID",
+    method == "cluster",
+    term_type == "linear"
+  )
+cat(sprintf(
+  "Poisson IID cluster (linear): %.1f%% [%s]\n",
+  mean(s1_pois_iid$coverage) * 100,
+  if (abs(mean(s1_pois_iid$coverage) - 0.90) < 0.05) "PASS" else "CHECK"
+))
+
+# Check 4: Binomial IID default should be adequate
+s1_binom_iid <- s1_summary |>
+  filter(
+    family_f == "Binomial",
+    corr_f == "IID",
+    method == "default",
+    term_type == "linear"
+  )
+cat(sprintf(
+  "Binomial IID default (linear): %.1f%% [%s]\n",
+  mean(s1_binom_iid$coverage) * 100,
+  if (abs(mean(s1_binom_iid$coverage) - 0.90) < 0.05) "PASS" else "CHECK"
+))
+
+# Check 5: z_sd for cluster under AR1/Fourier should be near 1
+s1_zsd_cluster <- s1_summary |>
+  filter(
+    method == "cluster",
+    corr_f %in% c("AR1(0.9)", "Fourier+(0.3)"),
+    term_type %in% c("ff", "linear")
+  )
+cat(sprintf(
+  "Cluster z_sd under correlation: mean=%.2f, range=[%.2f, %.2f] [%s]\n",
+  mean(s1_zsd_cluster$z_sd),
+  min(s1_zsd_cluster$z_sd),
+  max(s1_zsd_cluster$z_sd),
+  if (all(abs(s1_zsd_cluster$z_sd - 1) < 0.15)) "PASS" else "CHECK"
+))
+
+#'
+#' ## Study 1: Key Findings
+#'
+#' ### Cluster sandwich is essential under within-curve correlation
+#'
+#' Under AR1(0.9) and Fourier+(0.3), default CIs collapse to 44–64% coverage
+#' (nominal 90%). Cluster-robust restores coverage to 84–89%:
+#'
+#' - **Poisson AR1**: default 44% → cluster 87% (+43pp for ff term)
+#' - **Binomial AR1**: default 55% → cluster 88% (+33pp for ff term)
+#' - **Poisson Fourier**: default 57% → cluster 87% (+29pp for ff term)
+#' - **Binomial Fourier**: default 64% → cluster 84% (+21pp for ff term)
+#'
+#' Coverage gains are comparable for both sample sizes (n=200, 400),
+#' suggesting the pattern is driven by the structural mismatch between
+#' the assumed and actual covariance rather than by sample size.
+#'
+#' ### HC sandwich does not fix within-curve correlation
+#'
+#' HC corrects for heteroscedasticity but NOT within-curve dependence. Under
+#' AR1/Fourier, HC barely improves over default. For Binomial AR1, HC is
+#' actually *worse* than default (ff: 52% vs 56%; linear: 59% vs 60%). This
+#' occurs because HC ignores within-curve correlation in the meat matrix
+#' X'eₑ'X, which for high-dimensional functional bases can anti-conservatively
+#' bias SE estimates relative to even the naive default. The coverage gain of
+#' cluster over HC under AR1 is ~29pp on average.
+#'
+#' ### Poisson default undercovers even under IID
+#'
+#' Poisson default coverage under IID is only 69–79% (both terms). The
+#' latent eps on the log-linear predictor creates overdispersion that
+#' mgcv's default SEs ignore. HC (89–90%) and cluster (87–89%) both fix
+#' this since they are model-free variance estimators. This parallels the
+#' Gaussian Round 2 finding that the sandwich is not just for correlation.
+#'
+#' ### Binomial IID: cluster anti-conservative for ff term
+#'
+#' Binomial ff under IID: cluster gives 76–77% coverage, worse than default
+#' (85%). The z_sd for cluster is 1.37 (> 1), indicating SEs are too *small*
+#' — this is anti-conservative, not overcorrection. The cluster-robust
+#' sandwich with n=200–400 clusters and the high-dimensional ff basis
+#' (k = 12 × 12 tensor) may suffer from finite-sample downward bias in the
+#' variance estimate, a known issue when the number of parameters is large
+#' relative to the number of clusters.
+#' The linear term is unaffected (cluster ≈ 89–91% under IID, z_sd ≈ 0.9).
+#'
+#' ### Cluster coverage gap under correlation (84–89% vs 90%)
+#'
+#' Even under correlation where cluster is the clear winner, coverage falls
+#' 1–6pp below nominal. Possible contributors:
+#'
+#' 1. **Finite-sample sandwich bias**: n=200 clusters may be insufficient
+#'    for asymptotic sandwich theory, especially for the ff term with
+#'    effectively ~144 tensor basis functions.
+#' 2. **Grid discretization**: The coarse 30 × 40 grid is known to introduce
+#'    intercept estimation bias (see Study 2 grid refinement). This may also
+#'    affect SE calibration for functional effects.
+#' 3. **Penalization interaction**: Sandwich SEs assume a fixed (non-random)
+#'    design; the penalty selection introduces additional variability that
+#'    the sandwich does not account for.
+#'
+#' The gap narrows from Poisson (86%) to Binomial (89%), suggesting
+#' family-specific residual patterns also matter. Study 2 investigates
+#' grid effects; bias-corrected sandwich variants (CR2/CR3) are left for
+#' future work.
+#'
+#' ### Consistency with Gaussian benchmark
+#'
+#' The non-Gaussian results reinforce the Gaussian Round 2 findings:
+#'
+#' 1. Cluster-robust sandwich is the right default under within-curve correlation
+#' 2. HC is insufficient for dependent functional data
+#' 3. The cost of cluster under IID is mild for low-dimensional terms (linear)
+#'    but noticeable for high-dimensional ones (ff)
+#' 4. Coverage patterns are stable across n=200 and n=400
+#'
+#' ### Suggested follow-ups
+#'
+#' 1. **CR2/CR3 sandwich**: Finite-sample bias corrections may close the
+#'    remaining coverage gap under correlation and fix the Binomial IID ff issue.
+#' 2. **Basis sensitivity**: Rerun one DGP cell with k = 8, 12, 16 for ff to
+#'    test whether the anti-conservative bias scales with basis dimension.
+#' 3. **Empirical DGP verification**: Compute realized overdispersion ratios
+#'    for Poisson and realized within-curve correlations to confirm the
+#'    theoretical DGP properties.
+#' 4. **Larger n**: Add n = 800 to test whether the cluster coverage gap and
+#'    Binomial IID ff issue diminish with more clusters.
 #'
 #' ---
 #'
