@@ -1078,7 +1078,7 @@ if (sys.nframe() == 0) {
           mean_coverage,
           se_coverage,
           mean_z_sd,
-          n_converged
+          n_reps
         ) |>
         dplyr::arrange(family, corr_type, n, method, term_type),
       n = 200
