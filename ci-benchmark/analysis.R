@@ -1,5 +1,5 @@
 #' ---
-#' title: "pffr CI Benchmark: Gaussian (Round 2) + Non-Gaussian (Study 1)"
+#' title: "pffr CI Benchmark: Gaussian (Round 2) + Non-Gaussian (Study 1) + Grid Refinement (Study 2)"
 #' author: "Benchmark Analysis"
 #' date: "`r Sys.Date()`"
 #' output:
@@ -22,6 +22,11 @@ knitr::opts_chunk$set(
   fig.width = 10,
   fig.height = 6
 )
+# knitr defaults to the Rmd's directory (ci-benchmark/); reset to repo root
+# so that source() calls in sourced scripts (e.g., confint-benchmark.R) work.
+if (basename(getwd()) == "ci-benchmark") {
+  knitr::opts_knit$set(root.dir = normalizePath(".."))
+}
 
 #+ load-packages
 library(tidyverse)
@@ -29,6 +34,15 @@ library(gt)
 library(patchwork)
 
 theme_set(theme_minimal(base_size = 11))
+
+# Path helper: works from repo root (Rscript) or ci-benchmark/ (knitr WD)
+ci_path <- function(path) {
+  if (file.exists(path) || dir.exists(path)) return(path)
+  # Strip ci-benchmark/ prefix and try again (knitr sets WD to ci-benchmark/)
+  alt <- sub("^ci-benchmark/", "", path)
+  if (file.exists(alt) || dir.exists(alt)) return(alt)
+  path # return original (will fail with informative error downstream)
+}
 
 # Constants -------------------------------------------------------------------
 
@@ -1365,7 +1379,7 @@ if (!exists("PRACTICAL_THRESHOLD")) PRACTICAL_THRESHOLD <- 0.05
 #'
 
 #+ s1-load-data
-s1_dir <- "ci-benchmark/study1-nongaussian"
+s1_dir <- ci_path("ci-benchmark/study1-nongaussian")
 s1_files <- list.files(
   s1_dir,
   pattern = "^dgp\\d+_rep\\d+\\.rds$",
@@ -1426,7 +1440,6 @@ s1_summary <- s1 |>
 
 #+ s1-summary-table
 s1_summary |>
-  filter(term_type %in% c("ff", "linear")) |>
   select(family_f, corr_f, n_f, method, term_type, coverage, mc_se, z_sd) |>
   mutate(
     coverage_fmt = fmt_coverage(coverage, mc_se),
@@ -1455,7 +1468,6 @@ s1_summary |>
 
 #+ s1-heatmap, fig.width = 12, fig.height = 8
 s1_summary |>
-  filter(term_type %in% c("ff", "linear")) |>
   ggplot(aes(
     x = method,
     y = interaction(corr_f, paste0("n=", n_f)),
@@ -1490,10 +1502,7 @@ s1_summary |>
 
 #+ s1-paired-diff, fig.width = 12, fig.height = 7
 s1_paired <- s1_summary |>
-  filter(
-    method %in% c("default", "cluster"),
-    term_type %in% c("ff", "linear")
-  ) |>
+  filter(method %in% c("default", "cluster")) |>
   select(family_f, corr_f, n_f, method, term_type, coverage) |>
   pivot_wider(names_from = method, values_from = coverage) |>
   mutate(diff = cluster - default)
@@ -1534,7 +1543,6 @@ ggplot(
 
 #+ s1-method-facet, fig.width = 12, fig.height = 8
 s1_summary |>
-  filter(term_type %in% c("ff", "linear")) |>
   ggplot(aes(
     x = corr_f,
     y = coverage,
@@ -1582,7 +1590,6 @@ s1_summary |>
 
 #+ s1-zsd, fig.width = 12, fig.height = 8
 s1_summary |>
-  filter(term_type %in% c("ff", "linear")) |>
   ggplot(aes(x = method, y = z_sd, color = corr_f, shape = term_type)) +
   geom_point(size = 3.5, position = position_dodge(width = 0.4)) +
   geom_hline(yintercept = 1, linetype = "dashed") +
@@ -1612,7 +1619,6 @@ s1_summary |>
 
 #+ s1-hc-vs-cluster, fig.width = 12, fig.height = 7
 s1_trio <- s1 |>
-  filter(term_type %in% c("ff", "linear")) |>
   select(dgp_id, rep_id, term_type, method, coverage, family_f, corr_f, n_f) |>
   pivot_wider(
     names_from = method,
@@ -1672,7 +1678,7 @@ ggplot(s1_trio_long, aes(x = corr_f, y = gain_pp, fill = comparison)) +
 
 #+ s1-iid-family-comparison, fig.width = 10, fig.height = 6
 s1_iid <- s1_summary |>
-  filter(corr_f == "IID", term_type %in% c("ff", "linear"))
+  filter(corr_f == "IID")
 
 ggplot(s1_iid, aes(x = method, y = coverage, fill = family_f)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.6) +
@@ -1715,9 +1721,9 @@ if (file.exists("DESCRIPTION")) {
 } else {
   library(refund)
 }
-source("ci-benchmark/benchmark-utils.R")
-source("ci-benchmark/confint-benchmark.R")
-source("ci-benchmark/sim-study-nongaussian-sandwich.R")
+source(ci_path("ci-benchmark/benchmark-utils.R"))
+source(ci_path("ci-benchmark/confint-benchmark.R"))
+source(ci_path("ci-benchmark/sim-study-nongaussian-sandwich.R"))
 # Re-assert dplyr::filter after sourcing (confint-benchmark.R can mask it)
 filter <- dplyr::filter
 
@@ -1870,7 +1876,6 @@ ggplot(corr_check, aes(x = corr_label, y = mean_lag1)) +
 
 #+ s1-width, fig.width = 12, fig.height = 7
 s1_summary |>
-  filter(term_type %in% c("ff", "linear")) |>
   ggplot(aes(x = method, y = width, fill = corr_f)) +
   geom_col(position = position_dodge(width = 0.8), width = 0.7) +
   facet_grid(family_f ~ term_type, scales = "free_y") +
@@ -1890,7 +1895,6 @@ s1_summary |>
 
 #+ s1-width-coverage, fig.width = 10, fig.height = 7
 s1_summary |>
-  filter(term_type %in% c("ff", "linear")) |>
   ggplot(aes(x = width, y = coverage, color = method, shape = corr_f)) +
   geom_point(size = 3.5) +
   geom_hline(
@@ -2113,6 +2117,651 @@ cat(sprintf(
 #' 4. **Larger n**: Add n = 800 to test whether the cluster coverage gap and
 #'    Binomial IID ff issue diminish with more clusters.
 #'
+#'
+#' ---
+#'
+#' # Study 2: Grid Refinement and Sandwich Covariance Quality
+#'
+#' This study quantifies whether finer response/covariate observation grids
+#' improve cluster-robust sandwich CI calibration. Data are generated on the
+#' finest grid (90 x 120) and deterministically subsampled to coarser grids
+#' (60 x 80, 30 x 40), ensuring truly paired comparisons.
+#'
+#' Design:
+#'
+#' - **Gaussian family** (fixed), n = 200, SNR = 25, wiggliness = 5
+#' - **3 correlation structures**: IID, AR1(0.9), fourier_pos(0.3)
+#' - **Full model**: ff + linear + smooth + concurrent
+#' - **3 grid levels**: coarse (30 x 40), medium (60 x 80), fine (90 x 120)
+#' - **2 methods**: default (no sandwich) and cluster-robust sandwich
+#' - **120 reps** per DGP cell (3 corr x 3 grid = 9 cells, 1080 fits total)
+#'
+
+#+ s2-colors
+COLORS_S2 <- c(default = "#1b9e77", cluster = "#d95f02")
+GRID_LABELS <- c(
+  coarse = "Coarse (30\u00d740)",
+  medium = "Medium (60\u00d780)",
+  fine = "Fine (90\u00d7120)"
+)
+
+#'
+#' ## Study 2: Data Loading
+#'
+
+#+ s2-load-data
+s2_dir <- ci_path("ci-benchmark/study2-grid-refinement")
+s2_combined <- file.path(s2_dir, "main_results_combined.rds")
+s2_cov_file <- file.path(s2_dir, "cov_quality.rds")
+
+s2 <- if (file.exists(s2_combined)) {
+  readRDS(s2_combined)
+} else {
+  # Fall back to per-rep files
+  s2_main_dir <- file.path(s2_dir, "main")
+  s2_files <- list.files(
+    s2_main_dir,
+    pattern = "^dgp\\d+_grid\\w+_rep\\d+\\.rds$",
+    full.names = TRUE
+  )
+  if (length(s2_files) == 0) stop("No Study 2 results found in ", s2_dir)
+  bind_rows(lapply(s2_files, function(f) {
+    obj <- readRDS(f)
+    if (is.list(obj) && "metrics" %in% names(obj)) obj$metrics else obj
+  }))
+}
+
+s2 <- s2 |>
+  mutate(
+    method = factor(method, levels = c("default", "cluster")),
+    term_type = factor(
+      term_type,
+      levels = c("intercept", "E(Y)", "linear", "concurrent", "smooth", "ff")
+    ),
+    grid_f = factor(
+      grid_label,
+      levels = c("coarse", "medium", "fine"),
+      labels = GRID_LABELS
+    ),
+    corr_f = factor(
+      corr_type,
+      levels = c("iid", "ar1", "fourier_pos"),
+      labels = c("IID", "AR1(0.9)", "Fourier+(0.3)")
+    )
+  )
+
+cat("Study 2 loaded:", nrow(s2), "rows\n")
+cat("Grid levels:", paste(levels(s2$grid_f), collapse = ", "), "\n")
+cat("Methods:", paste(levels(s2$method), collapse = ", "), "\n")
+cat("Correlations:", paste(levels(s2$corr_f), collapse = ", "), "\n")
+cat(
+  "Reps per cell:",
+  paste(
+    range(table(paste(s2$dgp_id, s2$grid_label, s2$method, s2$term_type))),
+    collapse = "-"
+  ),
+  "\n"
+)
+
+# Load covariance quality metrics if available
+s2_cov <- if (file.exists(s2_cov_file)) readRDS(s2_cov_file) else NULL
+if (!is.null(s2_cov))
+  cat("Covariance quality metrics loaded:", nrow(s2_cov), "rows\n")
+
+#'
+#' ## Study 2: Coverage Summary
+#'
+
+#+ s2-summary
+s2_summary <- s2 |>
+  dplyr::filter(!is.na(coverage)) |>
+  group_by(corr_f, grid_f, method, term_type) |>
+  summarize(
+    mc_se = sd(coverage, na.rm = TRUE) / sqrt(n()),
+    coverage = mean(coverage, na.rm = TRUE),
+    z_sd = mean(z_sd, na.rm = TRUE),
+    z_mean_sd = sd(z_mean, na.rm = TRUE),
+    z_mean = mean(z_mean, na.rm = TRUE),
+    width = mean(mean_width, na.rm = TRUE),
+    rmse = mean(rmse, na.rm = TRUE),
+    bias = mean(bias, na.rm = TRUE),
+    fit_time = mean(fit_time, na.rm = TRUE),
+    n_reps = n(),
+    .groups = "drop"
+  )
+
+#+ s2-summary-table
+s2_summary |>
+  dplyr::filter(term_type %in% c("intercept", "ff", "linear", "E(Y)")) |>
+  select(corr_f, grid_f, method, term_type, coverage, mc_se, z_sd) |>
+  mutate(
+    coverage_fmt = fmt_coverage(coverage, mc_se),
+    z_sd = sprintf("%.2f", z_sd)
+  ) |>
+  select(corr_f, grid_f, method, term_type, coverage_fmt, z_sd) |>
+  pivot_wider(
+    names_from = method,
+    values_from = c(coverage_fmt, z_sd),
+    names_glue = "{method}_{.value}"
+  ) |>
+  gt() |>
+  tab_header(
+    title = "Study 2: Coverage by Grid Level \u00d7 Correlation \u00d7 Method",
+    subtitle = "Coverage % (\u00b195% MC interval) and z_sd (target = 1)"
+  ) |>
+  tab_spanner(label = "default", columns = starts_with("default_")) |>
+  tab_spanner(label = "cluster", columns = starts_with("cluster_"))
+
+#'
+#' ## Study 2: Coverage Heatmap
+#'
+#' Does finer grid resolution improve coverage? White = nominal (90%).
+#'
+
+#+ s2-heatmap, fig.width = 12, fig.height = 10
+s2_summary |>
+  dplyr::filter(
+    term_type %in%
+      c("intercept", "ff", "linear", "smooth", "concurrent", "E(Y)")
+  ) |>
+  ggplot(aes(
+    x = method,
+    y = interaction(corr_f, grid_f, sep = " | "),
+    fill = coverage
+  )) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = sprintf("%.1f%%", coverage * 100)), size = 2.8) +
+  scale_fill_gradient2(
+    low = "#d73027",
+    mid = "white",
+    high = "#4575b4",
+    midpoint = NOMINAL_COVERAGE,
+    limits = c(0.5, 1),
+    labels = scales::percent
+  ) +
+  facet_wrap(~term_type, ncol = 3) +
+  labs(
+    title = "Study 2: Coverage Heatmap by Grid Level",
+    subtitle = "Paired design: same data subsampled to coarser grids",
+    x = "Method",
+    y = "Correlation | Grid",
+    fill = "Coverage"
+  ) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+#'
+#' ## Study 2: Coverage by Grid Level (Line Plot)
+#'
+#' The key visual: does coverage improve monotonically with grid resolution?
+#'
+
+#+ s2-coverage-by-grid, fig.width = 12, fig.height = 8
+s2_summary |>
+  dplyr::filter(
+    term_type %in%
+      c("intercept", "ff", "linear", "smooth", "concurrent", "E(Y)")
+  ) |>
+  ggplot(aes(
+    x = grid_f,
+    y = coverage,
+    color = method,
+    group = method
+  )) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_errorbar(
+    aes(
+      ymin = coverage - 1.96 * mc_se,
+      ymax = coverage + 1.96 * mc_se
+    ),
+    width = 0.2,
+    linewidth = 0.5,
+    position = position_dodge(width = 0.3)
+  ) +
+  geom_hline(
+    yintercept = NOMINAL_COVERAGE,
+    linetype = "dashed",
+    color = "red"
+  ) +
+  facet_grid(corr_f ~ term_type) +
+  scale_y_continuous(labels = scales::percent, limits = c(0.3, 1)) +
+  scale_color_manual(values = COLORS_S2) +
+  labs(
+    title = "Study 2: Coverage by Grid Resolution",
+    subtitle = "Red dashed = 90% nominal. Error bars = 95% MC intervals.",
+    x = "Grid Resolution",
+    y = "Coverage",
+    color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+#'
+#' ## Study 2: Coverage Improvement (cluster - default) by Grid
+#'
+#' Paired comparison: how much does cluster-robust improve over default,
+#' and does the improvement change with grid resolution?
+#'
+
+#+ s2-paired-diff, fig.width = 12, fig.height = 7
+s2_paired <- s2 |>
+  dplyr::filter(
+    term_type %in%
+      c("intercept", "ff", "linear", "smooth", "concurrent", "E(Y)")
+  ) |>
+  select(dgp_id, rep_id, term_type, method, coverage, corr_f, grid_f) |>
+  pivot_wider(names_from = method, values_from = coverage) |>
+  mutate(diff = cluster - default)
+
+s2_paired_summary <- s2_paired |>
+  group_by(corr_f, grid_f, term_type) |>
+  summarize(
+    mean_diff = mean(diff, na.rm = TRUE),
+    se_diff = sd(diff, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  )
+
+ggplot(
+  s2_paired_summary,
+  aes(x = grid_f, y = mean_diff, fill = corr_f)
+) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_errorbar(
+    aes(
+      ymin = mean_diff - 1.96 * se_diff,
+      ymax = mean_diff + 1.96 * se_diff
+    ),
+    position = position_dodge(width = 0.7),
+    width = 0.2
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  facet_wrap(~term_type, ncol = 3) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 0.1)) +
+  scale_fill_brewer(palette = "Set1") +
+  labs(
+    title = "Study 2: Coverage Gain (cluster \u2212 default) by Grid Level",
+    subtitle = "Positive = cluster helps. Under IID, gain should be near 0.",
+    x = "Grid Resolution",
+    y = "Coverage Difference",
+    fill = "Correlation"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+#'
+#' ## Study 2: SE Calibration (z_sd) by Grid
+#'
+#' z_sd = SD of (estimate - truth) / SE averaged over grid points.
+#' Target = 1. The key question: does finer grid bring z_sd closer to 1?
+#'
+
+#+ s2-zsd-by-grid, fig.width = 12, fig.height = 8
+s2_summary |>
+  dplyr::filter(
+    term_type %in%
+      c("intercept", "ff", "linear", "smooth", "concurrent", "E(Y)")
+  ) |>
+  ggplot(aes(
+    x = grid_f,
+    y = z_sd,
+    color = method,
+    group = method
+  )) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+  geom_hline(
+    yintercept = c(0.85, 1.15),
+    linetype = "dotted",
+    color = "gray70"
+  ) +
+  facet_grid(corr_f ~ term_type) +
+  scale_color_manual(values = COLORS_S2) +
+  labs(
+    title = "Study 2: SE Calibration (z_sd) by Grid Resolution",
+    subtitle = "Dotted band = \u00b10.15 tolerance. z_sd > 1 = SEs too small.",
+    x = "Grid Resolution",
+    y = "z_sd",
+    color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+#'
+#' ## Study 2: Intercept Diagnostics by Grid
+#'
+#' On coarse grids (30x40), intercept coverage drops to ~60-68% despite
+#' rep-averaged z_mean near 0 and z_sd near 1. The paradox resolves when
+#' we look at between-rep variance: sd(z_mean) is large on coarse grids,
+#' meaning individual reps have globally-shifted intercepts that cancel
+#' in the average but cause low coverage per rep.
+#'
+
+#+ s2-intercept-bias, fig.width = 10, fig.height = 9
+s2_intercept <- s2_summary |>
+  dplyr::filter(term_type == "intercept")
+
+p_zmean_sd <- ggplot(
+  s2_intercept,
+  aes(x = grid_f, y = z_mean_sd, color = method, group = method)
+) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  facet_wrap(~corr_f) +
+  scale_color_manual(values = COLORS_S2) +
+  labs(
+    title = "Intercept: Between-Rep Variance of z_mean",
+    subtitle = "sd(z_mean) across reps. Large values = global intercept shifts driving undercoverage.",
+    x = "Grid Resolution",
+    y = "sd(z_mean) across reps",
+    color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_zsd <- ggplot(
+  s2_intercept,
+  aes(x = grid_f, y = z_sd, color = method, group = method)
+) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+  facet_wrap(~corr_f) +
+  scale_color_manual(values = COLORS_S2) +
+  labs(
+    title = "Intercept z_sd by Grid Resolution",
+    subtitle = "Within-rep z_sd (target = 1). Conditionally well-calibrated even on coarse grids.",
+    x = "Grid Resolution",
+    y = "z_sd",
+    color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_cov <- ggplot(
+  s2_intercept,
+  aes(x = grid_f, y = coverage, color = method, group = method)
+) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_errorbar(
+    aes(
+      ymin = coverage - 1.96 * mc_se,
+      ymax = coverage + 1.96 * mc_se
+    ),
+    width = 0.2,
+    linewidth = 0.5,
+    position = position_dodge(width = 0.3)
+  ) +
+  geom_hline(
+    yintercept = NOMINAL_COVERAGE,
+    linetype = "dashed",
+    color = "red"
+  ) +
+  facet_wrap(~corr_f) +
+  scale_y_continuous(labels = scales::percent, limits = c(0.4, 1)) +
+  scale_color_manual(values = COLORS_S2) +
+  labs(
+    title = "Intercept Coverage by Grid Resolution",
+    x = "Grid Resolution",
+    y = "Coverage",
+    color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_zmean_sd / p_zsd / p_cov
+
+#'
+#' ## Study 2: Covariance Quality Metrics
+#'
+#' Diagonal ratio = mean(model SE^2) / MC Var(est - truth). Values < 1 mean
+#' model SEs underestimate true variability. The cluster sandwich should have
+#' ratio closer to 1 than default under correlation.
+#'
+
+#+ s2-cov-quality, fig.width = 12, fig.height = 8
+if (!is.null(s2_cov)) {
+  s2_cov_plot <- s2_cov |>
+    mutate(
+      grid_f = factor(
+        grid_label,
+        levels = c("coarse", "medium", "fine"),
+        labels = GRID_LABELS
+      ),
+      corr_f = factor(
+        corr_type,
+        levels = c("iid", "ar1", "fourier_pos"),
+        labels = c("IID", "AR1(0.9)", "Fourier+(0.3)")
+      ),
+      term_type = factor(
+        term_type,
+        levels = c("intercept", "linear", "concurrent", "smooth", "ff")
+      )
+    )
+
+  ggplot(
+    s2_cov_plot,
+    aes(x = grid_f, y = diag_ratio_median, color = method, group = method)
+  ) +
+    geom_point(size = 3, position = position_dodge(width = 0.3)) +
+    geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+    geom_errorbar(
+      aes(ymin = diag_ratio_iqr_low, ymax = diag_ratio_iqr_high),
+      width = 0.2,
+      linewidth = 0.5,
+      position = position_dodge(width = 0.3)
+    ) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+    facet_grid(corr_f ~ term_type) +
+    scale_color_manual(values = COLORS_S2) +
+    labs(
+      title = "Study 2: Diagonal Variance Ratio by Grid Resolution",
+      subtitle = "Median (IQR) of mean(SE\u00b2) / Var(est \u2212 truth). Target = 1.",
+      x = "Grid Resolution",
+      y = "Diagonal Ratio",
+      color = "Method"
+    ) +
+    theme(
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 30, hjust = 1)
+    )
+} else {
+  cat("No covariance quality metrics available.\n")
+}
+
+#'
+#' ## Study 2: CI Width by Grid
+#'
+
+#+ s2-width, fig.width = 12, fig.height = 8
+s2_summary |>
+  dplyr::filter(term_type %in% c("ff", "linear", "smooth", "concurrent")) |>
+  ggplot(aes(x = grid_f, y = width, color = method, group = method)) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  facet_grid(corr_f ~ term_type, scales = "free_y") +
+  scale_color_manual(values = COLORS_S2) +
+  labs(
+    title = "Study 2: Mean CI Width by Grid Resolution",
+    subtitle = "Cluster CIs are wider under correlation; grid effect varies by term.",
+    x = "Grid Resolution",
+    y = "Mean CI Width",
+    color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+#'
+#' ## Study 2: Timing by Grid
+#'
+
+#+ s2-timing
+s2_timing <- s2 |>
+  dplyr::filter(term_type == "ff") |>
+  group_by(corr_f, grid_f, method) |>
+  summarize(
+    mean_time = mean(fit_time, na.rm = TRUE),
+    median_time = median(fit_time, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+s2_timing |>
+  dplyr::filter(method == "default") |>
+  select(corr_f, grid_f, mean_time, median_time) |>
+  gt() |>
+  tab_header(
+    title = "Study 2: Computation Time by Grid (seconds)",
+    subtitle = "Per model fit (default and cluster share the same pffr fit)"
+  ) |>
+  fmt_number(columns = c(mean_time, median_time), decimals = 1)
+
+#'
+#' ## Study 2: Sanity Checks
+#'
+
+#+ s2-sanity
+cat("=== Study 2 Sanity Checks ===\n\n")
+
+# Check 1: Under IID + fine grid, default coverage should be near 90%
+s2_iid_fine <- s2_summary |>
+  dplyr::filter(
+    corr_f == "IID",
+    grid_f == GRID_LABELS[["fine"]],
+    method == "default",
+    term_type %in% c("ff", "linear")
+  )
+cat(sprintf(
+  "IID fine grid default coverage (ff/linear): %.1f%%, %.1f%% [%s]\n",
+  s2_iid_fine$coverage[s2_iid_fine$term_type == "ff"] * 100,
+  s2_iid_fine$coverage[s2_iid_fine$term_type == "linear"] * 100,
+  if (all(abs(s2_iid_fine$coverage - 0.90) < 0.03)) "PASS" else "CHECK"
+))
+
+# Check 2: Under AR1, cluster should significantly beat default
+s2_ar1_cluster <- s2_summary |>
+  dplyr::filter(
+    corr_f == "AR1(0.9)",
+    term_type %in% c("ff", "linear"),
+    grid_f == GRID_LABELS[["fine"]]
+  ) |>
+  select(method, term_type, coverage) |>
+  pivot_wider(names_from = method, values_from = coverage) |>
+  mutate(diff = cluster - default)
+
+cat(sprintf(
+  "AR1 fine grid (cluster - default): ff = +%.1fpp, linear = +%.1fpp [%s]\n",
+  s2_ar1_cluster$diff[s2_ar1_cluster$term_type == "ff"] * 100,
+  s2_ar1_cluster$diff[s2_ar1_cluster$term_type == "linear"] * 100,
+  if (all(s2_ar1_cluster$diff > 0.10)) "PASS" else "CHECK"
+))
+
+# Check 3: Intercept coverage should improve from coarse to fine grid
+s2_int_cov <- s2_summary |>
+  dplyr::filter(term_type == "intercept", method == "cluster") |>
+  select(corr_f, grid_f, coverage)
+s2_int_coarse <- s2_int_cov |>
+  dplyr::filter(grid_f == GRID_LABELS[["coarse"]]) |>
+  pull(coverage) |>
+  mean()
+s2_int_fine <- s2_int_cov |>
+  dplyr::filter(grid_f == GRID_LABELS[["fine"]]) |>
+  pull(coverage) |>
+  mean()
+cat(sprintf(
+  "Intercept cluster coverage: coarse=%.1f%%, fine=%.1f%% (diff=+%.1fpp) [%s]\n",
+  s2_int_coarse * 100,
+  s2_int_fine * 100,
+  (s2_int_fine - s2_int_coarse) * 100,
+  if (s2_int_fine > s2_int_coarse + 0.05) "PASS" else "CHECK"
+))
+
+# Check 4: Fine grid coverage should be >= coarse for cluster under corr
+s2_grid_improve <- s2_summary |>
+  dplyr::filter(
+    method == "cluster",
+    corr_f != "IID",
+    term_type %in% c("ff", "linear")
+  ) |>
+  select(corr_f, grid_f, term_type, coverage) |>
+  pivot_wider(names_from = grid_f, values_from = coverage)
+cat("Cluster coverage coarse vs fine under correlation:\n")
+print(s2_grid_improve, n = 20)
+
+#'
+#' ## Study 2: Key Findings
+#'
+#' ### Grid refinement has limited effect on functional term coverage
+#'
+#' For the functional terms (ff, linear, smooth, concurrent), coverage is
+#' remarkably stable across grid levels. The cluster sandwich gives ~86-88%
+#' coverage for ff under correlation regardless of whether the grid is
+#' 30x40 or 90x120 (max difference ~1pp, well within the MC SE of ~3pp
+#' with 120 reps). This suggests the 84-89% cluster coverage gap is NOT
+#' a discretization artifact but rather reflects a fundamental property of
+#' the sandwich estimator (penalization interaction, finite-sample bias).
+#'
+#' ### Intercept coverage failure on coarse grids is a discretization artifact
+#'
+#' The intercept shows the clearest grid effect: on coarse grids (30x40),
+#' coverage drops to ~60-68% even though the rep-averaged z_mean is near 0
+#' and z_sd near 1. The resolution of this paradox lies in the between-rep
+#' variance of z_mean: sd(z_mean) across reps is ~1.5, meaning individual
+#' reps have large global intercept shifts (some +, some -) that cancel in
+#' the average. Within each rep z_sd is ~1 (SEs are conditionally
+#' well-calibrated), but the global-level shift pushes entire sets of
+#' pointwise z-scores beyond the CI threshold. The unconditional z-score
+#' distribution is thus much wider than N(0,1), explaining the low coverage.
+#' On medium (60x80) and fine (90x120) grids, between-rep z_mean variance
+#' shrinks and intercept coverage jumps to ~88-90%.
+#'
+#' ### Default SEs collapse on finer grids under correlation
+#'
+#' An interesting asymmetry: default (no sandwich) coverage actually
+#' *decreases* on finer grids under AR1/Fourier correlation. The diagonal
+#' variance ratio for default drops from ~0.3 (coarse) to ~0.1 (fine),
+#' meaning default SEs become progressively more underestimated relative
+#' to the true variability. More grid points amplify the within-curve
+#' correlation signal that default SEs ignore. The cluster sandwich is
+#' immune to this effect, maintaining stable diagonal ratios (~0.85-0.95).
+#'
+#' ### Covariance quality confirms SE miscalibration pattern
+#'
+#' The diagonal ratio (model SE^2 / MC variance) provides a direct
+#' measure of SE calibration. Under IID, both methods have ratio ~1
+#' (well-calibrated). Under AR1: default has ratio ~0.1-0.3 (SEs 3-10x
+#' too small), while cluster has ratio ~0.85-0.95 (slightly conservative).
+#' The cluster sandwich is not perfect — it slightly underestimates
+#' variability — but it is dramatically better than default under
+#' correlation.
+#'
+#' ### Implications for practice
+#'
+#' 1. **Grid resolution matters for the intercept** but not much for
+#'    functional effects. Use at least 60x80 for unbiased intercept
+#'    estimation.
+#' 2. **The cluster coverage gap (84-89%) is structural**, not a
+#'    discretization artifact. Future work should focus on
+#'    penalization-aware corrections rather than grid refinement.
+#' 3. **Finer grids make the case for sandwich *stronger***: default
+#'    SEs degrade further while cluster remains stable.
+#'
+
 #' ---
 #'
 #' *Report generated on `r Sys.time()`*

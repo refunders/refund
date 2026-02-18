@@ -40,10 +40,10 @@ source("ci-benchmark/benchmark-utils.R")
 #' @returns Data frame with method, idx, est, se, covered, width.
 extract_all_methods <- function(m, term_name, truth_vec) {
   methods <- list(
-    nosandwich = list(sandwich = FALSE, freq = FALSE),
+    nosandwich = list(sandwich = "none", freq = FALSE),
     hc = list(sandwich = "hc", freq = FALSE),
-    cluster_freq = list(sandwich = TRUE, freq = TRUE),
-    cluster_bayes = list(sandwich = TRUE, freq = FALSE)
+    cluster_freq = list(sandwich = "cluster", freq = TRUE),
+    cluster_bayes = list(sandwich = "cluster", freq = FALSE)
   )
 
   results <- list()
@@ -185,14 +185,20 @@ run_scenario_d <- function(
       if (is.null(sim)) next
 
       m <- tryCatch(
-        pffr(Y ~ x, yind = sim$yind, data = sim$data, family = poisson()),
+        pffr(
+          Y ~ x,
+          yind = sim$yind,
+          data = sim$data,
+          family = poisson(),
+          sandwich = "none"
+        ),
         error = function(e) NULL
       )
       if (is.null(m)) next
 
       # Get eval grid from baseline coefs
       c_base <- tryCatch(
-        coef(m, sandwich = FALSE, seWithMean = FALSE, n1 = 50),
+        coef(m, sandwich = "none", seWithMean = FALSE, n1 = 50),
         error = function(e) NULL
       )
       if (is.null(c_base)) next
@@ -360,14 +366,15 @@ run_scenario_e <- function(
           Y ~ x,
           yind = sim$yind,
           data = sim$data,
-          family = Gamma(link = "log")
+          family = Gamma(link = "log"),
+          sandwich = "none"
         ),
         error = function(e) NULL
       )
       if (is.null(m)) next
 
       c_base <- tryCatch(
-        coef(m, sandwich = FALSE, seWithMean = FALSE, n1 = 50),
+        coef(m, sandwich = "none", seWithMean = FALSE, n1 = 50),
         error = function(e) NULL
       )
       if (is.null(c_base)) next

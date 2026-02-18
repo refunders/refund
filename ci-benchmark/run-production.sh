@@ -11,8 +11,8 @@
 # Study 1: 150 reps x 12 DGP cells = 1800 pffr fits
 #   Estimated time: ~8-12h on 6 cores (73-157s/fit)
 #
-# Study 2: 120 reps x 3 DGPs x 3 grids = 1080 pffr fits
-#   Estimated time: ~18-24h on 6 cores (210-810s/fit, paired design)
+# Study 2: 120 reps x 9 DGPs (3 corr x 3 n) x 3 grids = 3240 pffr fits
+#   Estimated time: substantially larger than the old design; run pilot first.
 #
 # Both studies support resume-on-restart via incremental saves.
 # ===========================================================================
@@ -48,16 +48,9 @@ run_study1() {
 run_study2() {
     echo "=========================================="
     echo " Study 2: Grid Refinement (main)"
-    echo " 120 reps x 3 DGPs x 3 grids (coarse/medium/fine)"
+    echo " 120 reps x 9 DGPs (3 corr x 3 n) x 3 grids"
     echo " Started: $(date)"
     echo "=========================================="
-
-    # Verify pilot results exist (needed for grid selection)
-    if [ ! -f "ci-benchmark/study2-grid-refinement/pilot_summary.rds" ]; then
-        echo "ERROR: Pilot results not found. Run pilot first:"
-        echo "  Rscript ci-benchmark/sim-study-grid-refinement.R pilot"
-        exit 1
-    fi
 
     Rscript ci-benchmark/sim-study-grid-refinement.R main \
         2>&1 | tee "${LOG_DIR}/study2_${TIMESTAMP}.log"

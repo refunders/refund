@@ -471,7 +471,13 @@ fit_all_methods <- function(sim, methods, k_yindex = 12) {
 
   # Always fit pffr first (pilot for GLS/AR)
   t0 <- Sys.time()
-  fits$pffr <- pffr(formula, yind = t_grid, data = dat, bs.yindex = bs_yindex)
+  fits$pffr <- pffr(
+    formula,
+    yind = t_grid,
+    data = dat,
+    bs.yindex = bs_yindex,
+    sandwich = "none"
+  )
   pffr_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
   timings$pffr <- pffr_time
 
@@ -495,7 +501,8 @@ fit_all_methods <- function(sim, methods, k_yindex = 12) {
       yind = t_grid,
       data = dat,
       family = mgcv::gaulss(),
-      bs.yindex = bs_yindex
+      bs.yindex = bs_yindex,
+      sandwich = "none"
     )
     gaulss_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     timings$pffr_gaulss <- gaulss_time
@@ -511,7 +518,8 @@ fit_all_methods <- function(sim, methods, k_yindex = 12) {
       data = dat,
       algorithm = "bam",
       rho = rho,
-      bs.yindex = bs_yindex
+      bs.yindex = bs_yindex,
+      sandwich = "none"
     )
     ar_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
     timings$pffr_ar <- pffr_time + ar_time
@@ -736,7 +744,7 @@ evaluate_truth_on_grid <- function(
 #' @param truth Truth list from simulation.
 #' @param term_type One of "ff", "linear", "smooth", "intercept", "concurrent".
 #' @param alpha Significance level for CI.
-#' @param use_sandwich Sandwich type: FALSE, TRUE, "cluster", or "hc".
+#' @param use_sandwich Sandwich type: "none", "cluster", "cl2", or "hc".
 #' @param s_grid s evaluation points (for ff).
 #' @param t_grid t evaluation points.
 #' @param data Data frame used for fitting (needed for smooth term centering).
@@ -749,7 +757,7 @@ extract_term_ci_df <- function(
   truth,
   term_type,
   alpha = 0.10,
-  use_sandwich = FALSE,
+  use_sandwich = "none",
   s_grid = NULL,
   t_grid = NULL,
   data = NULL,
@@ -858,7 +866,7 @@ extract_term_ci_df <- function(
 #' @param truth Truth list from simulation.
 #' @param term_type One of "ff", "linear", "smooth", "intercept", "concurrent".
 #' @param alpha Significance level for CI.
-#' @param use_sandwich Sandwich type: FALSE, "cluster", or "hc".
+#' @param use_sandwich Sandwich type: "none", "cluster", "cl2", or "hc".
 #' @param s_grid s evaluation points (for ff).
 #' @param t_grid t evaluation points.
 #' @param data Data frame used for fitting (needed for smooth term centering).
@@ -870,7 +878,7 @@ compute_term_metrics <- function(
   truth,
   term_type,
   alpha = 0.10,
-  use_sandwich = FALSE,
+  use_sandwich = "none",
   s_grid = NULL,
   t_grid = NULL,
   data = NULL,
@@ -955,7 +963,8 @@ compute_term_metrics <- function(
 #' @param fit A pffr fit.
 #' @param truth Truth list from simulation.
 #' @param alpha Significance level for CI.
-#' @param use_sandwich Sandwich type: FALSE, "cluster", or "hc". When specified,
+#' @param use_sandwich Sandwich type: "none", "cluster", "cl2", or "hc". When
+#'   not `"none"`,
 #'   applies sandwich correction to the fit's covariance matrices before
 #'   computing prediction SEs.
 #' @param err_struct Error structure from simulation (for region-specific coverage).
@@ -965,7 +974,7 @@ compute_ey_metrics <- function(
   fit,
   truth,
   alpha = 0.10,
-  use_sandwich = FALSE,
+  use_sandwich = "none",
   err_struct = NULL,
   t_grid = NULL
 ) {
@@ -973,7 +982,7 @@ compute_ey_metrics <- function(
 
   # Apply sandwich correction if requested
   pred_fit <- fit
-  if (!isFALSE(use_sandwich)) {
+  if (use_sandwich != "none") {
     algorithm <- fit$pffr$algorithm %||% "gam"
     sandwich_fn <- if (exists("apply_sandwich_correction", mode = "function")) {
       apply_sandwich_correction
@@ -1080,7 +1089,7 @@ compute_ey_metrics <- function(
 #' @param fit A pffr fit.
 #' @param sim Simulation result.
 #' @param method Method name.
-#' @param use_sandwich Sandwich type: FALSE, "cluster", or "hc".
+#' @param use_sandwich Sandwich type: "none", "cluster", "cl2", or "hc".
 #' @param alpha Significance level.
 #' @param err_struct Error structure from simulation (for region-specific coverage).
 #' @returns Tibble with one row per term.
@@ -1088,7 +1097,7 @@ compute_all_metrics <- function(
   fit,
   sim,
   method,
-  use_sandwich = FALSE,
+  use_sandwich = "none",
   alpha = 0.10,
   err_struct = NULL
 ) {
@@ -1283,7 +1292,7 @@ run_one_setting <- function(row, alpha = 0.10, methods = NULL) {
           method_name,
           pffr_sandwich = "cluster",
           pffr_hc = "hc",
-          FALSE
+          "none"
         )
         fit <- if (method_name %in% c("pffr_sandwich", "pffr_hc")) {
           fits$pffr

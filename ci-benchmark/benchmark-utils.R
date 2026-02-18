@@ -16,20 +16,21 @@
 #'
 #' Several scripts historically used `TRUE/FALSE` for sandwich SEs. The main CI
 #' benchmark uses explicit types: `"cluster"` and `"hc"`. This helper converts:
-#' - `FALSE`/`NULL` -> `FALSE`
+#' - `FALSE`/`NULL` -> `"none"`
 #' - `TRUE` -> `"cluster"`
-#' - `"cluster"`/`"hc"` -> unchanged
+#' - `"none"`/`"cluster"`/`"cl2"`/`"hc"` -> unchanged
 #'
-#' @param sandwich One of FALSE/NULL, TRUE, "cluster", "hc".
-#' @returns `FALSE` or a character scalar ("cluster" or "hc").
+#' @param sandwich One of FALSE/NULL, TRUE, "none", "cluster", "cl2", "hc".
+#' @returns Character scalar in `c("none", "cluster", "cl2", "hc")`.
 normalize_sandwich_type <- function(sandwich) {
-  if (is.null(sandwich) || isFALSE(sandwich)) return(FALSE)
+  if (is.null(sandwich) || isFALSE(sandwich)) return("none")
   if (isTRUE(sandwich)) return("cluster")
   if (is.character(sandwich) && length(sandwich) == 1) {
-    if (sandwich %in% c("cluster", "hc")) return(sandwich)
+    if (sandwich %in% c("none", "cluster", "cl2", "hc")) return(sandwich)
   }
   stop(
-    "Invalid sandwich type. Use FALSE/NULL, TRUE, 'cluster', or 'hc'.",
+    "Invalid sandwich type. Use FALSE/NULL, TRUE, or one of ",
+    "'none', 'cluster', 'cl2', 'hc'.",
     call. = FALSE
   )
 }

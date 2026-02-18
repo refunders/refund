@@ -2,21 +2,24 @@
 # Study 2: Grid Refinement and Sandwich Covariance Quality
 # ===========================================================================
 #
-# Quantifies whether finer response/covariate observation grids improve
-# cluster-robust sandwich CI calibration and covariance estimation quality.
+# Quantifies how CI quality and runtime change with sample size (n) and
+# response/covariate observation grid resolution, including CL2 correction.
 #
 # Design:
 #   - Gaussian family (fixed)
 #   - 3 correlation structures: IID, AR1(0.9), fourier_pos(0.3)
+#   - 3 sample sizes: n = 20, 40, 80
 #   - Full model: ff + linear + smooth + concurrent
 #   - Grid levels: (30,40), (60,80), (90,120)
-#   - Paired design: generate on finest grid, subsample for coarser
+#   - Factorial DGP design: correlation x n; grid varied independently
+#   - Paired within each (correlation, n, rep): generate finest grid once,
+#     deterministic subsampling for coarser grids
 #
 # Phases:
-#   Pilot: 30 reps per grid x DGP for timing + crude coverage
-#   Main:  120 reps per DGP x 2 grid levels (coarse vs selected-fine)
+#   Pilot: 30 reps per DGP x grid for timing + crude coverage
+#   Main:  120 reps per DGP x grid (full factorial comparison)
 #
-# Methods: default (no sandwich) and cluster-robust sandwich.
+# Methods: default (none), HC, cluster, and CL2 sandwich.
 #
 # Usage:
 #   Rscript ci-benchmark/sim-study-grid-refinement.R [mode]
@@ -39,7 +42,7 @@ source("ci-benchmark/confint-benchmark.R")
 # Constants -------------------------------------------------------------------
 
 STUDY2_BASE_SEED <- 4001L
-STUDY2_N <- 200L
+STUDY2_N_LEVELS <- c(20L, 40L, 80L)
 STUDY2_SNR <- 25
 STUDY2_WIGGLINESS <- 5
 STUDY2_TERMS <- c("ff", "linear", "smooth", "concurrent")
@@ -52,9 +55,6 @@ STUDY2_GRIDS <- list(
 )
 STUDY2_FINE_NX <- 90L
 STUDY2_FINE_NY <- 120L
-
-# Timing threshold: finest grid with median fit time < 10x coarse
-STUDY2_TIMING_THRESHOLD_FACTOR <- 10
 
 # Grid Subsampling ------------------------------------------------------------
 
@@ -154,7 +154,7 @@ subsample_grid <- function(sim, target_nxgrid, target_nygrid) {
 #'
 #' @param fit Fitted pffr model.
 #' @param term_type One of "ff", "linear", "smooth", "concurrent", "intercept".
-#' @param sandwich_type FALSE, "hc", or "cluster".
+#' @param sandwich_type One of "none", "hc", "cluster", or "cl2".
 #' @param truth Truth list from simulation (for truth centering in cov quality).
 #' @param s_grid s grid from simulation.
 #' @param t_grid t grid from simulation.
@@ -163,7 +163,7 @@ subsample_grid <- function(sim, target_nxgrid, target_nygrid) {
 extract_coef_and_se <- function(
   fit,
   term_type,
-  sandwich_type = FALSE,
+  sandwich_type = "none",
   truth = NULL,
   s_grid = NULL,
   t_grid = NULL,
@@ -320,21 +320,28 @@ compute_cov_quality_metrics <- function(
 
 #' Create Study 2 DGP settings
 #'
-#' 3 correlation structures. Grid levels handled separately in runner.
+#' Full factorial in correlation and sample size. Grid levels handled in runner.
 #'
+#' @param n_levels Integer vector of sample sizes.
 #' @returns Tibble with DGP configurations.
-make_study2_settings <- function() {
-  tibble(
+make_study2_settings <- function(n_levels = STUDY2_N_LEVELS) {
+  corr_settings <- tibble(
     corr_type = c("iid", "ar1", "fourier_pos"),
-    corr_param = c(NA_real_, 0.9, 0.3),
-    n = STUDY2_N,
-    snr = STUDY2_SNR,
-    wiggliness = STUDY2_WIGGLINESS,
-    error_dist = "gaussian",
-    hetero_type = "none",
-    hetero_param = NA_real_
+    corr_param = c(NA_real_, 0.9, 0.3)
+  )
+
+  tidyr::crossing(
+    corr_settings,
+    n = as.integer(n_levels)
   ) |>
-    dplyr::mutate(dgp_id = dplyr::row_number())
+    dplyr::mutate(
+      snr = STUDY2_SNR,
+      wiggliness = STUDY2_WIGGLINESS,
+      error_dist = "gaussian",
+      hetero_type = "none",
+      hetero_param = NA_real_,
+      dgp_id = dplyr::row_number()
+    )
 }
 
 # Runner Functions ------------------------------------------------------------
@@ -388,11 +395,21 @@ fit_and_extract_grid <- function(sim, alpha = 0.10, collect_vectors = TRUE) {
 
   # Fit model
   t0 <- Sys.time()
-  fit <- pffr(frml, yind = sim$t_grid, data = sim$data, bs.yindex = bs_yindex)
+  fit <- pffr(
+    frml,
+    yind = sim$t_grid,
+    data = sim$data,
+    bs.yindex = bs_yindex,
+    sandwich = "none"
+  )
   fit_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
-  # Extract metrics for default and cluster methods
-  methods <- list(default = FALSE, cluster = "cluster")
+  methods <- list(
+    default = "none",
+    hc = "hc",
+    cluster = "cluster",
+    cl2 = "cl2"
+  )
   metrics_list <- list()
   coef_data_list <- list()
 
@@ -487,6 +504,10 @@ atomic_saveRDS <- function(obj, path) {
   }
 }
 
+study2_main_file_key <- function(dgp_id, n, grid_label, rep_id) {
+  sprintf("dgp%03d_n%03d_grid%s_rep%03d", dgp_id, n, grid_label, rep_id)
+}
+
 #' Run Study 2 pilot phase
 #'
 #' @param n_rep Number of reps per DGP x grid.
@@ -508,6 +529,7 @@ run_study2_pilot <- function(
   cat("Study 2 Pilot: Grid Refinement\n")
   cat("==============================\n")
   cat("DGP cells:", nrow(settings), "\n")
+  cat("n levels:", paste(sort(unique(settings$n)), collapse = ", "), "\n")
   cat("Grid levels:", paste(grid_labels, collapse = ", "), "\n")
   cat("Reps per cell:", n_rep, "\n")
   cat("Parallel:", parallel, "workers:", n_workers, "\n\n")
@@ -648,11 +670,12 @@ run_study2_pilot <- function(
     for (i in seq_len(nrow(task_grid))) {
       row_df <- task_grid[i, ]
       cat(sprintf(
-        "\r  [%d/%d] DGP %d (corr=%s), rep %d",
+        "\r  [%d/%d] DGP %d (corr=%s, n=%d), rep %d",
         i,
         nrow(task_grid),
         row_df$dgp_id,
         row_df$corr_type,
+        row_df$n,
         row_df$rep_id
       ))
 
@@ -671,58 +694,90 @@ run_study2_pilot <- function(
 
   results <- dplyr::bind_rows(all_results)
   timings <- dplyr::bind_rows(timing_results)
-
-  # Timing analysis: select finest affordable grid
-  timing_summary <- timings |>
-    dplyr::group_by(corr_type, grid_label, nxgrid, nygrid) |>
-    dplyr::summarise(
-      median_time = median(fit_time, na.rm = TRUE),
-      mean_time = mean(fit_time, na.rm = TRUE),
-      max_time = max(fit_time, na.rm = TRUE),
-      n_fits = dplyr::n(),
-      .groups = "drop"
+  if (nrow(timings) == 0) {
+    timings <- tibble(
+      n = integer(),
+      corr_type = character(),
+      grid_label = character(),
+      nxgrid = integer(),
+      nygrid = integer(),
+      rep_id = integer(),
+      fit_time = numeric()
     )
+  }
 
-  # Coarse median time
-  coarse_median <- timing_summary |>
-    dplyr::filter(grid_label == "coarse") |>
-    dplyr::pull(median_time) |>
-    median()
-
-  # Select finest grid with median time < threshold * coarse
-  # Aggregate across corr_types first (worst-case timing)
-  threshold <- coarse_median * STUDY2_TIMING_THRESHOLD_FACTOR
-  grid_timing <- timing_summary |>
-    dplyr::group_by(grid_label, nxgrid, nygrid) |>
-    dplyr::summarise(
-      max_median_time = max(median_time, na.rm = TRUE),
-      .groups = "drop"
-    )
-  affordable <- grid_timing |>
-    dplyr::filter(max_median_time < threshold) |>
-    dplyr::arrange(desc(nxgrid))
-
-  selected_fine <- if (nrow(affordable) > 0) {
-    affordable$grid_label[1]
+  timing_summary <- if (nrow(timings) > 0) {
+    timings |>
+      dplyr::group_by(n, corr_type, grid_label, nxgrid, nygrid) |>
+      dplyr::summarise(
+        median_time = median(fit_time, na.rm = TRUE),
+        mean_time = mean(fit_time, na.rm = TRUE),
+        max_time = max(fit_time, na.rm = TRUE),
+        n_fits = dplyr::n(),
+        .groups = "drop"
+      )
   } else {
-    "medium" # fallback per plan
+    tibble(
+      n = integer(),
+      corr_type = character(),
+      grid_label = character(),
+      nxgrid = integer(),
+      nygrid = integer(),
+      median_time = numeric(),
+      mean_time = numeric(),
+      max_time = numeric(),
+      n_fits = integer()
+    )
+  }
+
+  timing_scaling <- if (nrow(timing_summary) > 0) {
+    timing_summary |>
+      dplyr::group_by(n, corr_type) |>
+      dplyr::mutate(
+        coarse_median = median_time[grid_label == "coarse"][1],
+        time_ratio_vs_coarse = median_time / coarse_median
+      ) |>
+      dplyr::ungroup()
+  } else {
+    tibble(
+      n = integer(),
+      corr_type = character(),
+      grid_label = character(),
+      nxgrid = integer(),
+      nygrid = integer(),
+      median_time = numeric(),
+      mean_time = numeric(),
+      max_time = numeric(),
+      n_fits = integer(),
+      coarse_median = numeric(),
+      time_ratio_vs_coarse = numeric()
+    )
   }
 
   cat("\nPilot Timing Summary:\n")
   print(timing_summary)
-  cat(sprintf("\nCoarse median time: %.1f sec\n", coarse_median))
-  cat(sprintf("Threshold (10x): %.1f sec\n", threshold))
-  cat(sprintf("Selected fine grid: %s\n", selected_fine))
+  cat("\nPilot Timing Scaling (median_time / coarse median within n,corr):\n")
+  print(
+    timing_scaling |>
+      dplyr::select(
+        n,
+        corr_type,
+        grid_label,
+        median_time,
+        time_ratio_vs_coarse
+      ) |>
+      dplyr::arrange(n, corr_type, grid_label)
+  )
 
   # Coverage summary by grid
   if (nrow(results) > 0) {
     cov_summary <- results |>
       dplyr::filter(!is.na(coverage)) |>
-      dplyr::group_by(grid_label, corr_type, method, term_type) |>
+      dplyr::group_by(n, grid_label, corr_type, method, term_type) |>
       dplyr::summarise(
         mean_coverage = mean(coverage, na.rm = TRUE),
         mean_z_sd = mean(z_sd, na.rm = TRUE),
-        n = dplyr::n(),
+        n_rep = dplyr::n(),
         .groups = "drop"
       )
 
@@ -730,7 +785,7 @@ run_study2_pilot <- function(
     print(
       cov_summary |>
         dplyr::filter(term_type %in% c("ff", "linear")) |>
-        dplyr::arrange(corr_type, grid_label, method, term_type),
+        dplyr::arrange(n, corr_type, grid_label, method, term_type),
       n = 100
     )
   }
@@ -738,9 +793,7 @@ run_study2_pilot <- function(
   pilot_output <- list(
     results = results,
     timing_summary = timing_summary,
-    selected_fine = selected_fine,
-    coarse_median = coarse_median,
-    threshold = threshold
+    timing_scaling = timing_scaling
   )
   atomic_saveRDS(pilot_output, file.path(output_dir, "pilot_summary.rds"))
 
@@ -749,9 +802,9 @@ run_study2_pilot <- function(
 
 #' Run Study 2 main phase
 #'
-#' @param n_rep Number of reps per DGP x grid pair.
+#' @param n_rep Number of reps per DGP x grid cell.
 #' @param grid_labels Character vector of grid labels to run. Default uses all
-#'   three levels (coarse, medium, fine) for complete grid refinement comparison.
+#'   three levels (coarse, medium, fine) for full factorial comparison.
 #' @param parallel Use parallel processing?
 #' @param n_workers Number of workers.
 #' @param output_dir Output directory.
@@ -781,22 +834,16 @@ run_study2_main <- function(
     grid_labels <- valid_labels
   }
 
-  cat("Study 2 Main: Grid Refinement (paired comparison)\n")
-  cat("==================================================\n")
+  cat("Study 2 Main: Grid Refinement (factorial n x grid)\n")
+  cat("===================================================\n")
   cat("DGP cells:", nrow(settings), "\n")
+  cat("n levels:", paste(sort(unique(settings$n)), collapse = ", "), "\n")
   cat("Grid levels:", paste(grid_labels, collapse = " vs "), "\n")
   cat("Reps per cell:", n_rep, "\n")
   cat("Total fits:", nrow(settings) * length(grid_labels) * n_rep, "\n")
   cat("Output dir:", output_dir, "\n\n")
 
-  # Check existing
-  existing_files <- list.files(
-    output_dir,
-    pattern = "^dgp\\d+_grid\\w+_rep\\d+\\.rds$",
-    full.names = TRUE
-  )
-
-  # Worker function for one (DGP, rep) pair across both grids
+  # Worker function for one (DGP, rep) pair across all grid levels
   run_one_pair <- function(row, rep_id, alpha) {
     seed <- STUDY2_BASE_SEED + 1000L * row$dgp_id + rep_id
 
@@ -806,11 +853,11 @@ run_study2_main <- function(
     pair_results <- list()
     for (grid_label in grid_labels) {
       # Check if already done
-      save_key <- sprintf(
-        "dgp%03d_grid%s_rep%03d",
-        row$dgp_id,
-        grid_label,
-        rep_id
+      save_key <- study2_main_file_key(
+        dgp_id = row$dgp_id,
+        n = row$n,
+        grid_label = grid_label,
+        rep_id = rep_id
       )
       save_path <- file.path(output_dir, paste0(save_key, ".rds"))
 
@@ -933,11 +980,12 @@ run_study2_main <- function(
     for (i in seq_len(nrow(grid))) {
       row <- as.list(grid[i, ])
       cat(sprintf(
-        "\r[%d/%d] dgp=%d (corr=%s), rep=%d",
+        "\r[%d/%d] dgp=%d (corr=%s, n=%d), rep=%d",
         i,
         nrow(grid),
         row$dgp_id,
         row$corr_type,
+        row$n,
         row$rep_id
       ))
 
@@ -978,7 +1026,7 @@ run_study2_main <- function(
 load_study2_results <- function(output_dir) {
   all_files <- list.files(
     output_dir,
-    pattern = "^dgp\\d+_grid\\w+_rep\\d+\\.rds$",
+    pattern = "^dgp\\d+_n\\d+_grid\\w+_rep\\d+\\.rds$",
     full.names = TRUE
   )
   if (length(all_files) == 0) return(tibble())
@@ -1003,7 +1051,7 @@ compute_study2_cov_quality <- function(output_dir, settings, grid_labels) {
     row <- as.list(settings[s, ])
 
     for (grid_label in grid_labels) {
-      for (method_name in c("default", "cluster")) {
+      for (method_name in c("default", "hc", "cluster", "cl2")) {
         for (term_type in c(
           "linear",
           "smooth",
@@ -1021,8 +1069,9 @@ compute_study2_cov_quality <- function(output_dir, settings, grid_labels) {
           files <- list.files(
             output_dir,
             pattern = sprintf(
-              "^dgp%03d_grid%s_rep\\d+\\.rds$",
+              "^dgp%03d_n%03d_grid%s_rep\\d+\\.rds$",
               row$dgp_id,
+              row$n,
               grid_label
             ),
             full.names = TRUE
@@ -1078,6 +1127,7 @@ compute_study2_cov_quality <- function(output_dir, settings, grid_labels) {
 
           cov_metrics$dgp_id <- row$dgp_id
           cov_metrics$corr_type <- row$corr_type
+          cov_metrics$n <- row$n
           cov_metrics$grid_label <- grid_label
           cov_metrics$method <- method_name
 
@@ -1099,7 +1149,15 @@ compute_study2_cov_quality <- function(output_dir, settings, grid_labels) {
 summarize_study2 <- function(results) {
   results |>
     dplyr::filter(!is.na(coverage)) |>
-    dplyr::group_by(corr_type, grid_label, nxgrid, nygrid, method, term_type) |>
+    dplyr::group_by(
+      n,
+      corr_type,
+      grid_label,
+      nxgrid,
+      nygrid,
+      method,
+      term_type
+    ) |>
     dplyr::summarise(
       mean_coverage = mean(coverage, na.rm = TRUE),
       se_coverage = sd(coverage, na.rm = TRUE) / sqrt(dplyr::n()),
@@ -1177,8 +1235,7 @@ if (sys.nframe() == 0) {
     cat("Study 2: Pilot phase (30 reps)\n\n")
     pilot <- run_study2_pilot(n_rep = 30L, output_dir = base_dir)
   } else if (mode == "main") {
-    # Run all three grid levels for complete refinement comparison
-    cat("Using all three grid levels: coarse, medium, fine\n")
+    cat("Using full factorial n x grid design with all grid levels\n")
 
     main_results <- run_study2_main(
       n_rep = 120L,
@@ -1196,14 +1253,14 @@ if (sys.nframe() == 0) {
       print(
         summary_df |>
           dplyr::filter(term_type %in% c("ff", "linear", "E(Y)")) |>
-          dplyr::arrange(corr_type, grid_label, method, term_type),
+          dplyr::arrange(n, corr_type, grid_label, method, term_type),
         n = 100
       )
 
       cat("\n========== COVARIANCE QUALITY ==========\n")
       print(
         main_results$cov_quality |>
-          dplyr::arrange(corr_type, grid_label, method, term_type),
+          dplyr::arrange(n, corr_type, grid_label, method, term_type),
         n = 100
       )
 

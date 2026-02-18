@@ -14,7 +14,7 @@
 #   Binomial: Gaussian copula preserves marginal β (logit NOT collapsible).
 #     → P(Y=1|X) = p exactly; within-curve correlation via copula.
 #
-# Methods: default (no sandwich), HC sandwich, cluster-robust sandwich.
+# Methods: default (no sandwich), HC, cluster-robust, and CL2 sandwich.
 #
 # Usage:
 #   Rscript ci-benchmark/sim-study-nongaussian-sandwich.R [mode]
@@ -366,7 +366,7 @@ build_study1_formula <- function(s_grid, k_ff = STUDY1_K_FF) {
 
 # Metric Extraction -----------------------------------------------------------
 
-#' Extract metrics for all three methods from one pffr fit
+#' Extract metrics for all four methods from one pffr fit
 #'
 #' Fits the model once and extracts coefficients with different sandwich types.
 #'
@@ -376,9 +376,10 @@ build_study1_formula <- function(s_grid, k_ff = STUDY1_K_FF) {
 #' @returns Tibble with metrics for each (method, term) combination.
 extract_study1_metrics <- function(fit, sim, alpha = 0.10) {
   sandwich_types <- list(
-    default = FALSE,
+    default = "none",
     hc = "hc",
-    cluster = "cluster"
+    cluster = "cluster",
+    cl2 = "cl2"
   )
 
   results <- list()
@@ -485,7 +486,8 @@ run_study1_rep <- function(row, rep_id, alpha = 0.10) {
     yind = sim$t_grid,
     data = sim$data,
     family = fam,
-    bs.yindex = bs_yindex
+    bs.yindex = bs_yindex,
+    sandwich = "none"
   )
   fit_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
@@ -597,7 +599,27 @@ run_study1 <- function(
     full.names = TRUE
   )
   if (length(existing_files) > 0) {
-    existing_keys <- sub("\\.rds$", "", basename(existing_files))
+    required_methods <- c("default", "hc", "cluster", "cl2")
+    file_has_required_methods <- function(path) {
+      obj <- tryCatch(readRDS(path), error = function(e) NULL)
+      if (is.null(obj) || !"method" %in% names(obj)) return(FALSE)
+      all(
+        required_methods %in% unique(stats::na.omit(as.character(obj$method)))
+      )
+    }
+
+    keep_idx <- vapply(existing_files, file_has_required_methods, logical(1))
+    if (any(!keep_idx)) {
+      cat(
+        "Re-running",
+        sum(!keep_idx),
+        "legacy files that do not contain all methods:",
+        paste(required_methods, collapse = ", "),
+        "\n"
+      )
+    }
+
+    existing_keys <- sub("\\.rds$", "", basename(existing_files[keep_idx]))
     grid_keys <- sprintf("dgp%03d_rep%03d", grid$dgp_id, grid$rep_id)
     already_done <- grid_keys %in% existing_keys
     n_skip <- sum(already_done)
@@ -927,14 +949,15 @@ validate_collapsibility <- function(n_rep = 20, n = 200, seed = 77) {
           yind = sim$t_grid,
           data = sim$data,
           family = poisson(),
-          bs.yindex = bs_yindex
+          bs.yindex = bs_yindex,
+          sandwich = "none"
         )
         metrics <- compute_term_metrics(
           fit,
           sim$truth,
           "linear",
           alpha = 0.10,
-          use_sandwich = FALSE,
+          use_sandwich = "none",
           s_grid = sim$s_grid,
           t_grid = sim$t_grid,
           data = sim$data
@@ -994,7 +1017,8 @@ phase0_known_answer <- function(n_rep = 30, seed = 9999) {
           frml,
           yind = sim$t_grid,
           data = sim$data,
-          bs.yindex = bs_yindex
+          bs.yindex = bs_yindex,
+          sandwich = "none"
         )
 
         metrics <- compute_term_metrics(
@@ -1002,7 +1026,7 @@ phase0_known_answer <- function(n_rep = 30, seed = 9999) {
           sim$truth,
           "linear",
           alpha = 0.10,
-          use_sandwich = FALSE,
+          use_sandwich = "none",
           s_grid = sim$s_grid,
           t_grid = sim$t_grid,
           data = sim$data

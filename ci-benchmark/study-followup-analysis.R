@@ -56,7 +56,7 @@ load_study2 <- function(dir = "ci-benchmark/study2-grid-refinement") {
     main_dir <- file.path(dir, "main")
     files <- list.files(
       main_dir,
-      pattern = "^dgp\\d+_grid\\w+_rep\\d+\\.rds$",
+      pattern = "^dgp\\d+(_n\\d+)?_grid\\w+_rep\\d+\\.rds$",
       full.names = TRUE
     )
     if (length(files) == 0)
@@ -174,21 +174,41 @@ analyze_study1 <- function(results) {
     ) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-  # --- Paired coverage difference: cluster - default ---
+  # --- Paired coverage difference vs default ---
   paired <- summary1 |>
     filter(
-      method %in% c("default", "cluster"),
+      method %in% c("default", "cluster", "cl2"),
       term_type %in% c("ff", "linear")
     ) |>
     select(family, corr_type, n, method, term_type, coverage) |>
     pivot_wider(names_from = method, values_from = coverage) |>
-    mutate(coverage_diff = cluster - default)
+    (\(out) {
+      if (!"cluster" %in% names(out)) out$cluster <- NA_real_
+      if (!"cl2" %in% names(out)) out$cl2 <- NA_real_
+      out
+    })() |>
+    mutate(
+      diff_cluster = cluster - default,
+      diff_cl2 = cl2 - default
+    ) |>
+    pivot_longer(
+      cols = c(diff_cluster, diff_cl2),
+      names_to = "comparison",
+      values_to = "coverage_diff"
+    ) |>
+    mutate(
+      comparison = dplyr::recode(
+        comparison,
+        diff_cluster = "cluster - default",
+        diff_cl2 = "cl2 - default"
+      )
+    )
 
   p1_diff <- paired |>
     ggplot(aes(
       x = interaction(corr_type, paste0("n=", n)),
       y = coverage_diff,
-      fill = family
+      fill = comparison
     )) +
     geom_col(position = position_dodge(width = 0.7), width = 0.6) +
     geom_hline(yintercept = 0, linetype = 2) +
@@ -197,12 +217,12 @@ analyze_study1 <- function(results) {
       linetype = 3,
       color = "gray50"
     ) +
-    facet_wrap(~term_type) +
+    facet_grid(term_type ~ family) +
     labs(
-      title = "Study 1: Coverage Improvement (cluster - default)",
+      title = "Study 1: Coverage Improvement vs default",
       x = "Correlation x n",
       y = "Coverage Difference",
-      fill = "Family"
+      fill = "Comparison"
     ) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
@@ -244,7 +264,7 @@ analyze_study2 <- function(results, cov_quality) {
 
   # --- Summary table ---
   summary2 <- res |>
-    group_by(corr_type, grid_label, nxgrid, nygrid, method, term_type) |>
+    group_by(n, corr_type, grid_label, nxgrid, nygrid, method, term_type) |>
     summarise(
       coverage = mean(coverage, na.rm = TRUE),
       se_cov = sd(coverage, na.rm = TRUE) / sqrt(n()),
@@ -256,51 +276,84 @@ analyze_study2 <- function(results, cov_quality) {
       .groups = "drop"
     )
 
-  cat("Coverage by grid x correlation x method:\n")
+  cat("Coverage by n x grid x correlation x method:\n")
   compact2 <- summary2 |>
     filter(term_type %in% c("ff", "linear", "E(Y)")) |>
-    select(corr_type, grid_label, method, term_type, coverage, z_sd, n_reps) |>
+    select(
+      n,
+      corr_type,
+      grid_label,
+      method,
+      term_type,
+      coverage,
+      z_sd,
+      n_reps
+    ) |>
     mutate(coverage = fmt_pct(coverage), z_sd = fmt_num(z_sd))
 
   make_table(compact2, "Study 2: Coverage by Grid Level")
 
-  # --- Paired coverage difference: cluster - default ---
+  # --- Paired coverage differences vs default ---
   paired2 <- summary2 |>
     filter(
-      method %in% c("default", "cluster"),
+      method %in% c("default", "cluster", "cl2"),
       term_type %in% c("ff", "linear", "smooth", "concurrent", "E(Y)")
     ) |>
-    select(corr_type, grid_label, method, term_type, coverage) |>
+    select(n, corr_type, grid_label, method, term_type, coverage) |>
     pivot_wider(names_from = method, values_from = coverage) |>
-    mutate(coverage_diff = cluster - default)
+    (\(out) {
+      if (!"cluster" %in% names(out)) out$cluster <- NA_real_
+      if (!"cl2" %in% names(out)) out$cl2 <- NA_real_
+      out
+    })() |>
+    mutate(
+      diff_cluster = cluster - default,
+      diff_cl2 = cl2 - default
+    ) |>
+    pivot_longer(
+      cols = c(diff_cluster, diff_cl2),
+      names_to = "comparison",
+      values_to = "coverage_diff"
+    ) |>
+    mutate(
+      comparison = dplyr::recode(
+        comparison,
+        diff_cluster = "cluster - default",
+        diff_cl2 = "cl2 - default"
+      )
+    )
 
   p2_diff <- paired2 |>
     ggplot(aes(
       x = interaction(corr_type, grid_label),
       y = coverage_diff,
-      fill = term_type
+      fill = comparison
     )) +
     geom_col(position = position_dodge(width = 0.7), width = 0.6) +
     geom_hline(yintercept = 0, linetype = 2) +
+    facet_grid(term_type ~ paste0("n=", n)) +
     labs(
-      title = "Study 2: Coverage Improvement (cluster - default)",
+      title = "Study 2: Coverage Improvement vs default",
       x = "Correlation x Grid",
       y = "Coverage Difference",
-      fill = "Term"
+      fill = "Comparison"
     ) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
   # --- Grid effect: paired comparison across grid levels ---
   grid_paired <- summary2 |>
-    filter(method == "cluster", term_type %in% c("ff", "linear", "E(Y)")) |>
-    select(corr_type, grid_label, term_type, coverage, z_sd) |>
+    filter(
+      method %in% c("cluster", "cl2"),
+      term_type %in% c("ff", "linear", "E(Y)")
+    ) |>
+    select(n, corr_type, method, grid_label, term_type, coverage, z_sd) |>
     pivot_wider(
       names_from = grid_label,
       values_from = c(coverage, z_sd),
       names_sep = "_"
     )
 
-  cat("\nGrid effect on cluster coverage (fine - coarse):\n")
+  cat("\nGrid effect on sandwich coverage (fine - coarse):\n")
   print(grid_paired)
 
   # --- Covariance quality plots ---
@@ -309,12 +362,12 @@ analyze_study2 <- function(results, cov_quality) {
     cat("\nCovariance Quality Summary:\n")
     print(
       cov_quality |>
-        arrange(corr_type, grid_label, method, term_type)
+        arrange(n, corr_type, grid_label, method, term_type)
     )
 
     p2_diag <- cov_quality |>
       ggplot(aes(
-        x = interaction(grid_label, method),
+        x = interaction(paste0("n=", n), grid_label, method),
         y = diag_ratio_median,
         ymin = diag_ratio_iqr_low,
         ymax = diag_ratio_iqr_high,
@@ -326,7 +379,7 @@ analyze_study2 <- function(results, cov_quality) {
       labs(
         title = "Study 2: Diagonal Variance Ratio (model/MC)",
         subtitle = "Median with IQR. Target = 1.",
-        x = "Grid x Method",
+        x = "n x Grid x Method",
         y = "Variance Ratio",
         color = "Correlation"
       ) +
@@ -367,9 +420,9 @@ write_markdown_summary <- function(
 
     add("### Key Findings\n")
 
-    # Check: does cluster help under correlation?
+    # Check: do sandwich methods help under correlation?
     s1_ff <- s1 |>
-      filter(term_type == "ff", method %in% c("default", "cluster"))
+      filter(term_type == "ff", method %in% c("default", "cluster", "cl2"))
 
     for (fam in unique(s1_ff$family)) {
       add(sprintf("**%s family:**\n", stringr::str_to_title(fam)))
@@ -383,26 +436,31 @@ write_markdown_summary <- function(
           filter(method == "default") |>
           pull(coverage) |>
           mean()
-        cluster_cov <- ct_data |>
-          filter(method == "cluster") |>
-          pull(coverage) |>
-          mean()
-        diff <- cluster_cov - default_cov
+        for (method_name in c("cluster", "cl2")) {
+          if (!method_name %in% ct_data$method) next
+          method_cov <- ct_data |>
+            filter(method == method_name) |>
+            pull(coverage) |>
+            mean()
+          diff <- method_cov - default_cov
 
-        flag <- if (abs(diff) > PRACTICAL_THRESHOLD) {
-          if (diff > 0) " **[cluster helps]**" else " **[cluster worse]**"
-        } else {
-          " (negligible difference)"
+          flag <- if (abs(diff) > PRACTICAL_THRESHOLD) {
+            if (diff > 0) " **[helps]**" else " **[worse]**"
+          } else {
+            " (negligible difference)"
+          }
+
+          add(sprintf(
+            "- %s (%s): default=%.1f%%, %s=%.1f%% (diff=%+.1fpp)%s",
+            ct,
+            method_name,
+            default_cov * 100,
+            method_name,
+            method_cov * 100,
+            diff * 100,
+            flag
+          ))
         }
-
-        add(sprintf(
-          "- %s: default=%.1f%%, cluster=%.1f%% (diff=%+.1fpp)%s",
-          ct,
-          default_cov * 100,
-          cluster_cov * 100,
-          diff * 100,
-          flag
-        ))
       }
       add("")
     }
@@ -429,21 +487,41 @@ write_markdown_summary <- function(
     if (
       !is.null(s2_analysis$grid_paired) && nrow(s2_analysis$grid_paired) > 0
     ) {
-      add("**Grid effect on cluster coverage:**\n")
+      add("**Grid effect on sandwich coverage (cluster and cl2):**\n")
       gp <- s2_analysis$grid_paired
       # Find coverage columns dynamically
       cov_cols <- grep("^coverage_", names(gp), value = TRUE)
-      if (length(cov_cols) >= 2) {
-        add("| Correlation | Term | Coarse | Fine |")
-        add("|---|---|---|---|")
+      if (length(cov_cols) > 0) {
+        header <- paste(
+          c(
+            "n",
+            "Correlation",
+            "Method",
+            "Term",
+            sub("^coverage_", "", cov_cols)
+          ),
+          collapse = " | "
+        )
+        add(paste0("| ", header, " |"))
+        add(paste0(
+          "|",
+          paste(rep("---", 4 + length(cov_cols)), collapse = "|"),
+          "|"
+        ))
         for (i in seq_len(nrow(gp))) {
           row <- gp[i, ]
+          cov_vals <- vapply(
+            cov_cols,
+            function(cc) fmt_pct(row[[cc]]),
+            character(1)
+          )
           add(sprintf(
-            "| %s | %s | %s | %s |",
+            "| %d | %s | %s | %s | %s |",
+            row$n,
             row$corr_type,
+            row$method,
             row$term_type,
-            fmt_pct(row[[cov_cols[1]]]),
-            fmt_pct(row[[cov_cols[2]]])
+            paste(cov_vals, collapse = " | ")
           ))
         }
         add("")
@@ -459,12 +537,13 @@ write_markdown_summary <- function(
         filter(term_type %in% c("linear", "smooth", "concurrent"))
 
       if (nrow(cq) > 0) {
-        add("| Corr | Grid | Method | Term | Median Ratio | IQR |")
-        add("|---|---|---|---|---|---|")
+        add("| n | Corr | Grid | Method | Term | Median Ratio | IQR |")
+        add("|---|---|---|---|---|---|---|")
         for (i in seq_len(nrow(cq))) {
           r <- cq[i, ]
           add(sprintf(
-            "| %s | %s | %s | %s | %.2f | [%.2f, %.2f] |",
+            "| %d | %s | %s | %s | %s | %.2f | [%.2f, %.2f] |",
+            r$n,
             r$corr_type,
             r$grid_label,
             r$method,
@@ -488,7 +567,7 @@ write_markdown_summary <- function(
     PRACTICAL_THRESHOLD * 100
   ))
   add("- z_sd target: 1.0 (meaningful deviation if |z_sd - 1| > 0.15)")
-  add("- MC SEs at 150 reps for 90%% coverage: ~2.4 percentage points")
+  add("- MC SEs at 120 reps for 90%% coverage: ~2.7 percentage points")
   add(
     "- Binomial DGP uses Gaussian copula to preserve marginal regression coefficients"
   )
@@ -496,7 +575,7 @@ write_markdown_summary <- function(
     "- Poisson DGP uses additive eps on linear predictor (collapsible log link)"
   )
   add(
-    "- Grid comparison uses paired design (fine grid + deterministic subsampling)\n"
+    "- Study 2 uses factorial correlation x n x grid with paired grid subsampling within each n/correlation replicate\n"
   )
 
   writeLines(lines, outpath)
@@ -512,34 +591,37 @@ run_sanity_checks <- function(s1_results, s2_results) {
   cat("\n========== SANITY CHECKS ==========\n\n")
   all_pass <- TRUE
 
-  # Check 1: Under strong AR1, cluster > default by >10pp
+  # Check 1: Under strong AR1, sandwich methods > default by >10pp
   if (nrow(s1_results) > 0) {
-    ar1_check <- s1_results |>
-      filter(
-        !is.na(coverage),
-        corr_type == "ar1",
-        term_type %in% c("ff", "linear"),
-        method %in% c("default", "cluster")
-      ) |>
-      group_by(method) |>
-      summarise(cov = mean(coverage, na.rm = TRUE), .groups = "drop") |>
-      pivot_wider(names_from = method, values_from = cov)
+    for (method_name in c("cluster", "cl2")) {
+      ar1_check <- s1_results |>
+        filter(
+          !is.na(coverage),
+          corr_type == "ar1",
+          term_type %in% c("ff", "linear"),
+          method %in% c("default", method_name)
+        ) |>
+        group_by(method) |>
+        summarise(cov = mean(coverage, na.rm = TRUE), .groups = "drop") |>
+        pivot_wider(names_from = method, values_from = cov)
 
-    if (
-      nrow(ar1_check) > 0 &&
-        "cluster" %in% names(ar1_check) &&
-        "default" %in% names(ar1_check) &&
-        !is.na(ar1_check$cluster[1]) &&
-        !is.na(ar1_check$default[1])
-    ) {
-      diff <- ar1_check$cluster[1] - ar1_check$default[1]
-      pass <- diff > 0.10
-      cat(sprintf(
-        "Study 1 AR1: cluster - default = %.1fpp [%s]\n",
-        diff * 100,
-        if (pass) "PASS" else "FAIL"
-      ))
-      if (!pass) all_pass <- FALSE
+      if (
+        nrow(ar1_check) > 0 &&
+          method_name %in% names(ar1_check) &&
+          "default" %in% names(ar1_check) &&
+          !is.na(ar1_check[[method_name]][1]) &&
+          !is.na(ar1_check$default[1])
+      ) {
+        diff <- ar1_check[[method_name]][1] - ar1_check$default[1]
+        pass <- diff > 0.10
+        cat(sprintf(
+          "Study 1 AR1: %s - default = %.1fpp [%s]\n",
+          method_name,
+          diff * 100,
+          if (pass) "PASS" else "FAIL"
+        ))
+        if (!pass) all_pass <- FALSE
+      }
     }
   }
 
@@ -595,32 +677,35 @@ run_sanity_checks <- function(s1_results, s2_results) {
 
   # Study 2 checks
   if (nrow(s2_results) > 0) {
-    s2_ar1 <- s2_results |>
-      filter(
-        !is.na(coverage),
-        corr_type == "ar1",
-        method %in% c("default", "cluster"),
-        term_type %in% c("ff", "linear")
-      ) |>
-      group_by(method) |>
-      summarise(cov = mean(coverage, na.rm = TRUE), .groups = "drop") |>
-      pivot_wider(names_from = method, values_from = cov)
+    for (method_name in c("cluster", "cl2")) {
+      s2_ar1 <- s2_results |>
+        filter(
+          !is.na(coverage),
+          corr_type == "ar1",
+          method %in% c("default", method_name),
+          term_type %in% c("ff", "linear")
+        ) |>
+        group_by(method) |>
+        summarise(cov = mean(coverage, na.rm = TRUE), .groups = "drop") |>
+        pivot_wider(names_from = method, values_from = cov)
 
-    if (
-      nrow(s2_ar1) > 0 &&
-        "cluster" %in% names(s2_ar1) &&
-        "default" %in% names(s2_ar1) &&
-        !is.na(s2_ar1$cluster[1]) &&
-        !is.na(s2_ar1$default[1])
-    ) {
-      diff <- s2_ar1$cluster[1] - s2_ar1$default[1]
-      pass <- diff > 0.10
-      cat(sprintf(
-        "Study 2 AR1: cluster - default = %.1fpp [%s]\n",
-        diff * 100,
-        if (pass) "PASS" else "FAIL"
-      ))
-      if (!pass) all_pass <- FALSE
+      if (
+        nrow(s2_ar1) > 0 &&
+          method_name %in% names(s2_ar1) &&
+          "default" %in% names(s2_ar1) &&
+          !is.na(s2_ar1[[method_name]][1]) &&
+          !is.na(s2_ar1$default[1])
+      ) {
+        diff <- s2_ar1[[method_name]][1] - s2_ar1$default[1]
+        pass <- diff > 0.10
+        cat(sprintf(
+          "Study 2 AR1: %s - default = %.1fpp [%s]\n",
+          method_name,
+          diff * 100,
+          if (pass) "PASS" else "FAIL"
+        ))
+        if (!pass) all_pass <- FALSE
+      }
     }
   }
 
