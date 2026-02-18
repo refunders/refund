@@ -982,6 +982,127 @@ compute_gaulss_scores <- function(b, X) {
   S
 }
 
+#' Symmetric matrix inverse square root with eigenvalue floor
+#'
+#' @param M Symmetric matrix.
+#' @param tol Eigenvalue floor for numerical stability.
+#' @returns Matrix inverse square root of `M`.
+#' @keywords internal
+sym_inv_sqrt <- function(M, tol = 1e-8) {
+  M <- 0.5 * (M + t(M))
+  ee <- eigen(M, symmetric = TRUE)
+  vals <- pmax(ee$values, tol)
+  ee$vectors %*% diag(1 / sqrt(vals), nrow = length(vals)) %*% t(ee$vectors)
+}
+
+#' Build CL2 working representation for standard single-LP families
+#'
+#' Factorizes per-observation scores as `Xw_i * z_i` to avoid constructing
+#' a dense score matrix.
+#'
+#' @param b Fitted GAM object.
+#' @param cluster_id Cluster vector.
+#' @returns List with `Xw`, `z`, and `cluster_id`.
+#' @keywords internal
+build_cl2_working_standard <- function(b, cluster_id) {
+  X <- model.matrix(b)
+  y <- as.vector(b$y)
+  mu <- as.vector(b$fitted.values)
+  eta <- as.vector(b$linear.predictors)
+
+  var_mu <- as.vector(b$family$variance(mu))
+  mu_eta <- as.vector(b$family$mu.eta(eta))
+  sig2 <- b$sig2
+  if (is.null(sig2) || !is.finite(sig2) || sig2 <= 0) sig2 <- 1
+
+  pw <- b$prior.weights
+  if (is.null(pw)) pw <- rep(1, length(y))
+  pw <- as.vector(pw)
+
+  denom <- sig2 * var_mu
+  sqrt_common <- sqrt(pw / denom)
+  sqrt_common[!is.finite(sqrt_common)] <- 0
+
+  x_scale <- mu_eta * sqrt_common
+  x_scale[!is.finite(x_scale)] <- 0
+
+  z <- (y - mu) * sqrt_common
+  z[!is.finite(z)] <- 0
+
+  Xw <- X * x_scale
+  Xw[!is.finite(Xw)] <- 0
+
+  list(Xw = Xw, z = z, cluster_id = cluster_id)
+}
+
+#' Build CL2 working representation for gaulss family
+#'
+#' Uses a pseudo-observation expansion with one pseudo-row per linear predictor
+#' component (location and scale).
+#'
+#' @param b Fitted GAM object with `family = gaulss`.
+#' @param cluster_id Cluster vector for original observations.
+#' @returns List with `Xw`, `z`, and expanded `cluster_id`.
+#' @keywords internal
+build_cl2_working_gaulss <- function(b, cluster_id) {
+  X <- model.matrix(b)
+  lpi <- attr(X, "lpi")
+  if (is.null(lpi) || length(lpi) < 2) {
+    stop(
+      "gaulss fit is missing 'lpi' structure on model matrix.",
+      call. = FALSE
+    )
+  }
+
+  n_obs <- length(b$y)
+  if (length(cluster_id) != n_obs) {
+    stop(
+      "cluster_id length does not match gaulss observation count.",
+      call. = FALSE
+    )
+  }
+
+  mu <- b$fitted.values[seq_len(n_obs)]
+  tau <- b$fitted.values[n_obs + seq_len(n_obs)]
+  eta1 <- b$linear.predictors[seq_len(n_obs)]
+  eta2 <- b$linear.predictors[n_obs + seq_len(n_obs)]
+  r <- b$y - mu
+
+  # Same score components used by compute_gaulss_scores()
+  w1 <- (tau^2 * r) * b$family$linfo[[1]]$mu.eta(eta1)
+  w2 <- (1 / tau - tau * r^2) * b$family$linfo[[2]]$mu.eta(eta2)
+
+  pw <- b$prior.weights
+  if (!is.null(pw) && any(pw != 1)) {
+    w1 <- pw * w1
+    w2 <- pw * w2
+  }
+
+  make_block <- function(w, lp_idx) {
+    abs_sqrt <- sqrt(abs(w))
+    abs_sqrt[!is.finite(abs_sqrt)] <- 0
+
+    z <- sign(w) * abs_sqrt
+    z[!is.finite(z)] <- 0
+
+    Xw_block <- matrix(0, nrow = n_obs, ncol = ncol(X))
+    if (!is.null(lp_idx) && length(lp_idx) > 0) {
+      Xw_block[, lp_idx] <- X[, lp_idx, drop = FALSE] * abs_sqrt
+      Xw_block[!is.finite(Xw_block)] <- 0
+    }
+    list(Xw = Xw_block, z = z)
+  }
+
+  block1 <- make_block(w1, lpi[[1]])
+  block2 <- make_block(w2, lpi[[2]])
+
+  list(
+    Xw = rbind(block1$Xw, block2$Xw),
+    z = c(block1$z, block2$z),
+    cluster_id = rep(cluster_id, times = 2L)
+  )
+}
+
 #' Assemble cluster-robust sandwich from score matrix
 #'
 #' Given a per-observation score matrix, aggregates by cluster and forms
@@ -1022,7 +1143,7 @@ gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
     return(assemble_cluster_sandwich(scores, cluster_id, b$Vp, B2))
   }
 
-  # Families that define family$sandwich (e.g. multinom, scat) use custom
+  # Families that define family$sandwich (e.g. multinom) use custom
   # score computation — cluster aggregation not yet implemented for these.
   if (!is.null(b$family$sandwich)) {
     warning(
@@ -1044,16 +1165,107 @@ gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
   assemble_cluster_sandwich(scores, cluster_id, b$Vp, B2)
 }
 
+#' Cluster-robust CL2 sandwich covariance estimator
+#'
+#' Computes a cluster-robust covariance matrix with a Bell-McCaffrey style
+#' leverage adjustment (`CL2` in this package), clustering by curve.
+#'
+#' @param b Fitted GAM object (must not have class `"pffr"`).
+#' @param cluster_id Integer vector mapping each vectorized observation to a
+#'   curve.
+#' @param freq If `TRUE`, use frequentist sandwich (`B2 = 0`).
+#'   If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).
+#' @param tol Eigenvalue floor for numerical stability.
+#' @param leverage_cap Cap for cluster leverage eigenvalues (< 1).
+#' @returns A p x p covariance matrix.
+#' @keywords internal
+gam_sandwich_cluster_cl2 <- function(
+  b,
+  cluster_id,
+  freq = FALSE,
+  tol = 1e-8,
+  leverage_cap = 0.999
+) {
+  if (!is.finite(leverage_cap) || leverage_cap <= 0 || leverage_cap >= 1) {
+    stop("`leverage_cap` must be in (0, 1).", call. = FALSE)
+  }
+
+  fam <- tolower(as.character(b$family$family))
+
+  # Families with custom family$sandwich (e.g. multinom) use custom
+  # score computation — CL2 cluster leverage correction is not implemented yet.
+  if (fam != "gaulss" && !is.null(b$family$sandwich)) {
+    warning(
+      "CL2 sandwich not yet implemented for family '",
+      b$family$family,
+      "'. Falling back to observation-level HC sandwich via mgcv::vcov.gam().",
+      call. = FALSE
+    )
+    return(mgcv::vcov.gam(b, sandwich = TRUE, freq = freq))
+  }
+
+  work <- if (fam == "gaulss") {
+    build_cl2_working_gaulss(b, cluster_id)
+  } else {
+    build_cl2_working_standard(b, cluster_id)
+  }
+
+  Xw <- work$Xw
+  z <- work$z
+  cluster_id_work <- work$cluster_id
+
+  groups <- unique(cluster_id_work)
+  G <- length(groups)
+  if (G < 2) {
+    stop("Need at least two clusters for cluster sandwich.", call. = FALSE)
+  }
+
+  Vp <- b$Vp
+  B2 <- if (freq) 0 else b$Vp - b$Ve
+  p <- ncol(Xw)
+  meat <- matrix(0, nrow = p, ncol = p)
+  n_capped_clusters <- 0L
+
+  for (g in groups) {
+    idx <- which(cluster_id_work == g)
+    Xwg <- Xw[idx, , drop = FALSE]
+    zg <- z[idx]
+
+    Hgg <- Xwg %*% Vp %*% t(Xwg)
+    Hgg <- 0.5 * (Hgg + t(Hgg))
+
+    ee_H <- eigen(Hgg, symmetric = TRUE)
+    if (any(ee_H$values > leverage_cap, na.rm = TRUE)) {
+      n_capped_clusters <- n_capped_clusters + 1L
+      ee_H$values <- pmin(ee_H$values, leverage_cap)
+      Hgg <- ee_H$vectors %*%
+        diag(ee_H$values, nrow = length(ee_H$values)) %*%
+        t(ee_H$vectors)
+    }
+
+    Mg <- diag(length(idx)) - Hgg
+    Ag <- sym_inv_sqrt(Mg, tol = tol)
+    Ug <- crossprod(Xwg, Ag %*% zg)
+    meat <- meat + Ug %*% t(Ug)
+  }
+
+  hc1 <- G / (G - 1)
+  V <- hc1 * Vp %*% meat %*% Vp + B2
+  V <- 0.5 * (V + t(V))
+  attr(V, "n_capped_clusters") <- n_capped_clusters
+  V
+}
+
 #' Apply sandwich correction to model covariance matrices
 #'
 #' Applies either observation-level HC sandwich (via [mgcv::vcov.gam()]) or
-#' cluster-robust sandwich (via [gam_sandwich_cluster()]) to a fitted pffr
-#' model.
+#' cluster-robust sandwich (CR1 via [gam_sandwich_cluster()] or CL2 via
+#' [gam_sandwich_cluster_cl2()]) to a fitted pffr model.
 #'
 #' @param m Fitted model.
 #' @param algorithm Algorithm symbol.
-#' @param type `"cluster"` (default) for cluster-robust or `"hc"` for
-#'   observation-level HC.
+#' @param type `"cluster"` (default) for CR1 cluster-robust, `"cl2"` for
+#'   leverage-adjusted cluster-robust CL2, or `"hc"` for observation-level HC.
 #' @returns Model with corrected covariance matrices.
 #' @keywords internal
 apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
@@ -1062,19 +1274,24 @@ apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
   gam_obj_stripped <- gam_obj
   class(gam_obj_stripped) <- setdiff(class(gam_obj_stripped), "pffr")
 
-  if (type == "cluster") {
+  if (type %in% c("cluster", "cl2")) {
     cluster_id <- build_cluster_id(gam_obj$pffr)
-    gam_obj$Vp <- gam_obj$Vc <- gam_sandwich_cluster(
+    cov_fun <- if (type == "cl2") {
+      gam_sandwich_cluster_cl2
+    } else {
+      gam_sandwich_cluster
+    }
+    gam_obj$Vp <- gam_obj$Vc <- cov_fun(
       gam_obj_stripped,
       cluster_id,
       freq = FALSE
     )
-    gam_obj$Ve <- gam_sandwich_cluster(
+    gam_obj$Ve <- cov_fun(
       gam_obj_stripped,
       cluster_id,
       freq = TRUE
     )
-  } else {
+  } else if (type == "hc") {
     gam_obj$Vp <- gam_obj$Vc <- mgcv::vcov.gam(
       gam_obj_stripped,
       sandwich = TRUE,
@@ -1085,6 +1302,8 @@ apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
       sandwich = TRUE,
       freq = TRUE
     )
+  } else {
+    stop("Unknown sandwich type: ", type, call. = FALSE)
   }
 
   if (as.character(algorithm) %in% c("gamm4", "gamm")) {
@@ -1119,7 +1338,8 @@ apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
 #' @param tensortype Tensor product type (symbol).
 #' @param bs_yindex Basis specification for y-index.
 #' @param bs_int Basis specification for functional intercept.
-#' @param sandwich Logical, whether sandwich covariance is requested.
+#' @param sandwich Character sandwich type (`"none"`, `"cluster"`, `"cl2"`,
+#'   or `"hc"`).
 #' @param dots The list of additional arguments (...).
 #' @returns A list with preparation outputs, including `new_call` and
 #'   `pffr_data`.

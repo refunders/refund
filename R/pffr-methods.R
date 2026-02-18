@@ -721,6 +721,9 @@ finalize_grid_by_var <- function(d, trm) {
 #' @param se Logical, compute standard errors?
 #' @param seWithMean Logical, include mean uncertainty?
 #' @param is_pcre Logical, is this a pcre term?
+#' @param ci One of "none", "pointwise", "simultaneous".
+#' @param level Confidence level for intervals.
+#' @param coef_draws Simulated coefficient perturbations (for simultaneous CIs).
 #' @returns List with x, y, z coordinates, value, se, coef data frame, dim.
 #' @keywords internal
 #' @importFrom mgcv PredictMat
@@ -732,7 +735,10 @@ coef_get_predictions <- function(
   covmat,
   se,
   seWithMean,
-  is_pcre
+  is_pcre,
+  ci = "none",
+  level = 0.95,
+  coef_draws = NULL
 ) {
   X <- PredictMat(trm, data_grid)
 
@@ -750,17 +756,34 @@ coef_get_predictions <- function(
   P$value <- X %*% object_info$coefficients[trmind]
   P$coef <- cbind(data_grid, value = P$value)
 
-  # Compute standard errors if requested
+  # Compute standard errors and intervals if requested
   if (se) {
-    P$se <- compute_coef_se(
-      X,
-      trmind,
-      trm,
-      object_info,
-      covmat,
-      seWithMean
+    linear_map <- build_coef_linear_map(
+      X = X,
+      trmind = trmind,
+      trm = trm,
+      object_info = object_info,
+      seWithMean = seWithMean
     )
+    P$se <- compute_coef_se(linear_map = linear_map, covmat = covmat)
     P$coef <- cbind(P$coef, se = P$se)
+
+    if (ci != "none") {
+      crit <- compute_ci_critical(
+        ci = ci,
+        level = level,
+        se_vec = P$se,
+        linear_map = linear_map,
+        coef_draws = coef_draws
+      )
+      P$crit <- crit
+      ci_half <- crit * P$se
+      P$coef <- cbind(
+        P$coef,
+        lower = P$value - ci_half,
+        upper = P$value + ci_half
+      )
+    }
   }
 
   P$dim <- trm$dim
@@ -810,27 +833,126 @@ build_coef_axes <- function(trm, data_grid) {
   NULL
 }
 
-#' Compute standard errors for coefficient extraction
+#' Build linear map used for smooth-term uncertainty calculations
 #'
-#' @param X Prediction matrix.
+#' @param X Prediction matrix for the smooth term.
 #' @param trmind Index vector for term parameters.
 #' @param trm Smooth term object (for nCons and meanL1).
 #' @param object_info List with cmX, Vp.
-#' @param covmat Covariance matrix.
 #' @param seWithMean Logical, use seWithMean approach?
-#' @returns Numeric vector of standard errors.
+#' @returns List with linear map matrix and indexing metadata.
 #' @keywords internal
-compute_coef_se <- function(X, trmind, trm, object_info, covmat, seWithMean) {
+build_coef_linear_map <- function(X, trmind, trm, object_info, seWithMean) {
   if (seWithMean && attr(trm, "nCons") > 0) {
     cat("using seWithMean for ", trm$label, ".\n")
     X1 <- matrix(object_info$cmX, nrow(X), ncol(object_info$Vp), byrow = TRUE)
     meanL1 <- trm$meanL1
     if (!is.null(meanL1)) X1 <- X1 / meanL1
     X1[, trmind] <- X
-    sqrt(rowSums((X1 %*% covmat) * X1))
-  } else {
-    sqrt(rowSums((X %*% covmat[trmind, trmind]) * X))
+    return(list(X = X1, use_full = TRUE, trmind = trmind))
   }
+  list(X = X, use_full = FALSE, trmind = trmind)
+}
+
+#' Compute standard errors for coefficient extraction
+#'
+#' @param linear_map List returned by build_coef_linear_map().
+#' @param covmat Covariance matrix.
+#' @returns Numeric vector of standard errors.
+#' @keywords internal
+compute_coef_se <- function(linear_map, covmat) {
+  if (linear_map$use_full) {
+    return(sqrt(rowSums((linear_map$X %*% covmat) * linear_map$X)))
+  }
+  trmind <- linear_map$trmind
+  sqrt(rowSums((linear_map$X %*% covmat[trmind, trmind]) * linear_map$X))
+}
+
+#' Draw coefficient perturbations for simultaneous intervals
+#'
+#' @param covmat Covariance matrix.
+#' @param n_sim Number of simulation draws.
+#' @param sim_seed Optional integer seed.
+#' @returns Matrix with one simulated perturbation vector per column.
+#' @keywords internal
+draw_coef_perturbations <- function(covmat, n_sim, sim_seed = NULL) {
+  if (!is.null(sim_seed)) {
+    has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    if (has_seed)
+      old_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+    on.exit(
+      {
+        if (has_seed) {
+          assign(".Random.seed", old_seed, envir = .GlobalEnv)
+        } else if (
+          exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+        ) {
+          rm(".Random.seed", envir = .GlobalEnv)
+        }
+      },
+      add = TRUE
+    )
+    set.seed(sim_seed)
+  }
+
+  cov_sym <- 0.5 * (covmat + t(covmat))
+  eig <- eigen(cov_sym, symmetric = TRUE)
+  eig$values <- pmax(eig$values, 0)
+  root_cov <- eig$vectors %*% diag(sqrt(eig$values), nrow = length(eig$values))
+
+  root_cov %*%
+    matrix(
+      stats::rnorm(ncol(covmat) * n_sim),
+      nrow = ncol(covmat),
+      ncol = n_sim
+    )
+}
+
+#' Compute critical value for pointwise/simultaneous intervals
+#'
+#' @param ci One of "none", "pointwise", "simultaneous".
+#' @param level Confidence level.
+#' @param se_vec Standard errors for one term.
+#' @param linear_map List returned by build_coef_linear_map().
+#' @param coef_draws Simulated coefficient perturbations for simultaneous CIs.
+#' @returns Scalar critical value.
+#' @keywords internal
+compute_ci_critical <- function(
+  ci,
+  level,
+  se_vec,
+  linear_map,
+  coef_draws = NULL
+) {
+  if (ci == "none") return(NA_real_)
+  if (ci == "pointwise") return(stats::qnorm((1 + level) / 2))
+
+  eps <- sqrt(.Machine$double.eps)
+  valid <- is.finite(se_vec) & (se_vec > eps)
+  if (!any(valid)) return(0)
+
+  if (is.null(coef_draws)) {
+    stop("coef_draws must be supplied for simultaneous intervals.")
+  }
+
+  term_draws <- if (linear_map$use_full) {
+    linear_map$X %*% coef_draws
+  } else {
+    linear_map$X %*% coef_draws[linear_map$trmind, , drop = FALSE]
+  }
+
+  max_stat <- apply(
+    abs(term_draws[valid, , drop = FALSE] / se_vec[valid]),
+    2,
+    max
+  )
+  as.numeric(stats::quantile(
+    max_stat,
+    probs = level,
+    names = FALSE,
+    type = 8,
+    na.rm = TRUE
+  ))
 }
 
 
@@ -844,6 +966,8 @@ compute_coef_se <- function(X, trmind, trm, object_info, covmat, seWithMean) {
 #' The \code{sandwich}-option computes robust standard errors. With
 #' \code{sandwich="cluster"}, a cluster-robust sandwich (clustering by curve)
 #' is used, which handles both heteroskedasticity and within-curve correlation.
+#' With \code{sandwich="cl2"}, a leverage-adjusted cluster-robust sandwich
+#' (Bell-McCaffrey style CL2) is used.
 #' With \code{sandwich="hc"}, mgcv's observation-level HC sandwich is used.
 #' If the model was fitted with a matching sandwich option in
 #' \code{\link{pffr}}, the pre-computed covariance matrices are used directly.
@@ -857,9 +981,12 @@ compute_coef_se <- function(X, trmind, trm, object_info, covmat, seWithMean) {
 #'   parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
 #'   covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.
 #' @param sandwich Type of sandwich-corrected covariance for standard errors.
-#'   \code{"none"} (default): use model's default covariance.
-#'   \code{"cluster"}: cluster-robust sandwich (clustering by curve).
+#'   \code{"cluster"} (default): cluster-robust sandwich (clustering by
+#'   curve).
+#'   \code{"cl2"}: leverage-adjusted cluster-robust sandwich (clustering by
+#'   curve).
 #'   \code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
+#'   \code{"none"}: use model's default covariance.
 #'   If the model was fitted with a matching sandwich type, the pre-computed
 #'   covariance matrices are used directly.
 #' @param seWithMean logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?
@@ -867,6 +994,14 @@ compute_coef_se <- function(X, trmind, trm, object_info, covmat, seWithMean) {
 #' @param n2 see below
 #' @param n3 \code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
 #' used in the marginal equidistant grids over the range of the covariates at which the estimated effects are evaluated.
+#' @param ci Type of confidence intervals to return in addition to standard
+#'   errors. One of \code{"none"} (default), \code{"pointwise"}, or
+#'   \code{"simultaneous"}.
+#' @param level Confidence level for confidence intervals, defaults to
+#'   \code{0.95}.
+#' @param n_sim Number of simulations for simultaneous intervals, defaults to
+#'   \code{2000}. Ignored unless \code{ci = "simultaneous"}.
+#' @param sim_seed Optional integer seed for simultaneous interval simulation.
 #' @param ... other arguments, not used.
 #'
 #' @return If \code{raw==FALSE}, a list containing \itemize{
@@ -881,6 +1016,9 @@ compute_coef_se <- function(X, trmind, trm, object_info, covmat, seWithMean) {
 #'          \item \code{dim} the dimensionality of the effect
 #'          \item \code{main} the label of the smooth term (a short label, same as the one used in \code{summary.pffr})
 #' }}
+#' If \code{ci != "none"}, the returned matrices include columns \code{lower}
+#' and \code{upper}. The returned list also includes \code{ci_meta} with CI
+#' settings.
 #' @method coef pffr
 #' @export
 #' @importFrom mgcv PredictMat get.var
@@ -892,16 +1030,44 @@ coef.pffr <- function(
   raw = FALSE,
   se = TRUE,
   freq = FALSE,
-  sandwich = c("none", "cluster", "hc"),
+  sandwich = c("cluster", "cl2", "hc", "none"),
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
   n3 = 20,
+  ci = c("none", "pointwise", "simultaneous"),
+  level = 0.95,
+  n_sim = 2000,
+  sim_seed = NULL,
   ...
 ) {
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
   sandwich <- match.arg(sandwich)
+  ci <- match.arg(ci)
+
+  if (
+    !is.numeric(level) ||
+      length(level) != 1 ||
+      !is.finite(level) ||
+      level <= 0 ||
+      level >= 1
+  ) {
+    stop("'level' must be a single number in (0, 1).")
+  }
+  if (!is.numeric(n_sim) || length(n_sim) != 1 || n_sim < 2) {
+    stop("'n_sim' must be a single integer >= 2.")
+  }
+  n_sim <- as.integer(n_sim)
+
+  if (ci != "none" && !se) {
+    warning("Setting se = TRUE because confidence intervals were requested.")
+    se <- TRUE
+  }
+  if (!is.null(sim_seed) && (!is.numeric(sim_seed) || length(sim_seed) != 1)) {
+    stop("'sim_seed' must be NULL or a single integer value.")
+  }
+  if (!is.null(sim_seed)) sim_seed <- as.integer(sim_seed)
 
   # Warn if deprecated Ktt argument is passed
   if ("Ktt" %in% names(list(...))) {
@@ -959,7 +1125,10 @@ coef.pffr <- function(
         covmat,
         se,
         seWithMean,
-        is_pcre
+        is_pcre,
+        ci = ci,
+        level = level,
+        coef_draws = coef_draws
       )
 
       # Add proper labeling
@@ -1008,6 +1177,15 @@ coef.pffr <- function(
         class(object_stripped) <- setdiff(class(object_stripped), "pffr")
         cluster_id <- build_cluster_id(object$pffr)
         covmat <- gam_sandwich_cluster(object_stripped, cluster_id, freq = freq)
+      } else if (sandwich == "cl2") {
+        object_stripped <- object
+        class(object_stripped) <- setdiff(class(object_stripped), "pffr")
+        cluster_id <- build_cluster_id(object$pffr)
+        covmat <- gam_sandwich_cluster_cl2(
+          object_stripped,
+          cluster_id,
+          freq = freq
+        )
       } else {
         object_stripped <- object
         class(object_stripped) <- setdiff(class(object_stripped), "pffr")
@@ -1018,6 +1196,15 @@ coef.pffr <- function(
       covmat <- if (freq) object$Ve else (object$Vc %||% object$Vp)
     }
 
+    coef_draws <- NULL
+    if (ci == "simultaneous") {
+      coef_draws <- draw_coef_perturbations(
+        covmat = covmat,
+        n_sim = n_sim,
+        sim_seed = sim_seed
+      )
+    }
+
     ret <- list()
     smind <- unlist(sapply(object$smooth, function(x) {
       seq(x$first.para, x$last.para)
@@ -1025,12 +1212,51 @@ coef.pffr <- function(
     ret$pterms <- cbind(value = object$coefficients[-smind])
     if (se) ret$pterms <- cbind(ret$pterms, se = sqrt(diag(covmat)[-smind]))
 
+    if (se && ci != "none") {
+      p_se <- ret$pterms[, "se"]
+      p_crit <- if (ci == "pointwise" || length(p_se) <= 1) {
+        stats::qnorm((1 + level) / 2)
+      } else {
+        eps <- sqrt(.Machine$double.eps)
+        valid <- is.finite(p_se) & (p_se > eps)
+        if (!any(valid)) {
+          0
+        } else {
+          p_draws <- coef_draws[-smind, , drop = FALSE]
+          max_stat <- apply(
+            abs(p_draws[valid, , drop = FALSE] / p_se[valid]),
+            2,
+            max
+          )
+          as.numeric(stats::quantile(
+            max_stat,
+            probs = level,
+            names = FALSE,
+            type = 8,
+            na.rm = TRUE
+          ))
+        }
+      }
+      p_half <- p_crit * p_se
+      ret$pterms <- cbind(
+        ret$pterms,
+        lower = ret$pterms[, "value"] - p_half,
+        upper = ret$pterms[, "value"] + p_half
+      )
+    }
+
     shrtlbls <- object$pffr$short_labels
 
     ret$smterms <- lapply(1:length(object$smooth), getCoefs)
     names(ret$smterms) <- sapply(seq_along(ret$smterms), function(i) {
       ret$smterms[[i]]$main
     })
+    ret$ci_meta <- list(
+      type = ci,
+      level = level,
+      n_sim = if (ci == "simultaneous") n_sim else NA_integer_,
+      sim_seed = sim_seed
+    )
     return(ret)
   }
 }

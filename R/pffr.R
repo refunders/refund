@@ -154,13 +154,16 @@
 #'   constraints for functional regression, see Details.
 #' @param sandwich Type of sandwich correction for robust covariance
 #'   estimation.
-#'   \code{"none"} (default): no correction.
-#'   \code{"cluster"}: cluster-robust sandwich clustering by curve, which
+#'   \code{"cluster"} (default): cluster-robust sandwich clustering by curve,
+#'   which
 #'   handles both heteroskedasticity and within-curve autocorrelation — the
 #'   recommended choice for functional data.
+#'   \code{"cl2"}: leverage-adjusted cluster-robust sandwich (Bell-McCaffrey
+#'   style CL2), mainly relevant in smaller samples.
 #'   \code{"hc"}: observation-level HC sandwich via
 #'   \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
 #'   heteroskedasticity but ignores within-curve correlation.
+#'   \code{"none"}: no sandwich correction.
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}},
 #'   \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
 #'   \code{'\link[mgcv]{jagam}'}. \code{subset} is not implemented.
@@ -253,7 +256,7 @@ pffr <- function(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
-  sandwich = c("none", "cluster", "hc"),
+  sandwich = c("cluster", "cl2", "hc", "none"),
   ...
 ) {
   call <- match.call()

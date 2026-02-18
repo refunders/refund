@@ -4,20 +4,12 @@
 \alias{compute_coef_se}
 \title{Compute standard errors for coefficient extraction}
 \usage{
-compute_coef_se(X, trmind, trm, object_info, covmat, seWithMean)
+compute_coef_se(linear_map, covmat)
 }
 \arguments{
-\item{X}{Prediction matrix.}
-
-\item{trmind}{Index vector for term parameters.}
-
-\item{trm}{Smooth term object (for nCons and meanL1).}
-
-\item{object_info}{List with cmX, Vp.}
+\item{linear_map}{List returned by build_coef_linear_map().}
 
 \item{covmat}{Covariance matrix.}
-
-\item{seWithMean}{Logical, use seWithMean approach?}
 }
 \value{
 Numeric vector of standard errors.

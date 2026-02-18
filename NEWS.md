@@ -13,6 +13,15 @@
   `parse_pffr_formula()`, `compute_ff_effect()`, `compute_linear_effect()`,
   `compute_smooth_effect()`, `compute_const_effect()`, `compute_intercept()`,
   `generate_functional_covariate()`, `generate_scalar_covariate()`.
+* `pffr(..., sandwich = "cl2")` and `coef.pffr(..., sandwich = "cl2")` now
+  support leverage-adjusted cluster-robust covariance (Bell-McCaffrey style
+  CL2), including for `family = mgcv::gaulss()`.
+* The default sandwich option for `pffr()` and `coef.pffr()` is now
+  `sandwich = "cluster"` (previously `"none"`).
+* `coef.pffr()` now supports confidence intervals via `ci = "pointwise"` or
+  `ci = "simultaneous"` in addition to standard errors. Simultaneous intervals
+  are computed with a coefficient-level Gaussian simulation and max-|t|
+  calibration over each smooth term's evaluation grid.
 
 # refund 0.1-37
 

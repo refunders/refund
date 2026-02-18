@@ -11,15 +11,15 @@ apply_sandwich_correction(m, algorithm, type = "cluster")
 
 \item{algorithm}{Algorithm symbol.}
 
-\item{type}{`"cluster"` (default) for cluster-robust or `"hc"` for
-observation-level HC.}
+\item{type}{`"cluster"` (default) for CR1 cluster-robust, `"cl2"` for
+leverage-adjusted cluster-robust CL2, or `"hc"` for observation-level HC.}
 }
 \value{
 Model with corrected covariance matrices.
 }
 \description{
 Applies either observation-level HC sandwich (via [mgcv::vcov.gam()]) or
-cluster-robust sandwich (via [gam_sandwich_cluster()]) to a fitted pffr
-model.
+cluster-robust sandwich (CR1 via [gam_sandwich_cluster()] or CL2 via
+[gam_sandwich_cluster_cl2()]) to a fitted pffr model.
 }
 \keyword{internal}

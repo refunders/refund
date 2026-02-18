@@ -46,7 +46,8 @@ pffr_prepare(
 
 \item{bs_int}{Basis specification for functional intercept.}
 
-\item{sandwich}{Logical, whether sandwich covariance is requested.}
+\item{sandwich}{Character sandwich type (`"none"`, `"cluster"`, `"cl2"`,
+or `"hc"`).}
 
 \item{dots}{The list of additional arguments (...).}
 }

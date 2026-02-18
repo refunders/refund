@@ -9,11 +9,15 @@
   raw = FALSE,
   se = TRUE,
   freq = FALSE,
-  sandwich = c("none", "cluster", "hc"),
+  sandwich = c("cluster", "cl2", "hc", "none"),
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
   n3 = 20,
+  ci = c("none", "pointwise", "simultaneous"),
+  level = 0.95,
+  n_sim = 2000,
+  sim_seed = NULL,
   ...
 )
 }
@@ -30,9 +34,12 @@ parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
 covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.}
 
 \item{sandwich}{Type of sandwich-corrected covariance for standard errors.
-\code{"none"} (default): use model's default covariance.
-\code{"cluster"}: cluster-robust sandwich (clustering by curve).
+\code{"cluster"} (default): cluster-robust sandwich (clustering by
+curve).
+\code{"cl2"}: leverage-adjusted cluster-robust sandwich (clustering by
+curve).
 \code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
+\code{"none"}: use model's default covariance.
 If the model was fitted with a matching sandwich type, the pre-computed
 covariance matrices are used directly.}
 
@@ -44,6 +51,18 @@ covariance matrices are used directly.}
 
 \item{n3}{\code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
 used in the marginal equidistant grids over the range of the covariates at which the estimated effects are evaluated.}
+
+\item{ci}{Type of confidence intervals to return in addition to standard
+errors. One of \code{"none"} (default), \code{"pointwise"}, or
+\code{"simultaneous"}.}
+
+\item{level}{Confidence level for confidence intervals, defaults to
+\code{0.95}.}
+
+\item{n_sim}{Number of simulations for simultaneous intervals, defaults to
+\code{2000}. Ignored unless \code{ci = "simultaneous"}.}
+
+\item{sim_seed}{Optional integer seed for simultaneous interval simulation.}
 
 \item{...}{other arguments, not used.}
 }
@@ -60,6 +79,9 @@ If \code{raw==FALSE}, a list containing \itemize{
          \item \code{dim} the dimensionality of the effect
          \item \code{main} the label of the smooth term (a short label, same as the one used in \code{summary.pffr})
 }}
+If \code{ci != "none"}, the returned matrices include columns \code{lower}
+and \code{upper}. The returned list also includes \code{ci_meta} with CI
+settings.
 }
 \description{
 Returns estimated coefficient functions/surfaces \eqn{\beta(t), \beta(s,t)}
@@ -71,6 +93,8 @@ The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{
 The \code{sandwich}-option computes robust standard errors. With
 \code{sandwich="cluster"}, a cluster-robust sandwich (clustering by curve)
 is used, which handles both heteroskedasticity and within-curve correlation.
+With \code{sandwich="cl2"}, a leverage-adjusted cluster-robust sandwich
+(Bell-McCaffrey style CL2) is used.
 With \code{sandwich="hc"}, mgcv's observation-level HC sandwich is used.
 If the model was fitted with a matching sandwich option in
 \code{\link{pffr}}, the pre-computed covariance matrices are used directly.

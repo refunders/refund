@@ -12,7 +12,10 @@ coef_get_predictions(
   covmat,
   se,
   seWithMean,
-  is_pcre
+  is_pcre,
+  ci = "none",
+  level = 0.95,
+  coef_draws = NULL
 )
 }
 \arguments{
@@ -31,6 +34,12 @@ coef_get_predictions(
 \item{seWithMean}{Logical, include mean uncertainty?}
 
 \item{is_pcre}{Logical, is this a pcre term?}
+
+\item{ci}{One of "none", "pointwise", "simultaneous".}
+
+\item{level}{Confidence level for intervals.}
+
+\item{coef_draws}{Simulated coefficient perturbations (for simultaneous CIs).}
 }
 \value{
 List with x, y, z coordinates, value, se, coef data frame, dim.

@@ -1705,6 +1705,65 @@ test_that("pffr with sandwich='hc' yields observation-level HC sandwich", {
   expect_equal(m_hc$Vc, expected_Vp)
 })
 
+test_that("pffr default sandwich is cluster", {
+  skip_on_cran()
+
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+  m_default <- pffr(Y ~ xlin, yind = t, data = dat)
+  expect_identical(m_default$pffr$sandwich, "cluster")
+})
+
+test_that("pffr with sandwich='cl2' yields leverage-adjusted covariance", {
+  skip_on_cran()
+
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+  m_std <- get_xlin_model()
+
+  m_cl <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
+  m_cl2 <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
+
+  expect_identical(m_cl2$pffr$sandwich, "cl2")
+  expect_equal(coef(m_std, raw = TRUE), coef(m_cl2, raw = TRUE))
+
+  # CL2 covariance should differ from both uncorrected and CR1 covariance.
+  expect_gt(max(abs(m_cl2$Vp - m_std$Vp)), 0)
+  expect_gt(max(abs(m_cl2$Vp - m_cl$Vp)), 0)
+
+  # coef.pffr on fitted model uses stored CL2 covariance.
+  coef_cl2 <- coef(m_cl2, sandwich = "cl2")
+  coef_std_cl2 <- coef(m_std, sandwich = "cl2")
+  expect_equal(coef_cl2$pterms[, "se"], coef_std_cl2$pterms[, "se"])
+})
+
+test_that("gam_sandwich_cluster_cl2 works for poisson and binomial", {
+  skip_on_cran()
+
+  families <- list(poisson(), binomial())
+  for (fam in families) {
+    set.seed(if (fam$family == "poisson") 1001 else 1002)
+    dat <- sim_xlin_data(n = 30, nygrid = 25, SNR = 10, family = fam)
+    t <- attr(dat, "yindex")
+
+    m <- pffr(Y ~ xlin, yind = t, data = dat, family = fam)
+    m_stripped <- m
+    class(m_stripped) <- setdiff(class(m_stripped), "pffr")
+    cluster_id <- build_cluster_id(m$pffr)
+
+    V_cl <- gam_sandwich_cluster(m_stripped, cluster_id, freq = FALSE)
+    V_cl2 <- gam_sandwich_cluster_cl2(m_stripped, cluster_id, freq = FALSE)
+
+    expect_equal(V_cl2, t(V_cl2), tolerance = 1e-10)
+    expect_true(all(is.finite(diag(V_cl2))))
+    expect_true(all(diag(V_cl2) >= 0))
+    expect_gt(max(abs(V_cl2 - V_cl)), 0)
+
+    coef_cl2 <- coef(m, sandwich = "cl2")
+    expect_true(all(is.finite(coef_cl2$pterms[, "se"])))
+  }
+})
+
 test_that("sandwich backward compat: TRUE/FALSE still work", {
   skip_on_cran()
 
@@ -1746,6 +1805,21 @@ test_that("coef.pffr recomputes when sandwich type differs from fit", {
   m_none <- get_xlin_model()
   coef_cl_from_none <- coef(m_none, sandwich = "cluster")
   expect_true(all(is.finite(coef_cl_from_none$pterms[, "se"])))
+
+  # Fit with CL2, request cluster and HC to force recomputation paths.
+  m_cl2 <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
+  coef_cl2_stored <- coef(m_cl2, sandwich = "cl2")
+  coef_cl_from_cl2 <- coef(m_cl2, sandwich = "cluster")
+  coef_hc_from_cl2 <- coef(m_cl2, sandwich = "hc")
+
+  expect_false(identical(
+    coef_cl2_stored$pterms[, "se"],
+    coef_cl_from_cl2$pterms[, "se"]
+  ))
+  expect_false(identical(
+    coef_cl2_stored$pterms[, "se"],
+    coef_hc_from_cl2$pterms[, "se"]
+  ))
 })
 
 test_that("gam_sandwich_cluster works for gaulss family", {
@@ -1786,4 +1860,149 @@ test_that("gam_sandwich_cluster works for gaulss family", {
       expect_true(all(sm$coef$se > 0))
     }
   }
+})
+
+test_that("gam_sandwich_cluster_cl2 works for gaulss family", {
+  skip_on_cran()
+
+  m <- get_gaulss_model()
+  m_stripped <- m
+  class(m_stripped) <- setdiff(class(m_stripped), "pffr")
+  cluster_id <- build_cluster_id(m$pffr)
+
+  V_cl <- gam_sandwich_cluster(m_stripped, cluster_id, freq = FALSE)
+  V_cl2 <- gam_sandwich_cluster_cl2(m_stripped, cluster_id, freq = FALSE)
+
+  expect_equal(V_cl2, t(V_cl2), tolerance = 1e-10)
+  expect_true(all(is.finite(diag(V_cl2))))
+  expect_true(all(diag(V_cl2) >= 0))
+  expect_gt(max(abs(V_cl2 - V_cl)), 0)
+
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+  m_fit_cl2 <- pffr(
+    Y ~ xlin,
+    yind = t,
+    data = dat,
+    family = mgcv::gaulss(),
+    sandwich = "cl2"
+  )
+  expect_identical(m_fit_cl2$pffr$sandwich, "cl2")
+
+  coef_cl2 <- coef(m, sandwich = "cl2")
+  expect_true(length(coef_cl2$smterms) > 0)
+  for (sm in coef_cl2$smterms) {
+    if (!is.null(sm$coef$se)) {
+      expect_true(all(is.finite(sm$coef$se)))
+      expect_true(all(sm$coef$se > 0))
+    }
+  }
+})
+
+test_that("CL2 falls back to HC for unsupported custom family$sandwich", {
+  skip_on_cran()
+
+  dat <- sim_xlin_data(n = 25, nygrid = 25, SNR = 10, family = mgcv::gaulss())
+  t <- attr(dat, "yindex")
+  m <- pffr(Y ~ xlin, yind = t, data = dat, family = mgcv::gaulss())
+
+  m_stripped <- m
+  class(m_stripped) <- setdiff(class(m_stripped), "pffr")
+  m_custom <- m_stripped
+  m_custom$family$family <- "mock-custom"
+
+  cluster_id <- build_cluster_id(m$pffr)
+  expect_warning(
+    V_cl2 <- gam_sandwich_cluster_cl2(m_custom, cluster_id, freq = FALSE),
+    "CL2 sandwich not yet implemented for family 'mock-custom'"
+  )
+
+  V_hc <- mgcv::vcov.gam(m_custom, sandwich = TRUE, freq = FALSE)
+  expect_equal(V_cl2, V_hc)
+})
+
+test_that("coef.pffr adds pointwise and simultaneous CIs", {
+  skip_on_cran()
+
+  m <- get_xlin_model()
+
+  coef_pw <- coef(
+    m,
+    ci = "pointwise",
+    level = 0.95,
+    n1 = 40
+  )
+  coef_sim <- coef(
+    m,
+    ci = "simultaneous",
+    level = 0.95,
+    n_sim = 400,
+    sim_seed = 123,
+    n1 = 40
+  )
+
+  expect_true(all(c("lower", "upper") %in% colnames(coef_pw$pterms)))
+  expect_true(all(c("lower", "upper") %in% colnames(coef_sim$pterms)))
+  expect_identical(coef_sim$ci_meta$type, "simultaneous")
+
+  sm_pw <- coef_pw$smterms[[1]]$coef
+  sm_sim <- coef_sim$smterms[[1]]$coef
+  expect_true(all(c("lower", "upper") %in% colnames(sm_pw)))
+  expect_true(all(c("lower", "upper") %in% colnames(sm_sim)))
+
+  width_pw <- sm_pw$upper - sm_pw$lower
+  width_sim <- sm_sim$upper - sm_sim$lower
+  expect_gte(median(width_sim), median(width_pw))
+})
+
+test_that("coef.pffr simultaneous CI works for poisson family", {
+  skip_on_cran()
+
+  dat <- sim_xlin_data(n = 25, nygrid = 20, SNR = 10, family = poisson())
+  t <- attr(dat, "yindex")
+  m <- pffr(
+    Y ~ xlin,
+    yind = t,
+    data = dat,
+    family = poisson(),
+    sandwich = "none"
+  )
+
+  coef_sim <- coef(
+    m,
+    sandwich = "cluster",
+    ci = "simultaneous",
+    n_sim = 250,
+    sim_seed = 42,
+    n1 = 30
+  )
+
+  sm_coef <- coef_sim$smterms[[1]]$coef
+  expect_true(all(c("lower", "upper") %in% colnames(sm_coef)))
+  expect_true(all(is.finite(sm_coef$lower)))
+  expect_true(all(is.finite(sm_coef$upper)))
+})
+
+test_that("coef.pffr simultaneous CI works for gaulss", {
+  skip_on_cran()
+
+  m <- get_gaulss_model()
+  coef_sim <- coef(
+    m,
+    sandwich = "none",
+    ci = "simultaneous",
+    n_sim = 250,
+    sim_seed = 99,
+    n1 = 30
+  )
+
+  expect_identical(coef_sim$ci_meta$type, "simultaneous")
+  expect_true(length(coef_sim$smterms) > 0)
+
+  has_bounds <- vapply(
+    coef_sim$smterms,
+    \(sm) all(c("lower", "upper") %in% colnames(sm$coef)),
+    logical(1)
+  )
+  expect_true(any(has_bounds))
 })
