@@ -9,15 +9,16 @@
 #   - Gaussian family (fixed)
 #   - 3 correlation structures: IID, AR1(0.9), fourier_pos(0.3)
 #   - 3 sample sizes: n = 20, 40, 80
+#   - 2 SNR levels: 25 (high), 3 (low)
 #   - Full model: ff + linear + smooth + concurrent
-#   - Grid levels: (30,40), (60,80), (90,120)
-#   - Factorial DGP design: correlation x n; grid varied independently
-#   - Paired within each (correlation, n, rep): generate finest grid once,
+#   - Grid: nxgrid in {30,60,90} x nygrid in {40,80,120} (9 combos, factorial)
+#   - Factorial DGP design: correlation x n x snr; grid factorial and paired
+#   - Paired within each (correlation, n, snr, rep): generate finest grid once,
 #     deterministic subsampling for coarser grids
 #
 # Phases:
 #   Pilot: 30 reps per DGP x grid for timing + crude coverage
-#   Main:  120 reps per DGP x grid (full factorial comparison)
+#   Main:  50 reps per DGP x grid (full factorial comparison)
 #
 # Methods: default (none), HC, cluster, and CL2 sandwich.
 #
@@ -43,18 +44,27 @@ source("ci-benchmark/confint-benchmark.R")
 
 STUDY2_BASE_SEED <- 4001L
 STUDY2_N_LEVELS <- c(20L, 40L, 80L)
-STUDY2_SNR <- 25
+STUDY2_SNR_LEVELS <- c(25, 3)
 STUDY2_WIGGLINESS <- 5
 STUDY2_TERMS <- c("ff", "linear", "smooth", "concurrent")
 
-# Grid levels: finest grid, subsample for coarser
-STUDY2_GRIDS <- list(
-  coarse = list(nxgrid = 30L, nygrid = 40L),
-  medium = list(nxgrid = 60L, nygrid = 80L),
-  fine = list(nxgrid = 90L, nygrid = 120L)
-)
-STUDY2_FINE_NX <- 90L
-STUDY2_FINE_NY <- 120L
+# Grid levels: full factorial nxgrid x nygrid, subsample from finest
+STUDY2_NXGRID_LEVELS <- c(30L, 60L, 90L)
+STUDY2_NYGRID_LEVELS <- c(40L, 80L, 120L)
+STUDY2_FINE_NX <- max(STUDY2_NXGRID_LEVELS)
+STUDY2_FINE_NY <- max(STUDY2_NYGRID_LEVELS)
+
+STUDY2_GRIDS <- local({
+  combos <- expand.grid(
+    nxgrid = STUDY2_NXGRID_LEVELS,
+    nygrid = STUDY2_NYGRID_LEVELS
+  )
+  grids <- lapply(seq_len(nrow(combos)), function(i) {
+    list(nxgrid = combos$nxgrid[i], nygrid = combos$nygrid[i])
+  })
+  names(grids) <- sprintf("%dx%d", combos$nxgrid, combos$nygrid)
+  grids
+})
 
 # Grid Subsampling ------------------------------------------------------------
 
@@ -324,7 +334,10 @@ compute_cov_quality_metrics <- function(
 #'
 #' @param n_levels Integer vector of sample sizes.
 #' @returns Tibble with DGP configurations.
-make_study2_settings <- function(n_levels = STUDY2_N_LEVELS) {
+make_study2_settings <- function(
+  n_levels = STUDY2_N_LEVELS,
+  snr_levels = STUDY2_SNR_LEVELS
+) {
   corr_settings <- tibble(
     corr_type = c("iid", "ar1", "fourier_pos"),
     corr_param = c(NA_real_, 0.9, 0.3)
@@ -332,10 +345,10 @@ make_study2_settings <- function(n_levels = STUDY2_N_LEVELS) {
 
   tidyr::crossing(
     corr_settings,
-    n = as.integer(n_levels)
+    n = as.integer(n_levels),
+    snr = as.numeric(snr_levels)
   ) |>
     dplyr::mutate(
-      snr = STUDY2_SNR,
       wiggliness = STUDY2_WIGGLINESS,
       error_dist = "gaussian",
       hetero_type = "none",
@@ -370,15 +383,24 @@ generate_paired_data <- function(row, seed) {
     seed = seed
   )
 
-  # Subsample to coarser grids
-  sim_medium <- subsample_grid(sim_fine, 60L, 80L)
-  sim_coarse <- subsample_grid(sim_fine, 30L, 40L)
-
-  list(
-    fine = sim_fine,
-    medium = sim_medium,
-    coarse = sim_coarse
-  )
+  # Subsample to all factorial grid combinations
+  sims <- list()
+  for (grid_label in names(STUDY2_GRIDS)) {
+    grid_info <- STUDY2_GRIDS[[grid_label]]
+    if (
+      grid_info$nxgrid == STUDY2_FINE_NX &&
+        grid_info$nygrid == STUDY2_FINE_NY
+    ) {
+      sims[[grid_label]] <- sim_fine
+    } else {
+      sims[[grid_label]] <- subsample_grid(
+        sim_fine,
+        grid_info$nxgrid,
+        grid_info$nygrid
+      )
+    }
+  }
+  sims
 }
 
 #' Fit and extract metrics for one grid level
@@ -516,7 +538,7 @@ study2_main_file_key <- function(dgp_id, n, grid_label, rep_id) {
 #' @param output_dir Output directory.
 #' @returns Pilot summary tibble.
 run_study2_pilot <- function(
-  n_rep = 30L,
+  n_rep = 1L,
   parallel = TRUE,
   n_workers = max(1L, min(6L, parallel::detectCores() - 1L)),
   output_dir = "ci-benchmark/study2-grid-refinement"
@@ -530,6 +552,7 @@ run_study2_pilot <- function(
   cat("==============================\n")
   cat("DGP cells:", nrow(settings), "\n")
   cat("n levels:", paste(sort(unique(settings$n)), collapse = ", "), "\n")
+  cat("SNR levels:", paste(sort(unique(settings$snr)), collapse = ", "), "\n")
   cat("Grid levels:", paste(grid_labels, collapse = ", "), "\n")
   cat("Reps per cell:", n_rep, "\n")
   cat("Parallel:", parallel, "workers:", n_workers, "\n\n")
@@ -563,6 +586,7 @@ run_study2_pilot <- function(
             corr_type = row$corr_type,
             corr_param = row$corr_param,
             n = row$n,
+            snr = row$snr,
             nxgrid = grid_info$nxgrid,
             nygrid = grid_info$nygrid,
             grid_label = grid_label
@@ -571,6 +595,7 @@ run_study2_pilot <- function(
         task_timings[[grid_label]] <- tibble(
           dgp_id = row$dgp_id,
           corr_type = row$corr_type,
+          snr = row$snr,
           grid_label = grid_label,
           nxgrid = grid_info$nxgrid,
           nygrid = grid_info$nygrid,
@@ -591,6 +616,7 @@ run_study2_pilot <- function(
           corr_type = row$corr_type,
           corr_param = row$corr_param,
           n = row$n,
+          snr = row$snr,
           nxgrid = grid_info$nxgrid,
           nygrid = grid_info$nygrid,
           grid_label = grid_label,
@@ -599,6 +625,7 @@ run_study2_pilot <- function(
         task_timings[[grid_label]] <- tibble(
           dgp_id = row$dgp_id,
           corr_type = row$corr_type,
+          snr = row$snr,
           grid_label = grid_label,
           nxgrid = grid_info$nxgrid,
           nygrid = grid_info$nygrid,
@@ -670,12 +697,13 @@ run_study2_pilot <- function(
     for (i in seq_len(nrow(task_grid))) {
       row_df <- task_grid[i, ]
       cat(sprintf(
-        "\r  [%d/%d] DGP %d (corr=%s, n=%d), rep %d",
+        "\r  [%d/%d] DGP %d (corr=%s, n=%d, snr=%g), rep %d",
         i,
         nrow(task_grid),
         row_df$dgp_id,
         row_df$corr_type,
         row_df$n,
+        row_df$snr,
         row_df$rep_id
       ))
 
@@ -697,6 +725,7 @@ run_study2_pilot <- function(
   if (nrow(timings) == 0) {
     timings <- tibble(
       n = integer(),
+      snr = numeric(),
       corr_type = character(),
       grid_label = character(),
       nxgrid = integer(),
@@ -708,7 +737,7 @@ run_study2_pilot <- function(
 
   timing_summary <- if (nrow(timings) > 0) {
     timings |>
-      dplyr::group_by(n, corr_type, grid_label, nxgrid, nygrid) |>
+      dplyr::group_by(n, snr, corr_type, grid_label, nxgrid, nygrid) |>
       dplyr::summarise(
         median_time = median(fit_time, na.rm = TRUE),
         mean_time = mean(fit_time, na.rm = TRUE),
@@ -719,6 +748,7 @@ run_study2_pilot <- function(
   } else {
     tibble(
       n = integer(),
+      snr = numeric(),
       corr_type = character(),
       grid_label = character(),
       nxgrid = integer(),
@@ -731,16 +761,18 @@ run_study2_pilot <- function(
   }
 
   timing_scaling <- if (nrow(timing_summary) > 0) {
+    baseline_label <- "30x40"
     timing_summary |>
-      dplyr::group_by(n, corr_type) |>
+      dplyr::group_by(n, snr, corr_type) |>
       dplyr::mutate(
-        coarse_median = median_time[grid_label == "coarse"][1],
-        time_ratio_vs_coarse = median_time / coarse_median
+        baseline_median = median_time[grid_label == baseline_label][1],
+        time_ratio_vs_baseline = median_time / baseline_median
       ) |>
       dplyr::ungroup()
   } else {
     tibble(
       n = integer(),
+      snr = numeric(),
       corr_type = character(),
       grid_label = character(),
       nxgrid = integer(),
@@ -749,31 +781,34 @@ run_study2_pilot <- function(
       mean_time = numeric(),
       max_time = numeric(),
       n_fits = integer(),
-      coarse_median = numeric(),
-      time_ratio_vs_coarse = numeric()
+      baseline_median = numeric(),
+      time_ratio_vs_baseline = numeric()
     )
   }
 
   cat("\nPilot Timing Summary:\n")
   print(timing_summary)
-  cat("\nPilot Timing Scaling (median_time / coarse median within n,corr):\n")
+  cat(
+    "\nPilot Timing Scaling (median_time / 30x40 baseline within n,snr,corr):\n"
+  )
   print(
     timing_scaling |>
       dplyr::select(
         n,
+        snr,
         corr_type,
         grid_label,
         median_time,
-        time_ratio_vs_coarse
+        time_ratio_vs_baseline
       ) |>
-      dplyr::arrange(n, corr_type, grid_label)
+      dplyr::arrange(n, snr, corr_type, grid_label)
   )
 
   # Coverage summary by grid
   if (nrow(results) > 0) {
     cov_summary <- results |>
       dplyr::filter(!is.na(coverage)) |>
-      dplyr::group_by(n, grid_label, corr_type, method, term_type) |>
+      dplyr::group_by(n, snr, grid_label, corr_type, method, term_type) |>
       dplyr::summarise(
         mean_coverage = mean(coverage, na.rm = TRUE),
         mean_z_sd = mean(z_sd, na.rm = TRUE),
@@ -785,7 +820,7 @@ run_study2_pilot <- function(
     print(
       cov_summary |>
         dplyr::filter(term_type %in% c("ff", "linear")) |>
-        dplyr::arrange(n, corr_type, grid_label, method, term_type),
+        dplyr::arrange(n, snr, corr_type, grid_label, method, term_type),
       n = 100
     )
   }
@@ -804,14 +839,14 @@ run_study2_pilot <- function(
 #'
 #' @param n_rep Number of reps per DGP x grid cell.
 #' @param grid_labels Character vector of grid labels to run. Default uses all
-#'   three levels (coarse, medium, fine) for full factorial comparison.
+#'   9 factorial nxgrid x nygrid combinations (e.g. "30x40", "60x120").
 #' @param parallel Use parallel processing?
 #' @param n_workers Number of workers.
 #' @param output_dir Output directory.
 #' @param alpha Significance level.
 #' @returns Combined results tibble.
 run_study2_main <- function(
-  n_rep = 120L,
+  n_rep = 50L,
   grid_labels = names(STUDY2_GRIDS),
   parallel = TRUE,
   n_workers = max(1L, min(6L, parallel::detectCores() - 1L)),
@@ -834,10 +869,11 @@ run_study2_main <- function(
     grid_labels <- valid_labels
   }
 
-  cat("Study 2 Main: Grid Refinement (factorial n x grid)\n")
-  cat("===================================================\n")
+  cat("Study 2 Main: Grid Refinement (factorial n x snr x nxgrid x nygrid)\n")
+  cat("===================================================================\n")
   cat("DGP cells:", nrow(settings), "\n")
   cat("n levels:", paste(sort(unique(settings$n)), collapse = ", "), "\n")
+  cat("SNR levels:", paste(sort(unique(settings$snr)), collapse = ", "), "\n")
   cat("Grid levels:", paste(grid_labels, collapse = " vs "), "\n")
   cat("Reps per cell:", n_rep, "\n")
   cat("Total fits:", nrow(settings) * length(grid_labels) * n_rep, "\n")
@@ -888,6 +924,7 @@ run_study2_main <- function(
             corr_type = row$corr_type,
             corr_param = row$corr_param,
             n = row$n,
+            snr = row$snr,
             nxgrid = grid_info$nxgrid,
             nygrid = grid_info$nygrid,
             grid_label = grid_label
@@ -911,6 +948,7 @@ run_study2_main <- function(
           corr_type = row$corr_type,
           corr_param = row$corr_param,
           n = row$n,
+          snr = row$snr,
           nxgrid = grid_info$nxgrid,
           nygrid = grid_info$nygrid,
           grid_label = grid_label,
@@ -980,12 +1018,13 @@ run_study2_main <- function(
     for (i in seq_len(nrow(grid))) {
       row <- as.list(grid[i, ])
       cat(sprintf(
-        "\r[%d/%d] dgp=%d (corr=%s, n=%d), rep=%d",
+        "\r[%d/%d] dgp=%d (corr=%s, n=%d, snr=%g), rep=%d",
         i,
         nrow(grid),
         row$dgp_id,
         row$corr_type,
         row$n,
+        row$snr,
         row$rep_id
       ))
 
@@ -1128,6 +1167,7 @@ compute_study2_cov_quality <- function(output_dir, settings, grid_labels) {
           cov_metrics$dgp_id <- row$dgp_id
           cov_metrics$corr_type <- row$corr_type
           cov_metrics$n <- row$n
+          cov_metrics$snr <- row$snr
           cov_metrics$grid_label <- grid_label
           cov_metrics$method <- method_name
 
@@ -1151,6 +1191,7 @@ summarize_study2 <- function(results) {
     dplyr::filter(!is.na(coverage)) |>
     dplyr::group_by(
       n,
+      snr,
       corr_type,
       grid_label,
       nxgrid,
@@ -1235,13 +1276,13 @@ if (sys.nframe() == 0) {
     cat("Study 2: Pilot phase (30 reps)\n\n")
     pilot <- run_study2_pilot(n_rep = 30L, output_dir = base_dir)
   } else if (mode == "main") {
-    cat("Using full factorial n x grid design with all grid levels\n")
+    cat("Using full factorial design with all nxgrid x nygrid combinations\n")
 
     main_results <- run_study2_main(
-      n_rep = 120L,
-      grid_labels = names(STUDY2_GRIDS), # coarse, medium, fine
+      n_rep = 50L,
+      grid_labels = names(STUDY2_GRIDS), # all 9 nxgrid x nygrid combos
       parallel = TRUE,
-      n_workers = max(1L, min(6L, parallel::detectCores() - 1L)),
+      n_workers = max(1L, min(10L, parallel::detectCores() - 1L)),
       output_dir = file.path(base_dir, "main")
     )
 
@@ -1253,14 +1294,14 @@ if (sys.nframe() == 0) {
       print(
         summary_df |>
           dplyr::filter(term_type %in% c("ff", "linear", "E(Y)")) |>
-          dplyr::arrange(n, corr_type, grid_label, method, term_type),
-        n = 100
+          dplyr::arrange(n, snr, corr_type, grid_label, method, term_type),
+        n = 200
       )
 
       cat("\n========== COVARIANCE QUALITY ==========\n")
       print(
         main_results$cov_quality |>
-          dplyr::arrange(n, corr_type, grid_label, method, term_type),
+          dplyr::arrange(n, snr, corr_type, grid_label, method, term_type),
         n = 100
       )
 
