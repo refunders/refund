@@ -78,22 +78,181 @@ resample_residuals <- function(
 # Bootstrap CI Computation Helpers
 #--------------------------------------
 
+# Build flatten/reconstruction layout for coef.pffr-like objects
+# @param coef_template Object returned by coef(..., ci = "none")
+# @returns List with coefficient index/range metadata
+build_coefboot_layout <- function(coef_template) {
+  n_pterms <- nrow(as.matrix(coef_template$pterms))
+  pterm_names <- rownames(coef_template$pterms)
+  if (is.null(pterm_names)) pterm_names <- paste0("pterm_", seq_len(n_pterms))
+
+  smterm_names <- names(coef_template$smterms)
+  smterm_lengths <- vapply(
+    coef_template$smterms,
+    \(sm) nrow(as.data.frame(sm$coef)),
+    integer(1)
+  )
+
+  smterm_ranges <- vector("list", length(smterm_lengths))
+  next_idx <- n_pterms + 1L
+  for (i in seq_along(smterm_lengths)) {
+    len_i <- smterm_lengths[[i]]
+    if (len_i > 0L) {
+      smterm_ranges[[i]] <- next_idx:(next_idx + len_i - 1L)
+      next_idx <- next_idx + len_i
+    } else {
+      smterm_ranges[[i]] <- integer(0)
+    }
+  }
+
+  coef_names <- character(next_idx - 1L)
+  if (n_pterms > 0L) {
+    coef_names[seq_len(n_pterms)] <- pterm_names
+  }
+  for (i in seq_along(smterm_ranges)) {
+    idx <- smterm_ranges[[i]]
+    if (!length(idx)) next
+    coef_names[idx] <- paste0(smterm_names[[i]], "[", seq_along(idx), "]")
+  }
+
+  list(
+    n_pterms = n_pterms,
+    pterm_names = pterm_names,
+    smterm_names = smterm_names,
+    smterm_lengths = smterm_lengths,
+    smterm_ranges = smterm_ranges,
+    n_coefs = length(coef_names),
+    coef_names = coef_names
+  )
+}
+
+# Flatten coef.pffr-like object to a numeric vector with stable ordering
+# @param coef_object Object returned by coef(..., ci = "none")
+# @param layout Layout returned by build_coefboot_layout()
+# @returns Numeric coefficient vector
+flatten_coefboot_coefficients <- function(coef_object, layout) {
+  out <- numeric(layout$n_coefs)
+
+  pvals <- as.numeric(coef_object$pterms[, "value", drop = TRUE])
+  if (length(pvals) != layout$n_pterms) {
+    stop("Mismatch in number of parametric coefficients.")
+  }
+  if (layout$n_pterms > 0L) {
+    out[seq_len(layout$n_pterms)] <- pvals
+  }
+
+  for (i in seq_along(layout$smterm_ranges)) {
+    idx <- layout$smterm_ranges[[i]]
+    if (!length(idx)) next
+    sval <- as.numeric(coef_object$smterms[[i]]$coef[, "value", drop = TRUE])
+    if (length(sval) != length(idx)) {
+      stop("Mismatch in smooth-term coefficient length for term ", i, ".")
+    }
+    out[idx] <- sval
+  }
+
+  out
+}
+
+# Build fixed evaluation grids for coef.pffr extraction
+# @param object Fitted pffr model
+# @param n1,n2,n3 Grid sizes
+# @returns Named list of per-smooth data grids
+build_coefboot_eval_grid <- function(object, n1, n2, n3) {
+  pffr_info <- list(
+    yind_name = object$pffr$yind_name,
+    pcre_terms = object$pffr$pcre_terms
+  )
+  grid_sizes <- list(n1 = n1, n2 = n2, n3 = n3)
+
+  grids <- lapply(seq_along(object$smooth), \(i) {
+    trm <- object$smooth[[i]]
+    is_pcre <- "pcre.random.effect" %in% class(trm)
+    if (trm$dim > 3 && !is_pcre) return(NULL)
+    coef_make_data_grid(
+      trm = trm,
+      model_data = object$model,
+      pffr_info = pffr_info,
+      grid_sizes = grid_sizes,
+      is_pcre = is_pcre
+    )
+  })
+  names(grids) <- names(object$smooth)
+  grids
+}
+
 # Extract coefficients from a fitted pffr model as a vector
 # @param model Fitted pffr model (or try-error)
 # @param n1, n2, n3 Grid sizes for coefficient evaluation
 # @param fallback Vector of NAs to return on failure
+# @param layout Layout from build_coefboot_layout()
+# @param eval_grid Optional fixed evaluation grids for coef.pffr
 # @returns Numeric vector of coefficient values
-extract_boot_coefficients <- function(model, n1, n2, n3, fallback) {
+extract_boot_coefficients <- function(
+  model,
+  n1,
+  n2,
+  n3,
+  fallback,
+  layout,
+  eval_grid = NULL
+) {
   if (inherits(model, "try-error")) {
     return(fallback)
   }
 
-  coefs <- coef(model, se = FALSE, n1 = n1, n2 = n2, n3 = n3)
-  coef_vec <- c(
-    coefs$pterms[, "value"],
-    lapply(coefs$smterms, \(x) x$value)
+  coefs <- try(
+    coef(
+      model,
+      se = FALSE,
+      sandwich = "none",
+      ci = "none",
+      n1 = n1,
+      n2 = n2,
+      n3 = n3,
+      eval_grid = eval_grid
+    ),
+    silent = TRUE
   )
-  unlist(coef_vec)
+  if (inherits(coefs, "try-error")) {
+    return(fallback)
+  }
+
+  vec <- try(flatten_coefboot_coefficients(coefs, layout), silent = TRUE)
+  if (inherits(vec, "try-error") || length(vec) != length(fallback)) {
+    return(fallback)
+  }
+  vec
+}
+
+# Convert confidence level to stable column suffix (e.g., 0.95 -> "95")
+# @param conf Numeric confidence level in (0, 1)
+# @returns Character label
+format_boot_conf_label <- function(conf) {
+  if (!is.numeric(conf) || length(conf) != 1L || !is.finite(conf)) {
+    stop("'conf' must be a single finite numeric value.")
+  }
+  label <- sprintf("%.8f", 100 * conf)
+  label <- sub("0+$", "", label)
+  label <- sub("\\.$", "", label)
+  label
+}
+
+# Compute percentile CI bounds from a bootstrap sample vector
+# @param x Numeric bootstrap draws
+# @param conf Confidence levels
+# @returns Numeric vector lower/upper pairs for each level
+compute_percentile_ci <- function(x, conf) {
+  as.vector(vapply(conf, \(c_level) {
+    probs <- c((1 - c_level) / 2, 1 - (1 - c_level) / 2)
+    stats::quantile(
+      x,
+      probs = probs,
+      type = 8,
+      na.rm = TRUE,
+      names = FALSE
+    )
+  }, numeric(2)))
 }
 
 # Compute bootstrap confidence intervals for a single coefficient
@@ -101,9 +260,12 @@ extract_boot_coefficients <- function(model, n1, n2, n3, fallback) {
 # @param index Which coefficient index
 # @param conf Confidence levels (numeric vector)
 # @param type Type of CI ("percent", "bca", etc.)
-# @returns Matrix of CI bounds
+# @returns Numeric vector of CI bounds
 compute_single_boot_ci <- function(boot_result, index, conf, type) {
-  # boot.ci uses "perc" but returns "percent"
+  if (type == "percent") {
+    return(compute_percentile_ci(boot_result$t[, index], conf))
+  }
+
   type_arg <- if (type == "percent") "perc" else type
   out <- tryCatch(
     {
@@ -114,10 +276,13 @@ compute_single_boot_ci <- function(boot_result, index, conf, type) {
         type = type_arg
       )
       bounds <- ci[[type]]
-      if (is.null(bounds) || ncol(bounds) < 5) stop("CI bounds unavailable")
-      as.vector(bounds[, 4:5, drop = FALSE])
+      if (is.null(bounds)) stop("CI bounds unavailable")
+      lower <- bounds[, ncol(bounds) - 1L]
+      upper <- bounds[, ncol(bounds)]
+      as.vector(rbind(lower, upper))
     },
-    error = function(e) rep(NA_real_, 2 * length(conf))
+    warning = function(w) rep(NA_real_, 2L * length(conf)),
+    error = function(e) rep(NA_real_, 2L * length(conf))
   )
   out
 }
@@ -127,24 +292,25 @@ compute_single_boot_ci <- function(boot_result, index, conf, type) {
 # @param indices Which coefficient indices to compute CIs for
 # @param conf Confidence levels
 # @param type Type of CI
-# @param apply_fn Function to use for iteration (lapply, mclapply, or parLapply wrapper)
+# @param apply_fn Function to use for iteration
 # @returns Matrix with CI bounds as rows
 compute_boot_cis <- function(
   boot_result,
   indices,
   conf,
   type,
-  apply_fn = lapply
+  apply_fn = function(X, FUN) lapply(X, FUN)
 ) {
   ci_list <- apply_fn(indices, \(i) {
     compute_single_boot_ci(boot_result, i, conf, type)
   })
-  ci_matrix <- do.call(cbind, ci_list)
-  rownames(ci_matrix) <- paste0(
-    c((1 - conf) / 2, 1 - (1 - conf) / 2) * 100,
-    "%"
-  )
-  t(ci_matrix)
+  ci_matrix <- do.call(rbind, ci_list)
+
+  lower_names <- paste0("lower_", vapply(conf, format_boot_conf_label, character(1)))
+  upper_names <- paste0("upper_", vapply(conf, format_boot_conf_label, character(1)))
+  colnames(ci_matrix) <- as.vector(rbind(lower_names, upper_names))
+
+  ci_matrix
 }
 
 #--------------------------------------
@@ -195,24 +361,47 @@ pffr_coefboot <- function(
   ...
 ) {
   # Validate inputs
-
   method <- match.arg(method)
   parallel <- match.arg(parallel)
-  stopifnot(B > 0, conf > 0, conf < 1)
-  ncpus <- ncpus %||% getOption("boot.ncpus", 1L)
+  type <- match.arg(type, c("norm", "basic", "stud", "percent", "bca"))
+
+  if (!is.numeric(B) || length(B) != 1 || !is.finite(B) || B < 1) {
+    stop("'B' must be a single positive integer.")
+  }
+  B <- as.integer(B)
+  if (!is.numeric(conf) || any(!is.finite(conf)) || any(conf <= 0 | conf >= 1)) {
+    stop("'conf' must contain values strictly between 0 and 1.")
+  }
+  conf <- as.numeric(conf)
+  conf <- conf[!duplicated(conf)]
+  primary_conf <- conf[1L]
+
+  if (is.null(ncpus)) {
+    ncpus <- getOption("boot.ncpus", 1L)
+  }
+  if (!is.numeric(ncpus) || length(ncpus) != 1 || !is.finite(ncpus) || ncpus < 1) {
+    stop("'ncpus' must be a single positive integer.")
+  }
+  ncpus <- as.integer(ncpus)
 
   # Extract model call components, evaluating any unevaluated language objects
   modcall <- prepare_modcall_for_bootstrap(object)
 
   # Get original coefficients (template for return structure)
-  coef_template <- coef(object, se = FALSE, n1 = n1, n2 = n2, n3 = n3)
+  coef_template <- coef(
+    object,
+    se = FALSE,
+    sandwich = "none",
+    ci = "none",
+    n1 = n1,
+    n2 = n2,
+    n3 = n3
+  )
+  layout <- build_coefboot_layout(coef_template)
+  eval_grid <- build_coefboot_eval_grid(object, n1, n2, n3)
 
   # Compute fallback return vector (all NAs) for failed bootstrap replicates
-  n_coefs <- length(unlist(c(
-    coef_template$pterms[, "value"],
-    lapply(coef_template$smterms, \(x) x$value)
-  )))
-  fallback_vec <- rep(NA_real_, n_coefs)
+  fallback_vec <- rep(NA_real_, layout$n_coefs)
 
   # Build resampling function based on data type and method
   resample_fn <- build_resample_function(
@@ -230,19 +419,32 @@ pffr_coefboot <- function(
     n2,
     n3,
     fallback,
+    layout,
+    eval_grid,
     resample_fn,
     show_progress
   ) {
     modcall_boot <- resample_fn(modcall, data, indices)
-    model_boot <- try(eval(as.call(modcall_boot)), silent = TRUE)
-    coefs <- extract_boot_coefficients(model_boot, n1, n2, n3, fallback)
+    if (!is.call(modcall_boot)) {
+      modcall_boot <- as.call(modcall_boot)
+    }
+    model_boot <- try(eval(modcall_boot), silent = TRUE)
+    coefs <- extract_boot_coefficients(
+      model_boot,
+      n1,
+      n2,
+      n3,
+      fallback,
+      layout,
+      eval_grid = eval_grid
+    )
     if (show_progress) cat(".")
     coefs
   }
 
   # Run bootstrap
-  message("starting bootstrap (", B, " replications).\n")
-  boot_result <- boot::boot(
+  if (showProgress) message("starting bootstrap (", B, " replications).\n")
+  boot_args <- list(
     data = modcall$data,
     statistic = boot_statistic,
     R = B,
@@ -251,28 +453,45 @@ pffr_coefboot <- function(
     n2 = n2,
     n3 = n3,
     fallback = fallback_vec,
+    layout = layout,
+    eval_grid = eval_grid,
     resample_fn = resample_fn,
     show_progress = showProgress,
     parallel = parallel,
     ncpus = ncpus,
     ...
   )
+  if (parallel == "snow" && !is.null(cl)) {
+    boot_args$cl <- cl
+  }
+  boot_result <- do.call(boot::boot, boot_args, quote = TRUE)
   if (showProgress) message("done.\n")
 
   # Handle failed replicates
   boot_result <- handle_failed_replicates(boot_result, B)
+  n_failed <- attr(boot_result, "n_failed") %||% 0L
+  failure_rate <- attr(boot_result, "failure_rate") %||%
+    if (B > 0L) n_failed / B else NA_real_
 
   # Build parallel apply function for CI computation
-  apply_fn <- build_parallel_apply(parallel, ncpus, cl)
+  parallel_ctx <- build_parallel_apply(parallel, ncpus, cl)
+  on.exit(parallel_ctx$cleanup(), add = TRUE)
+  apply_fn <- parallel_ctx$apply
 
   # Compute and attach CIs
-  message("calculating bootstrap CIs....")
+  if (showProgress) message("calculating bootstrap CIs....")
   result <- attach_bootstrap_cis(
     coef_template = coef_template,
+    layout = layout,
     boot_result = boot_result,
     conf = conf,
+    primary_conf = primary_conf,
     type = type,
-    apply_fn = apply_fn
+    apply_fn = apply_fn,
+    method = method,
+    B_requested = B,
+    n_failed = n_failed,
+    failure_rate = failure_rate
   )
 
   structure(result, call = match.call())
@@ -342,6 +561,11 @@ prepare_modcall_for_bootstrap <- function(object) {
   if (is.language(modcall$yind)) {
     modcall$yind <- eval(modcall$yind, frml_env)
   }
+  # Ensure bootstrap refits do not trigger robust covariance recalculation.
+  fit_fun <- safeDeparse(modcall[[1]])
+  if (fit_fun %in% c("pffr", "refund::pffr")) {
+    modcall$sandwich <- "none"
+  }
   modcall$fit <- TRUE
   modcall
 }
@@ -368,10 +592,18 @@ build_resample_function <- function(object, modcall, method) {
     if (is_sparse) {
       stop("residual bootstrap not implemented for sparse data")
     }
+    gaussian_identity <- identical(object$family$family, "gaussian") &&
+      identical(object$family$link[[1]], "identity")
+    if (!gaussian_identity) {
+      stop(
+        "residual bootstrap is only implemented for gaussian identity models. ",
+        "Use method = \"resample\"."
+      )
+    }
     # Capture fitted values and residuals from original model
     fitted_vals <- fitted(object)
-    resids <- residuals(object)
-    response_name <- deparse(object$formula[[2]])
+    resids <- residuals(object, reformat = TRUE)
+    response_name <- deparse(object$pffr$response_name)
     center <- (method == "residual.c")
 
     function(mc, data, indices) {
@@ -395,15 +627,25 @@ build_resample_function <- function(object, modcall, method) {
 handle_failed_replicates <- function(boot_result, B) {
   failed_idx <- which(rowSums(is.na(boot_result$t)) == ncol(boot_result$t))
   n_failed <- length(failed_idx)
+  failure_rate <- if (B > 0L) n_failed / B else NA_real_
 
   if (n_failed == B) {
     stop("All bootstrap replicates failed.")
   }
   if (n_failed > 0) {
-    warning(n_failed, " out of ", B, " bootstrap replicates failed!")
+    warning(
+      n_failed, " out of ", B, " bootstrap replicates failed (",
+      round(100 * failure_rate, 1), "%). ",
+      "Using ", B - n_failed, " successful replicates for CI computation. ",
+      "Consider increasing B or simplifying the model if this persists.",
+      call. = FALSE
+    )
     boot_result$t <- boot_result$t[-failed_idx, , drop = FALSE]
     boot_result$R <- boot_result$R - n_failed
   }
+  attr(boot_result, "n_failed") <- n_failed
+  attr(boot_result, "B_requested") <- B
+  attr(boot_result, "failure_rate") <- failure_rate
   boot_result
 }
 
@@ -414,23 +656,34 @@ handle_failed_replicates <- function(boot_result, B) {
 # @returns Apply function with appropriate parallelization
 build_parallel_apply <- function(parallel, ncpus, cl) {
   if (parallel == "multicore") {
-    parallel::mclapply
-  } else if (parallel == "snow") {
-    if (is.null(cl)) {
-      cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
-    }
-    if (RNGkind()[1L] == "L'Ecuyer-CMRG") {
-      parallel::clusterSetRNGStream(cl)
-    }
-    # Return wrapper that manages cluster lifecycle
-    function(X, FUN) {
-      res <- parallel::parLapply(cl, X, FUN)
-      parallel::stopCluster(cl)
-      res
-    }
-  } else {
-    lapply
+    return(list(
+      apply = function(X, FUN) parallel::mclapply(X, FUN, mc.cores = ncpus),
+      cleanup = function() invisible(NULL)
+    ))
   }
+
+  if (parallel == "snow") {
+    own_cluster <- is.null(cl)
+    cl_use <- cl
+    if (own_cluster) {
+      cl_use <- parallel::makePSOCKcluster(rep("localhost", ncpus))
+      if (RNGkind()[1L] == "L'Ecuyer-CMRG") {
+        parallel::clusterSetRNGStream(cl_use)
+      }
+    }
+    return(list(
+      apply = function(X, FUN) parallel::parLapply(cl_use, X, FUN),
+      cleanup = function() {
+        if (own_cluster) parallel::stopCluster(cl_use)
+        invisible(NULL)
+      }
+    ))
+  }
+
+  list(
+    apply = function(X, FUN) lapply(X, FUN),
+    cleanup = function() invisible(NULL)
+  )
 }
 
 # Attach bootstrap CIs to coefficient template
@@ -442,54 +695,85 @@ build_parallel_apply <- function(parallel, ncpus, cl) {
 # @returns coef_template with CIs attached
 attach_bootstrap_cis <- function(
   coef_template,
+  layout,
   boot_result,
   conf,
+  primary_conf,
   type,
-  apply_fn
+  apply_fn,
+  method,
+  B_requested,
+  n_failed,
+  failure_rate
 ) {
-  # Get term structure
-  pterm_names <- rownames(coef_template$pterms)
-  n_pterms <- length(pterm_names)
-
-  smterm_names <- names(coef_template$smterms)
-  smterm_lengths <- vapply(
-    coef_template$smterms,
-    \(x) length(x$value),
-    integer(1)
+  ci_matrix <- compute_boot_cis(
+    boot_result = boot_result,
+    indices = seq_len(layout$n_coefs),
+    conf = conf,
+    type = type,
+    apply_fn = apply_fn
   )
+  rownames(ci_matrix) <- layout$coef_names
 
-  # Remove empty smooth terms
-  nonempty <- smterm_lengths > 0
-  if (any(!nonempty)) {
-    smterm_names <- smterm_names[nonempty]
-    smterm_lengths <- smterm_lengths[nonempty]
-    coef_template$smterms <- coef_template$smterms[nonempty]
-  }
+  primary_label <- format_boot_conf_label(primary_conf)
+  lower_col <- paste0("lower_", primary_label)
+  upper_col <- paste0("upper_", primary_label)
 
-  # Compute start/end indices for smooth terms (offset by n_pterms)
-  smterm_starts <- c(1, cumsum(head(smterm_lengths, -1)) + 1)
-  smterm_ends <- cumsum(smterm_lengths)
-
-  # Attach CIs to parametric terms
-  pterm_cis <- compute_boot_cis(
-    boot_result,
-    seq_len(n_pterms),
-    conf,
-    type,
-    apply_fn
-  )
-  coef_template$pterms <- cbind(coef_template$pterms, pterm_cis)
-
-  # Attach CIs to smooth terms
-  for (i in seq_along(smterm_starts)) {
-    indices <- n_pterms + (smterm_starts[i]:smterm_ends[i])
-    smterm_cis <- compute_boot_cis(boot_result, indices, conf, type, apply_fn)
-    coef_template$smterms[[i]] <- cbind(
-      coef_template$smterms[[i]]$coef,
-      smterm_cis
+  p_idx <- seq_len(layout$n_pterms)
+  if (layout$n_pterms > 0L) {
+    coef_template$pterms <- cbind(
+      coef_template$pterms,
+      lower = ci_matrix[p_idx, lower_col],
+      upper = ci_matrix[p_idx, upper_col]
     )
   }
-  names(coef_template$smterms) <- smterm_names
+
+  for (i in seq_along(layout$smterm_ranges)) {
+    idx <- layout$smterm_ranges[[i]]
+    if (!length(idx)) {
+      coef_template$smterms[[i]]$coef <- cbind(
+        coef_template$smterms[[i]]$coef,
+        lower = numeric(0),
+        upper = numeric(0)
+      )
+      next
+    }
+    coef_template$smterms[[i]]$coef <- cbind(
+      coef_template$smterms[[i]]$coef,
+      lower = ci_matrix[idx, lower_col],
+      upper = ci_matrix[idx, upper_col]
+    )
+  }
+
+  boot_ci <- list(
+    type = type,
+    conf = conf,
+    primary_conf = primary_conf,
+    coefficient_bounds = ci_matrix,
+    pterms = if (layout$n_pterms > 0L) ci_matrix[p_idx, , drop = FALSE] else
+      matrix(numeric(0), nrow = 0, ncol = ncol(ci_matrix)),
+    smterms = lapply(layout$smterm_ranges, \(idx) {
+      if (!length(idx)) {
+        matrix(numeric(0), nrow = 0, ncol = ncol(ci_matrix))
+      } else {
+        ci_matrix[idx, , drop = FALSE]
+      }
+    })
+  )
+  names(boot_ci$smterms) <- layout$smterm_names
+
+  coef_template$boot_ci <- boot_ci
+  coef_template$ci_meta <- list(
+    type = "bootstrap",
+    level = primary_conf,
+    levels = conf,
+    boot_type = type,
+    B_requested = B_requested,
+    B_used = boot_result$R,
+    n_failed = n_failed,
+    failure_rate = failure_rate,
+    method = method
+  )
 
   coef_template
 }

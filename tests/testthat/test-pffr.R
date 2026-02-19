@@ -1569,9 +1569,20 @@ test_that("coefboot.pffr runs on simple pffr model", {
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
   expect_true("smterms" %in% names(boot_ci))
+  expect_true("boot_ci" %in% names(boot_ci))
+  expect_true("ci_meta" %in% names(boot_ci))
 
   # pterms should have CI columns
   expect_true(ncol(boot_ci$pterms) > 1)
+  expect_true(all(c("lower", "upper") %in% colnames(boot_ci$pterms)))
+  expect_true(any(!is.na(boot_ci$pterms[, "lower"])))
+
+  # At least one bootstrap replicate should succeed
+  expect_lt(boot_ci$ci_meta$n_failed, boot_ci$ci_meta$B_requested)
+  expect_gte(boot_ci$ci_meta$B_used, 1)
+  expect_true(is.numeric(boot_ci$ci_meta$failure_rate))
+  expect_gte(boot_ci$ci_meta$failure_rate, 0)
+  expect_lte(boot_ci$ci_meta$failure_rate, 1)
 })
 
 test_that("coefboot.pffr residual resampling method works", {
@@ -1582,6 +1593,7 @@ test_that("coefboot.pffr residual resampling method works", {
   # Test residual method
   boot_ci <- pffr_coefboot(m, B = 5, method = "residual", showProgress = FALSE)
   expect_true(is.list(boot_ci))
+  expect_lt(boot_ci$ci_meta$n_failed, boot_ci$ci_meta$B_requested)
 
   # Test centered residual method
   boot_ci_c <- pffr_coefboot(
@@ -1591,6 +1603,7 @@ test_that("coefboot.pffr residual resampling method works", {
     showProgress = FALSE
   )
   expect_true(is.list(boot_ci_c))
+  expect_lt(boot_ci_c$ci_meta$n_failed, boot_ci_c$ci_meta$B_requested)
 })
 
 test_that("coefboot.pffr works with sparse/irregular data", {
@@ -1604,6 +1617,7 @@ test_that("coefboot.pffr works with sparse/irregular data", {
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
   expect_true("smterms" %in% names(boot_ci))
+  expect_lt(boot_ci$ci_meta$n_failed, boot_ci$ci_meta$B_requested)
 })
 
 test_that("coefboot.pffr works with gaulss family", {
@@ -1619,6 +1633,147 @@ test_that("coefboot.pffr works with gaulss family", {
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
   expect_true("smterms" %in% names(boot_ci))
+  expect_lt(boot_ci$ci_meta$n_failed, boot_ci$ci_meta$B_requested)
+})
+
+test_that("coefboot percentile ordering and labels are correct", {
+  set.seed(42)
+  x <- rnorm(5000)
+  conf <- c(0.9, 0.95)
+  q <- compute_percentile_ci(x, conf)
+
+  expect_length(q, 4)
+  expect_lt(q[1], q[2]) # lower_90 < upper_90
+  expect_lt(q[3], q[4]) # lower_95 < upper_95
+  expect_lte(q[3], q[1]) # lower_95 <= lower_90
+  expect_lte(q[2], q[4]) # upper_90 <= upper_95
+
+  expect_identical(format_boot_conf_label(0.9), "90")
+  expect_identical(format_boot_conf_label(0.95), "95")
+  expect_identical(format_boot_conf_label(0.975), "97.5")
+
+  mock_boot <- list(t = matrix(x, ncol = 1))
+  ci_mat <- compute_boot_cis(
+    boot_result = mock_boot,
+    indices = 1,
+    conf = conf,
+    type = "percent"
+  )
+  expect_identical(
+    colnames(ci_mat),
+    c("lower_90", "upper_90", "lower_95", "upper_95")
+  )
+})
+
+test_that("coefboot uses first confidence level as primary level", {
+  skip_on_cran()
+
+  m <- get_xlin_model()
+  boot_ci <- pffr_coefboot(
+    m,
+    B = 5,
+    conf = c(0.9, 0.95),
+    showProgress = FALSE
+  )
+
+  expect_equal(boot_ci$ci_meta$level, 0.9)
+  expect_equal(boot_ci$boot_ci$primary_conf, 0.9)
+
+  first_ok <- which(
+    is.finite(boot_ci$pterms[, "lower"]) &
+      is.finite(boot_ci$boot_ci$pterms[, "lower_90"])
+  )[1]
+  expect_false(is.na(first_ok))
+  expect_equal(
+    boot_ci$pterms[first_ok, "lower"],
+    boot_ci$boot_ci$pterms[first_ok, "lower_90"]
+  )
+  expect_equal(
+    boot_ci$pterms[first_ok, "upper"],
+    boot_ci$boot_ci$pterms[first_ok, "upper_90"]
+  )
+})
+
+test_that("handle_failed_replicates warns and reports failure metadata", {
+  mock_boot <- list(
+    t = rbind(
+      c(NA_real_, NA_real_),
+      c(1, 2),
+      c(NA_real_, NA_real_),
+      c(3, 4)
+    ),
+    R = 4L
+  )
+  out <- expect_warning(
+    handle_failed_replicates(mock_boot, B = 4L),
+    "bootstrap replicates failed"
+  )
+  expect_identical(attr(out, "n_failed"), 2L)
+  expect_identical(attr(out, "B_requested"), 4L)
+  expect_equal(attr(out, "failure_rate"), 0.5)
+  expect_identical(out$R, 2L)
+  expect_equal(nrow(out$t), 2L)
+})
+
+test_that("coef supports fixed eval_grid for term-aligned extraction", {
+  skip_on_cran()
+
+  m <- get_multiterm_model()
+  template <- coef(
+    m,
+    se = FALSE,
+    sandwich = "none",
+    ci = "none",
+    n1 = 40,
+    n2 = 40,
+    n3 = 20
+  )
+  eval_grid <- build_coefboot_eval_grid(m, n1 = 40, n2 = 40, n3 = 20)
+
+  # Force a resample that excludes observed min/max xsmoo values.
+  mc <- prepare_modcall_for_bootstrap(m)
+  n <- nrow(mc$data)
+  idx_pool <- setdiff(seq_len(n), c(which.min(mc$data$xsmoo), which.max(mc$data$xsmoo)))
+  set.seed(11)
+  idx <- sample(idx_pool, n, replace = TRUE)
+
+  mc_b <- resample_grid_observations(mc, mc$data, idx)
+  m_b <- eval(mc_b)
+
+  co_default <- coef(
+    m_b,
+    se = FALSE,
+    sandwich = "none",
+    ci = "none",
+    n1 = 40,
+    n2 = 40,
+    n3 = 20
+  )
+  co_fixed <- coef(
+    m_b,
+    se = FALSE,
+    sandwich = "none",
+    ci = "none",
+    n1 = 40,
+    n2 = 40,
+    n3 = 20,
+    eval_grid = eval_grid
+  )
+
+  # Smooth with xsmoo should be range-shrunk in default but fixed under eval_grid.
+  ind <- which(vapply(co_default$smterms, function(sm) {
+    "xsmoo" %in% colnames(sm$coef)
+  }, logical(1)))[1]
+  expect_false(is.na(ind))
+
+  expect_false(isTRUE(all.equal(
+    co_default$smterms[[ind]]$coef[, "xsmoo"],
+    template$smterms[[ind]]$coef[, "xsmoo"]
+  )))
+  expect_equal(
+    co_fixed$smterms[[ind]]$coef[, "xsmoo"],
+    template$smterms[[ind]]$coef[, "xsmoo"]
+  )
 })
 
 test_that("pffrGLS errors on sparse data (not yet implemented)", {

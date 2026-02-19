@@ -709,6 +709,61 @@ finalize_grid_by_var <- function(d, trm) {
   d
 }
 
+#' Resolve optional fixed evaluation grid for one smooth term
+#'
+#' @param eval_grid Optional list of per-term evaluation grids.
+#' @param smooth_names Character vector of smooth names from object$smooth.
+#' @param i Smooth term index.
+#' @returns Data frame grid or NULL.
+#' @keywords internal
+resolve_eval_grid_for_term <- function(eval_grid, smooth_names, i) {
+  if (is.null(eval_grid)) return(NULL)
+  if (!is.list(eval_grid)) {
+    stop("'eval_grid' must be a list when supplied.")
+  }
+
+  d <- NULL
+  if (!is.null(names(eval_grid)) && smooth_names[i] %in% names(eval_grid)) {
+    d <- eval_grid[[smooth_names[i]]]
+  }
+  if (is.null(d) && length(eval_grid) >= i) {
+    d <- eval_grid[[i]]
+  }
+  d
+}
+
+#' Ensure evaluation grid has axis attributes used by coef extraction
+#'
+#' @param d Evaluation grid data frame.
+#' @param trm Smooth term object.
+#' @param is_pcre Logical, is this a pcre term?
+#' @param pffr_info List with yind_name.
+#' @returns Data frame with xm/ym/zm attributes set.
+#' @keywords internal
+ensure_grid_axis_attributes <- function(d, trm, is_pcre, pffr_info) {
+  if (!is.data.frame(d)) {
+    stop("Each 'eval_grid' entry must be a data.frame.")
+  }
+  if (is.null(attr(d, "xm")) && trm$term[1] %in% names(d)) {
+    attr(d, "xm") <- unique(d[[trm$term[1]]])
+  }
+
+  if (trm$dim >= 2 || is_pcre) {
+    y_term <- if (is_pcre) paste0(pffr_info$yind_name, ".vec") else trm$term[2]
+    if (is.null(attr(d, "ym")) && y_term %in% names(d)) {
+      attr(d, "ym") <- unique(d[[y_term]])
+    }
+  }
+
+  if (trm$dim >= 3 && length(trm$term) >= 3 && trm$term[3] %in% names(d)) {
+    if (is.null(attr(d, "zm"))) {
+      attr(d, "zm") <- unique(d[[trm$term[3]]])
+    }
+  }
+
+  d
+}
+
 #' Compute predictions for coefficient extraction
 #'
 #' Evaluates smooth term on grid and computes coefficients and standard errors.
@@ -1069,8 +1124,11 @@ coef.pffr <- function(
   }
   if (!is.null(sim_seed)) sim_seed <- as.integer(sim_seed)
 
+  dots <- list(...)
+  eval_grid <- dots$eval_grid %||% NULL
+
   # Warn if deprecated Ktt argument is passed
-  if ("Ktt" %in% names(list(...))) {
+  if ("Ktt" %in% names(dots)) {
     warning(
       "The 'Ktt' argument is deprecated and ignored. ",
       "Use sandwich=\"cluster\" for robust standard errors.",
@@ -1110,13 +1168,27 @@ coef.pffr <- function(
       }
 
       # Generate evaluation grid and compute predictions
-      d <- coef_make_data_grid(
-        trm,
-        object$model,
-        pffr_info,
-        grid_sizes,
-        is_pcre
+      d <- resolve_eval_grid_for_term(
+        eval_grid = eval_grid,
+        smooth_names = names(object$smooth),
+        i = i
       )
+      if (is.null(d)) {
+        d <- coef_make_data_grid(
+          trm,
+          object$model,
+          pffr_info,
+          grid_sizes,
+          is_pcre
+        )
+      } else {
+        d <- ensure_grid_axis_attributes(
+          d = d,
+          trm = trm,
+          is_pcre = is_pcre,
+          pffr_info = pffr_info
+        )
+      }
       P <- coef_get_predictions(
         trm,
         d,
