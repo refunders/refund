@@ -530,6 +530,105 @@ study2_main_file_key <- function(dgp_id, n, grid_label, rep_id) {
   sprintf("dgp%03d_n%03d_grid%s_rep%03d", dgp_id, n, grid_label, rep_id)
 }
 
+#' List existing Study 2 main result files (new factorial filename pattern)
+#'
+#' @param output_dir Study 2 main output directory.
+#' @returns Tibble with parsed file keys.
+list_study2_main_files <- function(output_dir) {
+  files <- list.files(
+    output_dir,
+    pattern = "^dgp\\d+_n\\d+_grid\\d+x\\d+_rep\\d+\\.rds$",
+    full.names = FALSE
+  )
+  if (length(files) == 0) {
+    return(tibble(
+      file = character(),
+      dgp_id = integer(),
+      n = integer(),
+      grid_label = character(),
+      rep_id = integer()
+    ))
+  }
+
+  parsed <- stringr::str_match(
+    files,
+    "^dgp(\\d+)_n(\\d+)_grid(\\d+x\\d+)_rep(\\d+)\\.rds$"
+  )
+
+  tibble(
+    file = files,
+    dgp_id = as.integer(parsed[, 2]),
+    n = as.integer(parsed[, 3]),
+    grid_label = parsed[, 4],
+    rep_id = as.integer(parsed[, 5])
+  )
+}
+
+#' Build pending Study 2 main tasks for resume-friendly execution
+#'
+#' Determines which (dgp, rep) pairs are already complete across the requested
+#' grid labels and skips them up front. Partially complete pairs are retained and
+#' completed using the per-grid file checks in run_one_pair().
+#'
+#' @param settings DGP settings tibble from make_study2_settings().
+#' @param n_rep Number of reps requested.
+#' @param grid_labels Grid labels requested for this run.
+#' @param output_dir Study 2 main output directory.
+#' @returns List with task_grid and resume summary counts.
+plan_study2_main_tasks <- function(settings, n_rep, grid_labels, output_dir) {
+  grid_labels <- unique(as.character(grid_labels))
+
+  pair_grid <- settings |>
+    tidyr::crossing(rep_id = seq_len(n_rep))
+
+  target_grid_tasks <- pair_grid |>
+    dplyr::select(dgp_id, n, rep_id) |>
+    tidyr::crossing(grid_label = grid_labels)
+
+  existing_grid_tasks <- list_study2_main_files(output_dir) |>
+    dplyr::filter(grid_label %in% grid_labels) |>
+    dplyr::distinct(dgp_id, n, rep_id, grid_label)
+
+  pair_status <- target_grid_tasks |>
+    dplyr::count(dgp_id, n, rep_id, name = "n_grid_target") |>
+    dplyr::left_join(
+      existing_grid_tasks |>
+        dplyr::count(dgp_id, n, rep_id, name = "n_grid_done"),
+      by = c("dgp_id", "n", "rep_id")
+    ) |>
+    dplyr::mutate(
+      n_grid_done = tidyr::replace_na(n_grid_done, 0L),
+      pair_complete = n_grid_done >= n_grid_target
+    )
+
+  complete_pairs <- pair_status |>
+    dplyr::filter(pair_complete) |>
+    dplyr::select(dgp_id, n, rep_id)
+
+  task_grid <- pair_grid |>
+    dplyr::anti_join(complete_pairs, by = c("dgp_id", "n", "rep_id"))
+
+  pending_grid_tasks <- target_grid_tasks |>
+    dplyr::anti_join(
+      existing_grid_tasks,
+      by = c("dgp_id", "n", "rep_id", "grid_label")
+    )
+
+  list(
+    task_grid = task_grid,
+    pair_status = pair_status,
+    total_pairs = nrow(pair_grid),
+    complete_pairs = sum(pair_status$pair_complete),
+    partial_pairs = sum(
+      pair_status$n_grid_done > 0 & !pair_status$pair_complete
+    ),
+    pending_pairs = nrow(task_grid),
+    total_grid_tasks = nrow(target_grid_tasks),
+    existing_grid_tasks = nrow(existing_grid_tasks),
+    pending_grid_tasks = nrow(pending_grid_tasks)
+  )
+}
+
 #' Run Study 2 pilot phase
 #'
 #' @param n_rep Number of reps per DGP x grid.
@@ -876,8 +975,28 @@ run_study2_main <- function(
   cat("SNR levels:", paste(sort(unique(settings$snr)), collapse = ", "), "\n")
   cat("Grid levels:", paste(grid_labels, collapse = " vs "), "\n")
   cat("Reps per cell:", n_rep, "\n")
-  cat("Total fits:", nrow(settings) * length(grid_labels) * n_rep, "\n")
+  cat(
+    "Total fits (planned):",
+    nrow(settings) * length(grid_labels) * n_rep,
+    "\n"
+  )
   cat("Output dir:", output_dir, "\n\n")
+
+  resume_plan <- plan_study2_main_tasks(
+    settings = settings,
+    n_rep = n_rep,
+    grid_labels = grid_labels,
+    output_dir = output_dir
+  )
+  task_grid <- resume_plan$task_grid
+
+  cat("Resume scan:\n")
+  cat("  Pair tasks total:", resume_plan$total_pairs, "\n")
+  cat("  Pair tasks complete (skipped):", resume_plan$complete_pairs, "\n")
+  cat("  Pair tasks partial (resume):", resume_plan$partial_pairs, "\n")
+  cat("  Pair tasks pending:", resume_plan$pending_pairs, "\n")
+  cat("  Grid tasks existing:", resume_plan$existing_grid_tasks, "\n")
+  cat("  Grid tasks pending:", resume_plan$pending_grid_tasks, "\n\n")
 
   # Worker function for one (DGP, rep) pair across all grid levels
   run_one_pair <- function(row, rep_id, alpha) {
@@ -964,7 +1083,10 @@ run_study2_main <- function(
   }
 
   # Run all (DGP, rep) pairs
-  if (parallel && requireNamespace("furrr", quietly = TRUE)) {
+  if (nrow(task_grid) == 0) {
+    cat("No pending Study 2 pair tasks. Loading existing results only.\n")
+    results <- tibble()
+  } else if (parallel && requireNamespace("furrr", quietly = TRUE)) {
     old_plan <- future::plan()
     on.exit(future::plan(old_plan), add = TRUE)
     future::plan(future::multicore, workers = n_workers)
@@ -972,9 +1094,7 @@ run_study2_main <- function(
     is_dev_mode <- file.exists("DESCRIPTION")
     pkg_dir <- normalizePath(".")
 
-    # Create all (DGP, rep) combinations
-    grid <- settings |> tidyr::crossing(rep_id = seq_len(n_rep))
-    rows <- split(grid, seq_len(nrow(grid)))
+    rows <- split(task_grid, seq_len(nrow(task_grid)))
 
     results <- furrr::future_map_dfr(
       rows,
@@ -1013,14 +1133,13 @@ run_study2_main <- function(
   } else {
     # Sequential
     results <- list()
-    grid <- settings |> tidyr::crossing(rep_id = seq_len(n_rep))
 
-    for (i in seq_len(nrow(grid))) {
-      row <- as.list(grid[i, ])
+    for (i in seq_len(nrow(task_grid))) {
+      row <- as.list(task_grid[i, ])
       cat(sprintf(
         "\r[%d/%d] dgp=%d (corr=%s, n=%d, snr=%g), rep=%d",
         i,
-        nrow(grid),
+        nrow(task_grid),
         row$dgp_id,
         row$corr_type,
         row$n,
