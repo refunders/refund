@@ -3,7 +3,9 @@
 # ===========================================================================
 #
 # Quantifies how CI quality and runtime change with sample size (n) and
-# response/covariate observation grid resolution, including CL2 correction.
+# response grid resolution (nygrid), including CL2 correction. The covariate
+# grid (nxgrid) is fixed in the main study to isolate the CL2-relevant scaling
+# dimension (cluster block size over t / nygrid).
 #
 # Design:
 #   - Gaussian family (fixed)
@@ -11,10 +13,10 @@
 #   - 3 sample sizes: n = 20, 40, 80
 #   - 2 SNR levels: 25 (high), 3 (low)
 #   - Full model: ff + linear + smooth + concurrent
-#   - Grid: nxgrid in {30,60,90} x nygrid in {40,80,120} (9 combos, factorial)
-#   - Factorial DGP design: correlation x n x snr; grid factorial and paired
+#   - Main grid factor: nygrid in {40,80,120} with nxgrid fixed at 60
+#   - Factorial DGP design: correlation x n x snr; nygrid paired within task
 #   - Paired within each (correlation, n, snr, rep): generate finest grid once,
-#     deterministic subsampling for coarser grids
+#     deterministic subsampling for smaller nygrid (and fixed nxgrid = 60)
 #
 # Phases:
 #   Pilot: 30 reps per DGP x grid for timing + crude coverage
@@ -48,21 +50,47 @@ STUDY2_SNR_LEVELS <- c(25, 3)
 STUDY2_WIGGLINESS <- 5
 STUDY2_TERMS <- c("ff", "linear", "smooth", "concurrent")
 
-# Grid levels: full factorial nxgrid x nygrid, subsample from finest
-STUDY2_NXGRID_LEVELS <- c(30L, 60L, 90L)
+# Grid levels: main study varies nygrid only, with nxgrid fixed
+STUDY2_FIXED_NXGRID <- 60L
+# Fine generation grid still uses nx=90 to allow optional nx-side checks
+STUDY2_NXGRID_LEVELS_ALL <- c(30L, 60L, 90L)
 STUDY2_NYGRID_LEVELS <- c(40L, 80L, 120L)
-STUDY2_FINE_NX <- max(STUDY2_NXGRID_LEVELS)
+STUDY2_FINE_NX <- max(STUDY2_NXGRID_LEVELS_ALL)
 STUDY2_FINE_NY <- max(STUDY2_NYGRID_LEVELS)
 
+study2_grid_label_y <- function(nygrid) {
+  sprintf("y%d", as.integer(nygrid))
+}
+
+study2_parse_nygrid <- function(grid_label) {
+  grid_label <- as.character(grid_label)
+  if (grepl("^y\\d+$", grid_label)) {
+    return(as.integer(sub("^y", "", grid_label)))
+  }
+  if (grepl("^\\d+x\\d+$", grid_label)) {
+    return(as.integer(sub("^\\d+x", "", grid_label)))
+  }
+  stop("Unsupported Study 2 grid label: ", grid_label)
+}
+
 STUDY2_GRIDS <- local({
-  combos <- expand.grid(
-    nxgrid = STUDY2_NXGRID_LEVELS,
-    nygrid = STUDY2_NYGRID_LEVELS
-  )
-  grids <- lapply(seq_len(nrow(combos)), function(i) {
-    list(nxgrid = combos$nxgrid[i], nygrid = combos$nygrid[i])
+  grids <- lapply(STUDY2_NYGRID_LEVELS, function(ny) {
+    list(nxgrid = STUDY2_FIXED_NXGRID, nygrid = as.integer(ny))
   })
-  names(grids) <- sprintf("%dx%d", combos$nxgrid, combos$nygrid)
+  names(grids) <- vapply(
+    STUDY2_NYGRID_LEVELS,
+    study2_grid_label_y,
+    character(1)
+  )
+  grids
+})
+
+STUDY2_NX_SIDECHECK_GRIDS <- local({
+  ny_fixed <- 80L
+  grids <- lapply(STUDY2_NXGRID_LEVELS_ALL, function(nx) {
+    list(nxgrid = as.integer(nx), nygrid = ny_fixed)
+  })
+  names(grids) <- sprintf("x%d_y%d", STUDY2_NXGRID_LEVELS_ALL, ny_fixed)
   grids
 })
 
@@ -527,7 +555,8 @@ atomic_saveRDS <- function(obj, path) {
 }
 
 study2_main_file_key <- function(dgp_id, n, grid_label, rep_id) {
-  sprintf("dgp%03d_n%03d_grid%s_rep%03d", dgp_id, n, grid_label, rep_id)
+  nygrid <- study2_parse_nygrid(grid_label)
+  sprintf("dgp%03d_n%03d_y%03d_rep%03d", dgp_id, n, nygrid, rep_id)
 }
 
 #' List existing Study 2 main result files (new factorial filename pattern)
@@ -537,7 +566,7 @@ study2_main_file_key <- function(dgp_id, n, grid_label, rep_id) {
 list_study2_main_files <- function(output_dir) {
   files <- list.files(
     output_dir,
-    pattern = "^dgp\\d+_n\\d+_grid\\d+x\\d+_rep\\d+\\.rds$",
+    pattern = "^dgp\\d+_n\\d+_y\\d+_rep\\d+\\.rds$",
     full.names = FALSE
   )
   if (length(files) == 0) {
@@ -552,14 +581,14 @@ list_study2_main_files <- function(output_dir) {
 
   parsed <- stringr::str_match(
     files,
-    "^dgp(\\d+)_n(\\d+)_grid(\\d+x\\d+)_rep(\\d+)\\.rds$"
+    "^dgp(\\d+)_n(\\d+)_y(\\d+)_rep(\\d+)\\.rds$"
   )
 
   tibble(
     file = files,
     dgp_id = as.integer(parsed[, 2]),
     n = as.integer(parsed[, 3]),
-    grid_label = parsed[, 4],
+    grid_label = study2_grid_label_y(as.integer(parsed[, 4])),
     rep_id = as.integer(parsed[, 5])
   )
 }
@@ -647,17 +676,18 @@ run_study2_pilot <- function(
   settings <- make_study2_settings()
   grid_labels <- names(STUDY2_GRIDS)
 
-  cat("Study 2 Pilot: Grid Refinement\n")
+  cat("Study 2 Pilot: Grid Refinement (n x nygrid; nxgrid fixed)\n")
   cat("==============================\n")
   cat("DGP cells:", nrow(settings), "\n")
   cat("n levels:", paste(sort(unique(settings$n)), collapse = ", "), "\n")
   cat("SNR levels:", paste(sort(unique(settings$snr)), collapse = ", "), "\n")
-  cat("Grid levels:", paste(grid_labels, collapse = ", "), "\n")
+  cat("Grid levels (nygrid):", paste(grid_labels, collapse = ", "), "\n")
+  cat("Fixed nxgrid:", STUDY2_FIXED_NXGRID, "\n")
   cat("Reps per cell:", n_rep, "\n")
   cat("Parallel:", parallel, "workers:", n_workers, "\n\n")
 
   # Build task grid: each task is one (DGP, rep) combination
-  # (all 3 grid levels are fitted within each task for paired comparison)
+  # (all nygrid levels are fitted within each task for paired comparison)
   task_grid <- settings |> tidyr::crossing(rep_id = seq_len(n_rep))
 
   # Worker function: one (DGP, rep) → fit all grid levels
@@ -860,7 +890,7 @@ run_study2_pilot <- function(
   }
 
   timing_scaling <- if (nrow(timing_summary) > 0) {
-    baseline_label <- "30x40"
+    baseline_label <- study2_grid_label_y(min(STUDY2_NYGRID_LEVELS))
     timing_summary |>
       dplyr::group_by(n, snr, corr_type) |>
       dplyr::mutate(
@@ -888,7 +918,7 @@ run_study2_pilot <- function(
   cat("\nPilot Timing Summary:\n")
   print(timing_summary)
   cat(
-    "\nPilot Timing Scaling (median_time / 30x40 baseline within n,snr,corr):\n"
+    "\nPilot Timing Scaling (median_time / y40 baseline within n,snr,corr):\n"
   )
   print(
     timing_scaling |>
@@ -937,8 +967,8 @@ run_study2_pilot <- function(
 #' Run Study 2 main phase
 #'
 #' @param n_rep Number of reps per DGP x grid cell.
-#' @param grid_labels Character vector of grid labels to run. Default uses all
-#'   9 factorial nxgrid x nygrid combinations (e.g. "30x40", "60x120").
+#' @param grid_labels Character vector of nygrid labels to run (e.g. "y40",
+#'   "y80", "y120"). nxgrid is fixed at STUDY2_FIXED_NXGRID for the main study.
 #' @param parallel Use parallel processing?
 #' @param n_workers Number of workers.
 #' @param output_dir Output directory.
@@ -968,12 +998,17 @@ run_study2_main <- function(
     grid_labels <- valid_labels
   }
 
-  cat("Study 2 Main: Grid Refinement (factorial n x snr x nxgrid x nygrid)\n")
-  cat("===================================================================\n")
+  cat(
+    "Study 2 Main: Grid Refinement (factorial n x snr x nygrid; nxgrid fixed)\n"
+  )
+  cat(
+    "========================================================================\n"
+  )
   cat("DGP cells:", nrow(settings), "\n")
   cat("n levels:", paste(sort(unique(settings$n)), collapse = ", "), "\n")
   cat("SNR levels:", paste(sort(unique(settings$snr)), collapse = ", "), "\n")
-  cat("Grid levels:", paste(grid_labels, collapse = " vs "), "\n")
+  cat("Grid levels (nygrid):", paste(grid_labels, collapse = " vs "), "\n")
+  cat("Fixed nxgrid:", STUDY2_FIXED_NXGRID, "\n")
   cat("Reps per cell:", n_rep, "\n")
   cat(
     "Total fits (planned):",
@@ -1184,7 +1219,7 @@ run_study2_main <- function(
 load_study2_results <- function(output_dir) {
   all_files <- list.files(
     output_dir,
-    pattern = "^dgp\\d+_n\\d+_grid\\w+_rep\\d+\\.rds$",
+    pattern = "^dgp\\d+_n\\d+_y\\d+_rep\\d+\\.rds$",
     full.names = TRUE
   )
   if (length(all_files) == 0) return(tibble())
@@ -1227,10 +1262,10 @@ compute_study2_cov_quality <- function(output_dir, settings, grid_labels) {
           files <- list.files(
             output_dir,
             pattern = sprintf(
-              "^dgp%03d_n%03d_grid%s_rep\\d+\\.rds$",
+              "^dgp%03d_n%03d_y%03d_rep\\d+\\.rds$",
               row$dgp_id,
               row$n,
-              grid_label
+              study2_parse_nygrid(grid_label)
             ),
             full.names = TRUE
           )
@@ -1344,20 +1379,22 @@ validate_paired_grids <- function(seed = 5555) {
 
   sims <- generate_paired_data(row, seed)
 
-  # Check: truth on coarse grid should match subsampled fine truth
-  fine_truth_ff <- sims$fine$truth$beta$`ff(X1)`
-  coarse_truth_ff <- sims$coarse$truth$beta$`ff(X1)`
+  coarse_label <- study2_grid_label_y(min(STUDY2_NYGRID_LEVELS))
+  fine_label <- study2_grid_label_y(max(STUDY2_NYGRID_LEVELS))
 
-  # Subsample fine truth to coarse indices
-  s_idx <- sims$coarse$s_idx
-  t_idx <- sims$coarse$t_idx
-  fine_subsampled <- fine_truth_ff[s_idx, t_idx]
+  # Check: truth on smaller-ny grid should match subsampled fine truth
+  fine_truth_ff <- sims[[fine_label]]$truth$beta$`ff(X1)`
+  coarse_truth_ff <- sims[[coarse_label]]$truth$beta$`ff(X1)`
+
+  # Subsample fine truth to coarse t indices only: nxgrid is already fixed (60)
+  t_idx <- sims[[coarse_label]]$t_idx
+  fine_subsampled <- fine_truth_ff[, t_idx, drop = FALSE]
 
   max_diff <- max(abs(coarse_truth_ff - fine_subsampled))
 
   # Linear term
-  fine_truth_lin <- sims$fine$truth$beta$zlin
-  coarse_truth_lin <- sims$coarse$truth$beta$zlin
+  fine_truth_lin <- sims[[fine_label]]$truth$beta$zlin
+  coarse_truth_lin <- sims[[coarse_label]]$truth$beta$zlin
   fine_sub_lin <- fine_truth_lin[t_idx]
   max_diff_lin <- max(abs(coarse_truth_lin - fine_sub_lin))
 
@@ -1395,11 +1432,11 @@ if (sys.nframe() == 0) {
     cat("Study 2: Pilot phase (30 reps)\n\n")
     pilot <- run_study2_pilot(n_rep = 30L, output_dir = base_dir)
   } else if (mode == "main") {
-    cat("Using full factorial design with all nxgrid x nygrid combinations\n")
+    cat("Using factorial n x nygrid design (nxgrid fixed at 60)\n")
 
     main_results <- run_study2_main(
       n_rep = 50L,
-      grid_labels = names(STUDY2_GRIDS), # all 9 nxgrid x nygrid combos
+      grid_labels = names(STUDY2_GRIDS), # nygrid levels with fixed nxgrid
       parallel = TRUE,
       n_workers = max(1L, min(10L, parallel::detectCores() - 1L)),
       output_dir = file.path(base_dir, "main")

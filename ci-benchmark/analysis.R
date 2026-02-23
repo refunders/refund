@@ -2122,28 +2122,107 @@ cat(sprintf(
 #'
 #' # Study 2: Grid Refinement and Sandwich Covariance Quality
 #'
-#' This study quantifies whether finer response/covariate observation grids
-#' improve cluster-robust sandwich CI calibration. Data are generated on the
-#' finest grid (90 x 120) and deterministically subsampled to coarser grids
-#' (60 x 80, 30 x 40), ensuring truly paired comparisons.
+#' This study quantifies whether finer response grids (nygrid) improve
+#' cluster-robust sandwich CI calibration, while holding the covariate grid
+#' fixed (nxgrid = 60) to isolate the CL2-relevant scaling dimension.
 #'
-#' Design:
+#' Target design (factorial):
 #'
-#' - **Gaussian family** (fixed), n = 200, SNR = 25, wiggliness = 5
+#' - **Gaussian family** (fixed), wiggliness = 5
+#' - **3 sample sizes**: n = 20, 40, 80
+#' - **2 SNR levels**: 3, 25
 #' - **3 correlation structures**: IID, AR1(0.9), fourier_pos(0.3)
 #' - **Full model**: ff + linear + smooth + concurrent
-#' - **3 grid levels**: coarse (30 x 40), medium (60 x 80), fine (90 x 120)
-#' - **2 methods**: default (no sandwich) and cluster-robust sandwich
-#' - **120 reps** per DGP cell (3 corr x 3 grid = 9 cells, 1080 fits total)
+#' - **Main grid factor**: nygrid in {40, 80, 120} with **nxgrid fixed at 60**
+#' - **Methods**: default (no sandwich), cluster-robust sandwich; newer runs may
+#'   also include HC and CL2 variants
+#' - **120 reps** per DGP x grid cell (planned production target)
+#'
+#' Note: the downloaded archive is checked for completeness below, and this
+#' section reports preliminary results if only a subset of cells completed.
 #'
 
 #+ s2-colors
-COLORS_S2 <- c(default = "#1b9e77", cluster = "#d95f02")
-GRID_LABELS <- c(
-  coarse = "Coarse (30\u00d740)",
-  medium = "Medium (60\u00d780)",
-  fine = "Fine (90\u00d7120)"
+COLORS_S2 <- c(
+  default = "#1b9e77",
+  cluster = "#d95f02",
+  cl2 = "#7570b3",
+  hc = "#e6ab02"
 )
+S2_EXPECTED_N <- c(20L, 40L, 80L)
+S2_EXPECTED_SNR <- c(3, 25)
+S2_EXPECTED_CORR <- c("iid", "ar1", "fourier_pos")
+S2_FIXED_NXGRID <- 60L
+S2_EXPECTED_NYGRID <- c(40L, 80L, 120L)
+S2_EXPECTED_GRIDS <- paste0("y", S2_EXPECTED_NYGRID)
+S2_TARGET_REPS <- 120L
+
+normalize_s2_grid_label <- function(x) {
+  x <- as.character(x)
+  dplyr::case_when(
+    x == "coarse" ~ "y40",
+    x == "medium" ~ "y80",
+    x == "fine" ~ "y120",
+    TRUE ~ x
+  )
+}
+
+s2_extract_grid_info <- function(grid_labels) {
+  grid_labels <- as.character(grid_labels)
+  x_side <- stringr::str_match(grid_labels, "^x(\\d+)_y(\\d+)$")
+  x_pair <- stringr::str_match(grid_labels, "^(\\d+)x(\\d+)$")
+  y_only <- stringr::str_match(grid_labels, "^y(\\d+)$")
+
+  tibble(grid_label = grid_labels) |>
+    mutate(
+      nxgrid = dplyr::case_when(
+        !is.na(x_side[, 1]) ~ as.integer(x_side[, 2]),
+        !is.na(x_pair[, 1]) ~ as.integer(x_pair[, 2]),
+        !is.na(y_only[, 1]) ~ S2_FIXED_NXGRID,
+        TRUE ~ NA_integer_
+      ),
+      nygrid = dplyr::case_when(
+        !is.na(x_side[, 1]) ~ as.integer(x_side[, 3]),
+        !is.na(x_pair[, 1]) ~ as.integer(x_pair[, 3]),
+        !is.na(y_only[, 1]) ~ as.integer(y_only[, 2]),
+        TRUE ~ NA_integer_
+      )
+    )
+}
+
+format_s2_grid_label <- function(x) {
+  x <- as.character(x)
+  info <- s2_extract_grid_info(x)
+  dplyr::case_when(
+    grepl("^y\\d+$", x) ~ paste0("ny = ", info$nygrid),
+    grepl("^x\\d+_y\\d+$", x) ~
+      paste0("nx = ", info$nxgrid, ", ny = ", info$nygrid),
+    grepl("^\\d+x\\d+$", x) ~ gsub("x", "\u00d7", x, fixed = TRUE),
+    TRUE ~ x
+  )
+}
+
+order_s2_grid_levels <- function(grid_levels) {
+  s2_extract_grid_info(unique(grid_levels)) |>
+    dplyr::arrange(nxgrid, nygrid) |>
+    dplyr::pull(grid_label)
+}
+
+s2_safe_first <- function(x) {
+  x <- x[!is.na(x)]
+  if (length(x) == 0) return(NA_real_)
+  x[[1]]
+}
+
+s2_fmt_pct <- function(x) {
+  if (is.na(x)) return("NA")
+  sprintf("%.1f%%", 100 * x)
+}
+
+s2_fmt_pp <- function(x) {
+  if (is.na(x)) return("NA")
+  sprintf("%+.1fpp", 100 * x)
+}
 
 #'
 #' ## Study 2: Data Loading
@@ -2153,35 +2232,94 @@ GRID_LABELS <- c(
 s2_dir <- ci_path("ci-benchmark/study2-grid-refinement")
 s2_combined <- file.path(s2_dir, "main_results_combined.rds")
 s2_cov_file <- file.path(s2_dir, "cov_quality.rds")
+s2_main_dir <- file.path(s2_dir, "main")
 
-s2 <- if (file.exists(s2_combined)) {
-  readRDS(s2_combined)
-} else {
-  # Fall back to per-rep files
-  s2_main_dir <- file.path(s2_dir, "main")
-  s2_files <- list.files(
+s2_new_files <- list.files(
+  s2_main_dir,
+  pattern = "^dgp\\d+_n\\d+_y\\d+_rep\\d+\\.rds$",
+  full.names = TRUE
+)
+s2_legacy_factorial_files <- list.files(
+  s2_main_dir,
+  pattern = "^dgp\\d+_n\\d+_grid\\d+x\\d+_rep\\d+\\.rds$",
+  full.names = TRUE
+)
+s2_old_files <- list.files(
+  s2_main_dir,
+  pattern = "^dgp\\d+_grid\\w+_rep\\d+\\.rds$",
+  full.names = TRUE
+)
+
+if (
+  length(s2_new_files) > 0 &&
+    (length(s2_legacy_factorial_files) > 0 || length(s2_old_files) > 0)
+) {
+  stop(
+    "Detected both redesigned Study 2 files (_y###_) and legacy Study 2 files ",
+    "in ",
     s2_main_dir,
-    pattern = "^dgp\\d+_grid\\w+_rep\\d+\\.rds$",
-    full.names = TRUE
+    ". Remove legacy Study 2 outputs before analysis to ",
+    "avoid mixing incompatible designs."
   )
-  if (length(s2_files) == 0) stop("No Study 2 results found in ", s2_dir)
-  bind_rows(lapply(s2_files, function(f) {
+}
+
+s2 <- if (length(s2_new_files) > 0) {
+  bind_rows(lapply(s2_new_files, function(f) {
     obj <- readRDS(f)
     if (is.list(obj) && "metrics" %in% names(obj)) obj$metrics else obj
   }))
+} else if (length(s2_legacy_factorial_files) > 0) {
+  bind_rows(lapply(s2_legacy_factorial_files, function(f) {
+    obj <- readRDS(f)
+    if (is.list(obj) && "metrics" %in% names(obj)) obj$metrics else obj
+  }))
+} else if (length(s2_old_files) > 0) {
+  bind_rows(lapply(s2_old_files, function(f) {
+    obj <- readRDS(f)
+    if (is.list(obj) && "metrics" %in% names(obj)) obj$metrics else obj
+  }))
+} else if (file.exists(s2_combined)) {
+  readRDS(s2_combined)
+} else {
+  stop("No Study 2 results found in ", s2_dir)
 }
 
 s2 <- s2 |>
+  mutate(grid_label = normalize_s2_grid_label(grid_label))
+
+if (!all(c("nxgrid", "nygrid") %in% names(s2))) {
+  s2$nxgrid <- NA_integer_
+  s2$nygrid <- NA_integer_
+}
+grid_dims_from_label <- s2_extract_grid_info(s2$grid_label)
+s2$nxgrid <- ifelse(is.na(s2$nxgrid), grid_dims_from_label$nxgrid, s2$nxgrid)
+s2$nygrid <- ifelse(is.na(s2$nygrid), grid_dims_from_label$nygrid, s2$nygrid)
+
+s2_grid_levels <- order_s2_grid_levels(s2$grid_label)
+s2_grid_labels <- setNames(
+  format_s2_grid_label(s2_grid_levels),
+  s2_grid_levels
+)
+s2_grid_extrema <- s2_extract_grid_info(s2_grid_levels) |>
+  mutate(n_points = nxgrid * nygrid) |>
+  arrange(n_points, nxgrid, nygrid)
+s2_coarse_grid <- s2_grid_extrema$grid_label[[1]]
+s2_fine_grid <- s2_grid_extrema$grid_label[[nrow(s2_grid_extrema)]]
+s2_coarse_display <- unname(s2_grid_labels[s2_coarse_grid])
+s2_fine_display <- unname(s2_grid_labels[s2_fine_grid])
+
+s2 <- s2 |>
   mutate(
-    method = factor(method, levels = c("default", "cluster")),
+    method = factor(method, levels = c("default", "cluster", "cl2", "hc")),
+    n_f = factor(n, levels = sort(unique(c(S2_EXPECTED_N, n)))),
     term_type = factor(
       term_type,
       levels = c("intercept", "E(Y)", "linear", "concurrent", "smooth", "ff")
     ),
     grid_f = factor(
       grid_label,
-      levels = c("coarse", "medium", "fine"),
-      labels = GRID_LABELS
+      levels = s2_grid_levels,
+      labels = unname(s2_grid_labels[s2_grid_levels])
     ),
     corr_f = factor(
       corr_type,
@@ -2190,18 +2328,75 @@ s2 <- s2 |>
     )
   )
 
+s2_obs_reps <- s2 |>
+  distinct(n, snr, corr_type, grid_label, rep_id) |>
+  count(n, snr, corr_type, grid_label, name = "n_rep")
+s2_obs_cells <- s2_obs_reps |>
+  select(n, snr, corr_type, grid_label)
+s2_expected_cells <- tidyr::crossing(
+  n = S2_EXPECTED_N,
+  snr = S2_EXPECTED_SNR,
+  corr_type = S2_EXPECTED_CORR,
+  grid_label = S2_EXPECTED_GRIDS
+)
+s2_missing_cells <- anti_join(
+  s2_expected_cells,
+  s2_obs_cells,
+  by = c("n", "snr", "corr_type", "grid_label")
+)
+s2_extra_cells <- anti_join(
+  s2_obs_cells,
+  s2_expected_cells,
+  by = c("n", "snr", "corr_type", "grid_label")
+)
+s2_complete <- nrow(s2_missing_cells) == 0 &&
+  nrow(s2_extra_cells) == 0 &&
+  nrow(s2_obs_reps) > 0 &&
+  min(s2_obs_reps$n_rep) >= S2_TARGET_REPS
+
 cat("Study 2 loaded:", nrow(s2), "rows\n")
 cat("Grid levels:", paste(levels(s2$grid_f), collapse = ", "), "\n")
+cat("Fixed nxgrid (expected main design):", S2_FIXED_NXGRID, "\n")
 cat("Methods:", paste(levels(s2$method), collapse = ", "), "\n")
 cat("Correlations:", paste(levels(s2$corr_f), collapse = ", "), "\n")
 cat(
   "Reps per cell:",
   paste(
-    range(table(paste(s2$dgp_id, s2$grid_label, s2$method, s2$term_type))),
+    range(table(paste(
+      s2$dgp_id,
+      s2$grid_label,
+      s2$method,
+      s2$term_type
+    ))),
     collapse = "-"
   ),
   "\n"
 )
+cat(
+  "Expected Study 2 cells:",
+  nrow(s2_expected_cells),
+  "(target reps/cell:",
+  S2_TARGET_REPS,
+  ")\n"
+)
+cat("Observed Study 2 cells:", nrow(s2_obs_cells), "\n")
+cat("Missing expected cells:", nrow(s2_missing_cells), "\n")
+if (nrow(s2_obs_reps) > 0) {
+  cat(
+    "Observed reps per cell (range):",
+    paste(range(s2_obs_reps$n_rep), collapse = "-"),
+    "\n"
+  )
+}
+cat(
+  "Study 2 completeness:",
+  if (s2_complete) "COMPLETE" else "INCOMPLETE",
+  "\n"
+)
+if (nrow(s2_missing_cells) > 0) {
+  cat("First missing cells:\n")
+  print(head(s2_missing_cells, 10))
+}
 
 # Load covariance quality metrics if available
 s2_cov <- if (file.exists(s2_cov_file)) readRDS(s2_cov_file) else NULL
@@ -2213,9 +2408,9 @@ if (!is.null(s2_cov))
 #'
 
 #+ s2-summary
-s2_summary <- s2 |>
+s2_summary_by_n <- s2 |>
   dplyr::filter(!is.na(coverage)) |>
-  group_by(corr_f, grid_f, method, term_type) |>
+  group_by(n_f, corr_f, grid_f, method, term_type) |>
   summarize(
     mc_se = sd(coverage, na.rm = TRUE) / sqrt(n()),
     coverage = mean(coverage, na.rm = TRUE),
@@ -2227,6 +2422,22 @@ s2_summary <- s2 |>
     bias = mean(bias, na.rm = TRUE),
     fit_time = mean(fit_time, na.rm = TRUE),
     n_reps = n(),
+    .groups = "drop"
+  )
+
+s2_summary <- s2_summary_by_n |>
+  group_by(corr_f, grid_f, method, term_type) |>
+  summarize(
+    mc_se = sd(coverage, na.rm = TRUE) / sqrt(n()),
+    coverage = mean(coverage, na.rm = TRUE),
+    z_sd = mean(z_sd, na.rm = TRUE),
+    z_mean_sd = mean(z_mean_sd, na.rm = TRUE),
+    z_mean = mean(z_mean, na.rm = TRUE),
+    width = mean(width, na.rm = TRUE),
+    rmse = mean(rmse, na.rm = TRUE),
+    bias = mean(bias, na.rm = TRUE),
+    fit_time = mean(fit_time, na.rm = TRUE),
+    n_reps = sum(n_reps, na.rm = TRUE),
     .groups = "drop"
   )
 
@@ -2247,7 +2458,7 @@ s2_summary |>
   gt() |>
   tab_header(
     title = "Study 2: Coverage by Grid Level \u00d7 Correlation \u00d7 Method",
-    subtitle = "Coverage % (\u00b195% MC interval) and z_sd (target = 1)"
+    subtitle = "Coverage % (\u00b195% MC interval) and z_sd (target = 1), averaged over n"
   ) |>
   tab_spanner(label = "default", columns = starts_with("default_")) |>
   tab_spanner(label = "cluster", columns = starts_with("cluster_"))
@@ -2282,9 +2493,9 @@ s2_summary |>
   facet_wrap(~term_type, ncol = 3) +
   labs(
     title = "Study 2: Coverage Heatmap by Grid Level",
-    subtitle = "Paired design: same data subsampled to coarser grids",
+    subtitle = "Paired design (same data subsampled), averaged over n; nxgrid fixed at 60 in redesigned Study 2.",
     x = "Method",
-    y = "Correlation | Grid",
+    y = "Correlation | nygrid",
     fill = "Coverage"
   ) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
@@ -2296,7 +2507,7 @@ s2_summary |>
 #'
 
 #+ s2-coverage-by-grid, fig.width = 12, fig.height = 8
-s2_summary |>
+s2_summary_by_n |>
   dplyr::filter(
     term_type %in%
       c("intercept", "ff", "linear", "smooth", "concurrent", "E(Y)")
@@ -2323,13 +2534,13 @@ s2_summary |>
     linetype = "dashed",
     color = "red"
   ) +
-  facet_grid(corr_f ~ term_type) +
+  facet_grid(n_f + corr_f ~ term_type) +
   scale_y_continuous(labels = scales::percent, limits = c(0.3, 1)) +
   scale_color_manual(values = COLORS_S2) +
   labs(
-    title = "Study 2: Coverage by Grid Resolution",
-    subtitle = "Red dashed = 90% nominal. Error bars = 95% MC intervals.",
-    x = "Grid Resolution",
+    title = "Study 2: Coverage by nygrid (n shown explicitly)",
+    subtitle = "Red dashed = 90% nominal. Error bars = 95% MC intervals. nxgrid fixed at 60.",
+    x = "Response Grid (nygrid)",
     y = "Coverage",
     color = "Method"
   ) +
@@ -2346,51 +2557,101 @@ s2_summary |>
 #'
 
 #+ s2-paired-diff, fig.width = 12, fig.height = 7
-s2_paired <- s2 |>
-  dplyr::filter(
-    term_type %in%
-      c("intercept", "ff", "linear", "smooth", "concurrent", "E(Y)")
-  ) |>
-  select(dgp_id, rep_id, term_type, method, coverage, corr_f, grid_f) |>
-  pivot_wider(names_from = method, values_from = coverage) |>
-  mutate(diff = cluster - default)
+build_s2_paired_diff_summary <- function(s2_data, num_method, den_method) {
+  s2_data |>
+    dplyr::filter(
+      method %in% c(den_method, num_method),
+      term_type %in%
+        c("intercept", "ff", "linear", "smooth", "concurrent", "E(Y)")
+    ) |>
+    group_by(dgp_id, rep_id, n_f, term_type, method, corr_f, grid_f) |>
+    summarize(coverage = mean(coverage, na.rm = TRUE), .groups = "drop") |>
+    pivot_wider(
+      names_from = method,
+      values_from = coverage,
+      values_fn = mean
+    ) |>
+    mutate(
+      diff = .data[[num_method]] - .data[[den_method]]
+    ) |>
+    dplyr::filter(!is.na(diff)) |>
+    group_by(n_f, corr_f, grid_f, term_type) |>
+    summarize(
+      mean_diff = mean(diff, na.rm = TRUE),
+      se_diff = sd(diff, na.rm = TRUE) / sqrt(n()),
+      .groups = "drop"
+    )
+}
 
-s2_paired_summary <- s2_paired |>
-  group_by(corr_f, grid_f, term_type) |>
-  summarize(
-    mean_diff = mean(diff, na.rm = TRUE),
-    se_diff = sd(diff, na.rm = TRUE) / sqrt(n()),
-    .groups = "drop"
-  )
+plot_s2_paired_diff <- function(summary_df, title, subtitle) {
+  ggplot(
+    summary_df,
+    aes(x = grid_f, y = mean_diff, fill = corr_f)
+  ) +
+    geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+    geom_errorbar(
+      aes(
+        ymin = mean_diff - 1.96 * se_diff,
+        ymax = mean_diff + 1.96 * se_diff
+      ),
+      position = position_dodge(width = 0.7),
+      width = 0.2
+    ) +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    facet_grid(n_f ~ term_type) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 0.1)) +
+    scale_fill_brewer(palette = "Set1") +
+    labs(
+      title = title,
+      subtitle = subtitle,
+      x = "Response Grid (nygrid)",
+      y = "Coverage Difference",
+      fill = "Correlation"
+    ) +
+    theme(
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 30, hjust = 1)
+    )
+}
 
-ggplot(
+s2_paired_summary <- build_s2_paired_diff_summary(
+  s2_data = s2,
+  num_method = "cluster",
+  den_method = "default"
+)
+
+plot_s2_paired_diff(
   s2_paired_summary,
-  aes(x = grid_f, y = mean_diff, fill = corr_f)
-) +
-  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
-  geom_errorbar(
-    aes(
-      ymin = mean_diff - 1.96 * se_diff,
-      ymax = mean_diff + 1.96 * se_diff
-    ),
-    position = position_dodge(width = 0.7),
-    width = 0.2
-  ) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
-  facet_wrap(~term_type, ncol = 3) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 0.1)) +
-  scale_fill_brewer(palette = "Set1") +
-  labs(
-    title = "Study 2: Coverage Gain (cluster \u2212 default) by Grid Level",
-    subtitle = "Positive = cluster helps. Under IID, gain should be near 0.",
-    x = "Grid Resolution",
-    y = "Coverage Difference",
-    fill = "Correlation"
-  ) +
-  theme(
-    legend.position = "bottom",
-    axis.text.x = element_text(angle = 30, hjust = 1)
+  title = "Study 2: Coverage Gain (cluster \u2212 default) by Grid Level",
+  subtitle = "Positive = cluster helps. n shown explicitly; nxgrid fixed at 60."
+)
+
+#'
+#' ## Study 2: Coverage Improvement (cl2 - cluster) by Grid
+#'
+#' Paired comparison: incremental gain (or loss) from CL2 relative to cluster.
+#'
+
+#+ s2-paired-diff-cl2, fig.width = 12, fig.height = 7
+if (sum(as.character(s2$method) == "cl2", na.rm = TRUE) == 0) {
+  cat("No CL2 results available in Study 2 extract.\n")
+} else {
+  s2_paired_summary_cl2 <- build_s2_paired_diff_summary(
+    s2_data = s2,
+    num_method = "cl2",
+    den_method = "cluster"
   )
+
+  if (nrow(s2_paired_summary_cl2) == 0) {
+    cat("No paired CL2 vs cluster comparisons available in Study 2 extract.\n")
+  } else {
+    plot_s2_paired_diff(
+      s2_paired_summary_cl2,
+      title = "Study 2: Coverage Gain (CL2 \u2212 cluster) by Grid Level",
+      subtitle = "Positive = CL2 improves coverage over cluster. n shown explicitly; nxgrid fixed at 60."
+    )
+  }
+}
 
 #'
 #' ## Study 2: SE Calibration (z_sd) by Grid
@@ -2400,7 +2661,7 @@ ggplot(
 #'
 
 #+ s2-zsd-by-grid, fig.width = 12, fig.height = 8
-s2_summary |>
+s2_summary_by_n |>
   dplyr::filter(
     term_type %in%
       c("intercept", "ff", "linear", "smooth", "concurrent", "E(Y)")
@@ -2419,12 +2680,12 @@ s2_summary |>
     linetype = "dotted",
     color = "gray70"
   ) +
-  facet_grid(corr_f ~ term_type) +
+  facet_grid(n_f + corr_f ~ term_type) +
   scale_color_manual(values = COLORS_S2) +
   labs(
-    title = "Study 2: SE Calibration (z_sd) by Grid Resolution",
-    subtitle = "Dotted band = \u00b10.15 tolerance. z_sd > 1 = SEs too small.",
-    x = "Grid Resolution",
+    title = "Study 2: SE Calibration (z_sd) by nygrid (n shown explicitly)",
+    subtitle = "Dotted band = \u00b10.15 tolerance. z_sd > 1 = SEs too small. nxgrid fixed at 60.",
+    x = "Response Grid (nygrid)",
     y = "z_sd",
     color = "Method"
   ) +
@@ -2436,7 +2697,8 @@ s2_summary |>
 #'
 #' ## Study 2: Intercept Diagnostics by Grid
 #'
-#' On coarse grids (30x40), intercept coverage drops to ~60-68% despite
+#' On the smallest response grid (nygrid = 40), intercept coverage can drop
+#' sharply despite
 #' rep-averaged z_mean near 0 and z_sd near 1. The paradox resolves when
 #' we look at between-rep variance: sd(z_mean) is large on coarse grids,
 #' meaning individual reps have globally-shifted intercepts that cancel
@@ -2444,7 +2706,7 @@ s2_summary |>
 #'
 
 #+ s2-intercept-bias, fig.width = 10, fig.height = 9
-s2_intercept <- s2_summary |>
+s2_intercept <- s2_summary_by_n |>
   dplyr::filter(term_type == "intercept")
 
 p_zmean_sd <- ggplot(
@@ -2454,12 +2716,12 @@ p_zmean_sd <- ggplot(
   geom_point(size = 3, position = position_dodge(width = 0.3)) +
   geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
-  facet_wrap(~corr_f) +
+  facet_grid(n_f ~ corr_f) +
   scale_color_manual(values = COLORS_S2) +
   labs(
     title = "Intercept: Between-Rep Variance of z_mean",
     subtitle = "sd(z_mean) across reps. Large values = global intercept shifts driving undercoverage.",
-    x = "Grid Resolution",
+    x = "Response Grid (nygrid)",
     y = "sd(z_mean) across reps",
     color = "Method"
   ) +
@@ -2475,12 +2737,12 @@ p_zsd <- ggplot(
   geom_point(size = 3, position = position_dodge(width = 0.3)) +
   geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
   geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
-  facet_wrap(~corr_f) +
+  facet_grid(n_f ~ corr_f) +
   scale_color_manual(values = COLORS_S2) +
   labs(
     title = "Intercept z_sd by Grid Resolution",
     subtitle = "Within-rep z_sd (target = 1). Conditionally well-calibrated even on coarse grids.",
-    x = "Grid Resolution",
+    x = "Response Grid (nygrid)",
     y = "z_sd",
     color = "Method"
   ) +
@@ -2509,12 +2771,13 @@ p_cov <- ggplot(
     linetype = "dashed",
     color = "red"
   ) +
-  facet_wrap(~corr_f) +
-  scale_y_continuous(labels = scales::percent, limits = c(0.4, 1)) +
+  facet_grid(n_f ~ corr_f) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
   scale_color_manual(values = COLORS_S2) +
   labs(
     title = "Intercept Coverage by Grid Resolution",
-    x = "Grid Resolution",
+    subtitle = "nygrid effect by n (nxgrid fixed at 60).",
+    x = "Response Grid (nygrid)",
     y = "Coverage",
     color = "Method"
   ) +
@@ -2537,10 +2800,12 @@ p_zmean_sd / p_zsd / p_cov
 if (!is.null(s2_cov)) {
   s2_cov_plot <- s2_cov |>
     mutate(
+      grid_label = normalize_s2_grid_label(grid_label),
+      n_f = factor(n, levels = sort(unique(c(S2_EXPECTED_N, n)))),
       grid_f = factor(
         grid_label,
-        levels = c("coarse", "medium", "fine"),
-        labels = GRID_LABELS
+        levels = s2_grid_levels,
+        labels = unname(s2_grid_labels[s2_grid_levels])
       ),
       corr_f = factor(
         corr_type,
@@ -2566,12 +2831,12 @@ if (!is.null(s2_cov)) {
       position = position_dodge(width = 0.3)
     ) +
     geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
-    facet_grid(corr_f ~ term_type) +
+    facet_grid(n_f + corr_f ~ term_type) +
     scale_color_manual(values = COLORS_S2) +
     labs(
-      title = "Study 2: Diagonal Variance Ratio by Grid Resolution",
-      subtitle = "Median (IQR) of mean(SE\u00b2) / Var(est \u2212 truth). Target = 1.",
-      x = "Grid Resolution",
+      title = "Study 2: Diagonal Variance Ratio by nygrid (n shown explicitly)",
+      subtitle = "Median (IQR) of mean(SE\u00b2) / Var(est \u2212 truth). Target = 1. nxgrid fixed at 60.",
+      x = "Response Grid (nygrid)",
       y = "Diagonal Ratio",
       color = "Method"
     ) +
@@ -2588,17 +2853,17 @@ if (!is.null(s2_cov)) {
 #'
 
 #+ s2-width, fig.width = 12, fig.height = 8
-s2_summary |>
+s2_summary_by_n |>
   dplyr::filter(term_type %in% c("ff", "linear", "smooth", "concurrent")) |>
   ggplot(aes(x = grid_f, y = width, color = method, group = method)) +
   geom_point(size = 3, position = position_dodge(width = 0.3)) +
   geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
-  facet_grid(corr_f ~ term_type, scales = "free_y") +
+  facet_grid(n_f + corr_f ~ term_type, scales = "free_y") +
   scale_color_manual(values = COLORS_S2) +
   labs(
-    title = "Study 2: Mean CI Width by Grid Resolution",
-    subtitle = "Cluster CIs are wider under correlation; grid effect varies by term.",
-    x = "Grid Resolution",
+    title = "Study 2: Mean CI Width by nygrid (n shown explicitly)",
+    subtitle = "Cluster CIs are wider under correlation; nxgrid fixed at 60.",
+    x = "Response Grid (nygrid)",
     y = "Mean CI Width",
     color = "Method"
   ) +
@@ -2608,158 +2873,529 @@ s2_summary |>
   )
 
 #'
-#' ## Study 2: Timing by Grid
+#' ## Study 2: CL2 Inference Overhead (Targeted Timing Benchmark)
+#'
+#' Separate timing benchmark for method-specific `coef()` inference cost on a
+#' simplified IID Gaussian model (`ff + linear`, low wiggliness, high SNR). This
+#' isolates the incremental CL2 cost better than raw `fit_time`.
 #'
 
-#+ s2-timing
-s2_timing <- s2 |>
-  dplyr::filter(term_type == "ff") |>
-  group_by(corr_f, grid_f, method) |>
-  summarize(
-    mean_time = mean(fit_time, na.rm = TRUE),
-    median_time = median(fit_time, na.rm = TRUE),
-    .groups = "drop"
+#+ s2-cl2-inference-overhead, fig.width = 12, fig.height = 9
+s2_cl2_timing_dir <- file.path("ci-benchmark", "study2-cl2-timing")
+s2_cl2_timing_raw_file <- file.path(s2_cl2_timing_dir, "raw_timings.rds")
+s2_cl2_timing_overhead_csv <- file.path(
+  s2_cl2_timing_dir,
+  "summary_overheads.csv"
+)
+s2_cl2_nx_side_dir <- file.path("ci-benchmark", "study2-nx-sidecheck")
+s2_cl2_nx_side_raw_file <- file.path(s2_cl2_nx_side_dir, "raw_timings.rds")
+s2_cl2_nx_side_overhead_csv <- file.path(
+  s2_cl2_nx_side_dir,
+  "summary_overheads.csv"
+)
+
+summarize_cl2_timing_pairs <- function(raw_timings) {
+  raw_timings |>
+    dplyr::filter(ok %in% TRUE | is.na(ok)) |>
+    dplyr::filter(method %in% c("default", "cluster", "hc", "cl2")) |>
+    mutate(grid_label = normalize_s2_grid_label(grid_label)) |>
+    select(
+      rep_id,
+      seed,
+      n,
+      snr,
+      wiggliness,
+      corr_type,
+      grid_label,
+      nxgrid,
+      nygrid,
+      method,
+      fit_time,
+      infer_time,
+      total_time
+    ) |>
+    pivot_wider(
+      names_from = method,
+      values_from = c(infer_time, total_time),
+      names_sep = "__",
+      values_fn = mean
+    ) |>
+    mutate(
+      cl2_minus_cluster = infer_time__cl2 - infer_time__cluster,
+      cluster_minus_default = infer_time__cluster - infer_time__default,
+      cl2_over_cluster_ratio = infer_time__cl2 / infer_time__cluster,
+      cl2_overhead_share_total = cl2_minus_cluster / total_time__cluster
+    ) |>
+    dplyr::filter(
+      is.finite(cl2_minus_cluster),
+      is.finite(cl2_over_cluster_ratio),
+      is.finite(cl2_overhead_share_total)
+    )
+}
+
+summarize_cl2_timing_overhead <- function(pair_df) {
+  pair_df |>
+    group_by(n, grid_label, nxgrid, nygrid) |>
+    summarize(
+      n_rep = n(),
+      mean_cl2_minus_cluster = mean(cl2_minus_cluster, na.rm = TRUE),
+      mc_se_cl2_minus_cluster = sd(cl2_minus_cluster, na.rm = TRUE) /
+        sqrt(n_rep),
+      mean_cl2_over_cluster_ratio = mean(cl2_over_cluster_ratio, na.rm = TRUE),
+      mc_se_cl2_over_cluster_ratio = sd(cl2_over_cluster_ratio, na.rm = TRUE) /
+        sqrt(n_rep),
+      mean_cl2_overhead_share_total = mean(
+        cl2_overhead_share_total,
+        na.rm = TRUE
+      ),
+      mc_se_cl2_overhead_share_total = sd(
+        cl2_overhead_share_total,
+        na.rm = TRUE
+      ) /
+        sqrt(n_rep),
+      .groups = "drop"
+    )
+}
+
+if (file.exists(s2_cl2_timing_raw_file)) {
+  s2_cl2_pairs <- summarize_cl2_timing_pairs(readRDS(s2_cl2_timing_raw_file))
+
+  if (nrow(s2_cl2_pairs) == 0) {
+    cat("No valid paired CL2 timing results available.\n")
+  } else {
+    s2_cl2_grid_levels <- order_s2_grid_levels(unique(s2_cl2_pairs$grid_label))
+    s2_cl2_grid_labels <- setNames(
+      format_s2_grid_label(s2_cl2_grid_levels),
+      s2_cl2_grid_levels
+    )
+
+    s2_cl2_overhead <- summarize_cl2_timing_overhead(s2_cl2_pairs) |>
+      mutate(
+        n_f = factor(n, levels = sort(unique(n))),
+        grid_f = factor(
+          grid_label,
+          levels = s2_cl2_grid_levels,
+          labels = unname(s2_cl2_grid_labels[s2_cl2_grid_levels])
+        )
+      ) |>
+      arrange(grid_f)
+
+    p_delta <- ggplot(
+      s2_cl2_overhead,
+      aes(x = grid_f, y = mean_cl2_minus_cluster)
+    ) +
+      geom_col(fill = "#c44e52", width = 0.65) +
+      geom_errorbar(
+        aes(
+          ymin = mean_cl2_minus_cluster - 1.96 * mc_se_cl2_minus_cluster,
+          ymax = mean_cl2_minus_cluster + 1.96 * mc_se_cl2_minus_cluster
+        ),
+        width = 0.2
+      ) +
+      geom_hline(yintercept = 0, linetype = "dashed") +
+      facet_wrap(~n_f, nrow = 1) +
+      labs(
+        title = "CL2 Incremental Inference Cost (CL2 - cluster)",
+        subtitle = "Paired per-fit `coef()` inference time difference; main timing benchmark (nxgrid fixed at 60)",
+        x = "Response Grid (nygrid)",
+        y = "Seconds"
+      ) +
+      theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+    p_ratio <- ggplot(
+      s2_cl2_overhead,
+      aes(x = grid_f, y = mean_cl2_over_cluster_ratio)
+    ) +
+      geom_col(fill = "#4c72b0", width = 0.65) +
+      geom_errorbar(
+        aes(
+          ymin = mean_cl2_over_cluster_ratio -
+            1.96 * mc_se_cl2_over_cluster_ratio,
+          ymax = mean_cl2_over_cluster_ratio +
+            1.96 * mc_se_cl2_over_cluster_ratio
+        ),
+        width = 0.2
+      ) +
+      geom_hline(yintercept = 1, linetype = "dashed") +
+      facet_wrap(~n_f, nrow = 1) +
+      labs(
+        title = "Relative Inference Cost (CL2 / cluster)",
+        subtitle = "Paired per-fit ratio on inference stage only; nxgrid fixed at 60",
+        x = "Response Grid (nygrid)",
+        y = "Ratio"
+      ) +
+      theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+    p_share <- ggplot(
+      s2_cl2_overhead,
+      aes(x = grid_f, y = mean_cl2_overhead_share_total)
+    ) +
+      geom_col(fill = "#55a868", width = 0.65) +
+      geom_errorbar(
+        aes(
+          ymin = mean_cl2_overhead_share_total -
+            1.96 * mc_se_cl2_overhead_share_total,
+          ymax = mean_cl2_overhead_share_total +
+            1.96 * mc_se_cl2_overhead_share_total
+        ),
+        width = 0.2
+      ) +
+      geom_hline(yintercept = 0, linetype = "dashed") +
+      facet_wrap(~n_f, nrow = 1) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      labs(
+        title = "CL2 Overhead as Share of Total Runtime",
+        subtitle = "Share of total time under cluster baseline (`fit + cluster inference`)",
+        x = "Response Grid (nygrid)",
+        y = "Share of total runtime"
+      ) +
+      theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+    p_delta / p_ratio / p_share
+
+    s2_cl2_overhead |>
+      select(
+        n_f,
+        grid_f,
+        n_rep,
+        mean_cl2_minus_cluster,
+        mean_cl2_over_cluster_ratio,
+        mean_cl2_overhead_share_total
+      ) |>
+      gt() |>
+      tab_header(
+        title = "Study 2: CL2 Inference Overhead by Grid (Targeted Benchmark)",
+        subtitle = "Simplified IID Gaussian `ff + linear`; values are paired CL2 vs cluster summaries"
+      ) |>
+      cols_label(
+        n_f = "n",
+        grid_f = "Grid",
+        n_rep = "Reps",
+        mean_cl2_minus_cluster = "CL2 - cluster (s)",
+        mean_cl2_over_cluster_ratio = "CL2 / cluster",
+        mean_cl2_overhead_share_total = "CL2 overhead / total"
+      ) |>
+      fmt_number(
+        columns = c(mean_cl2_minus_cluster, mean_cl2_over_cluster_ratio),
+        decimals = 2
+      ) |>
+      fmt_percent(columns = mean_cl2_overhead_share_total, decimals = 1)
+  }
+} else if (file.exists(s2_cl2_timing_overhead_csv)) {
+  s2_cl2_overhead_csv <- read.csv(
+    s2_cl2_timing_overhead_csv,
+    stringsAsFactors = FALSE
+  )
+  if (!("n" %in% names(s2_cl2_overhead_csv))) {
+    s2_cl2_overhead_csv$n <- NA_integer_
+  }
+  s2_cl2_overhead_csv <- s2_cl2_overhead_csv |>
+    mutate(
+      grid_label = normalize_s2_grid_label(grid_label),
+      n_f = factor(n, levels = sort(unique(n)))
+    )
+  s2_cl2_grid_levels <- order_s2_grid_levels(unique(
+    s2_cl2_overhead_csv$grid_label
+  ))
+  s2_cl2_grid_labels <- setNames(
+    format_s2_grid_label(s2_cl2_grid_levels),
+    s2_cl2_grid_levels
   )
 
-s2_timing |>
-  dplyr::filter(method == "default") |>
-  select(corr_f, grid_f, mean_time, median_time) |>
-  gt() |>
-  tab_header(
-    title = "Study 2: Computation Time by Grid (seconds)",
-    subtitle = "Per model fit (default and cluster share the same pffr fit)"
-  ) |>
-  fmt_number(columns = c(mean_time, median_time), decimals = 1)
+  s2_cl2_overhead_csv <- s2_cl2_overhead_csv |>
+    mutate(
+      grid_f = factor(
+        grid_label,
+        levels = s2_cl2_grid_levels,
+        labels = unname(s2_cl2_grid_labels[s2_cl2_grid_levels])
+      )
+    ) |>
+    arrange(grid_f)
+
+  s2_cl2_overhead_csv |>
+    select(
+      n_f,
+      grid_f,
+      n_rep,
+      mean_cl2_minus_cluster,
+      mean_cl2_over_cluster_ratio
+    ) |>
+    gt() |>
+    tab_header(
+      title = "Study 2: CL2 Inference Overhead by Grid (CSV Summary)",
+      subtitle = "Raw timing file not found; showing pre-aggregated summaries"
+    ) |>
+    cols_label(
+      n_f = "n",
+      grid_f = "Grid",
+      n_rep = "Reps",
+      mean_cl2_minus_cluster = "CL2 - cluster (s)",
+      mean_cl2_over_cluster_ratio = "CL2 / cluster"
+    ) |>
+    fmt_number(
+      columns = c(mean_cl2_minus_cluster, mean_cl2_over_cluster_ratio),
+      decimals = 2
+    )
+} else {
+  cat(
+    "No targeted CL2 timing benchmark results found in ci-benchmark/study2-cl2-timing.\n"
+  )
+}
+
+#'
+#' ## Study 2: nxgrid Side-Check for CL2 Timing (Optional)
+#'
+#' Tiny side-check to verify nxgrid is secondary for CL2 timing, run at fixed
+#' n and nygrid. Not part of the main Study 2 design.
+#'
+
+#+ s2-cl2-inference-overhead-nx-sidecheck, fig.width = 11, fig.height = 6
+if (file.exists(s2_cl2_nx_side_raw_file)) {
+  s2_cl2_nx_pairs <- summarize_cl2_timing_pairs(readRDS(
+    s2_cl2_nx_side_raw_file
+  ))
+
+  if (nrow(s2_cl2_nx_pairs) == 0) {
+    cat("No valid nxgrid side-check timing results available.\n")
+  } else {
+    s2_cl2_nx_overhead <- summarize_cl2_timing_overhead(s2_cl2_nx_pairs) |>
+      mutate(
+        n_f = factor(n, levels = sort(unique(n))),
+        nx_f = factor(nxgrid, levels = sort(unique(nxgrid))),
+        ny_f = factor(nygrid, levels = sort(unique(nygrid)))
+      )
+
+    p_nx_side <- ggplot(
+      s2_cl2_nx_overhead,
+      aes(x = nx_f, y = mean_cl2_minus_cluster)
+    ) +
+      geom_col(fill = "#8172b2", width = 0.65) +
+      geom_errorbar(
+        aes(
+          ymin = mean_cl2_minus_cluster - 1.96 * mc_se_cl2_minus_cluster,
+          ymax = mean_cl2_minus_cluster + 1.96 * mc_se_cl2_minus_cluster
+        ),
+        width = 0.2
+      ) +
+      geom_hline(yintercept = 0, linetype = "dashed") +
+      facet_grid(n_f ~ ny_f, labeller = label_both) +
+      labs(
+        title = "CL2 Timing nxgrid Side-Check (Optional)",
+        subtitle = "Paired CL2 - cluster inference time at fixed nygrid (not part of main Study 2)",
+        x = "Covariate Grid (nxgrid)",
+        y = "CL2 - cluster (seconds)"
+      )
+
+    p_nx_side
+
+    s2_cl2_nx_overhead |>
+      select(
+        n_f,
+        nygrid,
+        nxgrid,
+        n_rep,
+        mean_cl2_minus_cluster,
+        mean_cl2_over_cluster_ratio,
+        mean_cl2_overhead_share_total
+      ) |>
+      gt() |>
+      tab_header(
+        title = "Study 2: nxgrid Side-Check (CL2 Timing Overhead)",
+        subtitle = "Separate side-check; use for sensitivity only, not main Study 2 conclusions"
+      ) |>
+      cols_label(
+        n_f = "n",
+        nygrid = "nygrid",
+        nxgrid = "nxgrid",
+        n_rep = "Reps",
+        mean_cl2_minus_cluster = "CL2 - cluster (s)",
+        mean_cl2_over_cluster_ratio = "CL2 / cluster",
+        mean_cl2_overhead_share_total = "CL2 overhead / total"
+      ) |>
+      fmt_number(
+        columns = c(mean_cl2_minus_cluster, mean_cl2_over_cluster_ratio),
+        decimals = 2
+      ) |>
+      fmt_percent(columns = mean_cl2_overhead_share_total, decimals = 1)
+  }
+} else if (file.exists(s2_cl2_nx_side_overhead_csv)) {
+  s2_cl2_nx_overhead_csv <- read.csv(
+    s2_cl2_nx_side_overhead_csv,
+    stringsAsFactors = FALSE
+  )
+  if (!("n" %in% names(s2_cl2_nx_overhead_csv))) {
+    s2_cl2_nx_overhead_csv$n <- NA_integer_
+  }
+  s2_cl2_nx_overhead_csv <- s2_cl2_nx_overhead_csv |>
+    mutate(
+      n_f = factor(n, levels = sort(unique(n)))
+    ) |>
+    arrange(n, nygrid, nxgrid)
+
+  s2_cl2_nx_overhead_csv |>
+    select(
+      n_f,
+      nygrid,
+      nxgrid,
+      n_rep,
+      mean_cl2_minus_cluster,
+      mean_cl2_over_cluster_ratio
+    ) |>
+    gt() |>
+    tab_header(
+      title = "Study 2: nxgrid Side-Check (CSV Summary)",
+      subtitle = "Raw timing file not found; showing pre-aggregated summaries"
+    ) |>
+    cols_label(
+      n_f = "n",
+      nygrid = "nygrid",
+      nxgrid = "nxgrid",
+      n_rep = "Reps",
+      mean_cl2_minus_cluster = "CL2 - cluster (s)",
+      mean_cl2_over_cluster_ratio = "CL2 / cluster"
+    ) |>
+    fmt_number(
+      columns = c(mean_cl2_minus_cluster, mean_cl2_over_cluster_ratio),
+      decimals = 2
+    )
+} else {
+  cat(
+    "No nxgrid side-check timing results found in ci-benchmark/study2-nx-sidecheck.\n"
+  )
+}
 
 #'
 #' ## Study 2: Sanity Checks
 #'
 
 #+ s2-sanity
-cat("=== Study 2 Sanity Checks ===\n\n")
+cat("=== Study 2 Sanity / Completeness Checks ===\n\n")
 
-# Check 1: Under IID + fine grid, default coverage should be near 90%
-s2_iid_fine <- s2_summary |>
-  dplyr::filter(
-    corr_f == "IID",
-    grid_f == GRID_LABELS[["fine"]],
-    method == "default",
-    term_type %in% c("ff", "linear")
+cat(
+  "Expected cells:",
+  nrow(s2_expected_cells),
+  "| Observed cells:",
+  nrow(s2_obs_cells),
+  "| Missing cells:",
+  nrow(s2_missing_cells),
+  "\n"
+)
+if (nrow(s2_obs_reps) > 0) {
+  cat(
+    "Observed reps per cell (min-max):",
+    paste(range(s2_obs_reps$n_rep), collapse = "-"),
+    "\n"
   )
-cat(sprintf(
-  "IID fine grid default coverage (ff/linear): %.1f%%, %.1f%% [%s]\n",
-  s2_iid_fine$coverage[s2_iid_fine$term_type == "ff"] * 100,
-  s2_iid_fine$coverage[s2_iid_fine$term_type == "linear"] * 100,
-  if (all(abs(s2_iid_fine$coverage - 0.90) < 0.03)) "PASS" else "CHECK"
-))
+}
+cat("Completeness flag:", if (s2_complete) "COMPLETE" else "INCOMPLETE", "\n")
 
-# Check 2: Under AR1, cluster should significantly beat default
-s2_ar1_cluster <- s2_summary |>
-  dplyr::filter(
-    corr_f == "AR1(0.9)",
+if (nrow(s2_missing_cells) > 0) {
+  cat("\nFirst missing expected cells:\n")
+  print(head(s2_missing_cells, 12), n = 12)
+}
+
+cat("\nObserved cells with rep counts:\n")
+print(
+  s2_obs_reps |>
+    arrange(n, snr, corr_type, grid_label),
+  n = min(30, nrow(s2_obs_reps))
+)
+
+s2_fine_diff <- s2_summary |>
+  filter(
     term_type %in% c("ff", "linear"),
-    grid_f == GRID_LABELS[["fine"]]
+    grid_f == s2_fine_display
   ) |>
-  select(method, term_type, coverage) |>
-  pivot_wider(names_from = method, values_from = coverage) |>
-  mutate(diff = cluster - default)
+  select(corr_f, term_type, method, coverage) |>
+  tidyr::pivot_wider(names_from = method, values_from = coverage) |>
+  mutate(cluster_minus_default = cluster - default)
 
-cat(sprintf(
-  "AR1 fine grid (cluster - default): ff = +%.1fpp, linear = +%.1fpp [%s]\n",
-  s2_ar1_cluster$diff[s2_ar1_cluster$term_type == "ff"] * 100,
-  s2_ar1_cluster$diff[s2_ar1_cluster$term_type == "linear"] * 100,
-  if (all(s2_ar1_cluster$diff > 0.10)) "PASS" else "CHECK"
-))
-
-# Check 3: Intercept coverage should improve from coarse to fine grid
-s2_int_cov <- s2_summary |>
-  dplyr::filter(term_type == "intercept", method == "cluster") |>
-  select(corr_f, grid_f, coverage)
-s2_int_coarse <- s2_int_cov |>
-  dplyr::filter(grid_f == GRID_LABELS[["coarse"]]) |>
-  pull(coverage) |>
-  mean()
-s2_int_fine <- s2_int_cov |>
-  dplyr::filter(grid_f == GRID_LABELS[["fine"]]) |>
-  pull(coverage) |>
-  mean()
-cat(sprintf(
-  "Intercept cluster coverage: coarse=%.1f%%, fine=%.1f%% (diff=+%.1fpp) [%s]\n",
-  s2_int_coarse * 100,
-  s2_int_fine * 100,
-  (s2_int_fine - s2_int_coarse) * 100,
-  if (s2_int_fine > s2_int_coarse + 0.05) "PASS" else "CHECK"
-))
-
-# Check 4: Fine grid coverage should be >= coarse for cluster under corr
-s2_grid_improve <- s2_summary |>
-  dplyr::filter(
-    method == "cluster",
-    corr_f != "IID",
-    term_type %in% c("ff", "linear")
-  ) |>
-  select(corr_f, grid_f, term_type, coverage) |>
-  pivot_wider(names_from = grid_f, values_from = coverage)
-cat("Cluster coverage coarse vs fine under correlation:\n")
-print(s2_grid_improve, n = 20)
+if (nrow(s2_fine_diff) > 0) {
+  cat("\nFine-grid coverage gain (cluster - default):\n")
+  print(s2_fine_diff, n = nrow(s2_fine_diff))
+} else {
+  cat(
+    "\nFine-grid cluster-default comparison not available in current extract.\n"
+  )
+}
 
 #'
 #' ## Study 2: Key Findings
 #'
-#' ### Grid refinement has limited effect on functional term coverage
-#'
-#' For the functional terms (ff, linear, smooth, concurrent), coverage is
-#' remarkably stable across grid levels. The cluster sandwich gives ~86-88%
-#' coverage for ff under correlation regardless of whether the grid is
-#' 30x40 or 90x120 (max difference ~1pp, well within the MC SE of ~3pp
-#' with 120 reps). This suggests the 84-89% cluster coverage gap is NOT
-#' a discretization artifact but rather reflects a fundamental property of
-#' the sandwich estimator (penalization interaction, finite-sample bias).
-#'
-#' ### Intercept coverage failure on coarse grids is a discretization artifact
-#'
-#' The intercept shows the clearest grid effect: on coarse grids (30x40),
-#' coverage drops to ~60-68% even though the rep-averaged z_mean is near 0
-#' and z_sd near 1. The resolution of this paradox lies in the between-rep
-#' variance of z_mean: sd(z_mean) across reps is ~1.5, meaning individual
-#' reps have large global intercept shifts (some +, some -) that cancel in
-#' the average. Within each rep z_sd is ~1 (SEs are conditionally
-#' well-calibrated), but the global-level shift pushes entire sets of
-#' pointwise z-scores beyond the CI threshold. The unconditional z-score
-#' distribution is thus much wider than N(0,1), explaining the low coverage.
-#' On medium (60x80) and fine (90x120) grids, between-rep z_mean variance
-#' shrinks and intercept coverage jumps to ~88-90%.
-#'
-#' ### Default SEs collapse on finer grids under correlation
-#'
-#' An interesting asymmetry: default (no sandwich) coverage actually
-#' *decreases* on finer grids under AR1/Fourier correlation. The diagonal
-#' variance ratio for default drops from ~0.3 (coarse) to ~0.1 (fine),
-#' meaning default SEs become progressively more underestimated relative
-#' to the true variability. More grid points amplify the within-curve
-#' correlation signal that default SEs ignore. The cluster sandwich is
-#' immune to this effect, maintaining stable diagonal ratios (~0.85-0.95).
-#'
-#' ### Covariance quality confirms SE miscalibration pattern
-#'
-#' The diagonal ratio (model SE^2 / MC variance) provides a direct
-#' measure of SE calibration. Under IID, both methods have ratio ~1
-#' (well-calibrated). Under AR1: default has ratio ~0.1-0.3 (SEs 3-10x
-#' too small), while cluster has ratio ~0.85-0.95 (slightly conservative).
-#' The cluster sandwich is not perfect — it slightly underestimates
-#' variability — but it is dramatically better than default under
-#' correlation.
-#'
-#' ### Implications for practice
-#'
-#' 1. **Grid resolution matters for the intercept** but not much for
-#'    functional effects. Use at least 60x80 for unbiased intercept
-#'    estimation.
-#' 2. **The cluster coverage gap (84-89%) is structural**, not a
-#'    discretization artifact. Future work should focus on
-#'    penalization-aware corrections rather than grid refinement.
-#' 3. **Finer grids make the case for sandwich *stronger***: default
-#'    SEs degrade further while cluster remains stable.
+#' These findings are preliminary unless the completeness check above reports
+#' **COMPLETE**. The current summary is computed from all available cells and
+#' should be interpreted as a pilot snapshot when cells/reps are missing.
+
+#+ s2-key-findings
+n_cells_obs <- nrow(s2_obs_cells)
+n_cells_exp <- nrow(s2_expected_cells)
+rep_range_text <- if (nrow(s2_obs_reps) > 0) {
+  paste(range(s2_obs_reps$n_rep), collapse = "-")
+} else {
+  "none"
+}
+
+cat("1) Data completeness\n")
+cat(
+  sprintf(
+    "   Observed %d / %d expected cells, reps per observed cell: %s (target: %d).\n",
+    n_cells_obs,
+    n_cells_exp,
+    rep_range_text,
+    S2_TARGET_REPS
+  )
+)
+
+cluster_default_fine <- s2_summary |>
+  filter(
+    term_type %in% c("ff", "linear"),
+    grid_f == s2_fine_display
+  ) |>
+  select(term_type, method, coverage) |>
+  group_by(term_type, method) |>
+  summarize(coverage = mean(coverage, na.rm = TRUE), .groups = "drop") |>
+  tidyr::pivot_wider(names_from = method, values_from = coverage) |>
+  mutate(diff = cluster - default)
+
+cat("2) Fine-grid cluster vs default (ff, linear)\n")
+if (nrow(cluster_default_fine) == 0) {
+  cat("   Not available in the current extract.\n")
+} else {
+  apply(cluster_default_fine, 1, function(row) {
+    cat(
+      sprintf(
+        "   %s: default=%s, cluster=%s, cluster-default=%s\n",
+        row[["term_type"]],
+        s2_fmt_pct(as.numeric(row[["default"]])),
+        s2_fmt_pct(as.numeric(row[["cluster"]])),
+        s2_fmt_pp(as.numeric(row[["diff"]]))
+      )
+    )
+  })
+}
+
+cluster_intercept_grid <- s2_summary |>
+  filter(method == "cluster", term_type == "intercept") |>
+  group_by(grid_f) |>
+  summarize(coverage = mean(coverage, na.rm = TRUE), .groups = "drop")
+s2_intercept_coarse <- cluster_intercept_grid |>
+  filter(grid_f == s2_coarse_display) |>
+  pull(coverage) |>
+  s2_safe_first()
+s2_intercept_fine <- cluster_intercept_grid |>
+  filter(grid_f == s2_fine_display) |>
+  pull(coverage) |>
+  s2_safe_first()
+
+cat("3) Intercept coverage change from coarsest to finest observed grid\n")
+cat(
+  sprintf(
+    "   cluster intercept: %s -> %s (%s)\n",
+    s2_fmt_pct(s2_intercept_coarse),
+    s2_fmt_pct(s2_intercept_fine),
+    s2_fmt_pp(s2_intercept_fine - s2_intercept_coarse)
+  )
+)
 #'
 
 #' ---
