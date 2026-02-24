@@ -19,5 +19,8 @@
 module load slurm_setup
 module load r/4.3.3-gcc13-mkl
 
+# Ensure user R library is on the path (--export=NONE can strip it)
+export R_LIBS_USER="${HOME}/R/x86_64-pc-linux-gnu-library/4.3"
+
 # Run CL2 extension (150 reps, 8 parallel workers)
 Rscript ci-benchmark/sim-study-nongaussian-cl2-extension.R full
