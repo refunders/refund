@@ -135,7 +135,7 @@ test_that("ffpc terms are working", {
   data <- list(y = y, X = X)
 
   m.pc <- pffr(
-    y ~ c(1) + 0 + ffpc(X, yind = argvals, decomppars = list(npc = rankX)),
+    y ~ c(1) + 0 + ffpc(X, decomppars = list(npc = rankX)),
     data = data,
     yind = argvals
   )
@@ -479,7 +479,7 @@ test_that("ffpc() term works with new simulation", {
   data <- list(y = y, X = X)
 
   m.pc <- pffr(
-    y ~ c(1) + 0 + ffpc(X, yind = argvals, decomppars = list(npc = rankX)),
+    y ~ c(1) + 0 + ffpc(X, decomppars = list(npc = rankX)),
     data = data,
     yind = argvals
   )
@@ -526,17 +526,18 @@ test_that("algorithm='gamm' produces valid output", {
 
   n <- 40
   nygrid <- 30
-  n_groups <- 4
 
   dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  dat$group <- factor(rep(1:n_groups, each = n / n_groups))
   t <- attr(dat, "yindex")
 
-  m_gamm <- pffr(
-    Y ~ xlin + s(group, bs = "re"),
-    yind = t,
-    data = dat,
-    algorithm = "gamm"
+  m_gamm <- expect_warning(
+    pffr(
+      Y ~ xlin,
+      yind = t,
+      data = dat,
+      algorithm = "gamm"
+    ),
+    regexp = "sandwich = .* not supported for algorithm = \"gamm\""
   )
 
   # gamm returns list with $gam component
@@ -557,7 +558,10 @@ test_that("algorithm='gamm4' produces valid output", {
   dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
   t <- attr(dat, "yindex")
 
-  m_gamm4 <- pffr(Y ~ xlin, yind = t, data = dat, algorithm = "gamm4")
+  m_gamm4 <- expect_warning(
+    pffr(Y ~ xlin, yind = t, data = dat, algorithm = "gamm4"),
+    regexp = "sandwich = .* not supported for algorithm = \"gamm4\""
+  )
 
   expect_true(inherits(m_gamm4, "pffr") || inherits(m_gamm4, "list"))
   if (inherits(m_gamm4, "list")) {
@@ -1733,7 +1737,10 @@ test_that("coef supports fixed eval_grid for term-aligned extraction", {
   # Force a resample that excludes observed min/max xsmoo values.
   mc <- prepare_modcall_for_bootstrap(m)
   n <- nrow(mc$data)
-  idx_pool <- setdiff(seq_len(n), c(which.min(mc$data$xsmoo), which.max(mc$data$xsmoo)))
+  idx_pool <- setdiff(
+    seq_len(n),
+    c(which.min(mc$data$xsmoo), which.max(mc$data$xsmoo))
+  )
   set.seed(11)
   idx <- sample(idx_pool, n, replace = TRUE)
 
@@ -1761,9 +1768,13 @@ test_that("coef supports fixed eval_grid for term-aligned extraction", {
   )
 
   # Smooth with xsmoo should be range-shrunk in default but fixed under eval_grid.
-  ind <- which(vapply(co_default$smterms, function(sm) {
-    "xsmoo" %in% colnames(sm$coef)
-  }, logical(1)))[1]
+  ind <- which(vapply(
+    co_default$smterms,
+    function(sm) {
+      "xsmoo" %in% colnames(sm$coef)
+    },
+    logical(1)
+  ))[1]
   expect_false(is.na(ind))
 
   expect_false(isTRUE(all.equal(

@@ -282,18 +282,31 @@ pffr <- function(
     sandwich = sandwich,
     dots = list(...)
   )
+  algorithm_chr <- as.character(prep$algorithm)
 
   # Fit the model
   m <- eval(prep$new_call)
-  if (as.character(prep$algorithm) == "jagam") {
+  if (algorithm_chr == "jagam") {
     m$modelfile <- prep$new_call$file
     message("JAGS/BUGS model code written to \n", m$modelfile, ",\n see ?jagam")
     return(m)
   }
 
+  if (algorithm_chr %in% c("gamm4", "gamm") && sandwich != "none") {
+    warning(
+      "sandwich = \"",
+      sandwich,
+      "\" is not supported for algorithm = \"",
+      algorithm_chr,
+      "\". Using sandwich = \"none\".",
+      call. = FALSE
+    )
+    sandwich <- "none"
+  }
+
   # Post-processing
-  m_smooth <- if (as.character(prep$algorithm) %in% c("gamm4", "gamm"))
-    m$gam$smooth else m$smooth
+  m_smooth <- if (algorithm_chr %in% c("gamm4", "gamm")) m$gam$smooth else
+    m$smooth
 
   label_map_result <- pffr_build_label_map(
     new_term_strings = prep$new_term_strings,
@@ -310,7 +323,7 @@ pffr <- function(
   term_map <- label_map_result$term_map
 
   names(m_smooth) <- sapply(m_smooth, \(x) x$label)
-  if (as.character(prep$algorithm) %in% c("gamm4", "gamm")) {
+  if (algorithm_chr %in% c("gamm4", "gamm")) {
     m$gam$smooth <- m_smooth
   } else {
     m$smooth <- m_smooth

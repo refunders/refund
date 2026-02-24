@@ -1096,10 +1096,27 @@ coef.pffr <- function(
   sim_seed = NULL,
   ...
 ) {
+  sandwich_missing <- missing(sandwich)
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
   sandwich <- match.arg(sandwich)
   ci <- match.arg(ci)
+
+  is_gls_fit <- !is.null(object$pffr$hatSigma)
+  if (is_gls_fit) {
+    if (sandwich_missing) {
+      sandwich <- "none"
+    } else if (sandwich != "none") {
+      warning(
+        "sandwich = \"",
+        sandwich,
+        "\" is not supported for pffr_gls fits. ",
+        "Using sandwich = \"none\".",
+        call. = FALSE
+      )
+      sandwich <- "none"
+    }
+  }
 
   if (
     !is.numeric(level) ||

@@ -121,6 +121,7 @@ transform_smooth_term <- function(
 
   # Set dimension parameter
   xnew$d <- get_smooth_dimensions(term, term_type)
+  n_base_marginals <- length(xnew$d) - 1L
 
   # Add y-index as last variable
   xnew[[length(xnew) + 1]] <- as.name(yind_vec_name)
@@ -138,8 +139,13 @@ transform_smooth_term <- function(
   }
 
   # Set spline parameters
-  xnew$bs <- get_smooth_bs(term, this_bs_yindex)
-  xnew$m <- get_smooth_m(term, this_bs_yindex)
+  xnew$bs <- get_smooth_bs(
+    term,
+    this_bs_yindex,
+    n_base_marginals = n_base_marginals
+  )
+  m_spec <- get_smooth_m(term, this_bs_yindex, n_marginals = length(xnew$bs))
+  if (!is.null(m_spec)) xnew$m <- m_spec
   xnew$k <- get_smooth_k(term, xnew$d, this_bs_yindex)
 
   # Preserve xt if present
@@ -188,15 +194,17 @@ get_smooth_dimensions <- function(term, term_type) {
 # @param term The original term call
 # @param bs_yindex Basis spec for y-index marginal
 # @returns Character vector of basis types for each marginal
-get_smooth_bs <- function(term, bs_yindex) {
+get_smooth_bs <- function(term, bs_yindex, n_base_marginals) {
   term_bs <- if ("bs" %in% names(term)) eval(term$bs) else NULL
   yindex_bs <- bs_yindex$bs %||% "tp"
 
   if (!is.null(term_bs)) {
+    if (length(term_bs) == 1 && n_base_marginals > 1) {
+      term_bs <- rep(term_bs, n_base_marginals)
+    }
     c(term_bs, yindex_bs)
   } else {
-    n_marginals <- length(all.vars(term))
-    c(rep("tp", n_marginals), yindex_bs)
+    c(rep("tp", n_base_marginals), yindex_bs)
   }
 }
 
@@ -204,15 +212,40 @@ get_smooth_bs <- function(term, bs_yindex) {
 # @param term The original term call
 # @param bs_yindex Basis spec for y-index marginal
 # @returns Penalty order specification
-get_smooth_m <- function(term, bs_yindex) {
+get_smooth_m <- function(term, bs_yindex, n_marginals) {
+  yindex_m <- bs_yindex$m
+
   if ("m" %in% names(term)) {
     if ("m" %in% names(bs_yindex)) {
       warning("overriding bs.yindex for m in ", deparse(term))
     }
-    term$m
-  } else {
-    bs_yindex$m %||% NA
+    term_m <- eval(term$m)
+    term_m_len <- if (is.list(term_m)) length(term_m) else length(term_m)
+
+    if (term_m_len == n_marginals) {
+      return(term$m)
+    }
+    if (term_m_len == (n_marginals - 1)) {
+      y_m <- yindex_m %||% NA
+      if (is.list(term_m)) {
+        return(c(term_m, list(y_m)))
+      }
+      if (length(y_m) == 1) {
+        return(c(term_m, y_m))
+      }
+      return(c(as.list(term_m), list(y_m)))
+    }
+    return(term$m)
   }
+
+  if (is.null(yindex_m)) {
+    return(NULL)
+  }
+  if (n_marginals == 1) {
+    return(yindex_m)
+  }
+
+  c(rep(list(NA), n_marginals - 1), list(yindex_m))
 }
 
 # Determine basis dimension (k) for tensor smooth

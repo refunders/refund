@@ -452,6 +452,26 @@ pffr_build_call <- function(
   newcall$data <- quote(pffr_data)
   newcall[[1]] <- algorithm
 
+  if (as.character(algorithm) == "gamm4" && "method" %in% names(newcall)) {
+    # gamm4 deprecated `method` in favor of REML; map legacy pffr `method`.
+    method_value <- tryCatch(
+      eval(newcall$method, envir = parent.frame()),
+      error = function(e) newcall$method
+    )
+    method_chr <- as.character(method_value)[1]
+
+    if (!("REML" %in% names(newcall)) && method_chr %in% c("REML", "ML")) {
+      newcall$REML <- identical(method_chr, "REML")
+    }
+    if (!(method_chr %in% c("REML", "ML"))) {
+      warning(
+        "For algorithm = \"gamm4\", only method = \"REML\" or \"ML\" are interpreted. ",
+        "Use REML = TRUE/FALSE for direct control."
+      )
+    }
+    newcall$method <- NULL
+  }
+
   if (use_ar) {
     newcall$AR.start <- quote(pffr_data$AR.start)
     if (isTRUE(dots$discrete)) {

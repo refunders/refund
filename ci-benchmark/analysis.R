@@ -56,36 +56,66 @@ COLORS_METHOD <- c(
 )
 
 #'
-#' # Theory
+#' # Theory and Study Design
 #'
-#' This benchmark evaluates pointwise confidence intervals for functional effects
-#' in a function-on-function additive model. Data are generated from
-#' \eqn{Y_i(t) = \eta_i(t) + \epsilon_i(t)} where \eqn{\eta_i(t)} combines:
-#' a functional intercept, a function-on-function term \eqn{\int X_i(s)\beta(s,t)ds},
-#' a varying-coefficient linear term, a smooth scalar-varying term, and a
-#' concurrent term.
+#' This report combines the Gaussian Round 2 benchmark with two follow-up
+#' studies (non-Gaussian families and grid refinement). The main Gaussian
+#' benchmark evaluates pointwise confidence intervals for functional effects in
+#' a function-on-function additive model.
 #'
-#' DGP difficulty is controlled by:
-#' - sample size (\code{n}),
-#' - signal-to-noise ratio (\code{snr}),
-#' - truth wiggliness (\code{wiggliness}),
-#' - error distribution (\code{gaussian}, \code{t6}),
+#' Current report components:
+#'
+#' - **Gaussian Round 2 (main benchmark):** production Gaussian / heavy-tailed
+#'   error runs loaded from the benchmark results directory, with
+#'   heteroskedasticity and multiple within-curve correlation structures.
+#' - **Study 1 (non-Gaussian sandwich coverage):** Poisson and Binomial DGPs for
+#'   `ff(X1) + z_lin`, with IID / AR1(0.9) / `fourier_pos(0.3)`,
+#'   `n = 200, 400`, and methods `default`, `hc`, `cluster`.
+#' - **Study 2 (grid refinement):** Gaussian design with wiggliness = 5,
+#'   `n = 20, 40, 80`, `snr = 3, 25`, IID / AR1(0.9) /
+#'   `fourier_pos(0.3)`, `nygrid = 40, 80, 120` at fixed
+#'   `nxgrid = 60`, targeting 120 reps per DGP \u00d7 grid cell (with
+#'   completeness checked below).
+#'
+#' For the main Gaussian benchmark, data are generated from
+#' $Y_i(t) = \eta_i(t) + \epsilon_i(t)$ where $\eta_i(t)$ combines:
+#' a functional intercept, a function-on-function term
+#' $\int X_i(s)\beta(s,t)ds$, a varying-coefficient linear term, a smooth
+#' scalar-varying term, and a concurrent term.
+#'
+#' DGP difficulty in the main Gaussian Round 2 benchmark is controlled by:
+#'
+#' - sample size (`n`),
+#' - signal-to-noise ratio (`snr`),
+#' - truth wiggliness (`wiggliness`),
+#' - error distribution (`gaussian`, `t6`),
 #' - residual covariance structure: IID, AR(1), or periodic non-monotone
-#'   (\code{fourier_pos}),
-#' - heteroskedasticity pattern over \eqn{t}.
+#'   (`fourier_pos`),
+#' - heteroskedasticity pattern over $t$.
 #'
 #' Coverage is assessed pointwise on evaluation grids for each term type.
+#' Study 1 and Study 2 use study-specific summaries and diagnostics defined in
+#' their sections below.
 #'
-#' CI estimators compared:
-#' - \code{pffr}: default mgcv/refund Bayesian covariance-based pointwise CIs.
-#' - \code{pffr_hc}: observation-level HC sandwich covariance (heteroskedasticity
+#' CI estimators compared in this report:
+#'
+#' - **Gaussian Round 2:** `pffr`, `pffr_hc`, `pffr_sandwich`, `pffr_ar`,
+#'   `pffr_gaulss`.
+#' - **Study 1:** `default`, `hc`, `cluster`.
+#' - **Study 2:** `default`, `cluster`, with optional `hc` / `cl2` in newer
+#'   result extracts.
+#'
+#' Gaussian Round 2 estimator labels:
+#'
+#' - `pffr`: default mgcv/refund Bayesian covariance-based pointwise CIs.
+#' - `pffr_hc`: observation-level HC sandwich covariance (heteroskedasticity
 #'   robust, not cluster/correlation robust).
-#' - \code{pffr_sandwich}: cluster-robust sandwich covariance (clusters = curves),
+#' - `pffr_sandwich`: cluster-robust sandwich covariance (clusters = curves),
 #'   targeting within-curve dependence and heteroskedasticity.
-#' - \code{pffr_ar}: \code{bam(..., rho=...)} AR(1) working-correlation fit, with
+#' - `pffr_ar`: `bam(..., rho=...)` AR(1) working-correlation fit, with
 #'   CIs from the fitted AR model covariance.
-#' - \code{pffr_gaulss}: Gaussian location-scale fit, modeling variance over
-#'   \eqn{t}, with pointwise CIs from the fitted gaulss covariance.
+#' - `pffr_gaulss`: Gaussian location-scale fit, modeling variance over $t$,
+#'   with pointwise CIs from the fitted gaulss covariance.
 #'
 # Helper functions ------------------------------------------------------------
 

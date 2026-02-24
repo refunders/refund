@@ -243,16 +243,20 @@ format_boot_conf_label <- function(conf) {
 # @param conf Confidence levels
 # @returns Numeric vector lower/upper pairs for each level
 compute_percentile_ci <- function(x, conf) {
-  as.vector(vapply(conf, \(c_level) {
-    probs <- c((1 - c_level) / 2, 1 - (1 - c_level) / 2)
-    stats::quantile(
-      x,
-      probs = probs,
-      type = 8,
-      na.rm = TRUE,
-      names = FALSE
-    )
-  }, numeric(2)))
+  as.vector(vapply(
+    conf,
+    \(c_level) {
+      probs <- c((1 - c_level) / 2, 1 - (1 - c_level) / 2)
+      stats::quantile(
+        x,
+        probs = probs,
+        type = 8,
+        na.rm = TRUE,
+        names = FALSE
+      )
+    },
+    numeric(2)
+  ))
 }
 
 # Compute bootstrap confidence intervals for a single coefficient
@@ -306,8 +310,14 @@ compute_boot_cis <- function(
   })
   ci_matrix <- do.call(rbind, ci_list)
 
-  lower_names <- paste0("lower_", vapply(conf, format_boot_conf_label, character(1)))
-  upper_names <- paste0("upper_", vapply(conf, format_boot_conf_label, character(1)))
+  lower_names <- paste0(
+    "lower_",
+    vapply(conf, format_boot_conf_label, character(1))
+  )
+  upper_names <- paste0(
+    "upper_",
+    vapply(conf, format_boot_conf_label, character(1))
+  )
   colnames(ci_matrix) <- as.vector(rbind(lower_names, upper_names))
 
   ci_matrix
@@ -369,7 +379,9 @@ pffr_coefboot <- function(
     stop("'B' must be a single positive integer.")
   }
   B <- as.integer(B)
-  if (!is.numeric(conf) || any(!is.finite(conf)) || any(conf <= 0 | conf >= 1)) {
+  if (
+    !is.numeric(conf) || any(!is.finite(conf)) || any(conf <= 0 | conf >= 1)
+  ) {
     stop("'conf' must contain values strictly between 0 and 1.")
   }
   conf <- as.numeric(conf)
@@ -379,7 +391,9 @@ pffr_coefboot <- function(
   if (is.null(ncpus)) {
     ncpus <- getOption("boot.ncpus", 1L)
   }
-  if (!is.numeric(ncpus) || length(ncpus) != 1 || !is.finite(ncpus) || ncpus < 1) {
+  if (
+    !is.numeric(ncpus) || length(ncpus) != 1 || !is.finite(ncpus) || ncpus < 1
+  ) {
     stop("'ncpus' must be a single positive integer.")
   }
   ncpus <- as.integer(ncpus)
@@ -634,9 +648,15 @@ handle_failed_replicates <- function(boot_result, B) {
   }
   if (n_failed > 0) {
     warning(
-      n_failed, " out of ", B, " bootstrap replicates failed (",
-      round(100 * failure_rate, 1), "%). ",
-      "Using ", B - n_failed, " successful replicates for CI computation. ",
+      n_failed,
+      " out of ",
+      B,
+      " bootstrap replicates failed (",
+      round(100 * failure_rate, 1),
+      "%). ",
+      "Using ",
+      B - n_failed,
+      " successful replicates for CI computation. ",
       "Consider increasing B or simplifying the model if this persists.",
       call. = FALSE
     )
