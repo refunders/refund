@@ -1,6 +1,51 @@
-# refund 0.1-38
+# refund 0.1-40
 
-* Removed dependency on mgcv::plot.random.effect 
+## Breaking changes
+
+* **The default sandwich option for `pffr()` is now `sandwich = "cluster"`
+  (previously `"none"`).** Existing code calling `pffr()` without explicit
+  `sandwich=` will now get cluster-robust standard errors and confidence
+  intervals. Set `sandwich = "none"` to restore the previous behavior.
+  A one-time informational `message()` is printed when `sandwich` is not
+  explicitly supplied.
+* **`pffrGLS()` / `pffr_gls()` are deprecated and now error.** Their
+  GLS-based covariance correction produced poorly calibrated inference.
+  Use `pffr()` with `sandwich = "cluster"` (default) or `sandwich = "cl2"`
+  instead.
+
+## Function renames (old names deprecated)
+
+* `pffrSim()` → `pffr_simulate()` (old name warns via `.Deprecated()`)
+* `coefboot.pffr()` → `pffr_coefboot()`
+* `qq.pffr()` → `pffr_qq()`
+* `pffr.check()` → `pffr_check()`
+
+## New features
+
+* `pffr()` modularization: internal refactor into prepare → fit → postprocess
+  pipeline (`pffr_prepare()`, `pffr_build_label_map()`, etc.) for better
+  maintainability.
+* `pffr_simulate()` (formerly `pffrSim()`) now supports a formula-based
+  interface for specifying simulation models (e.g.,
+  `pffr_simulate(Y ~ ff(X1) + xlin, effects = list(X1 = "cosine"))`).
+  The new interface provides:
+  - Customizable effect functions via preset libraries or user-defined functions
+  - Access to true coefficient functions via the `truth` attribute
+  - Support for non-Gaussian responses via the `family` argument
+* The `scenario` argument in `pffr_simulate()` is deprecated. Use the formula
+  interface instead. Legacy code using `scenario` will continue to work but
+  will emit a deprecation warning.
+* `pffr(..., sandwich = "cl2")` and `coef.pffr(..., sandwich = "cl2")` now
+  support leverage-adjusted cluster-robust covariance (Bell-McCaffrey style
+  CL2), including for `family = mgcv::gaulss()`.
+* `coef.pffr()` now supports confidence intervals via `ci = "pointwise"` or
+  `ci = "simultaneous"` in addition to standard errors. Simultaneous intervals
+  are computed with a coefficient-level Gaussian simulation and max-|t|
+  calibration over each smooth term's evaluation grid.
+* AR(1) support improvements: `pffr()` now automatically switches to
+  `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
+  sets `discrete = TRUE` for non-Gaussian families.
+* Removed dependency on `mgcv::plot.random.effect`
 
 # refund 0.1-37
 
