@@ -33,6 +33,13 @@ zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)}
 
 \item{argvals}{not currently implemented}
 }
+\value{
+A list of class \code{"fosr"} containing estimated coefficient
+  functions (\code{beta.hat}), credible bounds (\code{beta.UB},
+  \code{beta.LB}), fitted values (\code{Yhat}), random effects
+  (\code{ranef}), and the estimated residual FPC decomposition
+  (\code{fpca.obj}).
+}
 \description{
 Fitting function for function-on-scalar regression for multilevel data.
 This function estimates model parameters using a VB and estimates

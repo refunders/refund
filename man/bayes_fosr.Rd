@@ -26,6 +26,10 @@ Options are "FPCA" and "Wishart", with default "FPCA"}
 
 \item{...}{additional arguments that are passed to individual fitting functions.}
 }
+\value{
+A list of class \code{"fosr"} returned by the selected fitting
+  function. See the individual fitting functions for details.
+}
 \description{
 Wrapper function that implements several approaches to Bayesian function-
 on-scalar regression. Currently handles real-valued response curves; models

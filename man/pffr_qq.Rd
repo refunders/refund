@@ -40,6 +40,9 @@ pffr_qq(
 
 \item{...}{extra graphics parameters to pass to plotting functions.}
 }
+\value{
+None, called for its side effect of producing QQ plots.
+}
 \description{
 This is simply a wrapper for \code{\link[mgcv]{qq.gam}()}.
 }

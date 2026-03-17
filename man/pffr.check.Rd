@@ -39,6 +39,9 @@ pffr.check(
 
 \item{...}{extra graphics parameters to pass to plotting functions.}
 }
+\value{
+None, called for its side effect of producing diagnostic plots.
+}
 \description{
 **Deprecated**
 

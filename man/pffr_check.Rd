@@ -39,6 +39,10 @@ pffr_check(
 
 \item{...}{extra graphics parameters to pass to plotting functions.}
 }
+\value{
+None, called for its side effect of producing diagnostic plots and
+  printing basis dimension checks.
+}
 \description{
 This is simply a wrapper for \code{\link[mgcv]{gam.check}()}.
 }
