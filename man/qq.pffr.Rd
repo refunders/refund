@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr-methods.R
 \name{qq.pffr}
 \alias{qq.pffr}
-\title{QQ plots for pffr model residuals}
+\title{QQ plots for pffr model residuals (deprecated)}
 \usage{
 qq.pffr(
   object,
@@ -40,6 +40,13 @@ qq.pffr(
 
 \item{...}{extra graphics parameters to pass to plotting functions.}
 }
-\description{
-This is simply a wrapper for \code{\link[mgcv]{qq.gam}()}.
+\value{
+None, called for its side effect of producing QQ plots.
 }
+\description{
+**Deprecated**
+
+`qq.pffr()` was renamed to [pffr_qq()] for consistency with the
+package naming conventions.
+}
+\keyword{internal}

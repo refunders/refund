@@ -58,6 +58,11 @@ for FPC effects}
 \item{Bpsi}{hyperparameter for inverse gamma controlling variance of spline terms
 for FPC effects}
 }
+\value{
+A list of class \code{"fosr"} containing posterior mean estimates
+  (\code{beta.hat}), credible bounds (\code{beta.UB}, \code{beta.LB}),
+  fitted values (\code{Yhat}), and FPC basis functions (\code{psi.pm}).
+}
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.
 This function estimates model parameters using a Gibbs sampler and estimates

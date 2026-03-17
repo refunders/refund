@@ -55,6 +55,11 @@ for population-level effects}
 
 \item{SEED}{seed value to start the sampler; ensures reproducibility}
 }
+\value{
+A list of class \code{"fosr"} containing posterior mean estimates
+  (\code{beta.hat}), credible bounds (\code{beta.UB}, \code{beta.LB}),
+  and fitted values (\code{Yhat}).
+}
 \description{
 Fitting function for function-on-scalar regression for multilevel data.
 This function estimates model parameters using a Gibbs sampler and estimates

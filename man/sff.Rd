@@ -6,8 +6,8 @@
 \usage{
 sff(
   X,
-  yind,
-  xind = seq(0, 1, l = ncol(X)),
+  yind = NULL,
+  xind = seq(0, 1, length.out = ncol(X)),
   basistype = c("te", "t2", "s"),
   integration = c("simpson", "trapezoidal"),
   L = NULL,

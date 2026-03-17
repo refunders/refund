@@ -1,3 +1,332 @@
+#--------------------------------------
+# Bootstrap Resampling Helpers (pure functions)
+#--------------------------------------
+
+# Resample grid data by observation indices
+# @param modcall Model call object to modify
+# @param data Original data frame
+# @param indices Bootstrap sample indices
+# @returns Modified modcall with resampled data
+resample_grid_observations <- function(modcall, data, indices) {
+  modcall$data <- data[indices, , drop = FALSE]
+  modcall
+}
+
+# Resample sparse/irregular data by observation indices
+# Handles bootstrap duplicates by replicating ydata rows appropriately
+# @param modcall Model call object to modify
+# @param data Original covariate data frame
+# @param ydata Original sparse response data frame
+# @param indices Bootstrap sample indices
+# @returns Modified modcall with resampled data and ydata
+resample_sparse_observations <- function(modcall, data, ydata, indices) {
+  data_boot <- data[indices, , drop = FALSE]
+  # Set rownames to consecutive integers (pffr validates ydata$.obs against rownames)
+  rownames(data_boot) <- seq_len(nrow(data_boot))
+
+  # For each bootstrap index, get all ydata rows for that observation
+  # This correctly handles when the same observation is sampled multiple times
+  ydata_list <- lapply(seq_along(indices), \(i) {
+    obs_i <- indices[i]
+    ydata_rows <- ydata[ydata$.obs == obs_i, , drop = FALSE]
+    ydata_rows$.obs <- i
+    ydata_rows
+  })
+  ydata_boot <- do.call(rbind, ydata_list)
+  rownames(ydata_boot) <- NULL
+
+  modcall$data <- data_boot
+  modcall$ydata <- ydata_boot
+  modcall
+}
+
+# Resample using residual bootstrap (fitted + resampled residuals)
+# @param modcall Model call object to modify
+# @param data Original data frame
+# @param indices Bootstrap sample indices
+# @param fitted_values Matrix of fitted values from original model
+# @param residuals Matrix of residuals from original model
+# @param response_name Name of response variable in data
+# @param center Whether to center residuals at each time point
+# @returns Modified modcall with synthetic response
+resample_residuals <- function(
+  modcall,
+  data,
+  indices,
+  fitted_values,
+  residuals,
+  response_name,
+  center = FALSE
+) {
+  resid_boot <- residuals[indices, , drop = FALSE]
+  if (center) {
+    resid_boot <- resid_boot -
+      matrix(
+        colMeans(resid_boot),
+        nrow = nrow(resid_boot),
+        ncol = ncol(resid_boot),
+        byrow = TRUE
+      )
+  }
+  data_boot <- data
+  data_boot[[response_name]] <- fitted_values + resid_boot
+  modcall$data <- data_boot
+  modcall
+}
+
+#--------------------------------------
+# Bootstrap CI Computation Helpers
+#--------------------------------------
+
+# Build flatten/reconstruction layout for coef.pffr-like objects
+# @param coef_template Object returned by coef(..., ci = "none")
+# @returns List with coefficient index/range metadata
+build_coefboot_layout <- function(coef_template) {
+  n_pterms <- nrow(as.matrix(coef_template$pterms))
+  pterm_names <- rownames(coef_template$pterms)
+  if (is.null(pterm_names)) pterm_names <- paste0("pterm_", seq_len(n_pterms))
+
+  smterm_names <- names(coef_template$smterms)
+  smterm_lengths <- vapply(
+    coef_template$smterms,
+    \(sm) nrow(as.data.frame(sm$coef)),
+    integer(1)
+  )
+
+  smterm_ranges <- vector("list", length(smterm_lengths))
+  next_idx <- n_pterms + 1L
+  for (i in seq_along(smterm_lengths)) {
+    len_i <- smterm_lengths[[i]]
+    if (len_i > 0L) {
+      smterm_ranges[[i]] <- next_idx:(next_idx + len_i - 1L)
+      next_idx <- next_idx + len_i
+    } else {
+      smterm_ranges[[i]] <- integer(0)
+    }
+  }
+
+  coef_names <- character(next_idx - 1L)
+  if (n_pterms > 0L) {
+    coef_names[seq_len(n_pterms)] <- pterm_names
+  }
+  for (i in seq_along(smterm_ranges)) {
+    idx <- smterm_ranges[[i]]
+    if (!length(idx)) next
+    coef_names[idx] <- paste0(smterm_names[[i]], "[", seq_along(idx), "]")
+  }
+
+  list(
+    n_pterms = n_pterms,
+    pterm_names = pterm_names,
+    smterm_names = smterm_names,
+    smterm_lengths = smterm_lengths,
+    smterm_ranges = smterm_ranges,
+    n_coefs = length(coef_names),
+    coef_names = coef_names
+  )
+}
+
+# Flatten coef.pffr-like object to a numeric vector with stable ordering
+# @param coef_object Object returned by coef(..., ci = "none")
+# @param layout Layout returned by build_coefboot_layout()
+# @returns Numeric coefficient vector
+flatten_coefboot_coefficients <- function(coef_object, layout) {
+  out <- numeric(layout$n_coefs)
+
+  pvals <- as.numeric(coef_object$pterms[, "value", drop = TRUE])
+  if (length(pvals) != layout$n_pterms) {
+    stop("Mismatch in number of parametric coefficients.")
+  }
+  if (layout$n_pterms > 0L) {
+    out[seq_len(layout$n_pterms)] <- pvals
+  }
+
+  for (i in seq_along(layout$smterm_ranges)) {
+    idx <- layout$smterm_ranges[[i]]
+    if (!length(idx)) next
+    sval <- as.numeric(coef_object$smterms[[i]]$coef[, "value", drop = TRUE])
+    if (length(sval) != length(idx)) {
+      stop("Mismatch in smooth-term coefficient length for term ", i, ".")
+    }
+    out[idx] <- sval
+  }
+
+  out
+}
+
+# Build fixed evaluation grids for coef.pffr extraction
+# @param object Fitted pffr model
+# @param n1,n2,n3 Grid sizes
+# @returns Named list of per-smooth data grids
+build_coefboot_eval_grid <- function(object, n1, n2, n3) {
+  pffr_info <- list(
+    yind_name = object$pffr$yind_name,
+    pcre_terms = object$pffr$pcre_terms
+  )
+  grid_sizes <- list(n1 = n1, n2 = n2, n3 = n3)
+
+  grids <- lapply(seq_along(object$smooth), \(i) {
+    trm <- object$smooth[[i]]
+    is_pcre <- "pcre.random.effect" %in% class(trm)
+    if (trm$dim > 3 && !is_pcre) return(NULL)
+    coef_make_data_grid(
+      trm = trm,
+      model_data = object$model,
+      pffr_info = pffr_info,
+      grid_sizes = grid_sizes,
+      is_pcre = is_pcre
+    )
+  })
+  names(grids) <- names(object$smooth)
+  grids
+}
+
+# Extract coefficients from a fitted pffr model as a vector
+# @param model Fitted pffr model (or try-error)
+# @param n1, n2, n3 Grid sizes for coefficient evaluation
+# @param fallback Vector of NAs to return on failure
+# @param layout Layout from build_coefboot_layout()
+# @param eval_grid Optional fixed evaluation grids for coef.pffr
+# @returns Numeric vector of coefficient values
+extract_boot_coefficients <- function(
+  model,
+  n1,
+  n2,
+  n3,
+  fallback,
+  layout,
+  eval_grid = NULL
+) {
+  if (inherits(model, "try-error")) {
+    return(fallback)
+  }
+
+  coefs <- try(
+    coef(
+      model,
+      se = FALSE,
+      sandwich = "none",
+      ci = "none",
+      n1 = n1,
+      n2 = n2,
+      n3 = n3,
+      eval_grid = eval_grid
+    ),
+    silent = TRUE
+  )
+  if (inherits(coefs, "try-error")) {
+    return(fallback)
+  }
+
+  vec <- try(flatten_coefboot_coefficients(coefs, layout), silent = TRUE)
+  if (inherits(vec, "try-error") || length(vec) != length(fallback)) {
+    return(fallback)
+  }
+  vec
+}
+
+# Convert confidence level to stable column suffix (e.g., 0.95 -> "95")
+# @param conf Numeric confidence level in (0, 1)
+# @returns Character label
+format_boot_conf_label <- function(conf) {
+  if (!is.numeric(conf) || length(conf) != 1L || !is.finite(conf)) {
+    stop("'conf' must be a single finite numeric value.")
+  }
+  label <- sprintf("%.8f", 100 * conf)
+  label <- sub("0+$", "", label)
+  label <- sub("\\.$", "", label)
+  label
+}
+
+# Compute percentile CI bounds from a bootstrap sample vector
+# @param x Numeric bootstrap draws
+# @param conf Confidence levels
+# @returns Numeric vector lower/upper pairs for each level
+compute_percentile_ci <- function(x, conf) {
+  as.vector(vapply(
+    conf,
+    \(c_level) {
+      probs <- c((1 - c_level) / 2, 1 - (1 - c_level) / 2)
+      stats::quantile(
+        x,
+        probs = probs,
+        type = 8,
+        na.rm = TRUE,
+        names = FALSE
+      )
+    },
+    numeric(2)
+  ))
+}
+
+# Compute bootstrap confidence intervals for a single coefficient
+# @param boot_result Object returned by boot::boot
+# @param index Which coefficient index
+# @param conf Confidence levels (numeric vector)
+# @param type Type of CI ("percent", "bca", etc.)
+# @returns Numeric vector of CI bounds
+compute_single_boot_ci <- function(boot_result, index, conf, type) {
+  if (type == "percent") {
+    return(compute_percentile_ci(boot_result$t[, index], conf))
+  }
+
+  type_arg <- if (type == "percent") "perc" else type
+  out <- tryCatch(
+    {
+      ci <- boot::boot.ci(
+        boot_result,
+        conf = conf,
+        index = index,
+        type = type_arg
+      )
+      bounds <- ci[[type]]
+      if (is.null(bounds)) stop("CI bounds unavailable")
+      lower <- bounds[, ncol(bounds) - 1L]
+      upper <- bounds[, ncol(bounds)]
+      as.vector(rbind(lower, upper))
+    },
+    warning = function(w) rep(NA_real_, 2L * length(conf)),
+    error = function(e) rep(NA_real_, 2L * length(conf))
+  )
+  out
+}
+
+# Compute bootstrap CIs for multiple coefficients
+# @param boot_result Object returned by boot::boot
+# @param indices Which coefficient indices to compute CIs for
+# @param conf Confidence levels
+# @param type Type of CI
+# @param apply_fn Function to use for iteration
+# @returns Matrix with CI bounds as rows
+compute_boot_cis <- function(
+  boot_result,
+  indices,
+  conf,
+  type,
+  apply_fn = function(X, FUN) lapply(X, FUN)
+) {
+  ci_list <- apply_fn(indices, \(i) {
+    compute_single_boot_ci(boot_result, i, conf, type)
+  })
+  ci_matrix <- do.call(rbind, ci_list)
+
+  lower_names <- paste0(
+    "lower_",
+    vapply(conf, format_boot_conf_label, character(1))
+  )
+  upper_names <- paste0(
+    "upper_",
+    vapply(conf, format_boot_conf_label, character(1))
+  )
+  colnames(ci_matrix) <- as.vector(rbind(lower_names, upper_names))
+
+  ci_matrix
+}
+
+#--------------------------------------
+# Main Exported Functions
+#--------------------------------------
+
 #' Simple bootstrap CIs for pffr
 #'
 #' This function resamples observations in the data set to obtain approximate CIs for different
@@ -26,916 +355,684 @@
 #' @importFrom boot boot boot.ci
 #' @importFrom parallel makePSOCKcluster clusterSetRNGStream parLapply mclapply stopCluster
 #' @export
-coefboot.pffr <- function(object,
-                          n1=100, n2=40, n3=20,
-                          B = 100, ncpus = getOption("boot.ncpus", 1),
-                          parallel = c("no", "multicore", "snow"), cl=NULL,
-                          conf=c(.9,.95), type = "percent",
-                          method=c("resample", "residual", "residual.c"),
-                          showProgress=TRUE, ...){
-
+pffr_coefboot <- function(
+  object,
+  n1 = 100,
+  n2 = 40,
+  n3 = 20,
+  B = 100,
+  ncpus = getOption("boot.ncpus", 1),
+  parallel = c("no", "multicore", "snow"),
+  cl = NULL,
+  conf = c(.9, .95),
+  type = "percent",
+  method = c("resample", "residual", "residual.c"),
+  showProgress = TRUE,
+  ...
+) {
+  # Validate inputs
   method <- match.arg(method)
   parallel <- match.arg(parallel)
-  stopifnot(B > 0, conf > 0, conf < 1)
+  type <- match.arg(type, c("norm", "basic", "stud", "percent", "bca"))
 
-  if(is.null(ncpus)) ncpus <- getOption("boot.ncpus", 1L)
-  ##
+  if (!is.numeric(B) || length(B) != 1 || !is.finite(B) || B < 1) {
+    stop("'B' must be a single positive integer.")
+  }
+  B <- as.integer(B)
+  if (
+    !is.numeric(conf) || any(!is.finite(conf)) || any(conf <= 0 | conf >= 1)
+  ) {
+    stop("'conf' must contain values strictly between 0 and 1.")
+  }
+  conf <- as.numeric(conf)
+  conf <- conf[!duplicated(conf)]
+  primary_conf <- conf[1L]
+
+  if (is.null(ncpus)) {
+    ncpus <- getOption("boot.ncpus", 1L)
+  }
+  if (
+    !is.numeric(ncpus) || length(ncpus) != 1 || !is.finite(ncpus) || ncpus < 1
+  ) {
+    stop("'ncpus' must be a single positive integer.")
+  }
+  ncpus <- as.integer(ncpus)
+
+  # Extract model call components, evaluating any unevaluated language objects
+  modcall <- prepare_modcall_for_bootstrap(object)
+
+  # Get original coefficients (template for return structure)
+  coef_template <- coef(
+    object,
+    se = FALSE,
+    sandwich = "none",
+    ci = "none",
+    n1 = n1,
+    n2 = n2,
+    n3 = n3
+  )
+  layout <- build_coefboot_layout(coef_template)
+  eval_grid <- build_coefboot_eval_grid(object, n1, n2, n3)
+
+  # Compute fallback return vector (all NAs) for failed bootstrap replicates
+  fallback_vec <- rep(NA_real_, layout$n_coefs)
+
+  # Build resampling function based on data type and method
+  resample_fn <- build_resample_function(
+    object = object,
+    modcall = modcall,
+    method = method
+  )
+
+  # Bootstrap statistic function
+  boot_statistic <- function(
+    data,
+    indices,
+    modcall,
+    n1,
+    n2,
+    n3,
+    fallback,
+    layout,
+    eval_grid,
+    resample_fn,
+    show_progress
+  ) {
+    modcall_boot <- resample_fn(modcall, data, indices)
+    if (!is.call(modcall_boot)) {
+      modcall_boot <- as.call(modcall_boot)
+    }
+    model_boot <- try(eval(modcall_boot), silent = TRUE)
+    coefs <- extract_boot_coefficients(
+      model_boot,
+      n1,
+      n2,
+      n3,
+      fallback,
+      layout,
+      eval_grid = eval_grid
+    )
+    if (show_progress) cat(".")
+    coefs
+  }
+
+  # Run bootstrap
+  if (showProgress) message("starting bootstrap (", B, " replications).\n")
+  boot_args <- list(
+    data = modcall$data,
+    statistic = boot_statistic,
+    R = B,
+    modcall = modcall,
+    n1 = n1,
+    n2 = n2,
+    n3 = n3,
+    fallback = fallback_vec,
+    layout = layout,
+    eval_grid = eval_grid,
+    resample_fn = resample_fn,
+    show_progress = showProgress,
+    parallel = parallel,
+    ncpus = ncpus,
+    ...
+  )
+  if (parallel == "snow" && !is.null(cl)) {
+    boot_args$cl <- cl
+  }
+  boot_result <- do.call(boot::boot, boot_args, quote = TRUE)
+  if (showProgress) message("done.\n")
+
+  # Handle failed replicates
+  boot_result <- handle_failed_replicates(boot_result, B)
+  n_failed <- attr(boot_result, "n_failed") %||% 0L
+  failure_rate <- attr(boot_result, "failure_rate") %||%
+    if (B > 0L) n_failed / B else NA_real_
+
+  # Build parallel apply function for CI computation
+  parallel_ctx <- build_parallel_apply(parallel, ncpus, cl)
+  on.exit(parallel_ctx$cleanup(), add = TRUE)
+  apply_fn <- parallel_ctx$apply
+
+  # Compute and attach CIs
+  if (showProgress) message("calculating bootstrap CIs....")
+  result <- attach_bootstrap_cis(
+    coef_template = coef_template,
+    layout = layout,
+    boot_result = boot_result,
+    conf = conf,
+    primary_conf = primary_conf,
+    type = type,
+    apply_fn = apply_fn,
+    method = method,
+    B_requested = B,
+    n_failed = n_failed,
+    failure_rate = failure_rate
+  )
+
+  structure(result, call = match.call())
+}
+
+
+#' Simple bootstrap CIs for pffr (deprecated)
+#'
+#' @description
+#' **Deprecated**
+#'
+#' `coefboot.pffr()` was renamed to [pffr_coefboot()] for consistency with the
+#' package naming conventions.
+#'
+#' @inheritParams pffr_coefboot
+#' @return A list with similar structure as the return value of
+#'   \code{\link{coef.pffr}}, containing the original point estimates along
+#'   with bootstrap CIs.
+#' @export
+#' @keywords internal
+coefboot.pffr <- function(
+  object,
+  n1 = 100,
+  n2 = 40,
+  n3 = 20,
+  B = 100,
+  ncpus = getOption("boot.ncpus", 1),
+  parallel = c("no", "multicore", "snow"),
+  cl = NULL,
+  conf = c(.9, .95),
+  type = "percent",
+  method = c("resample", "residual", "residual.c"),
+  showProgress = TRUE,
+  ...
+) {
+  .Deprecated("pffr_coefboot")
+  pffr_coefboot(
+    object = object,
+    n1 = n1,
+    n2 = n2,
+    n3 = n3,
+    B = B,
+    ncpus = ncpus,
+    parallel = parallel,
+    cl = cl,
+    conf = conf,
+    type = type,
+    method = method,
+    showProgress = showProgress,
+    ...
+  )
+}
+
+
+# Prepare model call for bootstrap resampling
+# @param object Fitted pffr model
+# @returns Modified modcall with evaluated components
+prepare_modcall_for_bootstrap <- function(object) {
   modcall <- object$pffr$call
   modcall$formula <- object$pffr$formula
-  if(is.language(modcall$data)){
-    modcall$data <- eval(modcall$data, environment(object$pffr$formula))
+  frml_env <- environment(object$pffr$formula)
+
+  if (is.language(modcall$data)) {
+    modcall$data <- eval(modcall$data, frml_env)
   }
-  if(!is.null(modcall$ydata) && is.language(modcall$ydata)){
-    modcall$ydata <- eval(modcall$ydata, environment(object$pffr$formula))
+
+  if (!is.null(modcall$ydata) && is.language(modcall$ydata)) {
+    modcall$ydata <- eval(modcall$ydata, frml_env)
   }
-  if(is.language(modcall$yind)){
-    modcall$yind <- eval(modcall$yind, environment(object$pffr$formula))
+  if (is.language(modcall$yind)) {
+    modcall$yind <- eval(modcall$yind, frml_env)
   }
-  if(is.language(modcall$hatSigma)){
-    modcall$hatSigma <- eval(modcall$hatSigma, environment(object$pffr$formula))
-  }
-  if(!is.null(modcall$algorithm)){
-    if(modcall$algorithm != "gam"){
-      stop("bootstrap implemented only for gam-fits.\n")
-    }
+  # Ensure bootstrap refits do not trigger robust covariance recalculation.
+  fit_fun <- safeDeparse(modcall[[1]])
+  if (fit_fun %in% c("pffr", "refund::pffr")) {
+    modcall$sandwich <- "none"
   }
   modcall$fit <- TRUE
-  yind <- modcall$yind
+  modcall
+}
 
-  # container object for return
-  coefboot <- coef(object, se = FALSE, n1=n1, n2=n2, n3=n3)
+# Build resampling function based on data type and method
+# @param object Fitted pffr model
+# @param modcall Prepared model call
+# @param method Resampling method
+# @returns Function(modcall, data, indices) for resampling
+build_resample_function <- function(object, modcall, method) {
+  is_sparse <- object$pffr$is_sparse
+  ydata <- modcall$ydata
 
-  ## refit models on bootstrap data sets & save fits
-  message("starting bootstrap (", B, " replications).\n")
-
-  dim_return <- length(unlist(c(coefboot$pterms[,"value"],
-                       sapply(coefboot$smterms, function(x) x$value))))
-  fallback_return <- rep(NA, dim_return)
-
-  bootcoef <- function(modcall, fallback = fallback_return){
-    mb <- try(eval(as.call(modcall)))
-    if (inherits(mb, "try-error")) {
-      return(fallback)
-    }
-    coefs <- coef(mb, se = FALSE, n1=n1, n2=n2, n3=n3)
-    ##save results as one long vector as boot can't deal with lists
-    coefvec <- c(coefs$pterms[,"value"],
-                 sapply(coefs$smterms, function(x) x$value))
-    if(showProgress) cat(".")
-    unlist(coefvec)
-  }
-
-  if(object$pffr$sparseOrNongrid) {
-    stop("coefboot.pffr not (yet...) implemented for sparse/irregular data")
-
-    ## TODO:
-    ## - "all(ydata$.obs %in% 1:nobs)" in pffr means overwriting .obs required
-    ## - subset does not yield REPEATED obs
-    #resample.default <- function(modcall, data, indices) {
-    #  dataB <- data[indices,]
-    #  ydataB <- subset(modcall$ydata, .obs %in% indices)
-    #  modcall$data <- dataB
-    #  modcall$ydata <- ydataB
-    #  modcall
-    #}
-
-  } else {
-    resample.default <- function(modcall, data, indices) {
-      dataB <- data[indices,]
-      modcall$data <- dataB
-      modcall
-    }
-    resample.resid <- function(modcall, data, indices, center=FALSE) {
-      dataB <- data
-      fitted <- fitted(object)
-      resid <- resid(object)[indices,]
-      if(center) {
-        resid <- resid - colMeans(resid)
+  if (method == "resample") {
+    if (is_sparse) {
+      # Closure captures ydata for sparse resampling
+      function(mc, data, indices) {
+        resample_sparse_observations(mc, data, ydata, indices)
       }
-      dataB[[deparse(object$formula[[2]])]] <- fitted + resid
-      modcall$data <- dataB
-      modcall
+    } else {
+      resample_grid_observations
     }
-    resample.residc <- function(modcall, data, indices) {
-      resample.resid(modcall, data, indices, center=TRUE)
+  } else if (method %in% c("residual", "residual.c")) {
+    if (is_sparse) {
+      stop("residual bootstrap not implemented for sparse data")
+    }
+    gaussian_identity <- identical(object$family$family, "gaussian") &&
+      identical(object$family$link[[1]], "identity")
+    if (!gaussian_identity) {
+      stop(
+        "residual bootstrap is only implemented for gaussian identity models. ",
+        "Use method = \"resample\"."
+      )
+    }
+    # Capture fitted values and residuals from original model
+    fitted_vals <- fitted(object)
+    resids <- residuals(object, reformat = TRUE)
+    response_name <- deparse(object$pffr$response_name)
+    center <- (method == "residual.c")
+
+    function(mc, data, indices) {
+      resample_residuals(
+        mc,
+        data,
+        indices,
+        fitted_vals,
+        resids,
+        response_name,
+        center
+      )
     }
   }
-  resample <- switch(method,
-                     "resample" = resample.default,
-                     "residual" = resample.resid,
-                     "residual.c" = resample.residc)
+}
 
-  bootfct <- function(modcall, data, indices){
-    modcall <- resample(modcall, data, indices)
-    bootcoef(modcall)
+# Handle failed bootstrap replicates
+# @param boot_result Object from boot::boot
+# @param B Total number of replicates requested
+# @returns Modified boot_result with failed replicates removed
+handle_failed_replicates <- function(boot_result, B) {
+  failed_idx <- which(rowSums(is.na(boot_result$t)) == ncol(boot_result$t))
+  n_failed <- length(failed_idx)
+  failure_rate <- if (B > 0L) n_failed / B else NA_real_
+
+  if (n_failed == B) {
+    stop("All bootstrap replicates failed.")
+  }
+  if (n_failed > 0) {
+    warning(
+      n_failed,
+      " out of ",
+      B,
+      " bootstrap replicates failed (",
+      round(100 * failure_rate, 1),
+      "%). ",
+      "Using ",
+      B - n_failed,
+      " successful replicates for CI computation. ",
+      "Consider increasing B or simplifying the model if this persists.",
+      call. = FALSE
+    )
+    boot_result$t <- boot_result$t[-failed_idx, , drop = FALSE]
+    boot_result$R <- boot_result$R - n_failed
+  }
+  attr(boot_result, "n_failed") <- n_failed
+  attr(boot_result, "B_requested") <- B
+  attr(boot_result, "failure_rate") <- failure_rate
+  boot_result
+}
+
+# Build parallel apply function for CI computation
+# @param parallel Parallelization method
+# @param ncpus Number of CPUs
+# @param cl Optional cluster object
+# @returns Apply function with appropriate parallelization
+build_parallel_apply <- function(parallel, ncpus, cl) {
+  if (parallel == "multicore") {
+    return(list(
+      apply = function(X, FUN) parallel::mclapply(X, FUN, mc.cores = ncpus),
+      cleanup = function() invisible(NULL)
+    ))
   }
 
-  bootreps <- boot(data=modcall$data, statistic=bootfct, R=B, modcall=modcall,
-                   parallel=parallel, ncpus=ncpus, ...)
-  if(showProgress) message("done.\n")
-
-  failed <- which(rowSums(is.na(bootreps$t)) == ncol(bootreps$t))
-  if (length(failed)) {
-    if (length(failed) == B) stop("All bootstrap replicates failed.")
-    warning(paste0(failed, " out of ", B, " bootstrap replicates failed!"))
-    bootreps$t <-  bootreps$t[-failed, ]
-    bootreps$R <- bootreps$R - length(failed)
-  }
-  ## disentangle bootreps
-
-
-  ptrms <- rownames(coefboot$pterms)
-  ptrmsboot <- matrix(bootreps$t[,1:length(ptrms)], )
-  ptrmsboot <- t(ptrmsboot)
-
-  smtrms <- names(coefboot$smterms)
-  smtrmvallengths <- sapply(coefboot$smterms, function(x) length(x$value))
-
-  #drop NULL-entries
-  NULLentries <- smtrmvallengths==0
-  if (any(NULLentries)) {
-    smtrms <- smtrms[!NULLentries]
-    smtrmvallengths <- smtrmvallengths[!NULLentries]
-    coefboot$smterms <- coefboot$smterms[!NULLentries]
-  }
-
-  start <- c(1, cumsum(head(smtrmvallengths,-1))+1)
-  stop <- cumsum(smtrmvallengths)
-  smtrmsboot <- vector(length(smtrms), mode="list")
-  for(i in 1:length(start)){
-    smtrmsboot[[i]] <- t((bootreps$t[,-(1:length(ptrms))])[,start[i]:stop[i]])
-  }
-  names(smtrmsboot) <- smtrms
-
-  ## get bootstrap CIs
-  cat("calculating bootstrap CIs....")
-  mylapply <- if(parallel=="multicore"){
-    parallel::mclapply
-  } else {
-    if(parallel=="snow"){
-      if(is.null(cl)){
-        cl <- parallel::makePSOCKcluster(rep("localhost",
-                                             ncpus))
-      }
+  if (parallel == "snow") {
+    own_cluster <- is.null(cl)
+    cl_use <- cl
+    if (own_cluster) {
+      cl_use <- parallel::makePSOCKcluster(rep("localhost", ncpus))
       if (RNGkind()[1L] == "L'Ecuyer-CMRG") {
-        parallel::clusterSetRNGStream(cl)
+        parallel::clusterSetRNGStream(cl_use)
       }
-      function(X, FUN) {
-        res <- parallel::parLapply(cl, X, FUN)
-        parallel::stopCluster(cl)
-        return(res)
+    }
+    return(list(
+      apply = function(X, FUN) parallel::parLapply(cl_use, X, FUN),
+      cleanup = function() {
+        if (own_cluster) parallel::stopCluster(cl_use)
+        invisible(NULL)
       }
-    } else lapply
+    ))
   }
 
-  getCIs <- function(which=1:length(bootreps$t0), conf=.95, type = type){
-    ret <- mylapply(which, function(i){
-      ci <- boot.ci(bootreps, conf=conf, index=i,
-                    #fix stupidity in boot.ci: option name has to be "perc",
-                    # return value is named "percent"
-                    type=ifelse(type=="percent", "perc", type))
-      ret <- ci[[type]][,4:5]
-      # capture failed CIs here:
-      if (is.null(ret)) {
-        ret <- matrix(NA, nrow = length(conf), ncol = 2)
+  list(
+    apply = function(X, FUN) lapply(X, FUN),
+    cleanup = function() invisible(NULL)
+  )
+}
+
+# Attach bootstrap CIs to coefficient template
+# @param coef_template Coefficient structure from coef.pffr
+# @param boot_result Bootstrap results
+# @param conf Confidence levels
+# @param type CI type
+# @param apply_fn Parallel apply function
+# @returns coef_template with CIs attached
+attach_bootstrap_cis <- function(
+  coef_template,
+  layout,
+  boot_result,
+  conf,
+  primary_conf,
+  type,
+  apply_fn,
+  method,
+  B_requested,
+  n_failed,
+  failure_rate
+) {
+  ci_matrix <- compute_boot_cis(
+    boot_result = boot_result,
+    indices = seq_len(layout$n_coefs),
+    conf = conf,
+    type = type,
+    apply_fn = apply_fn
+  )
+  rownames(ci_matrix) <- layout$coef_names
+
+  primary_label <- format_boot_conf_label(primary_conf)
+  lower_col <- paste0("lower_", primary_label)
+  upper_col <- paste0("upper_", primary_label)
+
+  p_idx <- seq_len(layout$n_pterms)
+  if (layout$n_pterms > 0L) {
+    coef_template$pterms <- cbind(
+      coef_template$pterms,
+      lower = ci_matrix[p_idx, lower_col],
+      upper = ci_matrix[p_idx, upper_col]
+    )
+  }
+
+  for (i in seq_along(layout$smterm_ranges)) {
+    idx <- layout$smterm_ranges[[i]]
+    if (!length(idx)) {
+      coef_template$smterms[[i]]$coef <- cbind(
+        coef_template$smterms[[i]]$coef,
+        lower = numeric(0),
+        upper = numeric(0)
+      )
+      next
+    }
+    coef_template$smterms[[i]]$coef <- cbind(
+      coef_template$smterms[[i]]$coef,
+      lower = ci_matrix[idx, lower_col],
+      upper = ci_matrix[idx, upper_col]
+    )
+  }
+
+  boot_ci <- list(
+    type = type,
+    conf = conf,
+    primary_conf = primary_conf,
+    coefficient_bounds = ci_matrix,
+    pterms = if (layout$n_pterms > 0L) ci_matrix[p_idx, , drop = FALSE] else
+      matrix(numeric(0), nrow = 0, ncol = ncol(ci_matrix)),
+    smterms = lapply(layout$smterm_ranges, \(idx) {
+      if (!length(idx)) {
+        matrix(numeric(0), nrow = 0, ncol = ncol(ci_matrix))
+      } else {
+        ci_matrix[idx, , drop = FALSE]
       }
-      return(as.vector(ret))
     })
-    ret <- do.call(cbind, ret)
-    rownames(ret) <- paste(c(((1-conf)/2), 1-(1-conf)/2)*100,"%", sep="")
-    return(t(ret))
-  }
-  coefboot$pterms <- cbind(coefboot$pterms,
-                           getCIs(which=1:length(ptrms), conf=conf, type=type))
-  for(i in 1:length(start)){
-    coefboot$smterms[[i]] <- cbind(coefboot$smterms[[i]]$coef,
-                                   getCIs(which=length(ptrms)+(start[i]:stop[i]), conf=conf, type=type))
-  }
-  names(coefboot$smterms) <- smtrms
+  )
+  names(boot_ci$smterms) <- layout$smterm_names
 
-  return(structure(coefboot, call=match.call()))
+  coef_template$boot_ci <- boot_ci
+  coef_template$ci_meta <- list(
+    type = "bootstrap",
+    level = primary_conf,
+    levels = conf,
+    boot_type = type,
+    B_requested = B_requested,
+    B_used = boot_result$R,
+    n_failed = n_failed,
+    failure_rate = failure_rate,
+    method = method
+  )
+
+  coef_template
+}
+
+#--------------------------------------
+# GLS Decorrelation Helpers
+#--------------------------------------
+
+# Compute square root of inverse covariance matrix for GLS decorrelation
+# @param hat_sigma Estimated covariance matrix
+# @param cond_cutoff Condition number cutoff for positive definiteness correction
+# @returns Square root of inverse covariance matrix
+compute_sqrt_sigma_inv <- function(hat_sigma, cond_cutoff = 500) {
+  e_sigma <- eigen(hat_sigma, symmetric = TRUE)
+  cond <- max(e_sigma$values) / min(e_sigma$values)
+
+  if (cond > cond_cutoff) {
+    hat_sigma_pd <- Matrix::nearPD(
+      hat_sigma,
+      keepDiag = TRUE,
+      ensureSymmetry = TRUE,
+      do2eigen = TRUE,
+      posd.tol = 1 / cond_cutoff
+    )
+    warning(
+      "Supplied <hatSigma> had condition number ",
+      round(cond),
+      "\n   -- projected further into pos.-definite cone (new condition number: ",
+      cond_cutoff,
+      ")."
+    )
+    e_sigma <- eigen(as.matrix(hat_sigma_pd$mat), symmetric = TRUE)
+  }
+
+  e_sigma$vectors %*% diag(1 / sqrt(e_sigma$values)) %*% t(e_sigma$vectors)
+}
+
+# Decorrelate design matrix and response for GLS fitting
+# @param G GAM G object from gam(..., fit = FALSE)
+# @param sqrt_sigma_inv Square root of inverse covariance
+# @param nobs Number of observations
+# @param nyindex Number of time points per observation
+# @returns Modified G object with decorrelated X and y
+decorrelate_gam_matrices <- function(G, sqrt_sigma_inv, nobs, nyindex) {
+  # Decorrelate response (reshape, transform, flatten)
+  y_matrix <- matrix(G$y, nrow = nobs, ncol = nyindex, byrow = TRUE)
+  y_decorr <- t(sqrt_sigma_inv %*% t(y_matrix))
+  G$y <- as.vector(t(y_decorr))
+
+  # Decorrelate design matrix block-wise
+  for (i in seq_len(nobs)) {
+    rows <- ((i - 1) * nyindex + 1):(i * nyindex)
+    G$X[rows, ] <- sqrt_sigma_inv %*% G$X[rows, ]
+  }
+
+  G
+}
+
+#--------------------------------------
+# pffr Label Map Building Helpers
+#--------------------------------------
+
+# Build label map connecting original terms to mgcv smooth labels
+# Extracted from pffr/pffrGLS for reusability
+# @param term_map Named vector of transformed term strings
+# @param m_smooth List of smooth objects from fitted model
+# @param where_specials List of term indices by type
+# @param formula_env Environment with transformed variables
+# @param ffpc_terms List of ffpc term objects (or NULL)
+# @returns Named list mapping original terms to mgcv labels
+build_pffr_label_map <- function(
+  term_map,
+  m_smooth,
+  where_specials,
+  formula_env,
+  ffpc_terms = NULL
+) {
+  label_map <- as.list(term_map)
+  smooth_labels <- vapply(m_smooth, \(x) x$label, character(1))
+
+  has_par <- length(where_specials$par) > 0
+  has_ffpc <- length(where_specials$ffpc) > 0
+
+  if (has_par || has_ffpc) {
+    # Handle parametric terms
+    if (has_par) {
+      for (w in where_specials$par) {
+        var <- get(names(label_map)[w], envir = formula_env)
+        if (is.factor(var)) {
+          where <- vapply(m_smooth, \(x) x$by, character(1)) ==
+            names(label_map)[w]
+          label_map[[w]] <- vapply(m_smooth[where], \(x) x$label, character(1))
+        } else {
+          label_map[[w]] <- paste0(
+            "s(",
+            names(label_map)[w],
+            "):",
+            names(label_map)[w]
+          )
+        }
+      }
+    }
+
+    # Handle ffpc terms
+    if (has_ffpc && !is.null(ffpc_terms)) {
+      for (ind in seq_along(where_specials$ffpc)) {
+        w <- where_specials$ffpc[ind]
+        where <- vapply(m_smooth, \(x) x$id %||% NA_character_, character(1)) ==
+          ffpc_terms[[ind]]$id
+        label_map[[w]] <- vapply(m_smooth[where], \(x) x$label, character(1))
+      }
+    }
+
+    # Match remaining terms
+    other_indices <- setdiff(
+      seq_along(label_map),
+      c(where_specials$par, where_specials$ffpc)
+    )
+    if (length(other_indices) > 0) {
+      label_map[other_indices] <- smooth_labels[pmatch(
+        vapply(label_map[other_indices], extract_smooth_label, character(1)),
+        smooth_labels
+      )]
+    }
+  } else {
+    # Simple case: match all terms
+    label_map[seq_along(label_map)] <- smooth_labels[pmatch(
+      vapply(label_map, extract_smooth_label, character(1)),
+      smooth_labels
+    )]
+  }
+
+  # Fill in NA labels with original term map
+  na_labels <- vapply(
+    label_map,
+    \(x) any(is.null(x)) || any(is.na(x)),
+    logical(1)
+  )
+  if (any(na_labels)) {
+    label_map[na_labels] <- term_map[na_labels]
+  }
+
+  label_map
+}
+
+# Extract smooth label from term string or call
+# @param x Term string or evaluated call
+# @returns Label string
+extract_smooth_label <- function(x) {
+  parsed <- parse(text = x)[[1]]
+  if (length(parsed) != 1) {
+    evaled <- eval(parsed)
+    evaled$label
+  } else {
+    x
+  }
+}
+
+#' Penalized function-on-function regression with non-i.i.d. residuals
+#' (deprecated)
+#'
+#' @description
+#' **Deprecated**
+#'
+#' `pffr_gls()` is deprecated. Its GLS-based covariance correction produced
+#' poorly calibrated inference in practice. Use \code{\link{pffr}()} with
+#' \code{sandwich = "cluster"} (the new default) or \code{sandwich = "cl2"}
+#' for robust covariance estimation instead.
+#'
+#' @param formula,yind,hatSigma,data,ydata,algorithm,method,tensortype,bs.yindex,bs.int,cond.cutoff,...
+#'   Ignored. The function always errors.
+#'
+#' @return Does not return; always errors with a deprecation message.
+#' @seealso \code{\link{pffr}} for the recommended approach with sandwich CIs.
+#'
+#' @export
+#' @author Fabian Scheipl
+pffr_gls <- function(
+  formula,
+  yind,
+  hatSigma,
+  data = NULL,
+  ydata = NULL,
+  algorithm = NA,
+  method = "REML",
+  tensortype = c("ti", "t2"),
+  bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+  bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+  cond.cutoff = 5e2,
+  ...
+) {
+  .Deprecated(
+    new = "pffr",
+    msg = paste(
+      "pffr_gls() is deprecated and now errors.",
+      "Its GLS-based covariance correction produced poorly calibrated inference.",
+      "Use pffr() with sandwich = \"cluster\" (the default) or",
+      "sandwich = \"cl2\" for robust covariance estimation instead.",
+      "See ?pffr for details."
+    )
+  )
+  stop(
+    "pffr_gls() has been removed. ",
+    "Use pffr() with sandwich = \"cluster\" or sandwich = \"cl2\" instead.",
+    call. = FALSE
+  )
 }
 
 
 #' Penalized function-on-function regression with non-i.i.d. residuals
+#' (deprecated)
 #'
-#' Implements additive regression for functional and scalar covariates and functional responses.
-#' This function is a wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to fit models of the general form \cr
-#' \eqn{Y_i(t) = \mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots  + E_i(t))}\cr
-#' with a functional (but not necessarily continuous) response \eqn{Y(t)},
-#' (optional) smooth intercept \eqn{\mu(t)}, (multiple) functional covariates \eqn{X(t)} and scalar covariates
-#' \eqn{z_1}, \eqn{z_2}, etc. The residual functions \eqn{E_i(t) \sim GP(0, K(t,t'))} are assumed to be i.i.d.
-#' realizations of a Gaussian process. An estimate of the covariance operator \eqn{K(t,t')} evaluated on \code{yind}
-#' has to be supplied in the \code{hatSigma}-argument.
+#' @description
+#' **Deprecated**
 #'
-#' @section Details:
-#' Note that \code{hatSigma} has to be positive definite. If \code{hatSigma} is close to positive \emph{semi-}definite or badly conditioned,
-#' estimated standard errors become unstable (typically much too small). \code{pffrGLS} will try to diagnose this and issue a warning.
-#' The danger is especially big if the number of functional observations is smaller than the number of gridpoints
-#' (i.e, \code{length(yind)}), since the raw covariance estimate will not have full rank.\cr
-#' Please see \code{\link[refund]{pffr}} for details on model specification and
-#' implementation. \cr THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
+#' `pffrGLS()` is deprecated. Use \code{\link{pffr}()} with
+#' \code{sandwich = "cluster"} or \code{sandwich = "cl2"} instead.
 #'
-#' @param formula a formula with special terms as for \code{\link[mgcv]{gam}}, with additional special terms \code{\link{ff}()} and \code{c()}. See \code{\link[refund]{pffr}}.
-#' @param yind a vector with length equal to the number of columns of the matrix of functional responses giving the vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
-#'   see \code{\link[refund]{pffr}}
-#' @param algorithm the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
-#' 	 and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4" (see \code{\link[gamm4]{gamm4}}) are valid options as well.
-#' @param hatSigma (an estimate of) the within-observation covariance (along the responses' index), evaluated at \code{yind}. See Details.
-#' @param method See \code{\link[refund]{pffr}}
-#' @param bs.yindex See \code{\link[refund]{pffr}}
-#' @param bs.int See \code{\link[refund]{pffr}}
-#' @param tensortype See \code{\link[refund]{pffr}}
-#' @param cond.cutoff if the condition number of \code{hatSigma} is greater than this,  \code{hatSigma} is
-#'    made ``more'' positive-definite via \code{\link[Matrix]{nearPD}} to ensure a condition number equal to cond.cutoff. Defaults to 500.
-#' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. See \code{\link[refund]{pffr}}.
-#'
-#' @return a fitted \code{pffr}-object, see \code{\link[refund]{pffr}}.
-#' @seealso \code{\link[refund]{pffr}}, \code{\link[refund]{fpca.sc}}
+#' @inheritParams pffr_gls
+#' @return Does not return; always errors with a deprecation message.
 #' @export
-#' @importFrom Matrix nearPD as.matrix
-#' @importFrom mgcv smooth.construct.tensor.smooth.spec smooth.construct.t2.smooth.spec gam bam
-#' @importFrom stats terms.formula
-#' @author Fabian Scheipl
+#' @keywords internal
 pffrGLS <- function(
-    formula,
-    yind,
-    hatSigma,
-    algorithm = NA,
-    method="REML",
-    tensortype = c("te", "t2"),
-    bs.yindex = list(bs="ps", k=5, m=c(2, 1)), # only bs, k, m are propagated...
-    bs.int = list(bs="ps", k=20, m=c(2, 1)), # only bs, k, m are propagated...
-    cond.cutoff=5e2,
-    ...
-){
-  # TODO: need check whether yind supplied in ff-terms and pffr are identical!
-  # TODO: allow term-specific overrides of bs.yindex
-  # TODO: weights, subset, offset args!
-  # TODO: write missing locations into pffr so fitted etc will work...
-
-  call <- match.call()
-  tensortype <- as.symbol(match.arg(tensortype))
-
-  ## warn if any entries in ... are not arguments for gam/gam.fit3 or gamm4/lmer
-  dots <- list(...)
-  if(length(dots)){
-    validDots <- if(!is.na(algorithm) && algorithm=="gamm4"){
-      c(names(formals(gamm4)), names(formals(lmer)))
-    } else {
-      c(names(formals(gam)), names(formals(gam.fit3)))
-    }
-    notUsed <- names(dots)[!(names(dots) %in% validDots)]
-    if(length(notUsed))
-      warning("Arguments <", paste(notUsed, collapse=", "), "> supplied but not used." )
-  }
-
-
-  tf <- terms.formula(formula, specials=c("s", "te", "t2", "ff", "c", "sff", "ffpc", "pcre"))
-  trmstrings <- attr(tf, "term.labels")
-  terms <- sapply(trmstrings, function(trm) as.call(parse(text=trm))[[1]], simplify=FALSE)
-  #ugly, but getTerms(formula)[-1] does not work for terms like I(x1:x2)
-  frmlenv <- environment(formula)
-
-
-  where.c <- attr(tf, "specials")$c - 1    # indices of scalar offset terms
-  where.ff <- attr(tf, "specials")$ff - 1  # function-on-function terms
-  where.sff <- attr(tf, "specials")$sff - 1  #smooth function-on-function terms
-  where.s <- attr(tf, "specials")$s - 1    # smooth terms
-  where.te <- attr(tf, "specials")$te - 1  # tensor product terms
-  where.t2 <- attr(tf, "specials")$t2 - 1  # type 2 tensor product terms
-  where.ffpc <- attr(tf, "specials")$ffpc - 1  # PC-based function-on-function terms
-  where.pcre <- attr(tf, "specials")$pcre - 1  # functional random effects/residuals with PC-basis
-  if(length(trmstrings)) {
-    where.par <- which(!(1:length(trmstrings) %in%
-                           c(where.c, where.ff, where.sff, where.ffpc, where.pcre, where.s, where.te, where.t2))) # indices of linear/factor terms with varying coefficients over yind.
-  } else where.par <- numeric(0)
-
-  responsename <- attr(tf,"variables")[2][[1]]
-
-  #start new formula
-  newfrml <- paste(responsename, "~", sep="")
-  newfrmlenv <- new.env()
-  evalenv <- if("data" %in% names(call)) eval.parent(call$data) else NULL
-
-  nobs <- nrow(eval(responsename,  envir=evalenv, enclos=frmlenv))
-  nyindex <- ncol(eval(responsename,  envir=evalenv, enclos=frmlenv))
-
-
-  if(missing(algorithm)||is.na(algorithm)){
-    algorithm <- ifelse(nobs > 1e5, "bam", "gam")
-  }
-  algorithm <- as.symbol(algorithm)
-  if(as.character(algorithm)=="bam" && !("chunk.size" %in% names(call))){
-    call$chunk.size <- 10000
-    #same default as in bam
-  }
-  ##
-  ###<GLS
-  if(as.character(algorithm)=="gamm4") stop("pffrGLS not implemented for gamm4")
-  ###GLS>
-
-  #if missing, define y-index or get it from first ff/sff-term, then assign expanded versions to newfrmlenv
-  if(missing(yind)){
-    if(length(c(where.ff, where.sff))){
-      if(length(where.ff)){
-        ffcall <- expand.call(ff, as.call(terms[where.ff][1])[[1]])
-      }  else ffcall <- expand.call(sff, as.call(terms[where.sff][1])[[1]])
-      if(!is.null(ffcall$yind)){
-        yind <- eval(ffcall$yind, envir=evalenv, enclos=frmlenv)
-        yindname <- deparse(ffcall$yind)
-      } else {
-        yind <- 1:nyindex
-        yindname <- "yindex"
-      }
-    } else {
-      yind <- 1:nyindex
-      yindname <- "yindex"
-    }
-  } else {
-    stopifnot(is.vector(yind), is.numeric(yind),
-              length(yind) == nyindex)
-    yindname <- deparse(substitute(yind))
-  }
-  #make sure it's a valid name
-  if(length(yindname)>1) yindname <- "yindex"
-  # make sure yind is sorted
-  stopifnot(all.equal(order(yind), 1:nyindex))
-
-
-  yindvec <- rep(yind, times = nobs)
-  yindvecname <- as.symbol(paste(yindname,".vec",sep=""))
-  assign(x=deparse(yindvecname), value=yindvec, envir=newfrmlenv)
-
-
-  ###<GLS
-  sqrtSigmaInv <- {
-    eSigma <- eigen(hatSigma, symmetric=TRUE)
-    cond <- max(eSigma$values)/min(eSigma$values)
-    if(cond > cond.cutoff){
-      #            diag(hatSigma) <- 1.05*diag(hatSigma)
-      #            eSigma <- eigen(hatSigma, symmetric = TRUE)
-      #            condnew <- max(eSigma$values)/min(eSigma$values)
-      hatSigmaPD <- nearPD(hatSigma, keepDiag = TRUE, ensureSymmetry=TRUE, do2eigen = TRUE,
-                           posd.tol=1/cond.cutoff)
-      warning("Supplied <hatSigma> had condition number ", round(cond),
-              "\n   -- projected further into pos.-definite cone (new condition number: ", cond.cutoff,").")
-      eSigma <-  eigen(as(hatSigmaPD$mat, "matrix"), symmetric=TRUE)
-    }
-    eSigma$vectors%*%diag(1/sqrt(eSigma$values))%*%t(eSigma$vectors)
-  }
-  assign(x=deparse(call$hatSigma), value=hatSigma, envir=frmlenv)
-
-
-  originalresponsename <- paste(deparse(responsename),".Original", sep="")
-  assign(x=originalresponsename,
-         value=as.vector(t(eval(responsename, envir=evalenv, enclos=frmlenv))),
-         envir=newfrmlenv)
-  ## 'decorrelate' Y
-  ytilde <- sqrtSigmaInv%*%t(eval(responsename, envir=evalenv, enclos=frmlenv))
-  #assign (decorrelated) response in _long_ format to newfrmlenv
-  assign(x=deparse(responsename), value=as.vector(ytilde),
-         envir=newfrmlenv)
-
-
-  if(any(is.na(get(as.character(responsename), newfrmlenv)))){
-    stop("no missings in y for GLS version of pffr allowed")
-  }
-  ####GLS>
-
-  ##################################################################################
-  #modify formula terms....
-  newtrmstrings <- attr(tf, "term.labels")
-
-  #if intercept, add \mu(yindex)
-  if(attr(tf, "intercept")){
-    # have to jump thru some hoops to get bs.yindex handed over properly
-    # without having yind evaluated within the call
-    arglist <- c(name="s", x = as.symbol(yindvecname), bs.int)
-    intcall <- NULL
-    assign(x= "intcall", value= do.call("call", arglist, envir=newfrmlenv), envir=newfrmlenv)
-    newfrmlenv$intcall$x <- as.symbol(yindvecname)
-
-    intstring <- deparse(newfrmlenv$intcall)
-    rm(intcall, envir=newfrmlenv)
-
-    newfrml <- paste(newfrml, intstring, sep=" ")
-    addFint <- TRUE
-    names(intstring) <- paste("Intercept(",yindname,")",sep="")
-  } else{
-    newfrml <-paste(newfrml, "0", sep="")
-    addFint <- FALSE
-  }
-
-  #transform: c(foo) --> foo
-  if(length(where.c)){
-    newtrmstrings[where.c] <- sapply(trmstrings[where.c], function(x){
-      sub("\\)$", "", sub("^c\\(", "", x)) #c(BLA) --> BLA
-    })
-  }
-
-  #prep function-on-function-terms
-  if(length(c(where.ff, where.sff))){
-    ffterms <- lapply(terms[c(where.ff, where.sff)], function(x){
-      eval(x, envir=evalenv, enclos=frmlenv)
-    })
-
-    newtrmstrings[c(where.ff, where.sff)] <- sapply(ffterms, function(x) {
-      safeDeparse(x$call)
-    })
-    #assign newly created data to newfrmlenv
-    lapply(ffterms, function(x){
-      lapply(names(x$data), function(nm){
-        assign(x=nm, value=x$data[[nm]], envir=newfrmlenv)
-        invisible(NULL)
-      })
-      invisible(NULL)
-    })
-    ffterms <- lapply(ffterms, function(x) x[names(x)!="data"])
-  } else ffterms <- NULL
-  if(length(where.ffpc)){
-    ffpcterms <- lapply(terms[where.ffpc], function(x){
-      eval(x, envir=evalenv, enclos=frmlenv)
-    })
-    #assign newly created data to newfrmlenv
-    lapply(ffpcterms, function(trm){
-      lapply(colnames(trm$data), function(nm){
-        assign(x=nm, value=trm$data[,nm], envir=newfrmlenv)
-        invisible(NULL)
-      })
-      invisible(NULL)
-    })
-
-
-    getFfpcFormula <- function(trm) {
-      frmls <- lapply(colnames(trm$data), function(pc) {
-        arglist <- c(name="s", x = as.symbol(yindvecname), by= as.symbol(pc), id=trm$id, trm$splinepars)
-        call <- do.call("call", arglist, envir=newfrmlenv)
-        call$x <- as.symbol(yindvecname)
-        call$by <- as.symbol(pc)
-        safeDeparse(call)
-      })
-      return(paste(unlist(frmls), collapse=" + "))
-    }
-    newtrmstrings[where.ffpc] <- sapply(ffpcterms, getFfpcFormula)
-
-    ffpcterms <- lapply(ffpcterms, function(x) x[names(x)!="data"])
-  } else ffpcterms <- NULL
-
-  #prep PC-based random effects
-  if(length(where.pcre)){
-    pcreterms <- lapply(terms[where.pcre], function(x){
-      eval(x, envir=evalenv, enclos=frmlenv)
-    })
-    #assign newly created data to newfrmlenv
-    lapply(pcreterms, function(trm){
-      lapply(colnames(trm$data), function(nm){
-        assign(x=nm, value=trm$data[,nm], envir=newfrmlenv)
-        invisible(NULL)
-      })
-      invisible(NULL)
-    })
-
-    newtrmstrings[where.pcre] <- sapply(pcreterms, function(x) {
-      safeDeparse(x$call)
-    })
-
-    pcereterms <- lapply(pcreterms, function(x) x[names(x)!="data"])
-  }else pcreterms <- NULL
-
-  #transform: s(x, ...), te(x, z,...), t2(x, z, ...) --> te(x, (z,)  yindex, ..., <bs.yindex>)
-  makeSTeT2 <- function(x){
-
-    xnew <- x
-    if(deparse(x[[1]]) == "te" && as.character(algorithm) == "gamm4") xnew[[1]] <- quote(t2)
-    if(deparse(x[[1]]) == "s"){
-      xnew[[1]] <- if(as.character(algorithm) != "gamm4") {
-        tensortype
-      } else quote(t2)
-      #accomodate multivariate s()-terms
-      xnew$d <- if(!is.null(names(xnew))){
-        c(length(all.vars(xnew[names(xnew)==""])), 1)
-      } else c(length(all.vars(xnew)), 1)
-    } else {
-      if("d" %in% names(x)){ #either expand given d...
-        xnew$d <- c(eval(x$d), 1)
-      } else {#.. or default to univariate marginal bases
-        xnew$d <- rep(1, length(all.vars(x))+1)
-      }
-    }
-    xnew[[length(xnew)+1]] <- yindvecname
-    this.bs.yindex <- if("bs.yindex" %in% names(x)){
-      x$bs.yindex
-    } else bs.yindex
-    xnew <- xnew[names(xnew) != "bs.yindex"]
-
-    xnew$bs <- if("bs" %in% names(x)){
-      if("bs" %in% names(this.bs.yindex)){
-        c(eval(x$bs), this.bs.yindex$bs)
-      } else {
-        c(xnew$bs, "tp")
-      }
-    } else {
-      if("bs" %in% names(this.bs.yindex)){
-        c(rep("tp", length(xnew$d)-1), this.bs.yindex$bs)
-      } else {
-        rep("tp", length(all.vars(x))+1)
-      }
-    }
-    xnew$m <- if("m" %in% names(x)){
-      if("m" %in% names(this.bs.yindex)){
-        warning("overriding bs.yindex for m in ", deparse(x))
-      }
-      #TODO: adjust length if necessary, m can be a list for bs="ps","cp","ds"!
-      x$m
-    } else {
-      if("m" %in% names(this.bs.yindex)){
-        this.bs.yindex$m
-      } else {
-        NA
-      }
-    }
-    #defaults to 8 basis functions
-    xnew$k <- if("k" %in% names(x)){
-      if("k" %in% names(this.bs.yindex)){
-        c(xnew$k, this.bs.yindex$k)
-      } else {
-        c(xnew$k, 8)
-      }
-    } else {
-      if("k" %in% names(this.bs.yindex)){
-        c(pmax(8, 5^head(xnew$d, -1)), this.bs.yindex$k)
-      } else {
-        pmax(8, 5^xnew$d)
-      }
-    }
-
-    xnew$xt <- if("xt" %in% names(x)){
-
-      add.impose <- function(lst){
-        # use this in order to propagate xt-args to gam WITHOUT evaluating them,
-        # because this can break (stupid parse-cutoff!) and
-        # shows up very ugly in summary etc for stuff like large penalty matrices
-        for(i in 2:length(lst)){
-          llst <- length(lst[[i]])
-          if(llst){
-            lst[[i]][[llst+1]] <- TRUE
-            names(lst[[i]])[length(names(lst[[i]]))] <- "impose.ffregC"
-            lst[[i]][[llst+2]] <- nobs
-            names(lst[[i]])[length(names(lst[[i]]))] <- "nobs"
-          } else {
-            lst[[i]] <- bquote(list(impose.ffregC = .(TRUE),
-                                    nobs=.(nobs)))
-          }
-        }
-        return(lst)
-      }
-      # xt has to be supplied as a list, with length(x$d) entries,
-      # each of which is a list or NULL:
-      stopifnot(x$xt[[1]]==as.symbol("list") &&
-                  length(x$xt)==length(xnew$d) &&  # =length(x$d)+1, since first element in parse tree is ``list''
-                  all(sapply(2:length(x$xt), function(i)
-                    x$xt[[i]][[1]] == as.symbol("list") ||
-                      is.null(eval(x$xt[[i]][[1]])))))
-      xtra <- add.impose(x$xt)
-      xtra[[length(xnew$d)+1]] <- bquote(list(impose.ffregC = .(TRUE),
-                                              nobs=.(nobs)))
-      xtra
-    } else {
-      imposearg <- bquote(list(impose.ffregC = .(TRUE),
-                               nobs=.(nobs)))
-
-      xtra <- bquote(list(.(imposearg)))
-      for (i in 3:(length(xnew$d)+1))
-        xtra[[i]] <- imposearg
-      xtra
-    }
-
-    ret <- safeDeparse(xnew)
-    return(ret)
-  }
-
-  if(length(c(where.s, where.te, where.t2))){
-    newtrmstrings[c(where.s, where.te, where.t2)] <-
-      sapply(terms[c(where.s, where.te, where.t2)], makeSTeT2)
-  }
-
-  #transform: x --> s(YINDEX, by=x)
-  if(length(where.par)){
-    newtrmstrings[where.par] <- sapply(terms[where.par], function(x){
-      xnew <- bs.yindex
-      xnew <- as.call(c(quote(s), yindvecname, by=x, xnew))
-      safeDeparse(xnew)
-    })
-
-  }
-
-  #... & assign expanded/additional variables to newfrmlenv
-  where.notff <- c(where.c, where.par, where.s, where.te, where.t2)
-  if(length(where.notff)){
-    if("data" %in% names(call)) frmlenv <- list2env(eval.parent(call$data), frmlenv)
-    lapply(terms[where.notff],
-           function(x){
-             #nms <- all.vars(x)
-             if(any(unlist(lapply(terms[where.c], function(s)
-               if(length(s)==1){
-                 s==x
-               } else {
-                 s[[1]]==x
-               })))){
-               # drop c()
-               # FIXME: FUGLY!
-               x <- formula(paste("~", gsub("\\)$", "",
-                                            gsub("^c\\(", "", deparse(x)))))[[2]]
-             }
-             ## remove names in xt, k, bs,  information (such as variable names for MRF penalties etc)
-             nms <- if(!is.null(names(x))){
-               all.vars(x[names(x) == ""])
-             }  else all.vars(x)
-
-
-             sapply(nms, function(nm){
-               stopifnot(length(get(nm, envir=frmlenv)) == nobs)
-               assign(x=nm,
-                      value=rep(get(nm, envir=frmlenv), each=nyindex),
-                      envir=newfrmlenv)
-               invisible(NULL)
-             })
-             invisible(NULL)
-           })
-  }
-  newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse="+"))
-  environment(newfrml) <- newfrmlenv
-
-  pffrdata <- list2df(as.list(newfrmlenv))
-
-  newcall <- expand.call(pffr, call)
-  newcall$yind <- newcall$tensortype <- newcall$bs.int <-
-    newcall$bs.yindex <- newcall$algorithm <- NULL
-  newcall$formula <- newfrml
-  newcall$data <- quote(pffrdata)
-  newcall[[1]] <- algorithm
-  newcall$hatSigma <- NULL
-
-
-
-  # add appropriate centering constraints for smooth effects
-  # (not possible for gamm4, as the constraint destroys the simple
-  # diagonal structure of the t2-penalties)
-  if(!(as.character(algorithm) %in% c("gamm4"))){
-    suppressMessages(
-      trace(mgcv::smooth.construct.tensor.smooth.spec,
-            at = max(which(sapply(as.list(body(mgcv::smooth.construct.tensor.smooth.spec)), function(x) any(grepl(x, pattern="object$C", fixed=TRUE))))) + 1,
-            print=FALSE,
-            tracer = quote({
-              #browser()
-              if(!is.null(object$margin[[length(object$margin)]]$xt$impose.ffregC)){
-                ## constraint: sum_i f(z_i, t) = 0 \forall t
-                cat("imposing constraints..\n")
-                nygrid <- length(unique(data[[object$margin[[length(object$margin)]]$term]]))
-
-
-                ## C = ((1,...,1) \otimes I_G) * B
-                Ctmp <- kronecker(t(rep(1, object$margin[[length(object$margin)]]$xt$nobs)), diag(nygrid))
-                if(ncol(Ctmp) > nrow(object$X)){
-                  #drop rows for missing obs.
-                  Ctmp <- Ctmp[, - get(".PFFRmissingResponses", .GlobalEnv)]
-                }
-                C <- Ctmp %*% object$X
-
-                ## we need the number of effective constraints <nC> to correspond to the
-                ## rank of the constraint matrix C, which is the min. of number of basis
-                ## functions for t (object$margin[[length(object$margin)]]$bs.dim) and
-                ## timepoints (<nygrid>)
-                nC <- min(nygrid, object$margin[[length(object$margin)]]$bs.dim)
-                object$C <- object$Cp <- C[seq(1, nygrid, length.out = nC), ]
-              }}))
-    )
-
-    suppressMessages(
-      trace(mgcv::smooth.construct.t2.smooth.spec,
-            at = max(which(sapply(as.list(body(mgcv::smooth.construct.t2.smooth.spec)), function(x) any(grepl(x, pattern="object$Cp", fixed=TRUE))))) + 1,
-            print=FALSE,
-            tracer = quote({
-              if(!is.null(object$margin[[length(object$margin)]]$xt$impose.ffregC) &&
-                 object$margin[[length(object$margin)]]$xt$impose.ffregC){
-                ## constraint: sum_i f(z_i, t) = 0 \forall t
-                cat("imposing constraints..\n")
-                nygrid <- length(unique(data[[object$margin[[length(object$margin)]]$term]]))
-
-                ## C = ((1,...,1) \otimes I_G) * B
-                Ctmp <- kronecker(t(rep(1, object$margin[[length(object$margin)]]$xt$nobs)), diag(nygrid))
-                if(ncol(Ctmp) > nrow(object$X)){
-                  #drop rows for missing obs.
-                  Ctmp <- Ctmp[, - get(".PFFRmissingResponses", .GlobalEnv)]
-                }
-                C <- Ctmp %*% object$X
-
-                ## we need the number of effective constraints <nC> to correspond to the
-                ## rank of the constraint matrix C, which is the min. of number of basis
-                ## functions for t (object$margin[[length(object$margin)]]$bs.dim) and
-                ## timepoints (<nygrid>)
-                nC <- min(nygrid, object$margin[[length(object$margin)]]$bs.dim)
-                object$C <- object$Cp <- C[seq(1, nygrid, length.out = nC), ]
-              }}))
-    )
-
-
-    on.exit({
-      suppressMessages(try(untrace(mgcv::smooth.construct.tensor.smooth.spec), silent = TRUE))
-      suppressMessages(try(untrace(mgcv::smooth.construct.t2.smooth.spec), silent = TRUE))
-    })
-  }
-
-
-  ###<GLS
-  newcall$GLSinfo <- list(yind=yind, nobs=nobs, sqrtSigmaInv=sqrtSigmaInv)
-  if(as.character(algorithm) == "gam"){
-    trace(gam, at=4, quote({
-      #cat("premultiply Design...\n")
-      GLSinfo <- list(...)$GLSinfo
-      # modify design matrix: premultiply submatrix for each obs by sqrt(hatSigma)^-1
-      obsvec <- seq(1, GLSinfo$nobs*length(GLSinfo$yind), by=length(GLSinfo$yind))
-      from <- 1
-      to <- length(GLSinfo$yind)
-      for(i in 1:GLSinfo$nobs){
-        G$X[from:to, ] <- GLSinfo$sqrtSigmaInv%*%G$X[from:to, ]
-        from <- from + length(GLSinfo$yind)
-        to <- to + length(GLSinfo$yind)
-      }
-    }))
-    on.exit(untrace(gam), add=TRUE)
-  }
-
-  if(as.character(algorithm) == "bam"){
-    trace(bam, at=40, quote({
-      #browser()
-      #cat("premultiply Design...\n")
-      GLSinfo <- list(...)$GLSinfo
-      # modify design matrix: premultiply submatrix for each obs by sqrt(hatSigma)^-1
-      obsvec <- seq(1, GLSinfo$nobs*length(GLSinfo$yind), by=length(GLSinfo$yind))
-      from <- 1
-      to <- length(GLSinfo$yind)
-      for(i in 1:GLSinfo$nobs){
-        G$X[from:to, ] <- GLSinfo$sqrtSigmaInv%*%G$X[from:to, ]
-        from <- from + length(GLSinfo$yind)
-        to <- to + length(GLSinfo$yind)
-      }
-    }))
-    on.exit(untrace(bam), add=TRUE)
-  }
-  #browser()
-
-  m <- eval(newcall)
-  # browser()
-
-  # overwrite decorrelated response, fitted values etc s.t. summary etc are (more) correct
-  m$y <- newfrmlenv[[originalresponsename]]
-  # check that we really fitted the object
-  # (need this for coefboot.pffr), if yes overwrite
-  if(is.null(newcall$fit) | (!is.null(newcall$fit) && eval(newcall$fit))){
-    #browser()
-
-    if(!is.null(m$model)){
-      m$model[, deparse(responsename)] <- newfrmlenv[[originalresponsename]]
-    }
-    m$fitted <- m$fitted.values <- predict(m)
-    m$residuals <- m$fitted - m$y
-    # m$scale <- m$sig2 <- var(m$residuals)
-    # TODO: fix Vp (drop Ve):
-    # Vp= (XWX + S^-1)^-1; Ve=(Vp^-1) XWX (Vp^-1)
-    #        X <- predict(m, type="lpmatrix")
-    #        XWX <- {
-    #            sqrtw <- if(is.null(m$prior.weights)){
-    #                    rep(1, length(m$y))
-    #				}  else {
-    #                    sqrt(m$prior.weights)
-    #                }
-    #            as.matrix(crossprod((Diagonal(length(sqrtw), sqrtw)%*%
-    #                                kronecker(Diagonal(nobs), sqrtSigmaInv))%*%X))
-    #        }
-    #        Vp <- solve(XWX)
-
-
-    #        XtildeWXtilde <- {
-    #           xcall <- newcall
-    #           xcall$fit <- FALSE
-    #           sqrtw <- if(is.null(m$weights)){
-    #                    rep(1, length(m$y))
-    #				}  else {
-    #                    sqrt(m$weights)
-    #                }
-    #           crossprod(diag(sqrtw)%*%eval(newcall)$X)
-    #        }
-    #        X <- predict(m, type="lpmatrix")
-    #        all.equal(as.matrix(crossprod(kronecker(Diagonal(nobs), solve(sqrtSigma))%*%X)), XtildeWXtilde)
-  }
-
-
-  #browser()
-
-  ###GLS>
-
-
-  m.smooth <- if(as.character(algorithm) %in% c("gamm4","gamm")){
-    m$gam$smooth
-  } else m$smooth
-
-  #return some more info s.t. custom predict/plot/summary will work
-  trmmap <- newtrmstrings
-  names(trmmap) <- names(terms)
-  if(addFint) trmmap <- c(trmmap, intstring)
-
-  # map labels to terms --
-  # ffpc are associated with multiple smooths
-  # parametric are associated with multiple smooths if covariate is a factor
-  labelmap <- as.list(trmmap)
-  lbls <- sapply(m.smooth, function(x) x$label)
-  if(length(c(where.par, where.ffpc))){
-    if(length(where.par)){
-      for(w in where.par)
-        labelmap[[w]] <- {
-          #covariates for parametric terms become by-variables:
-          where <- sapply(m.smooth, function(x) x$by) == names(labelmap)[w]
-          sapply(m.smooth[where], function(x) x$label)
-        }
-    }
-    if(length(where.ffpc)){
-      ind <- 1
-      for(w in where.ffpc){
-        labelmap[[w]] <- {
-          #PCs for X become by-variables:
-          where <- sapply(m.smooth, function(x) x$id) == ffpcterms[[ind]]$id
-          sapply(m.smooth[where], function(x) x$label)
-        }
-        ind <- ind+1
-      }
-    }
-    labelmap[-c(where.par, where.ffpc)] <- lbls[pmatch(
-      sapply(labelmap[-c(where.par, where.ffpc)], function(x){
-        tmp <- eval(parse(text=x))
-        if(is.list(tmp)){
-          return(tmp$label)
-        } else {
-          return(x)
-        }
-      }), lbls)]
-  } else{
-    labelmap[1:length(labelmap)] <-  lbls[pmatch(
-      sapply(labelmap, function(x){
-        tmp <- eval(parse(text=x))
-        if(is.list(tmp)){
-          return(tmp$label)
-        } else {
-          return(x)
-        }
-      }), lbls)]
-  }
-  # check whether any parametric terms were left out & add them
-  if(any(nalbls <- sapply(labelmap, function(x) any(is.na(x))))){
-    labelmap[nalbls] <- trmmap[nalbls]
-  }
-
-  names(m.smooth) <- lbls
-  if(as.character(algorithm) %in% c("gamm4","gamm")){
-    m$gam$smooth <- m.smooth
-  } else{
-    m$smooth  <- m.smooth
-  }
-
-  ret <-  list(
-    call=match.call(),
-    formula=formula,
-    termmap=trmmap,
-    labelmap=labelmap,
-    responsename = responsename,
-    nobs=nobs,
-    nyindex=nyindex,
-    yindname = yindname,
-    yind=yind,
-    where=list(
-      where.c=where.c,
-      where.ff=where.ff,
-      where.ffpc=where.ffpc,
-      where.sff=where.sff,
-      where.s=where.s,
-      where.te= where.te,
-      where.t2=where.t2,
-      where.par=where.par
-    ),
-    sparseOrNongrid=FALSE,
-    ff=ffterms,
-    ffpc=ffpcterms)
-
-  if(as.character(algorithm) %in% c("gamm4","gamm")){
-    m$gam$pffr <- ret
-    class(m$gam) <- c("pffr", class(m$gam))
-  } else {
-    m$pffr <- ret
-    class(m) <- c("pffr", class(m))
-  }
-  return(m)
-}# end pffrGLS()
-
-
-
+  formula,
+  yind,
+  hatSigma,
+  data = NULL,
+  ydata = NULL,
+  algorithm = NA,
+  method = "REML",
+  tensortype = c("ti", "t2"),
+  bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+  bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+  cond.cutoff = 5e2,
+  ...
+) {
+  .Deprecated("pffr_gls")
+  pffr_gls()
+}

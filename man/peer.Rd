@@ -47,6 +47,10 @@ for specifying the order of the difference penalty; See Details.
 \code{xt}-argument is not allowed for \code{peer}-terms and will cause
 an error.}
 }
+\value{
+A list suitable for use as a term in a \code{\link{pfr}} formula,
+  produced by \code{\link{lf}} with the PEER basis and penalty.
+}
 \description{
 Defines a term \eqn{\int_{T}\beta(t)X_i(t)dt} for inclusion in a
 \code{{pfr}} formula, where \eqn{\beta(t)} is estimated with

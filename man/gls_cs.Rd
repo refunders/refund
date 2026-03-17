@@ -36,6 +36,13 @@ the residuals.}
 \item{CI.type}{Indicates CI type for coefficient functions; options are "pointwise" and
 "simultaneous"}
 }
+\value{
+A list of class \code{"fosr"} containing estimated coefficient
+  functions (\code{beta.hat}), confidence bounds (\code{beta.UB},
+  \code{beta.LB}), fitted values (\code{Yhat}), the fitted \code{lm}
+  object (\code{model.gls}), and estimated residual covariance
+  (\code{sigma}).
+}
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.
 This function estimates model parameters using GLS: first, an OLS estimate of 

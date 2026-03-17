@@ -21,6 +21,12 @@ b-splines}
 
 \item{verbose}{logical defaulting to \code{TRUE} -- should updates on progress be printed?}
 }
+\value{
+A list of class \code{"fosr"} containing estimated coefficient
+  functions (\code{beta.hat}), fitted values (\code{Yhat}), the fitted
+  \code{lm} object (\code{model.ols}), and estimated residual covariance
+  (\code{sigma}).
+}
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.
 This function estimates model parameters using GLS: first, an OLS estimate of 

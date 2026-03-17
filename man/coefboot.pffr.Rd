@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr-robust.R
 \name{coefboot.pffr}
 \alias{coefboot.pffr}
-\title{Simple bootstrap CIs for pffr}
+\title{Simple bootstrap CIs for pffr (deprecated)}
 \usage{
 coefboot.pffr(
   object,
@@ -50,15 +50,14 @@ plus residual trajectories that are centered at zero for each gridpoint.}
 \item{...}{further arguments handed to \code{\link[boot]{boot}} like e.g. \code{strata} for models with random effects.}
 }
 \value{
-a list with similar structure as the return value of \code{\link{coef.pffr}}, containing the
-        original point estimates of the various terms along with their bootstrap CIs.
+A list with similar structure as the return value of
+  \code{\link{coef.pffr}}, containing the original point estimates along
+  with bootstrap CIs.
 }
 \description{
-This function resamples observations in the data set to obtain approximate CIs for different
-terms and coefficient functions that correct for the effects of dependency and heteroskedasticity
-of the residuals along the index of the functional response, i.e., it aims for correct inference
-if the residuals along the index of the functional response are not i.i.d.
+**Deprecated**
+
+`coefboot.pffr()` was renamed to [pffr_coefboot()] for consistency with the
+package naming conventions.
 }
-\author{
-Fabian Scheipl
-}
+\keyword{internal}
