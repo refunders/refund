@@ -49,6 +49,12 @@ for FPC effects}
 
 \item{argvals}{not currently implemented}
 }
+\value{
+A list of class \code{"fosr"} containing estimated coefficient
+  functions (\code{beta.hat}), credible bounds (\code{beta.UB},
+  \code{beta.LB}), fitted values (\code{Yhat}), and the estimated
+  residual FPC decomposition (\code{fpca.obj}).
+}
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.
 This function estimates model parameters using a VB and estimates

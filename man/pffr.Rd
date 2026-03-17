@@ -14,6 +14,7 @@ pffr(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+  sandwich = c("cluster", "cl2", "hc", "none"),
   ...
 )
 }
@@ -61,6 +62,19 @@ penalty.}
 the global functional intercept. Defaults to \code{list(bs="ps", k=20,
 m=c(2, 1))}, i.e. 20 cubic B-splines bases with first order difference
 penalty.}
+
+\item{sandwich}{Type of sandwich correction for robust covariance
+estimation.
+\code{"cluster"} (default): cluster-robust sandwich clustering by curve,
+which
+handles both heteroskedasticity and within-curve autocorrelation — the
+recommended choice for functional data.
+\code{"cl2"}: leverage-adjusted cluster-robust sandwich (Bell-McCaffrey
+style CL2), mainly relevant in smaller samples.
+\code{"hc"}: observation-level HC sandwich via
+\code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
+heteroskedasticity but ignores within-curve correlation.
+\code{"none"}: no sandwich correction.}
 
 \item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}},
 \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
@@ -165,6 +179,26 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   matrix is number of observations times number of evaluations of \eqn{Y(t)}
   per observation.\cr
 
+  When a \code{rho} argument (as defined in \code{\link[mgcv]{bam}}) is supplied,
+  \code{pffr} automatically constructs the required \code{AR.start} indicator
+  so that residuals can follow an AR(1) process along the functional response.
+  This facility is available for \code{algorithm = "bam"} fits that use
+  \code{method = "fREML"}. For non-Gaussian families, \code{discrete = TRUE}
+  is required; \code{pffr} will set this automatically if needed, mirroring
+  the constraints documented in \code{\link[mgcv]{bam}}.\cr
+
+  The following automatic defaults apply when \code{rho} is supplied:
+  \itemize{
+    \item \code{algorithm} auto-switches to \code{"bam"} (errors if the user
+      explicitly requests a non-\code{bam} algorithm)
+    \item \code{method} auto-switches to \code{"fREML"} (errors if the user
+      explicitly supplies a different method)
+    \item \code{discrete} is auto-set to \code{TRUE} for non-Gaussian families
+      (errors if the user explicitly supplies \code{discrete = FALSE})
+  }
+  Explicit user overrides that conflict with these constraints will produce
+  an informative error.\cr
+
   Note that \code{pffr} does not use \code{mgcv}'s default identifiability
   constraints (i.e., \eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0} or
   \eqn{\sum_{i,t} \hat f(x_i, t) = 0}) for tensor product terms whose
@@ -198,7 +232,7 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
 # univariate model:
 # Y(t) = f(t)  + \int X1(s)\beta(s,t)ds + eps
 set.seed(2121)
-data1 <- pffrSim(scenario="ff", n=40)
+data1 <- pffr_simulate(Y ~ ff(X1), n=40)
 t <- attr(data1, "yindex")
 s <- attr(data1, "xindex")
 m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
@@ -210,7 +244,7 @@ plot(m1, pages=1)
 # multivariate model:
 # E(Y(t)) = \beta_0(t)  + \int X1(s)\beta_1(s,t)ds + xlin \beta_3(t) +
 #        f_1(xte1, xte2) + f_2(xsmoo, t) + \beta_4 xconst
-data2 <- pffrSim(scenario="all", n=200)
+data2 <- pffr_simulate(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=200)
 t <- attr(data2, "yindex")
 s <- attr(data2, "xindex")
 m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
@@ -224,7 +258,7 @@ summary(m2)
 plot(m2)
 str(coef(m2))
 # convenience functions:
-preddata <- pffrSim(scenario="all", n=20)
+preddata <- pffr_simulate(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=20)
 str(predict(m2, newdata=preddata))
 str(predict(m2, type="terms"))
 cm2 <- coef(m2)
@@ -235,7 +269,7 @@ str(cm2$smterms[["s(xsmoo)"]]$coef)
 #############################################################################
 # sparse data (80\% missing on a regular grid):
 set.seed(88182004)
-data3 <- pffrSim(scenario=c("int", "smoo"), n=100, propmissing=0.8)
+data3 <- pffr_simulate(Y ~ 1 + s(xsmoo), n=100, propmissing=0.8)
 t <- attr(data3, "yindex")
 m3.sparse <- pffr(Y ~ s(xsmoo), data=data3$data, ydata=data3$ydata, yind=t)
 summary(m3.sparse)

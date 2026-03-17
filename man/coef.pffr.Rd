@@ -9,12 +9,15 @@
   raw = FALSE,
   se = TRUE,
   freq = FALSE,
-  sandwich = FALSE,
+  sandwich = c("cluster", "cl2", "hc", "none"),
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
   n3 = 20,
-  Ktt = NULL,
+  ci = c("none", "pointwise", "simultaneous"),
+  level = 0.95,
+  n_sim = 2000,
+  sim_seed = NULL,
   ...
 )
 }
@@ -25,11 +28,20 @@
 
 \item{se}{logical, defaults to TRUE. Return estimated standard error of the estimates?}
 
-\item{freq}{logical, defaults to FALSE. If FALSE, use posterior variance \code{object$Vp} for variability estimates,
-else use \code{object$Ve}. See \code{\link[mgcv]{gamObject}}}
+\item{freq}{logical, defaults to FALSE. If FALSE, use Bayesian posterior covariance for
+variability estimates: \code{object$Vc} if available (includes correction for smoothing
+parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
+covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.}
 
-\item{sandwich}{logical, defaults to FALSE. Use a Sandwich-estimator for approximate variances? See Details.
-THIS IS AN EXPERIMENTAL FEATURE, USE A YOUR OWN RISK.}
+\item{sandwich}{Type of sandwich-corrected covariance for standard errors.
+\code{"cluster"} (default): cluster-robust sandwich (clustering by
+curve).
+\code{"cl2"}: leverage-adjusted cluster-robust sandwich (clustering by
+curve).
+\code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
+\code{"none"}: use model's default covariance.
+If the model was fitted with a matching sandwich type, the pre-computed
+covariance matrices are used directly.}
 
 \item{seWithMean}{logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?}
 
@@ -40,9 +52,17 @@ THIS IS AN EXPERIMENTAL FEATURE, USE A YOUR OWN RISK.}
 \item{n3}{\code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
 used in the marginal equidistant grids over the range of the covariates at which the estimated effects are evaluated.}
 
-\item{Ktt}{(optional) an estimate of the covariance operator of the residual process \eqn{\epsilon_i(t) \sim N(0, K(t,t'))},
-evaluated on \code{yind} of \code{object}. If not supplied, this is estimated from the crossproduct matrices of the
-observed residual vectors. Only relevant for sandwich CIs.}
+\item{ci}{Type of confidence intervals to return in addition to standard
+errors. One of \code{"none"} (default), \code{"pointwise"}, or
+\code{"simultaneous"}.}
+
+\item{level}{Confidence level for confidence intervals, defaults to
+\code{0.95}.}
+
+\item{n_sim}{Number of simulations for simultaneous intervals, defaults to
+\code{2000}. Ignored unless \code{ci = "simultaneous"}.}
+
+\item{sim_seed}{Optional integer seed for simultaneous interval simulation.}
 
 \item{...}{other arguments, not used.}
 }
@@ -59,6 +79,9 @@ If \code{raw==FALSE}, a list containing \itemize{
          \item \code{dim} the dimensionality of the effect
          \item \code{main} the label of the smooth term (a short label, same as the one used in \code{summary.pffr})
 }}
+If \code{ci != "none"}, the returned matrices include columns \code{lower}
+and \code{upper}. The returned list also includes \code{ci_meta} with CI
+settings.
 }
 \description{
 Returns estimated coefficient functions/surfaces \eqn{\beta(t), \beta(s,t)}
@@ -67,17 +90,14 @@ Not implemented for smooths in more than 3 dimensions.
 }
 \details{
 The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
-The \code{sandwich}-options works as follows: Assuming that the residual vectors \eqn{\epsilon_i(t), i=1,\dots,n} are i.i.d.
-realizations of a mean zero Gaussian process with covariance \eqn{K(t,t')}, we can construct an estimator for
-\eqn{K(t,t')} from the \eqn{n} replicates of the observed residual vectors. The covariance matrix of the stacked observations
-vec\eqn{(Y_i(t))} is then given by a block-diagonal matrix with \eqn{n} copies of the estimated \eqn{K(t,t')} on the diagonal.
-This block-diagonal matrix is used to construct the "meat" of a sandwich covariance estimator, similar to Chen et al. (2012),
-see reference below.
-}
-\references{
-Chen, H., Wang, Y., Paik, M.C., and Choi, A. (2013).
-A marginal approach to reduced-rank penalized spline smoothing with application to multilevel functional data.
-\emph{Journal of the American Statistical Association}, 101, 1216--1229.
+The \code{sandwich}-option computes robust standard errors. With
+\code{sandwich="cluster"}, a cluster-robust sandwich (clustering by curve)
+is used, which handles both heteroskedasticity and within-curve correlation.
+With \code{sandwich="cl2"}, a leverage-adjusted cluster-robust sandwich
+(Bell-McCaffrey style CL2) is used.
+With \code{sandwich="hc"}, mgcv's observation-level HC sandwich is used.
+If the model was fitted with a matching sandwich option in
+\code{\link{pffr}}, the pre-computed covariance matrices are used directly.
 }
 \seealso{
 \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
