@@ -187,6 +187,18 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   is required; \code{pffr} will set this automatically if needed, mirroring
   the constraints documented in \code{\link[mgcv]{bam}}.\cr
 
+  The following automatic defaults apply when \code{rho} is supplied:
+  \itemize{
+    \item \code{algorithm} auto-switches to \code{"bam"} (errors if the user
+      explicitly requests a non-\code{bam} algorithm)
+    \item \code{method} auto-switches to \code{"fREML"} (errors if the user
+      explicitly supplies a different method)
+    \item \code{discrete} is auto-set to \code{TRUE} for non-Gaussian families
+      (errors if the user explicitly supplies \code{discrete = FALSE})
+  }
+  Explicit user overrides that conflict with these constraints will produce
+  an informative error.\cr
+
   Note that \code{pffr} does not use \code{mgcv}'s default identifiability
   constraints (i.e., \eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0} or
   \eqn{\sum_{i,t} \hat f(x_i, t) = 0}) for tensor product terms whose
