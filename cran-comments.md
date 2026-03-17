@@ -1,25 +1,30 @@
-## CRAN submission 0.1-30
+## CRAN submission 0.1-40
 
-Version: 0.1-29
-Check: S3 generic/method consistency
+### Breaking changes
 
-## CRAN submission 0.1-29
+* Default `sandwich` option for `pffr()` changed from `"none"` to `"cluster"`.
+  An informational `message()` is printed when `sandwich` is not explicitly
+  supplied.
+* `pffrGLS()` / `pffr_gls()` now error with a deprecation message. Users are
+  directed to `pffr()` with `sandwich = "cluster"` or `sandwich = "cl2"`.
 
-* Fixed errors due to failure to find CanadianWeather data in examples
+### Major changes
 
-## CRAN submission 0.1-28
-
-The Date field is not in ISO 8601 yyyy-mm-dd format.
-
-* Fixed for resubmission
-
-
+* `pffr()` internal refactor into prepare-fit-postprocess pipeline.
+* Function renames with deprecated wrappers: `pffrSim` -> `pffr_simulate`,
+  `coefboot.pffr` -> `pffr_coefboot`, `qq.pffr` -> `pffr_qq`,
+  `pffr.check` -> `pffr_check`.
+* New CL2 leverage-adjusted cluster-robust covariance option.
+* Improved AR(1) support with automatic `bam`/`fREML` switching.
 
 ## Test environments
-* local windows 8 x64, R 3.1.3
-* win-builder (devel and release)
+
+* local Linux Mint 22.1 (R 4.5.2)
+* R-hub v2 (Linux, Windows, macOS)
 
 ## R CMD check results
-There were no ERRORs or NOTEs.
 
-There is 1 WARNING: "'library' or 'require' call not declared from: ‘dtw’" this is because the package is called via the "method="dtw", window.type="sakoechiba"" options to dist().
+0 errors | 0 warnings | 1 note
+
+* `checking for future file timestamps`: unable to verify current time
+  (network issue, not a package problem)

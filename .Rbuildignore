@@ -1,6 +1,7 @@
 ^\.Rproj$
 ^\.Rproj\.user$
 ^\.git$
+^\.github$
 ^\.gitignore$
 ^\.travis\.yml$
 .git-tricks.md
@@ -9,3 +10,12 @@ refund.Rproj
 ^cran-comments\.md$
 ^README\.md$
 revdep
+^PLAN\.md$
+^AGENTS\.md$
+^\.claude$
+^ci-benchmark$
+^codex-review\.md$
+^pffr-demo\.R$
+^pffr-demo\.pdf$
+^setup-benchmark\.skill$
+^Rplots\.pdf$
