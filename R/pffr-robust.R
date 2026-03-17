@@ -521,6 +521,9 @@ pffr_coefboot <- function(
 #' package naming conventions.
 #'
 #' @inheritParams pffr_coefboot
+#' @return A list with similar structure as the return value of
+#'   \code{\link{coef.pffr}}, containing the original point estimates along
+#'   with bootstrap CIs.
 #' @export
 #' @keywords internal
 coefboot.pffr <- function(
@@ -953,73 +956,23 @@ extract_smooth_label <- function(x) {
 }
 
 #' Penalized function-on-function regression with non-i.i.d. residuals
+#' (deprecated)
 #'
-#' Implements additive regression for functional and scalar covariates and functional responses.
-#' This function is a wrapper for \code{mgcv}'s \code{\link[mgcv]{gam}} and its siblings to fit models of the general form \cr
-#' \eqn{Y_i(t) = \mu(t) + \int X_i(s)\beta(s,t)ds + f(z_{1i}, t) + f(z_{2i}) + z_{3i} \beta_3(t) + \dots  + E_i(t))}\cr
-#' with a functional (but not necessarily continuous) response \eqn{Y(t)},
-#' (optional) smooth intercept \eqn{\mu(t)}, (multiple) functional covariates \eqn{X(t)} and scalar covariates
-#' \eqn{z_1}, \eqn{z_2}, etc. The residual functions \eqn{E_i(t) \sim GP(0, K(t,t'))} are assumed to be i.i.d.
-#' realizations of a Gaussian process. An estimate of the covariance operator \eqn{K(t,t')} evaluated on \code{yind}
-#' has to be supplied in the \code{hatSigma}-argument.
+#' @description
+#' **Deprecated**
 #'
-#' @section Details:
-#' Note that \code{hatSigma} has to be positive definite. If \code{hatSigma} is close to positive \emph{semi-}definite or badly conditioned,
-#' estimated standard errors become unstable (typically much too small). \code{pffr_gls} will try to diagnose this and issue a warning.
-#' The danger is especially big if the number of functional observations is smaller than the number of gridpoints
-#' (i.e, \code{length(yind)}), since the raw covariance estimate will not have full rank.\cr
-#' Please see \code{\link[refund]{pffr}} for details on model specification and
-#' implementation. \cr THIS IS AN EXPERIMENTAL VERSION AND NOT WELL TESTED YET -- USE AT YOUR OWN RISK.
+#' `pffr_gls()` is deprecated. Its GLS-based covariance correction produced
+#' poorly calibrated inference in practice. Use \code{\link{pffr}()} with
+#' \code{sandwich = "cluster"} (the new default) or \code{sandwich = "cl2"}
+#' for robust covariance estimation instead.
 #'
-#' @param formula a formula with special terms as for \code{\link[mgcv]{gam}}, with additional special terms \code{\link{ff}()} and \code{c()}. See \code{\link[refund]{pffr}}.
-#' @param yind a vector with length equal to the number of columns of the matrix of functional responses giving the vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
-#'   see \code{\link[refund]{pffr}}
-#' @param data an (optional) \code{data.frame} or named list containing the data.
-#' @param ydata an (optional) \code{data.frame} for sparse/irregular functional responses. See \code{\link[refund]{pffr}}.
-#' @param algorithm the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
-#' 	 and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4" (see \code{\link[gamm4]{gamm4}}) are valid options as well.
-#' @param hatSigma (an estimate of) the within-observation covariance (along the responses' index), evaluated at \code{yind}. See Details.
-#' @param method See \code{\link[refund]{pffr}}
-#' @param bs.yindex See \code{\link[refund]{pffr}}
-#' @param bs.int See \code{\link[refund]{pffr}}
-#' @param tensortype See \code{\link[refund]{pffr}}
-#' @param cond.cutoff if the condition number of \code{hatSigma} is greater than this, \code{hatSigma} is
-#'    made ``more'' positive-definite via \code{\link[Matrix]{nearPD}} to ensure a condition number equal to cond.cutoff. Defaults to 500.
-#' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. See \code{\link[refund]{pffr}}.
+#' @param formula,yind,hatSigma,data,ydata,algorithm,method,tensortype,bs.yindex,bs.int,cond.cutoff,...
+#'   Ignored. The function always errors.
 #'
-#' @return a fitted \code{pffr}-object, see \code{\link[refund]{pffr}}.
-#' @seealso \code{\link[refund]{pffr}}, \code{\link[refund]{fpca.sc}}
-#'
-#' @examples
-#' \dontrun{
-#' # Simulate data with correlated residuals
-#' set.seed(1234)
-#' n <- 50
-#' nygrid <- 30
-#' yind <- seq(0, 1, length.out = nygrid)
-#'
-#' # Create covariate and response
-#' xlin <- rnorm(n)
-#' beta_t <- sin(2 * pi * yind)
-#' Y <- outer(xlin, beta_t) + matrix(rnorm(n * nygrid, sd = 0.5), n, nygrid)
-#' dat <- data.frame(Y = I(Y), xlin = xlin)
-#'
-#' # Fit initial model to estimate residual covariance
-#' m1 <- pffr(Y ~ xlin, yind = yind, data = dat)
-#' resid_mat <- residuals(m1)
-#' hat_sigma <- cov(resid_mat)
-#'
-#' # Fit GLS model with estimated covariance
-#' m2 <- pffr_gls(Y ~ xlin, yind = yind, data = dat, hatSigma = hat_sigma)
-#' summary(m2)
-#' }
+#' @return Does not return; always errors with a deprecation message.
+#' @seealso \code{\link{pffr}} for the recommended approach with sandwich CIs.
 #'
 #' @export
-#' @importFrom Matrix nearPD
-#' @importFrom mgcv gam bam gamm gam.fit3
-#' @importFrom gamm4 gamm4
-#' @importFrom lme4 lmer
-#' @importFrom stats terms.formula
 #' @author Fabian Scheipl
 pffr_gls <- function(
   formula,
@@ -1035,480 +988,35 @@ pffr_gls <- function(
   cond.cutoff = 5e2,
   ...
 ) {
-  call <- match.call()
-  tensortype <- as.symbol(match.arg(tensortype))
-  yind_missing <- missing(yind)
-
-  # Step 1: Validate arguments (no AR checking for GLS)
-  dots <- list(...)
-  validated <- pffr_validate_dots(call, algorithm, dots, check_ar = FALSE)
-  dots <- validated$dots
-
-  # Validate ydata format
-  pffr_validate_ydata(ydata)
-  is_sparse <- !is.null(ydata)
-
-  # Step 2: Parse formula
-  parsed <- parse_pffr_model_formula(formula, data, ydata)
-  tf <- parsed$tf
-  term_strings <- parsed$term_strings
-  terms <- parsed$terms
-  frml_env <- parsed$frml_env
-  where_specials <- parsed$where_specials
-  response_name <- parsed$response_name
-
-  # Step 3: Detect data dimensions
-  formula_env <- new.env()
-  eval_env <- if ("data" %in% names(call)) eval.parent(call$data) else NULL
-
-  if (is_sparse) {
-    nobs <- length(unique(ydata$.obs))
-    stopifnot(all(ydata$.obs %in% rownames(data)))
-    stopifnot(all(ydata$.obs %in% 1:nobs))
-    nobs_data <- nrow(as.matrix(data[[1]]))
-    stopifnot(nobs == nobs_data)
-    ntotal <- nrow(ydata)
-
-    if (yind_missing) {
-      stop("yind must be provided for pffr_gls with sparse data")
-    }
-    nyindex <- length(yind)
-    yind_name <- "yindex"
-  } else {
-    nobs <- nrow(eval(response_name, envir = eval_env, enclos = frml_env))
-    nyindex <- ncol(eval(response_name, envir = eval_env, enclos = frml_env))
-    ntotal <- nobs * nyindex
-
-    # Setup yind for dense (same logic as pffr)
-    if (yind_missing) {
-      if (length(c(where_specials$ff, where_specials$sff))) {
-        if (length(where_specials$ff)) {
-          ffcall <- expand.call(ff, as.call(terms[where_specials$ff][1])[[1]])
-        } else {
-          ffcall <- expand.call(sff, as.call(terms[where_specials$sff][1])[[1]])
-        }
-        if (!is.null(ffcall$yind)) {
-          yind <- eval(ffcall$yind, envir = eval_env, enclos = frml_env)
-          yind_name <- deparse(ffcall$yind)
-        } else {
-          yind <- 1:nyindex
-          yind_name <- "yindex"
-        }
-      } else {
-        yind <- 1:nyindex
-        yind_name <- "yindex"
-      }
-    } else {
-      if (is.symbol(substitute(yind)) | is.character(yind)) {
-        yind_name <- deparse(substitute(yind))
-        if (!is.null(data) && !is.null(data[[yind_name]])) {
-          yind <- data[[yind_name]]
-        }
-      } else {
-        yind_name <- "yindex"
-      }
-      stopifnot(is.vector(yind), is.numeric(yind), length(yind) == nyindex)
-    }
-    if (length(yind_name) > 1) yind_name <- "yindex"
-    stopifnot(all.equal(order(yind), 1:nyindex))
-  }
-
-  # Step 4: Configure algorithm
-  if (is.na(algorithm)) {
-    algorithm <- ifelse(ntotal > 1e5, "bam", "gam")
-  }
-  algorithm <- as.symbol(algorithm)
-  if (as.character(algorithm) == "bam" && !("chunk.size" %in% names(call))) {
-    call$chunk.size <- 10000
-  }
-  if (as.character(algorithm) == "gamm4") {
-    stop("pffr_gls not implemented for gamm4")
-  }
-
-  # Step 5: Validate and compute decorrelation matrix
-  stopifnot(
-    is.matrix(hatSigma),
-    nrow(hatSigma) == nyindex,
-    ncol(hatSigma) == nyindex
+  .Deprecated(
+    new = "pffr",
+    msg = paste(
+      "pffr_gls() is deprecated and now errors.",
+      "Its GLS-based covariance correction produced poorly calibrated inference.",
+      "Use pffr() with sandwich = \"cluster\" (the default) or",
+      "sandwich = \"cl2\" for robust covariance estimation instead.",
+      "See ?pffr for details."
+    )
   )
-  sqrt_sigma_inv <- compute_sqrt_sigma_inv(hatSigma, cond.cutoff)
-
-  # Step 6: Setup response data
-  if (is_sparse) {
-    # Sparse data not fully supported
-    yind_vec <- ydata$.index
-    yindex_vec_name <- as.symbol(paste0(yind_name, ".vec"))
-    assign(deparse(yindex_vec_name), yind_vec, envir = formula_env)
-
-    original_response <- ydata$.value
-    assign(deparse(response_name), ydata$.value, envir = formula_env)
-    missing_indices <- NULL
-    obs_indices <- ydata$.obs
-
-    stop(
-      "pffr_gls with sparse data not yet fully implemented - decorrelation requires interpolation"
-    )
-  } else {
-    resp_info <- pffr_setup_response(
-      is_sparse = FALSE,
-      ydata = NULL,
-      yind = yind,
-      yind_name = yind_name,
-      nobs = nobs,
-      nyindex = nyindex,
-      response_name = response_name,
-      eval_env = eval_env,
-      frml_env = frml_env,
-      formula_env = formula_env
-    )
-    yind_vec <- resp_info$yind_vec
-    yindex_vec_name <- resp_info$yindex_vec_name
-    obs_indices <- resp_info$obs_indices
-    missing_indices <- resp_info$missing_indices
-
-    # Store original response for post-fit restoration
-    original_response <- get(deparse(response_name), formula_env)
-
-    if (!is.null(missing_indices)) {
-      stop("pffr_gls does not support missing values in response")
-    }
-  }
-
-  # Step 7: Transform formula terms (same as pffr)
-  new_term_strings <- attr(tf, "term.labels")
-
-  if (parsed$has_intercept) {
-    int_result <- transform_intercept_term(yindex_vec_name, bs.int, yind_name)
-    int_string <- int_result$term_string
-    add_f_int <- TRUE
-  } else {
-    add_f_int <- FALSE
-    int_string <- NULL
-  }
-
-  if (length(where_specials$c)) {
-    new_term_strings[where_specials$c] <- sapply(
-      term_strings[where_specials$c],
-      transform_c_term
-    )
-  }
-
-  # Process ff/sff terms
-  if (length(c(where_specials$ff, where_specials$sff))) {
-    ff_terms <- lapply(
-      terms[c(where_specials$ff, where_specials$sff)],
-      \(x) eval(x, envir = eval_env, enclos = frml_env)
-    )
-    new_term_strings[c(where_specials$ff, where_specials$sff)] <- sapply(
-      ff_terms,
-      \(x) safeDeparse(x$call)
-    )
-
-    makeff <- function(x) {
-      tmat <- matrix(yind_vec, nrow = length(yind_vec), ncol = length(x$xind))
-      smat <- matrix(
-        x$xind,
-        nrow = length(yind_vec),
-        ncol = length(x$xind),
-        byrow = TRUE
-      )
-      if (!is.null(x[["LX"]])) {
-        LStacked <- x$LX[obs_indices, ]
-      } else {
-        LStacked <- x$L[obs_indices, ]
-        XStacked <- x$X[obs_indices, ]
-      }
-      if (!is.null(x$limits)) {
-        use <- x$limits(smat, tmat)
-        LStacked <- LStacked * use
-        windows <- compute_integration_windows(use)
-        max_width <- max(windows[, 3])
-        if (max_width < ncol(smat)) {
-          eff_windows <- expand_windows_to_maxwidth(windows, ncol(smat))
-          smat <- shift_and_shorten_matrix(smat, eff_windows)
-          tmat <- shift_and_shorten_matrix(tmat, eff_windows)
-          LStacked <- shift_and_shorten_matrix(LStacked, eff_windows)
-          if (is.null(x$LX))
-            XStacked <- shift_and_shorten_matrix(XStacked, eff_windows)
-        }
-      }
-      assign(x$yindname, tmat, envir = formula_env)
-      assign(x$xindname, smat, envir = formula_env)
-      assign(x$LXname, LStacked, envir = formula_env)
-      if (is.null(x[["LX"]])) assign(x$xname, XStacked, envir = formula_env)
-      invisible(NULL)
-    }
-    lapply(ff_terms, makeff)
-  } else {
-    ff_terms <- NULL
-  }
-
-  # Process ffpc terms
-  if (length(where_specials$ffpc)) {
-    ffpc_terms <- lapply(
-      terms[where_specials$ffpc],
-      \(x) eval(x, envir = eval_env, enclos = frml_env)
-    )
-    lapply(ffpc_terms, \(trm) {
-      lapply(
-        colnames(trm$data),
-        \(nm) assign(nm, trm$data[obs_indices, nm], envir = formula_env)
-      )
-    })
-    getFfpcFormula <- function(trm) {
-      frmls <- lapply(colnames(trm$data), \(pc) {
-        arglist <- c(
-          name = "s",
-          x = as.symbol(yindex_vec_name),
-          by = as.symbol(pc),
-          id = trm$id,
-          trm$splinepars
-        )
-        call <- do.call("call", arglist, envir = formula_env)
-        call$x <- as.symbol(yindex_vec_name)
-        call$by <- as.symbol(pc)
-        safeDeparse(call)
-      })
-      paste(unlist(frmls), collapse = " + ")
-    }
-    new_term_strings[where_specials$ffpc] <- sapply(ffpc_terms, getFfpcFormula)
-    ffpc_terms <- lapply(ffpc_terms, \(x) x[names(x) != "data"])
-  } else {
-    ffpc_terms <- NULL
-  }
-
-  # Process pcre terms
-  if (length(where_specials$pcre)) {
-    pcre_terms <- lapply(
-      terms[where_specials$pcre],
-      \(x) eval(x, envir = eval_env, enclos = frml_env)
-    )
-    lapply(pcre_terms, \(trm) {
-      if (!is_sparse && all(trm$yind == yind)) {
-        lapply(
-          colnames(trm$efunctions),
-          \(nm)
-            assign(
-              nm,
-              trm$efunctions[rep(1:nyindex, times = nobs), nm],
-              envir = formula_env
-            )
-        )
-      } else {
-        stopifnot(min(trm$yind) <= min(yind), max(trm$yind) >= max(yind))
-        lapply(colnames(trm$efunctions), \(nm) {
-          tmp <- approx(
-            x = trm$yind,
-            y = trm$efunctions[, nm],
-            xout = yind_vec,
-            method = "linear"
-          )$y
-          assign(nm, tmp, envir = formula_env)
-        })
-      }
-      assign(trm$idname, trm$id[obs_indices], envir = formula_env)
-    })
-    new_term_strings[where_specials$pcre] <- sapply(
-      pcre_terms,
-      \(x) safeDeparse(x$call)
-    )
-  } else {
-    pcre_terms <- NULL
-  }
-
-  # Transform smooth terms
-  if (length(c(where_specials$s, where_specials$te, where_specials$t2))) {
-    new_term_strings[c(
-      where_specials$s,
-      where_specials$te,
-      where_specials$t2
-    )] <-
-      sapply(
-        terms[c(where_specials$s, where_specials$te, where_specials$t2)],
-        \(x)
-          transform_smooth_term(
-            x,
-            yindex_vec_name,
-            bs.yindex,
-            tensortype,
-            algorithm
-          )
-      )
-  }
-
-  # Transform parametric terms
-  if (length(where_specials$par)) {
-    new_term_strings[where_specials$par] <- sapply(
-      terms[where_specials$par],
-      \(x) transform_par_term(x, yindex_vec_name, bs.yindex)
-    )
-  }
-
-  # Assign expanded variables
-  where_specials$notff <- c(
-    where_specials$c,
-    where_specials$par,
-    where_specials$s,
-    where_specials$te,
-    where_specials$t2
+  stop(
+    "pffr_gls() has been removed. ",
+    "Use pffr() with sandwich = \"cluster\" or sandwich = \"cl2\" instead.",
+    call. = FALSE
   )
-  if (length(where_specials$notff)) {
-    eval_env <- if ("data" %in% names(call))
-      list2env(eval.parent(call$data)) else frml_env
-    lapply(terms[where_specials$notff], \(x) {
-      isC <- safeDeparse(x) %in% sapply(terms[where_specials$c], safeDeparse)
-      if (isC)
-        x <- formula(paste(
-          "~",
-          gsub("\\)$", "", gsub("^c\\(", "", deparse(x)))
-        ))[[2]]
-      nms <- if (!is.null(names(x))) all.vars(x[names(x) %in% c("", "by")]) else
-        all.vars(x)
-      sapply(nms, \(nm) {
-        var <- get(nm, envir = eval_env)
-        if (is.matrix(var)) {
-          stopifnot(!is_sparse || ncol(var) == nyindex)
-          assign(nm, as.vector(t(var)), envir = formula_env)
-        } else {
-          stopifnot(length(var) == nobs)
-          assign(nm, var[obs_indices], envir = formula_env)
-        }
-      })
-    })
-  }
-
-  # Step 8: Build mgcv formula and data
-  new_formula <- build_mgcv_formula(
-    response_name = response_name,
-    intercept_string = if (add_f_int) int_string else NULL,
-    term_strings = new_term_strings,
-    has_intercept = add_f_int,
-    formula_env = formula_env
-  )
-  pffr_data <- build_mgcv_data(formula_env)
-
-  # Step 9: Build call (GLS-specific)
-  new_call <- expand.call(pffr, call)
-  new_call$yind <- new_call$tensortype <- new_call$bs.int <-
-    new_call$bs.yindex <- new_call$algorithm <- new_call$ydata <-
-      new_call$hatSigma <- new_call$cond.cutoff <- NULL
-  new_call$formula <- new_formula
-  new_call$data <- quote(pffr_data)
-  new_call[[1]] <- algorithm
-
-  dotargs <- names(new_call)[names(new_call) %in% names(dots)]
-  new_call[dotargs] <- dots[dotargs]
-
-  if ("weights" %in% dotargs) {
-    if (length(dots$weights) == nobs) {
-      new_call$weights <- dots$weights[obs_indices]
-    } else if (
-      !is.null(dim(dots$weights)) && all(dim(dots$weights) == c(nobs, nyindex))
-    ) {
-      new_call$weights <- as.vector(t(dots$weights))
-    } else {
-      stop(
-        "weights must be vector of length nobs or matrix of dim (nobs, nyindex)"
-      )
-    }
-  }
-
-  if ("offset" %in% dotargs) {
-    if (length(dots$offset) == nobs) {
-      new_call$offset <- dots$offset[obs_indices]
-    } else if (
-      !is.null(dim(dots$offset)) && all(dim(dots$offset) == c(nobs, nyindex))
-    ) {
-      new_call$offset <- as.vector(t(dots$offset))
-    } else {
-      stop(
-        "offset must be vector of length nobs or matrix of dim (nobs, nyindex)"
-      )
-    }
-  }
-
-  # Step 10: GLS fitting
-  new_call$fit <- FALSE
-  G <- eval(new_call)
-  G <- decorrelate_gam_matrices(G, sqrt_sigma_inv, nobs, nyindex)
-  m <- gam(G = G, fit = TRUE, method = method)
-
-  # Post-fit corrections
-  m$y <- original_response
-  m$fitted.values <- predict(m)
-  m$residuals <- m$y - m$fitted.values
-
-  # Step 11: Post-processing using shared functions
-  m_smooth <- if (as.character(algorithm) %in% c("gamm4", "gamm"))
-    m$gam$smooth else m$smooth
-
-  label_map_result <- pffr_build_label_map(
-    new_term_strings = new_term_strings,
-    terms = terms,
-    add_f_int = add_f_int,
-    int_string = int_string,
-    m_smooth = m_smooth,
-    where_specials = where_specials,
-    ffpc_terms = ffpc_terms,
-    formula_env = formula_env,
-    yindex_vec_name = yindex_vec_name
-  )
-  label_map <- label_map_result$label_map
-  term_map <- label_map_result$term_map
-
-  names(m_smooth) <- sapply(m_smooth, \(x) x$label)
-  if (as.character(algorithm) %in% c("gamm4", "gamm")) {
-    m$gam$smooth <- m_smooth
-  } else {
-    m$smooth <- m_smooth
-  }
-
-  short_labels <- create_shortlabels(
-    label_map = label_map,
-    m_smooth = m_smooth,
-    yind_name = yind_name,
-    where_specials = where_specials
-  )
-
-  # Build metadata (with GLS-specific fields)
-  ret <- pffr_build_metadata(
-    call = call,
-    formula = formula,
-    term_map = term_map,
-    label_map = label_map,
-    short_labels = short_labels,
-    response_name = response_name,
-    nobs = nobs,
-    nyindex = nyindex,
-    yind_name = yind_name,
-    yind = yind,
-    where_specials = where_specials,
-    ff_terms = ff_terms,
-    ffpc_terms = ffpc_terms,
-    pcre_terms = pcre_terms,
-    missing_indices = missing_indices,
-    is_sparse = is_sparse,
-    ydata = ydata,
-    sandwich = FALSE
-  )
-  # Add GLS-specific fields
-  ret$hatSigma <- hatSigma
-  ret$sqrtSigmaInv <- sqrt_sigma_inv
-
-  m <- pffr_attach_metadata(m, algorithm, ret)
-  m
 }
 
 
-#' Penalized function-on-function regression with non-i.i.d. residuals (deprecated)
+#' Penalized function-on-function regression with non-i.i.d. residuals
+#' (deprecated)
 #'
 #' @description
 #' **Deprecated**
 #'
-#' `pffrGLS()` was renamed to [pffr_gls()] for consistency with the
-#' package naming conventions.
+#' `pffrGLS()` is deprecated. Use \code{\link{pffr}()} with
+#' \code{sandwich = "cluster"} or \code{sandwich = "cl2"} instead.
 #'
 #' @inheritParams pffr_gls
+#' @return Does not return; always errors with a deprecation message.
 #' @export
 #' @keywords internal
 pffrGLS <- function(
@@ -1526,18 +1034,5 @@ pffrGLS <- function(
   ...
 ) {
   .Deprecated("pffr_gls")
-  pffr_gls(
-    formula = formula,
-    yind = yind,
-    hatSigma = hatSigma,
-    data = data,
-    ydata = ydata,
-    algorithm = algorithm,
-    method = method,
-    tensortype = tensortype,
-    bs.yindex = bs.yindex,
-    bs.int = bs.int,
-    cond.cutoff = cond.cutoff,
-    ...
-  )
+  pffr_gls()
 }

@@ -1409,152 +1409,21 @@ test_that("create_shortlabels handles complex scale formulas for gaulss", {
 
 
 ###############################################################################
-# pffrGLS Tests
+# pffrGLS / pffr_gls Deprecation Tests
 ###############################################################################
 
-test_that("pffrGLS fits a simple model correctly", {
-  skip_on_cran()
-
-  m <- get_gls_model()
-  n <- 30
-  nygrid <- 25
-
-  expect_s3_class(m, "pffr")
-  expect_equal(dim(fitted(m)), c(n, nygrid))
-  expect_false(any(is.na(fitted(m))))
-})
-
-test_that("pffrGLS has complete pffr slot", {
-  skip_on_cran()
-
-  m <- get_gls_model()
-
-  # Check pffr slot has all required fields
-  expect_true(!is.null(m$pffr$short_labels))
-  expect_true(!is.null(m$pffr$label_map))
-  expect_true(!is.null(m$pffr$term_map))
-  expect_true(!is.null(m$pffr$nobs))
-  expect_true(!is.null(m$pffr$nyindex))
-  expect_true(!is.null(m$pffr$yind))
-  expect_true(!is.null(m$pffr$where))
-
-  # GLS-specific fields
-  expect_true(!is.null(m$pffr$hatSigma))
-  expect_true(!is.null(m$pffr$sqrtSigmaInv))
-})
-
-test_that("pffrGLS works with ff() terms", {
-  skip_on_cran()
-  set.seed(202)
-
-  n <- 30
-  nxgrid <- 20
-  nygrid <- 25
-
-  dat <- pffr_simulate(
-    Y ~ ff(X1, xind = s),
-    n = n,
-    nxgrid = nxgrid,
-    nygrid = nygrid,
-    effects = list(X1 = "cosine"),
-    SNR = 50
-  )
-  s <- attr(dat, "xindex")
-  t <- attr(dat, "yindex")
-
-  rho <- 0.5
-  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
-
-  m <- pffr_gls(Y ~ ff(X1, xind = s), yind = t, data = dat, hatSigma = hatSigma)
-
-  expect_s3_class(m, "pffr")
-  expect_equal(dim(fitted(m)), c(n, nygrid))
-
-  # Check coef works
-  coefs <- coef(m)
-  expect_true(is.list(coefs))
-  expect_true("smterms" %in% names(coefs))
-})
-
-test_that("pffrGLS summary and coef methods work", {
-  skip_on_cran()
-
-  m <- get_gls_model()
-
-  # Test summary
-  summ <- summary(m)
-  expect_s3_class(summ, "summary.pffr")
-  expect_true(!is.null(summ$s.table))
-
-  # Test coef
-  coefs <- coef(m)
-  expect_true(is.list(coefs))
-  expect_true("pterms" %in% names(coefs))
-  expect_true("smterms" %in% names(coefs))
-})
-
-test_that("pffrGLS handles poorly conditioned hatSigma", {
-  skip_on_cran()
-  set.seed(204)
-
-  n <- 20
-  nygrid <- 15
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  t <- attr(dat, "yindex")
-
-  # Create poorly conditioned matrix (high correlation)
-  rho <- 0.99
-  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
-
-  # Should warn about condition number
-  expect_warning(
-    m <- pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma),
-    "condition number"
-  )
-
-  # But should still fit
-  expect_s3_class(m, "pffr")
-})
-
-test_that("pffrGLS rejects missing values in response", {
-  skip_on_cran()
-  set.seed(205)
-
-  n <- 20
-  nygrid <- 15
-
-  dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
-  dat$Y[1, 5] <- NA # Introduce missing value
-  t <- attr(dat, "yindex")
-
-  rho <- 0.5
-  hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
-
+test_that("pffr_gls errors with deprecation message", {
   expect_error(
-    pffr_gls(Y ~ xlin, yind = t, data = dat, hatSigma = hatSigma),
-    "missing values"
+    suppressWarnings(pffr_gls(Y ~ xlin)),
+    "pffr_gls.*has been removed"
   )
 })
 
-test_that("pffrGLS predict works correctly", {
-  skip_on_cran()
-
-  m <- get_gls_model()
-  dat <- get_xlin_data()
-  n <- 30
-  nygrid <- 25
-
-  # Predict on training data
-  pred <- predict(m)
-  expect_equal(dim(pred), c(n, nygrid))
-  expect_equal(pred, fitted(m), tolerance = 1e-10)
-
-  # Predict on new data
-  set.seed(207)
-  newdat <- sim_xlin_data(n = 15, nygrid = nygrid, SNR = 50)
-  pred_new <- predict(m, newdata = newdat)
-  expect_equal(dim(pred_new), c(15, nygrid))
+test_that("pffrGLS errors with deprecation message", {
+  expect_error(
+    suppressWarnings(pffrGLS(Y ~ xlin)),
+    "pffr_gls.*has been removed"
+  )
 })
 
 
@@ -1784,28 +1653,6 @@ test_that("coef supports fixed eval_grid for term-aligned extraction", {
   expect_equal(
     co_fixed$smterms[[ind]]$coef[, "xsmoo"],
     template$smterms[[ind]]$coef[, "xsmoo"]
-  )
-})
-
-test_that("pffrGLS errors on sparse data (not yet implemented)", {
-  skip_on_cran()
-
-  dat_sparse <- get_sparse_data()
-  t <- attr(dat_sparse, "yindex")
-
-  rho <- 0.5
-  hatSigma <- rho^abs(outer(1:length(t), 1:length(t), "-"))
-
-  # pffrGLS with sparse data should error (not yet implemented)
-  expect_error(
-    pffr_gls(
-      Y ~ s(xsmoo),
-      data = dat_sparse$data,
-      ydata = dat_sparse$ydata,
-      yind = t,
-      hatSigma = hatSigma
-    ),
-    "sparse data not yet"
   )
 })
 

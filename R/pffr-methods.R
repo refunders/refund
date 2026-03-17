@@ -1110,7 +1110,8 @@ coef.pffr <- function(
       warning(
         "sandwich = \"",
         sandwich,
-        "\" is not supported for pffr_gls fits. ",
+        "\" is not supported for legacy pffr_gls fits. ",
+        "Use pffr() with sandwich CIs instead. ",
         "Using sandwich = \"none\".",
         call. = FALSE
       )
@@ -1540,6 +1541,7 @@ print.summary.pffr <- function(
 #'
 #' @param object a fitted \code{\link{pffr}}-object
 #' @inheritParams mgcv::qq.gam
+#' @return None, called for its side effect of producing QQ plots.
 #' @importFrom mgcv qq.gam
 #' @export
 pffr_qq <- function(
@@ -1572,6 +1574,7 @@ pffr_qq <- function(
 #' package naming conventions.
 #'
 #' @inheritParams pffr_qq
+#' @return None, called for its side effect of producing QQ plots.
 #' @export
 #' @keywords internal
 qq.pffr <- function(
@@ -1609,6 +1612,8 @@ qq.pffr <- function(
 #' @param level passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
 #' @param rl.col passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
 #' @param rep.col passed to \code{\link[mgcv]{qq.gam}} when \code{old.style} is \code{FALSE}.
+#' @return None, called for its side effect of producing diagnostic plots and
+#'   printing basis dimension checks.
 #' @export
 pffr_check <- function(
   b,
@@ -1641,6 +1646,7 @@ pffr_check <- function(
 #' package naming conventions.
 #'
 #' @inheritParams pffr_check
+#' @return None, called for its side effect of producing diagnostic plots.
 #' @export
 #' @keywords internal
 pffr.check <- function(

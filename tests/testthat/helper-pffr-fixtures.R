@@ -284,28 +284,6 @@ get_gaulss_model <- function() {
   pffr_test_env$gaulss_model
 }
 
-#' Get pffrGLS fitted model
-#'
-#' Fits a pffrGLS model with AR(1) covariance structure.
-#'
-#' @returns A fitted pffr object from pffrGLS
-get_gls_model <- function() {
-  if (is.null(pffr_test_env$gls_model)) {
-    dat <- get_xlin_data()
-    t <- attr(dat, "yindex")
-    nygrid <- length(t)
-    rho <- 0.5
-    hatSigma <- rho^abs(outer(1:nygrid, 1:nygrid, "-"))
-    pffr_test_env$gls_model <- pffr_gls(
-      Y ~ xlin,
-      yind = t,
-      data = dat,
-      hatSigma = hatSigma
-    )
-  }
-  pffr_test_env$gls_model
-}
-
 #--------------------------------------
 # Fixture Management
 #--------------------------------------

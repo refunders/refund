@@ -13,7 +13,7 @@ pffr_validate_dots(call, algorithm, dots, check_ar = TRUE)
 
 \item{dots}{The list of additional arguments (...).}
 
-\item{check_ar}{Whether to check AR-related arguments (TRUE for pffr, FALSE for pffr_gls).}
+\item{check_ar}{Whether to check AR-related arguments.}
 }
 \value{
 A list with:

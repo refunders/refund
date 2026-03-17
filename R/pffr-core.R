@@ -21,7 +21,7 @@ NULL
 #' @param call The matched call from pffr().
 #' @param algorithm The algorithm argument (may be NA).
 #' @param dots The list of additional arguments (...).
-#' @param check_ar Whether to check AR-related arguments (TRUE for pffr, FALSE for pffr_gls).
+#' @param check_ar Whether to check AR-related arguments.
 #' @returns A list with:
 #'   - `dots`: Validated and possibly modified dots
 #'   - `use_ar`: Logical, whether AR(1) errors are requested
@@ -717,7 +717,7 @@ pffr_attach_metadata <- function(m, algorithm, ret) {
 
 
 #--------------------------------------
-# Step 8: Formula Term Processing (shared by pffr and pffr_gls)
+# Step 8: Formula Term Processing
 #--------------------------------------
 
 #' Process ff/sff terms and assign to formula environment

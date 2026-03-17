@@ -2,7 +2,8 @@
 % Please edit documentation in R/pffr-robust.R
 \name{pffrGLS}
 \alias{pffrGLS}
-\title{Penalized function-on-function regression with non-i.i.d. residuals (deprecated)}
+\title{Penalized function-on-function regression with non-i.i.d. residuals
+(deprecated)}
 \usage{
 pffrGLS(
   formula,
@@ -20,37 +21,15 @@ pffrGLS(
 )
 }
 \arguments{
-\item{formula}{a formula with special terms as for \code{\link[mgcv]{gam}}, with additional special terms \code{\link{ff}()} and \code{c()}. See \code{\link[refund]{pffr}}.}
-
-\item{yind}{a vector with length equal to the number of columns of the matrix of functional responses giving the vector of evaluation points \eqn{(t_1, \dots ,t_{G})}.
-see \code{\link[refund]{pffr}}}
-
-\item{hatSigma}{(an estimate of) the within-observation covariance (along the responses' index), evaluated at \code{yind}. See Details.}
-
-\item{data}{an (optional) \code{data.frame} or named list containing the data.}
-
-\item{ydata}{an (optional) \code{data.frame} for sparse/irregular functional responses. See \code{\link[refund]{pffr}}.}
-
-\item{algorithm}{the name of the function used to estimate the model. Defaults to \code{\link[mgcv]{gam}} if the matrix of functional responses has less than \code{2e5} data points
-and to \code{\link[mgcv]{bam}} if not. "gamm" (see \code{\link[mgcv]{gamm}}) and "gamm4" (see \code{\link[gamm4]{gamm4}}) are valid options as well.}
-
-\item{method}{See \code{\link[refund]{pffr}}}
-
-\item{tensortype}{See \code{\link[refund]{pffr}}}
-
-\item{bs.yindex}{See \code{\link[refund]{pffr}}}
-
-\item{bs.int}{See \code{\link[refund]{pffr}}}
-
-\item{cond.cutoff}{if the condition number of \code{hatSigma} is greater than this, \code{hatSigma} is
-made ``more'' positive-definite via \code{\link[Matrix]{nearPD}} to ensure a condition number equal to cond.cutoff. Defaults to 500.}
-
-\item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}} or \code{\link[mgcv]{bam}}. See \code{\link[refund]{pffr}}.}
+\item{formula, yind, hatSigma, data, ydata, algorithm, method, tensortype, bs.yindex, bs.int, cond.cutoff, ...}{Ignored. The function always errors.}
+}
+\value{
+Does not return; always errors with a deprecation message.
 }
 \description{
 **Deprecated**
 
-`pffrGLS()` was renamed to [pffr_gls()] for consistency with the
-package naming conventions.
+`pffrGLS()` is deprecated. Use \code{\link{pffr}()} with
+\code{sandwich = "cluster"} or \code{sandwich = "cl2"} instead.
 }
 \keyword{internal}
