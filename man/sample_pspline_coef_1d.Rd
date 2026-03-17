@@ -15,7 +15,8 @@ sample_pspline_coef_1d(k, wiggliness)
 Numeric vector of coefficients (length k).
 }
 \description{
-Samples coefficients from N(0, P^{-1}) where
-P = (1/wiggliness) * K'K + I and K is a 2nd-order difference matrix.
+Samples coefficients from \eqn{N(0, P^{-1})} where
+\eqn{P = (1/\mathrm{wiggliness}) \cdot K'K + I} and \eqn{K} is a
+2nd-order difference matrix.
 }
 \keyword{internal}

@@ -85,6 +85,34 @@
 #' sampling from P-spline priors. Use \code{wiggliness} to control the
 #' smoothness (curvature).
 #'
+#' @section Effect key matching:
+#' When specifying custom effects via the \code{effects} argument, keys are
+#' matched to formula terms using a 6-level fallback chain:
+#' \enumerate{
+#'   \item Exact term label (as produced by \code{terms.formula()})
+#'   \item Whitespace-normalized term label
+#'   \item Exact deparsed call (e.g., \code{"ff(X1, xind = s)"})
+#'   \item Whitespace-normalized deparsed call
+#'   \item Variable name (first argument, e.g., \code{"X1"} for \code{ff(X1)})
+#'   \item Type-specific default preset
+#' }
+#'
+#' This means you can specify effects at different levels of specificity:
+#' \preformatted{
+#' # Match by variable name (most common, matches level 5):
+#' pffr_simulate(Y ~ ff(X1) + xlin,
+#'               effects = list(X1 = "cosine", xlin = "dnorm"))
+#'
+#' # Match by exact term label (level 1):
+#' pffr_simulate(Y ~ ff(X1, xind = s) + s(xsmoo),
+#'               effects = list("ff(X1, xind = s)" = "product",
+#'                              "s(xsmoo)" = "sine"))
+#'
+#' # Match by variable name with custom function (level 5):
+#' pffr_simulate(Y ~ xlin,
+#'               effects = list(xlin = function(t) sin(2 * pi * t)))
+#' }
+#'
 #' @export
 #' @importFrom splines spline.des
 #' @importFrom stats dnorm rnorm runif dbeta gaussian var as.formula
@@ -184,6 +212,7 @@ pffr_simulate <- function(
 #' package naming conventions.
 #'
 #' @inheritParams pffr_simulate
+#' @return Same as \code{\link{pffr_simulate}}.
 #' @export
 #' @keywords internal
 pffrSim <- function(

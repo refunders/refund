@@ -676,8 +676,9 @@ parse_single_term <- function(term_str, specials) {
 
 #' Sample coefficients from 1D P-spline prior
 #'
-#' Samples coefficients from N(0, P^{-1}) where
-#' P = (1/wiggliness) * K'K + I and K is a 2nd-order difference matrix.
+#' Samples coefficients from \eqn{N(0, P^{-1})} where
+#' \eqn{P = (1/\mathrm{wiggliness}) \cdot K'K + I} and \eqn{K} is a
+#' 2nd-order difference matrix.
 #'
 #' @param k Number of basis functions.
 #' @param wiggliness Controls smoothness. Higher = more wiggly.
@@ -1453,6 +1454,7 @@ generate_scalar_covariate <- function(
 #' @param limits Optional limits function for ff terms.
 #' @returns List with `formula`, `effects`, and `intercept` components.
 #' @keywords internal
+# TODO: wire up scenario_to_formula() as the backend for legacy scenario interface
 scenario_to_formula <- function(scenario, nxgrid, nygrid, limits = NULL) {
   # Define individual scenario components
   scenario_defs <- list(
@@ -1879,6 +1881,18 @@ pffrSim_formula <- function(
         )
       }
       beta_coefs[[term_label]] <- f_x
+    } else if (term_type == "ffpc") {
+      # TODO: implement ffpc() simulation support. Needs:
+      #   - generate functional covariate on xind grid
+      #   - perform FPCA to extract PC scores and eigenfunctions
+      #   - compute effect as sum of score_k * beta_k(t) terms
+      stop("ffpc() terms are not yet supported in the formula simulator")
+    } else if (term_type == "pcre") {
+      # TODO: implement pcre() simulation support. Needs:
+      #   - accept pre-computed eigenfunctions from pcre() call
+      #   - generate random effects (scores) for each subject
+      #   - compute effect as sum of score_k * eigenfunction_k(t) terms
+      stop("pcre() terms are not yet supported in the formula simulator")
     } else if (term_type == "linear") {
       # Linear varying coefficient term
       if (is.null(data[[varname]])) {

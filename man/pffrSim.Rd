@@ -75,6 +75,9 @@ Higher values produce more wiggly truth functions. Typical range: 0.001
 Defaults: \code{list(ff_s = 8, ff_t = 8, smooth_z = 8, smooth_t = 8,
 linear = 8, intercept = 8, concurrent = 8)}.}
 }
+\value{
+Same as \code{\link{pffr_simulate}}.
+}
 \description{
 **Deprecated**
 
