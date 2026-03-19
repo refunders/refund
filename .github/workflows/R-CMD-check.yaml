@@ -46,9 +46,8 @@ jobs:
 
       - name: Install additional LaTeX packages
         run: |
-          tlmgr install makeindex
-          tlmgr install collection-fontsrecommended
-        shell: bash
+          tinytex::tlmgr_install(c("makeindex", "collection-fontsrecommended"))
+        shell: Rscript {0}
 
       - uses: r-lib/actions/check-r-package@v2
         with:
