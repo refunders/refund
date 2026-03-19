@@ -39,8 +39,16 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck, any::tinytex
+          extra-packages: any::rcmdcheck, any::tinytex, any::V8
           needs: check
+
+      - name: Install system dependencies for HTML manual check
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y tidy
+
+      - name: Install system dependencies for HTML manual check (macOS)
+        if: runner.os == 'macOS'
+        run: brew install tidy-html5
 
       - uses: r-lib/actions/setup-tinytex@v2
 
