@@ -1164,7 +1164,7 @@ gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
   }
 
   # Families that define family$sandwich (e.g. multinom) use custom
-  # score computation — cluster aggregation not yet implemented for these.
+  # score computation -- cluster aggregation not yet implemented for these.
   if (!is.null(b$family$sandwich)) {
     warning(
       "Cluster-robust sandwich not yet implemented for family '",
@@ -1213,7 +1213,7 @@ gam_sandwich_cluster_cl2 <- function(
   fam <- tolower(as.character(b$family$family))
 
   # Families with custom family$sandwich (e.g. multinom) use custom
-  # score computation — CL2 cluster leverage correction is not implemented yet.
+  # score computation -- CL2 cluster leverage correction is not implemented yet.
   if (fam != "gaulss" && !is.null(b$family$sandwich)) {
     warning(
       "CL2 sandwich not yet implemented for family '",

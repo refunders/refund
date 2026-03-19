@@ -157,7 +157,7 @@ compute_integration_weights <- function(xind, integration = "simpson") {
   switch(
     integration,
     simpson = {
-      # Simpson's rule: int^b_a f(t) dt ≈ (b-a)/(3n) * [f(a) + 4f(t_1) + 2f(t_2) + ...]
+      # Simpson's rule: int^b_a f(t) dt ~ (b-a)/(3n) * [f(a) + 4f(t_1) + 2f(t_2) + ...]
       ((xind[, nxgrid] - xind[, 1]) / nxgrid) /
         3 *
         matrix(
@@ -694,7 +694,7 @@ sample_pspline_coef_1d <- function(k, wiggliness) {
 #' Sample coefficients from 2D tensor P-spline prior
 #'
 #' Samples from tensor product P-spline prior with additive penalties:
-#' P = (1/wiggliness) * (P_s ⊗ I_t + I_s ⊗ P_t) + I
+#' P = (1/wiggliness) * (P_s x I_t + I_s x P_t) + I
 #'
 #' @param k_s Basis dimension for first margin.
 #' @param k_t Basis dimension for second margin.

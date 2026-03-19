@@ -67,7 +67,7 @@ penalty.}
 estimation.
 \code{"cluster"} (default): cluster-robust sandwich clustering by curve,
 which
-handles both heteroskedasticity and within-curve autocorrelation — the
+handles both heteroskedasticity and within-curve autocorrelation -- the
 recommended choice for functional data.
 \code{"cl2"}: leverage-adjusted cluster-robust sandwich (Bell-McCaffrey
 style CL2), mainly relevant in smaller samples.

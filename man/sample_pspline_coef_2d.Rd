@@ -18,6 +18,6 @@ Matrix of coefficients (k_s x k_t).
 }
 \description{
 Samples from tensor product P-spline prior with additive penalties:
-P = (1/wiggliness) * (P_s ⊗ I_t + I_s ⊗ P_t) + I
+P = (1/wiggliness) * (P_s x I_t + I_s x P_t) + I
 }
 \keyword{internal}
