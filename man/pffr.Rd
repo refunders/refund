@@ -288,6 +288,10 @@ Ivanescu, A., Staicu, A.-M., Scheipl, F. and Greven, S. (2015).
   F. Scheipl, J. Gertheiss, S. Greven (2016):  Generalized Functional Additive Mixed Models,
   Electronic Journal of Statistics, 10(1), 1455--1492.
   \url{https://projecteuclid.org/journals/electronic-journal-of-statistics/volume-10/issue-1/Generalized-functional-additive-mixed-models/10.1214/16-EJS1145.full}
+
+  Greven, S. and Scheipl, F. (2017). A general framework for functional
+  regression modelling. Statistical Modelling, 17(1--2), 1--35.
+  \doi{10.1177/1471082X16681317}
 }
 \seealso{
 \code{\link[mgcv]{smooth.terms}} for details of \code{mgcv} syntax
