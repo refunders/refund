@@ -20,9 +20,9 @@ vb_cs_wish(
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}
 
-\item{data}{an optional data frame, list or environment containing the 
-variables in the model. If not found in data, the variables are taken from 
-environment(formula), typically the environment from which the function is 
+\item{data}{an optional data frame, list or environment containing the
+variables in the model. If not found in data, the variables are taken from
+environment(formula), typically the environment from which the function is
 called.}
 
 \item{verbose}{logical defaulting to \code{TRUE} -- should updates on progress be printed?}
@@ -40,12 +40,12 @@ zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)}
 for population-level effects; if \code{NULL}, defaults to \code{Kt/2}.}
 
 \item{Bw}{hyperparameter for inverse gamma controlling variance of spline terms
-for population-level effects; if \code{NULL}, defaults to 
-1/2 tr(mu.q.beta %*% P.inv %*% mu.q.beta) where mu.q.beta is based on a OLS fit 
+for population-level effects; if \code{NULL}, defaults to
+1/2 tr(mu.q.beta %*% P.inv %*% mu.q.beta) where mu.q.beta is based on a OLS fit
 of the model}
 
 \item{v}{hyperparameter for inverse Wishart prior on residual covariance; if \code{NULL},
-Psi defaults to an FPCA decomposition of the residual covariance in which residuals are 
+Psi defaults to an FPCA decomposition of the residual covariance in which residuals are
 estimated based on an OLS fit of the model (note the "nugget effect" on this covariance
 is assumed to be constant over the time domain).}
 }
@@ -61,7 +61,7 @@ the residual covariance surface using a Wishart prior.
 }
 \references{
 Goldsmith, J., Kitago, T. (2016).
-Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
+Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 Series C}, 65 215-236.
 }

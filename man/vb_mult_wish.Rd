@@ -22,9 +22,9 @@ vb_mult_wish(
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}
 
-\item{data}{an optional data frame, list or environment containing the 
-variables in the model. If not found in data, the variables are taken from 
-environment(formula), typically the environment from which the function is 
+\item{data}{an optional data frame, list or environment containing the
+variables in the model. If not found in data, the variables are taken from
+environment(formula), typically the environment from which the function is
 called.}
 
 \item{verbose}{logical defaulting to \code{TRUE} -- should updates on progress be printed?}
@@ -65,7 +65,7 @@ are \code{NULL} they are estimated using the data.
 }
 \references{
 Goldsmith, J., Kitago, T. (2016).
-Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
+Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 Series C}, 65 215-236.
 }

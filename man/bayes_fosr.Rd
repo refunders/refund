@@ -7,17 +7,17 @@
 bayes_fosr(formula, data = NULL, est.method = "VB", cov.method = "FPCA", ...)
 }
 \arguments{
-\item{formula}{a formula indicating the structure of the proposed model. 
+\item{formula}{a formula indicating the structure of the proposed model.
 Random intercepts are designated using \code{\link{re}}().}
 
-\item{data}{an optional data frame, list or environment containing the 
-variables in the model. If not found in data, the variables are taken from 
-environment(formula), typically the environment from which the function is 
+\item{data}{an optional data frame, list or environment containing the
+variables in the model. If not found in data, the variables are taken from
+environment(formula), typically the environment from which the function is
 called.}
 
 \item{est.method}{method used to estimate model parameters. Options are "VB",
 "Gibbs", and "GLS" with "VB" as default. Variational Bayes is a fast approximation to
-the full posterior and often provides good point estimates, but may be 
+the full posterior and often provides good point estimates, but may be
 unreliable for inference. "GLS" doesn't do anything Bayesian -- just fits an
 unpenalized GLS estimator for the specified model.}
 
@@ -33,8 +33,8 @@ A list of class \code{"fosr"} returned by the selected fitting
 \description{
 Wrapper function that implements several approaches to Bayesian function-
 on-scalar regression. Currently handles real-valued response curves; models
-can include subject-level random effects in a multilevel framework. The 
-residual curve error structure can be estimated using Bayesian FPCA or a 
+can include subject-level random effects in a multilevel framework. The
+residual curve error structure can be estimated using Bayesian FPCA or a
 Wishart prior. Model parameters can be estimated using a Gibbs sampler
 or variational Bayes.
 }
@@ -69,11 +69,11 @@ intercepts = sapply(models, function(u) get(u)$beta.hat[1,])
 slopes = sapply(models, function(u) get(u)$beta.hat[2,])
 
 plot.dat = melt(intercepts); colnames(plot.dat) = c("grid", "method", "value")
-ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) + 
+ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) +
    geom_path() + theme_bw()
 
 plot.dat = melt(slopes); colnames(plot.dat) = c("grid", "method", "value")
-ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) + 
+ggplot(plot.dat, aes(x = grid, y = value, group = method, color = method)) +
    geom_path() + theme_bw()
 
 ## fit a model with an interaction
@@ -95,7 +95,7 @@ VB = bayes_fosr(cca ~ pasat + re(id), data = DTI2, Kt = 10, cov.method = "Wishar
 }
 \references{
 Goldsmith, J., Kitago, T. (2016).
-Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
+Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 Series C}, 65 215-236.
 }
