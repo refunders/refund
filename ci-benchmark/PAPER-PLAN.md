@@ -16,11 +16,16 @@ this and know where everything is and what to do next. **Keep it current.**
   `DRAFT/verify` in-source; must be regenerated from summaries.
 - **Literature search:** complete; `pffr-ci-refs.bib` has 49 verified entries.
 - **New experiments (Part B2):** plan written
-  (`ci-benchmark/NEW-EXPERIMENTS-PLAN.md` on branch `ci-experiments`); coding not
-  yet started. This is the current work front.
+  (`ci-benchmark/NEW-EXPERIMENTS-PLAN.md` on branch `ci-experiments`).
+  **Foundation built + validated** (commit b323db6 on `ci-experiments`):
+  `extract_term_ci_df()` now supports t_{G-1} critical values (`df`) and bands
+  taken from `coef()` (`ci_from_coef`), plus `extract_simultaneous_term_metrics()`;
+  single-fit smoke test passes. Decisions locked: **E3 bootstrap = B=499,
+  percentile, curve resample, both studies (LRZ)**; real-data app (B3)
+  **deferred**. Next: per-study E1/E2 driver scripts + E3 SLURM.
 - **Council review (2026-06-17):** Claude + Codex legs returned (Gemini failed,
   empty). Findings + required fixes in section "Council review" below.
-- **Real-data application (B3), theory (B4):** not started.
+- **Real-data application (B3):** deferred by decision. **Theory (B4):** not started.
 
 ## Repository / branch / worktree map  ← READ FIRST
 
