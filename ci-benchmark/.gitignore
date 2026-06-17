@@ -18,3 +18,8 @@ logs
 
 # but keep the application/figure assets we explicitly want
 !article-visualization.pdf
+
+# ...and DO track the Quarto journal-extension LaTeX templates/partials.
+# The broad *.tex rule above would otherwise drop them (e.g.
+# _extensions/.../partials/title.tex), which breaks rendering in fresh checkouts.
+!_extensions/**/*.tex

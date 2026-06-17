@@ -1,0 +1,15 @@
+$-- Provides configuration of document metadata for writing the title block. 
+$-- Note that in addition to these templates and partials, Quarto will also make normalized authors and affiliations data available to the template, 
+$-- making is easy to write custom title blocks against a standard schema.
+$--
+$-- %%%% TODO %%%%%
+$-- Customize is needed, otherwise remove this partials to use Quarto default one
+$-- %%%%%%%%%%%%%%%%
+
+%%
+%% The "title" command has an optional parameter,
+%% allowing the author to define a "short title" to be used in page headers.
+$if(title)$
+\title$if(short-title)$[$short-title$]$endif${$title$}
+$endif$
+
