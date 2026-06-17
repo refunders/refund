@@ -54,8 +54,8 @@ boldface commit if it landed); experiments → `ci-experiments` (boot all-NA fix
 `3af325d6` "qualify refund::pffr", SLURM 96h `1ed89762`).
 
 **IN FLIGHT at power-down (local agents died — verify each):**
-- **W3 boldface sweep** (paper branch): was rendering. CHECK whether it committed on
-  `claude/practical-wright-mljg9q`; if not, redo the global \mathbf/\boldsymbol pass.
+- **W3 boldface sweep** (paper branch): DONE — captured + committed (renders 22 pp,
+  122 \mathbf/\boldsymbol). All 5 round-2 feedback items now complete.
 - **E4/fastFMM builder** (`ci-experiments`): `sim-study-fastfmm-extension.R` is
   untracked WIP — verify it runs (the degenerate `(1|id)` RE question) and commit, or finish it.
 - **LRZ E3 agent**: committed the all-NA fix + SLURM 96h, was validating. **squeue was
@@ -245,7 +245,7 @@ Required fixes before submission (convergent across both reviewers unless noted)
 ---
 
 ## Author feedback — round 2 (2026-06-17)
-1. **Notation:** boldface ALL matrix/vector quantities consistently. IN PROGRESS
+1. **Notation:** boldface ALL matrix/vector quantities consistently. DONE (W3 sweep captured)
    (W3 global sweep; W1/W2 did their own sections).
 2. **Title:** "Confidence Intervals for Function-on-Function Regression". DONE (aae08bf4).
 3. **§2.1 (model):** generalized GLM rewrite (link + random effects, Gaussian-only
