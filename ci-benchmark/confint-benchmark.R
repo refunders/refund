@@ -762,7 +762,9 @@ extract_term_ci_df <- function(
   t_grid = NULL,
   data = NULL,
   coefs = NULL,
-  center_ff = c("match_fit", "always", "never")
+  center_ff = c("match_fit", "always", "never"),
+  df = Inf,
+  ci_from_coef = FALSE
 ) {
   use_sandwich <- normalize_sandwich_type(use_sandwich)
   center_ff <- match.arg(center_ff)
@@ -815,9 +817,21 @@ extract_term_ci_df <- function(
     return(NULL)
   }
 
-  z_crit <- qnorm(1 - alpha / 2)
-  lower <- est - z_crit * se
-  upper <- est + z_crit * se
+  # CI bounds: either taken directly from coef() (e.g. simultaneous bands), or
+  # built as est +/- crit * se with a normal (df = Inf) or t_{df} critical value.
+  if (ci_from_coef) {
+    lower <- term_info$coef$lower
+    upper <- term_info$coef$upper
+    if (is.null(lower) || is.null(upper)) return(NULL)
+  } else {
+    crit <- if (is.finite(df)) {
+      stats::qt(1 - alpha / 2, df = df)
+    } else {
+      stats::qnorm(1 - alpha / 2)
+    }
+    lower <- est - crit * se
+    upper <- est + crit * se
+  }
   err <- est - truth_vals
   z_score <- ifelse(is.finite(se) & se > 0, err / se, NA_real_)
   covered <- (truth_vals >= lower) & (truth_vals <= upper)
@@ -883,7 +897,8 @@ compute_term_metrics <- function(
   t_grid = NULL,
   data = NULL,
   coefs = NULL,
-  err_struct = NULL
+  err_struct = NULL,
+  crit_df = Inf
 ) {
   use_sandwich <- normalize_sandwich_type(use_sandwich)
 
@@ -896,7 +911,8 @@ compute_term_metrics <- function(
     s_grid = s_grid,
     t_grid = t_grid,
     data = data,
-    coefs = coefs
+    coefs = coefs,
+    df = crit_df
   )
   if (is.null(df) || nrow(df) == 0) return(NULL)
 
@@ -1754,4 +1770,58 @@ if (sys.nframe() == 0) {
   print(summarize_timings(results))
 
   cat("\nDone.\n")
+}
+
+
+# =============================================================================
+# Competitor-CI extractors (PAPER-PLAN B2: simultaneous bands, t_{G-1})
+# =============================================================================
+
+#' Simultaneous-band metrics for one term
+#'
+#' Joint (whole-domain) and pointwise coverage and mean band width for a
+#' simultaneous confidence band obtained from `coef(fit, ci = "simultaneous")`.
+#' Reuses [extract_term_ci_df()] with `ci_from_coef = TRUE` so the band bounds
+#' come from `coef()` (max-statistic critical value) rather than `est +/- z*se`.
+#'
+#' @param fit A pffr fit.
+#' @param truth Truth list from simulation.
+#' @param term_type One of "ff", "linear", "smooth", "intercept", "concurrent".
+#' @param use_sandwich Sandwich type: "none", "cluster", "cl2", or "hc".
+#' @param coefs_sim Pre-computed `coef(fit, ci = "simultaneous", ...)` output.
+#' @param s_grid,t_grid,data Passed through to [extract_term_ci_df()].
+#' @returns One-row tibble (term_type, coverage_joint, coverage_pointwise,
+#'   mean_width, n_grid), or NULL if the term is unavailable.
+#' @keywords internal
+extract_simultaneous_term_metrics <- function(
+  fit,
+  truth,
+  term_type,
+  use_sandwich = "none",
+  coefs_sim = NULL,
+  s_grid = NULL,
+  t_grid = NULL,
+  data = NULL
+) {
+  ci_df <- extract_term_ci_df(
+    fit,
+    truth,
+    term_type,
+    use_sandwich = normalize_sandwich_type(use_sandwich),
+    s_grid = s_grid,
+    t_grid = t_grid,
+    data = data,
+    coefs = coefs_sim,
+    ci_from_coef = TRUE
+  )
+  if (is.null(ci_df) || nrow(ci_df) == 0) return(NULL)
+
+  width <- ci_df$upper - ci_df$lower
+  tibble(
+    term_type = term_type,
+    coverage_joint = as.numeric(all(ci_df$covered, na.rm = TRUE)),
+    coverage_pointwise = mean(ci_df$covered, na.rm = TRUE),
+    mean_width = mean(width, na.rm = TRUE),
+    n_grid = nrow(ci_df)
+  )
 }
