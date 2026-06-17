@@ -973,7 +973,7 @@ The three robust estimators differ markedly in cost, and the difference is
 structural rather than incidental. The CR1 cluster sandwich adds only a single
 post-fit pass over the data: per-observation scores are aggregated to
 cluster totals and combined into a $p \times p$ meat matrix, so its overhead
-relative to the default fit is small and essentially independent of the response
+relative to the default fit is small and grows only modestly with the response
 grid. The CL2 estimator is more expensive because the leverage adjustment is
 computed *per cluster*: for each curve $g$ it forms the $n_g \times n_g$ hat
 block $\mathbf{H}_{gg} = \tilde{\mathbf{X}}_g \mathbf{V}_p \tilde{\mathbf{X}}_g^\top$ and its symmetric inverse square root via an
@@ -981,10 +981,45 @@ eigendecomposition, where $n_g$ is the number of evaluation points on that
 curve. This $O(n_g^3)$ per-cluster step makes CL2 cost grow sharply with the
 response-grid resolution $n_y$, exactly the axis Study 2 varies.
 
-<!-- TODO(data): insert the measured fitting times (default / HC / cluster / CL2
-     across n_y = 40, 80, 120) from study2-cl2-timing/ once the result
-     directories are available in the build environment; report cluster overhead
-     as a percentage of the base fit and the CL2 scaling in n_y. -->
+```{r}
+#| label: cost-data
+#| include: false
+.ct <- readr::read_csv("study2-cl2-timing/summary_by_method.csv", show_col_types = FALSE)
+.oh <- readr::read_csv("study2-cl2-timing/summary_overheads.csv", show_col_types = FALSE)
+.tab <- .ct |>
+  dplyr::group_by(nygrid, method) |>
+  dplyr::summarise(infer = mean(mean_infer_time), .groups = "drop") |>
+  tidyr::pivot_wider(names_from = method, values_from = infer) |>
+  dplyr::arrange(nygrid) |>
+  dplyr::mutate(ratio = cl2 / cluster) |>
+  dplyr::select(nygrid, default, hc, cluster, cl2, ratio)
+.cl2_share_max <- round(100 * max(.oh$mean_cl2_overhead_share_total), 1)
+.ratio_lo <- round(min(.oh$mean_cl2_over_cluster_ratio), 2)
+.ratio_hi <- round(max(.oh$mean_cl2_over_cluster_ratio), 2)
+.clust_infer_max <- round(max(dplyr::filter(.ct, method == "cluster")$mean_infer_time), 1)
+.fit_max <- round(max(.ct$mean_fit_time), 0)
+```
+
+```{r}
+#| label: tbl-s2-cost
+#| tbl-cap: "Mean post-fit inference (CI computation) time in seconds by estimator and response-grid resolution $n_y$, averaged over $G \\in \\{20, 40, 80\\}$ (Study 2 timing run; 10 reps per cell, $n_x = 60$). The rightmost column is the CL2-to-cluster ratio, which increases in $n_y$ as the per-cluster leverage step grows."
+knitr::kable(
+  .tab,
+  digits = c(0, 3, 3, 3, 3, 2),
+  col.names = c("$n_y$", "default", "HC", "cluster", "CL2", "CL2/cluster"),
+  align = "r"
+)
+```
+
+Across the timing run (@tbl-s2-cost), the post-fit inference cost is a small
+fraction of the total runtime: relative to the cluster sandwich, the CL2 leverage
+adjustment adds at most `r .cl2_share_max`% of total time. CL2 is consistently
+more expensive than CR1, and the CL2-to-cluster inference-time ratio rises from
+`r .ratio_lo` on the coarse grid to `r .ratio_hi` on the fine grid --- the
+signature of the per-cluster $O(n_g^3)$ leverage step --- but in absolute terms
+even the slowest cluster inference stays around `r .clust_infer_max` s, against
+model fits of up to `r .fit_max` s. The estimator overhead is therefore
+negligible next to the fit itself across the grids considered.
 
 #### Discussion {#sec-s2-discussion}
 
