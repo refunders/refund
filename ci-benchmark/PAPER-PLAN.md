@@ -37,6 +37,49 @@ this and know where everything is and what to do next. **Keep it current.**
   empty). Findings + required fixes in section "Council review" below.
 - **Real-data application (B3):** deferred by decision. **Theory (B4):** not started.
 
+## SESSION HANDOFF — end of 2026-06-17 (RESUME HERE)
+
+Work paused for the day mid-orchestration. Everything committed is pushed; local
+agents were stopped by power-down (their uncommitted work is lost — verify/redo).
+
+**Done today:** literature search (49 verified refs); all prose drafted; council
+round-1 fixes applied; production data fetched from LRZ (study1/study1-cl2/study2
+now local, symlinks resolve); render fixed (extension `partials/*.tex` were
+git-ignored — `d58bd1e9`); author feedback round 2 items 2–5 done (title, §2.1
+GLM rewrite, §2.2 expansion, Results restructure — renders 22 pp); fastFMM scoped
+(E4); B2 drivers written (E1/E2 validated; E3 boot all-NA fix committed).
+
+**Branches:** paper prose → `claude/practical-wright-mljg9q` (HEAD ~b0ca229a + W3's
+boldface commit if it landed); experiments → `ci-experiments` (boot all-NA fix
+`3af325d6` "qualify refund::pffr", SLURM 96h `1ed89762`).
+
+**IN FLIGHT at power-down (local agents died — verify each):**
+- **W3 boldface sweep** (paper branch): was rendering. CHECK whether it committed on
+  `claude/practical-wright-mljg9q`; if not, redo the global \mathbf/\boldsymbol pass.
+- **E4/fastFMM builder** (`ci-experiments`): `sim-study-fastfmm-extension.R` is
+  untracked WIP — verify it runs (the degenerate `(1|id)` RE question) and commit, or finish it.
+- **LRZ E3 agent**: committed the all-NA fix + SLURM 96h, was validating. **squeue was
+  EMPTY at handoff → B=499 array NOT submitted.** Resume: validate 1 cell gives non-NA
+  boot coverage, then `sbatch boot-extension.slurm` for both studies; fetch with
+  `rsync -az lrz:refund/ci-benchmark/study{1,2}-boot/ ci-benchmark/study{1,2}-boot/`.
+- **cl2-timing LRZ agent**: **not in squeue → not submitted.** Resubmit on LRZ; fetch
+  `study2-cl2-timing/` for the cost table.
+- Claude council leg on the B2 drivers (read-only) — can ignore/re-run.
+
+**Uncommitted in `ci-experiments` worktree:** the E4 fastfmm WIP file (untracked).
+
+**TO RESUME (ordered):**
+1. Verify W3 committed the boldface sweep (else redo); render to confirm 22 pp.
+2. Run a FULL council review of the revised paper (all 3 legs — Gemini now fixed).
+3. LRZ: validate boot fix (1 cell, non-NA) → submit E3 B=499 array (both studies)
+   + cl2-timing job; confirm `squeue`; fetch results when done.
+4. Finish + commit E4/fastFMM driver; pilot E1/E2 locally (≤3 cores).
+5. Verify & de-provisionalize the report numbers from the now-local data; fill the
+   `TODO(data)` cost table from `study2-cl2-timing/`.
+6. Write the abstract + keywords (still `—!!!—...required—!!!—` placeholders).
+
+---
+
 ## Repository / branch / worktree map  ← READ FIRST
 
 Everything lives under `~/fda/`. The work is split across branches/worktrees:
