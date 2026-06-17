@@ -1,0 +1,22 @@
+# Heavy result directories — never track.
+results
+study1-nongaussian
+study1-nongaussian-cl2
+study2-grid-refinement
+study2-results-extracted
+study2-cl2-timing
+cl2-pilot
+logs
+
+# New-experiment (B2) output dirs
+study1-competitors
+study2-competitors
+study1-boot
+study2-boot
+
+# Rendered artifacts
+*.html
+*.pdf
+*.tex
+*_files/
+.Rhistory
