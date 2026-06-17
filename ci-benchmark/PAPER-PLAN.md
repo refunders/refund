@@ -124,6 +124,13 @@ competitors, added via extension scripts that re-run the same seeds:
 - **E1 — t_{G-1} critical values** for cluster/CL2 (cheap; local).
 - **E2 — simultaneous bands** joint coverage via `coef(ci="simultaneous")` (local).
 - **E3 — curve/cluster bootstrap** via `pffr_coefboot()` (heavy; **LRZ**).
+- **E4 — `fastFMM` (Fast Univariate Inference, FUI)** as an external competitor
+  inference method (CRAN: fastFMM). SCOPING IN PROGRESS (agent): FUI is built for
+  function-on-**scalar**/longitudinal mixed models, so feasibility of comparing on
+  our function-on-**function** `ff` term is the open question — likely a head-to-head
+  only on the scalar/varying-coefficient + intercept terms (and/or a related-work
+  citation). Decision + adapter pending the scoping report; verified citation to be
+  added to `pffr-ci-refs.bib`.
 Compute constraints: ≤3 local cores, no local job >2h; E3 on CoolMUC-4 via
 `lrz-remote`. Open budget decisions: bootstrap B, resample method, CI type,
 whether E1/E2 run on both studies.
