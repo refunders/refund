@@ -23,3 +23,10 @@ logs
 # The broad *.tex rule above would otherwise drop them (e.g.
 # _extensions/.../partials/title.tex), which breaks rendering in fresh checkouts.
 !_extensions/**/*.tex
+
+# LaTeX render byproducts (top-level only; do not touch _extensions assets)
+*.aux
+*.bbl
+*.blg
+*.log
+/jsslogo.jpg

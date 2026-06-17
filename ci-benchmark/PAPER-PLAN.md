@@ -201,18 +201,18 @@ Required fixes before submission (convergent across both reviewers unless noted)
 
 ---
 
-## Author feedback — round 2 (2026-06-17)  [IN PROGRESS]
-1. **Notation:** make ALL matrix + vector quantities boldface, consistently, throughout.
-2. **Title:** change to "Confidence Intervals for Function-on-Function Regression".
-3. **§2.1 (model):** rewrite for the generalized case — add the link function and
-   random effects, show explicit additive residuals ONLY for Gaussian responses,
-   use the "general framework" notation of Greven & Scheipl (2017), and state
-   explicitly that pffr ALWAYS assumes observations independent *conditional on the
-   additive predictor* (the source of the problem).
-4. **§2.2 (sandwich estimators):** this is the methodological core — expand
-   substantially; the "For gaulss, ..." explanation is too terse.
-5. **§3 + §4 → one big Results section** with §3/§4 as subsections, preceded by a
-   detailed study-setup intro following ADEMP reporting guidelines (Morris et al. 2019).
+## Author feedback — round 2 (2026-06-17)
+1. **Notation:** boldface ALL matrix/vector quantities consistently. [W1 did its
+   sections; global sweep W3 PENDING.]
+2. **Title:** "Confidence Intervals for Function-on-Function Regression". DONE (aae08bf4).
+3. **§2.1 (model):** generalized GLM rewrite (link + random effects, Gaussian-only
+   residuals, Greven & Scheipl 2017 notation, explicit conditional-independence-
+   on-the-additive-predictor assumption). DONE (aae08bf4).
+4. **§2.2 (sandwich):** expanded methodological core incl. detailed gaulss score
+   block, CR1/CL2 derivation, leverage cap, penalized-bread. DONE (aae08bf4).
+5. **§3 + §4 → one Results section** with ADEMP setup intro. IN PROGRESS (W2; ADEMP
+   material extracted to /tmp/ademp-studies.md). Then W3 boldface sweep + council.
+   Report renders to 20 pp (jss-pdf) after W1.
 
 ## NEXT STEPS (ordered)
 1. ~~Apply council prose fixes + Nychka~~ DONE (09791ae8).
