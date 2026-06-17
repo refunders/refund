@@ -1,5 +1,5 @@
 ---
-title: "Pointwise Confidence Intervals for Penalized Function-on-Function Regression: A Simulation Study"
+title: "Confidence Intervals for Function-on-Function Regression"
 author:
   - name: Fabian Scheipl
     affiliations:
@@ -101,96 +101,232 @@ response-grid resolution and CI quality.
 
 ### The pffr model {#sec-pffr}
 
-The `pffr()` function fits penalized function-on-function additive models of the
-form
+We adopt the general framework for functional regression of
+@GrevenScheipl2017, which embeds function-on-function regression in a unified
+class of penalized generalized additive models. For curve (unit) $i =
+1,\ldots,G$ we observe a response $Y_i(t)$ over a functional domain $t \in
+\mathcal{T}$, evaluated at grid points $t_{id}$, $d = 1,\ldots,D_i$. Conditional
+on covariates, $Y_i(t)$ follows an exponential-family distribution whose mean is
+linked to an additive predictor $\eta_i(t)$ through a known link function $g$,
 $$
-Y_i(t) = \beta_0(t) + \int X_i(s)\beta(s,t)\,ds + z_i \beta_{\text{lin}}(t) + f(x_i, t) + X_i(t)\beta_{\text{conc}}(t) + \varepsilon_i(t),
+g\bigl(\mathbb{E}[Y_i(t) \mid \mathbf{x}_i]\bigr) = \eta_i(t)
+  = \sum_{j=1}^{J} h_j(\mathbf{x}_i)(t),
 $$
-where $i = 1,\ldots,G$ indexes curves (clusters), $t$ is the functional domain,
-$\beta(s,t)$ is a bivariate coefficient surface, and $\varepsilon_i(t)$ is the
-error process. The model is fit as a large penalized generalized additive model
-via `mgcv::gam()` [@Wood2017], with tensor product spline bases and quadratic
-smoothing penalties whose smoothing parameters are selected by (RE)ML
-[@WoodPyaSafken2016]; appropriate sum-to-zero and marginal constraints render
-the additive terms identifiable [@ScheiplGreven2016].
+where each partial effect $h_j(\mathbf{x}_i)(t)$ is a smooth function of $t$ and
+of a (possibly empty) subset of the scalar and functional covariates collected
+in $\mathbf{x}_i$. Special cases of the partial effects $h_j$ include the
+functional intercept $\beta_0(t)$ (depending on no covariate); the
+function-on-function term $\int_{\mathcal{S}} X_i(s)\,\beta(s,t)\,ds$ with
+bivariate coefficient surface $\beta(s,t)$; the function-on-scalar /
+varying-coefficient term $z_i\,\beta(t)$ for a scalar covariate $z_i$; the
+concurrent effect $X_i(t)\,\beta(t)$; the smooth interaction $f(z_i, t)$; and
+*functional random effects* such as subject-specific functional intercepts
+$B_a(t)$, which @GrevenScheipl2017 treat as a special class of partial effects
+(an indicator basis in the covariate direction with a precision-matrix penalty
+in place of a smoothness penalty). Explicit additive residuals appear only in
+the Gaussian-identity special case, where the model reduces to
+$$
+Y_i(t) = \eta_i(t) + \varepsilon_i(t),
+\qquad
+\eta_i(t) = \beta_0(t) + \int_{\mathcal{S}} X_i(s)\,\beta(s,t)\,ds
+  + z_i\,\beta(t) + f(z_i, t) + X_i(t)\,\beta(t).
+$$
+
+Crucially, the pffr likelihood *always* assumes that the per-$(i,t)$
+contributions are independent conditional on the additive predictor: in the
+words of @GrevenScheipl2017, the observed response values are independent "within
+and across functions conditional on the additive predictor". The working
+likelihood therefore treats the many evaluation points $\{Y_i(t_{id})\}_{d}$ of a
+single curve as conditionally independent; any within-curve dependence in the
+residual process is *not* modelled, and only explicitly included functional
+random effects induce marginal within-curve dependence. This
+conditional-independence assumption --- routinely violated by the smooth,
+strongly autocorrelated residual processes of real functional data --- is exactly
+what the sandwich estimators of @sec-sandwich are designed to correct.
+
+For estimation, all $N = \sum_{i=1}^{G} D_i$ scalar response evaluations are
+stacked into a single response vector and the partial effects are represented in
+spline bases, so that $g(\mathbb{E}[\mathbf{Y}]) = \mathbf{X}\boldsymbol{\theta}$
+with stacked design matrix $\mathbf{X}$ and coefficient vector
+$\boldsymbol{\theta}$ collecting the basis coefficients of every term. Effects
+that vary over both a covariate and $t$ (such as $\beta(s,t)$ or $f(z_i,t)$) are
+built from tensor-product (row-Kronecker) bases, and each term carries a
+quadratic penalty $\boldsymbol{\theta}_j^\top \mathbf{P}_j \boldsymbol{\theta}_j$
+with marginal smoothing parameters selected by (RE)ML [@Wood2017;
+@WoodPyaSafken2016]. The model is fitted as one large penalized GAM via
+`mgcv::gam()`, with the usual sum-to-zero and marginal identifiability
+constraints on the partial effects [@ScheiplGreven2016].
 
 ### Sandwich covariance estimators {#sec-sandwich}
 
-After basis expansion, `pffr()` stacks all $N = \sum_{i=1}^{G} m_i$ scalar
-response evaluations (curve $i$ observed at $m_i$ grid points) into a single
-penalized GAM with design matrix $X$ ($N \times p$), coefficient vector
-$\hat\theta$ collecting the spline coefficients of every model term, and a
-block-diagonal smoothing penalty $S = \sum_j \lambda_j S_j$. `mgcv` returns two
-covariance matrices for $\hat\theta$: the **Bayesian posterior** covariance
-$V_p$ --- formally $(X^\top W X + S)^{-1}$ with $W$ the working weight matrix,
-though in practice `mgcv` returns the posterior covariance of the
-reparameterized coefficients and the raw inverse need not exist for
-rank-deficient or constrained penalties --- and the **frequentist** covariance
-$V_e = V_p (X^\top W X) V_p$. Default `pffr()` CIs use $V_p$, which delivers good
+#### The stacked penalized fit and its model-based covariances
+
+After basis expansion (@sec-pffr), `pffr()` stacks all $N = \sum_{i=1}^{G} D_i$
+scalar response evaluations (curve $i$ observed at $D_i$ grid points) into a
+single penalized GAM with design matrix $\mathbf{X}$ ($N \times p$), coefficient
+vector $\hat{\boldsymbol{\theta}}$ collecting the spline coefficients of every
+model term, and a block-diagonal smoothing penalty
+$\mathbf{S} = \sum_j \lambda_j \mathbf{S}_j$. The fit maximises the penalized
+log-likelihood by penalized iteratively reweighted least squares (P-IRLS), which
+at convergence defines a diagonal working-weight matrix $\mathbf{W}$ with
+entries $w_{id} = \{(d\mu/d\eta)^2 / [\phi\,V(\mu)]\}_{id}$ and a working
+response. `mgcv` returns two covariance matrices for
+$\hat{\boldsymbol{\theta}}$: the **Bayesian posterior** covariance
+$\mathbf{V}_p$ --- formally
+$(\mathbf{X}^\top \mathbf{W} \mathbf{X} + \mathbf{S})^{-1}$, though in practice
+`mgcv` returns the posterior covariance of the reparameterized coefficients and
+this raw inverse need not exist for rank-deficient or constrained penalties ---
+and the **frequentist** covariance
+$\mathbf{V}_e = \mathbf{V}_p (\mathbf{X}^\top \mathbf{W} \mathbf{X}) \mathbf{V}_p$.
+Default `pffr()` CIs use $\mathbf{V}_p$, which delivers good
 *across-the-function* frequentist coverage under a correctly specified error
 model [@Nychka1988; @MarraWood2012]. The key identity is
-$B_2 \;{:=}\; V_p - V_e = V_p S V_p \succeq 0$ (positive semi-definite because
-the penalty $S \succeq 0$): this penalty-induced (Marra--Wood squared-bias)
-component [@MarraWood2012] inflates the Bayesian intervals just enough to
-achieve average frequentist coverage. This guarantee, however, presumes
-independent, correctly weighted residuals; it says nothing about within-curve
-dependence, which is the norm in functional data.
+$\mathbf{B}_2 \;{:=}\; \mathbf{V}_p - \mathbf{V}_e = \mathbf{V}_p \mathbf{S}
+\mathbf{V}_p \succeq 0$ (positive semi-definite because the penalty
+$\mathbf{S} \succeq 0$): this penalty-induced (Marra--Wood squared-bias)
+component [@MarraWood2012] inflates the Bayesian intervals just enough to achieve
+average frequentist coverage. This guarantee, however, presumes independent,
+correctly weighted residuals; it says nothing about the within-curve dependence
+that the conditional-independence assumption of @sec-pffr ignores, and which is
+the norm in functional data.
 
-All three robust estimators replace the model-based meat of the covariance while
-retaining the *penalized* bread $V_p$ and the penalty-induced correction $B_2$.
-They share the form
+#### A score (estimating-equation) view {#sec-scores}
+
+All robust estimators replace the model-based *meat* of the covariance by an
+empirical outer product of cluster-aggregated scores, while retaining the
+*penalized bread* $\mathbf{V}_p$ and the penalty-induced correction
+$\mathbf{B}_2$. They share the form
 $$
-\widehat{V} \;=\; c \, V_p \Bigl( \textstyle\sum_{g=1}^{G} U_g U_g^\top \Bigr) V_p \;+\; B_2,
-\qquad c = \frac{G}{G-1}, \qquad B_2 = V_p S V_p,
+\widehat{\mathbf{V}} \;=\; c \, \mathbf{V}_p
+  \Bigl( \textstyle\sum_{g=1}^{G} \mathbf{U}_g \mathbf{U}_g^\top \Bigr)
+  \mathbf{V}_p \;+\; \mathbf{B}_2,
+\qquad c = \frac{G}{G-1}, \qquad \mathbf{B}_2 = \mathbf{V}_p \mathbf{S} \mathbf{V}_p,
+$$ {#eq-sandwich}
+where $c = G/(G-1)$ is a simplified cluster correction (analogous to CR1, *not*
+the HC1 factor $N/(N-p)$), $\mathbf{B}_2 = \mathbf{V}_p \mathbf{S} \mathbf{V}_p$
+is the Marra--Wood penalty-induced bias term (set $\mathbf{B}_2 = \mathbf{0}$ to
+obtain the purely frequentist sandwich), and the cluster contributions
+$\mathbf{U}_g$ differ across estimators. The building block is the
+per-observation score vector $\mathbf{s}_{id}$, the gradient of the
+$(i,d)$ log-likelihood contribution with respect to $\boldsymbol{\theta}$,
+written here as a length-$p$ row of the score matrix.
+
+*Gaussian/identity case.* With $\mu_{id} = \mathbf{x}_{id}^\top
+\boldsymbol{\theta}$ and dispersion $\phi$, the score reduces to
+$\mathbf{s}_{id} = \phi^{-1} (y_{id} - \mu_{id})\,\mathbf{x}_{id}$, where
+$\mathbf{x}_{id}$ is the corresponding row of $\mathbf{X}$.
+
+*General exponential-family / GLM case.* For a one-parameter exponential family
+with link $g$, mean $\mu_{id}$, variance function $V(\cdot)$ and dispersion
+$\phi$, the per-observation score is
 $$
-where $c$ is the simplified $G/(G-1)$ cluster correction (analogous to CR1,
-not HC1, which is $N/(N-p)$), $B_2 = V_p S V_p$ is the Marra--Wood
-penalty-induced bias term (set $B_2 = 0$ to obtain the purely frequentist
-sandwich), and the cluster score contributions $U_g$ differ across estimators.
-For a single-predictor exponential family the per-observation score is
-$s_i = \bigl[\mu'(\eta_i)(y_i - \mu_i) / (\phi\, V(\mu_i))\bigr] x_i^\top$, with
-$x_i$ the $i$th row of $X$, $\phi$ the dispersion, and $V(\cdot)$ the variance
-function; for the Gaussian location--scale family (`gaulss`) the location and
-scale scores are computed analytically and mapped to coefficient space. The
-estimators are:
+\mathbf{s}_{id}
+  = \frac{(d\mu/d\eta)_{id}\,(y_{id} - \mu_{id})}{\phi\, V(\mu_{id})}\;\mathbf{x}_{id},
+$$
+i.e. the GLM working residual times the design row. In the implementation the
+multiplier $(d\mu/d\eta)(y-\mu)/[\phi V(\mu)]$ is evaluated from the fitted
+`mgcv` object via `family$mu.eta`, `family$variance`, and the estimated scale.
+
+*Gaussian location--scale case (`gaulss`).* The `gaulss` family models *both*
+the conditional mean and the conditional (log) standard deviation with two
+linear predictors, a location predictor $\eta^{(1)}_{id}$ and a scale predictor
+$\eta^{(2)}_{id}$, parameterised in `mgcv` through $\tau = 1/\sigma$ with a
+`logb` link on $\tau$. Because `gaulss` supplies its own `family$sandwich`
+method, the generic GLM score path above does not apply; the two score
+components are instead derived analytically from the location--scale
+log-likelihood and mapped from natural-parameter space to coefficient space by
+the chain rule through `mu.eta`. With residual $r_{id} = y_{id} - \mu_{id}$, the
+location and scale score weights are
+$$
+w^{(1)}_{id} = \tau_{id}^2\, r_{id}\,\bigl(d\mu/d\eta^{(1)}\bigr)_{id},
+\qquad
+w^{(2)}_{id} = \Bigl(\tfrac{1}{\tau_{id}} - \tau_{id}\, r_{id}^2\Bigr)
+  \bigl(d\tau/d\eta^{(2)}\bigr)_{id},
+$$
+and these weights multiply the location- and scale-block columns of
+$\mathbf{X}$, respectively (the two linear predictors index disjoint coefficient
+blocks via the `lpi` attribute), to give the full score row $\mathbf{s}_{id}$.
+Prior weights, when present, scale both components.
+
+#### The three estimators {#sec-three-estimators}
 
 - **HC** (heteroskedasticity-consistent): each observation is its own cluster,
-  $U_i = s_i$, giving the observation-level White/Huber sandwich [@White1980].
-  It corrects for heteroskedasticity but, treating grid points as independent,
+  $\mathbf{U}_{id} = \mathbf{s}_{id}$, giving the observation-level White/Huber
+  sandwich [@White1980] (computed via `mgcv::vcov.gam(sandwich = TRUE)`). It
+  corrects for heteroskedasticity but, treating grid points as independent,
   *not* for within-curve dependence.
-- **Cluster** (CR1): clusters are curves, $U_g = \sum_{i \in g} s_i$
-  [@LiangZeger1986; @ZeileisKoellGraham2020]. Summing scores within a curve
-  before squaring captures arbitrary within-curve heteroskedasticity and
-  autocorrelation, requiring only that distinct curves be independent.
+- **Cluster** (CR1): clusters are curves, so the within-curve scores are summed
+  before squaring,
+  $\mathbf{U}_g = \sum_{d=1}^{D_g} \mathbf{s}_{gd}$
+  [@LiangZeger1986; @ZeileisKoellGraham2020], and the meat is
+  $\sum_{g} \mathbf{U}_g \mathbf{U}_g^\top$ with the $c = G/(G-1)$ factor. Summing
+  within a curve captures arbitrary within-curve heteroskedasticity and
+  autocorrelation, requiring only that distinct curves be independent. (We use
+  the simplified CR1 factor rather than the leverage-based HC1 correction.)
 - **CL2** (CR2): a Bell--McCaffrey leverage adjustment of the cluster sandwich
-  [@BellMcCaffrey2002; @PustejovskyTipton2018]. With IRLS working-weighted
-  ("whitened") design rows $\tilde{X}_g$ and working residuals $z_g$ for curve
-  $g$ (distinct from the raw design rows $x_i$ used in the score $s_i$ above),
-  the cluster hat block is $H_{gg} = \tilde{X}_g V_p \tilde{X}_g^\top$ and the
-  adjusted contribution is $U_g = \tilde{X}_g^\top (I - H_{gg})^{-1/2} z_g$,
-  where $(\cdot)^{-1/2}$ is the symmetric inverse square root. The inflation
-  compensates for the downward bias of CR1 when the number of clusters $G$ is
-  small. For `gaulss`, the whitened rows are derived from a sign-split
-  pseudo-observation factorization, giving an *approximate* leverage adjustment
-  rather than the exact Bell--McCaffrey/CR2 block. To ensure $(I - H_{gg})$
-  stays invertible, eigenvalues of $H_{gg}$ are capped at 0.999 and a small
-  eigenvalue floor is applied during the square-root step.
+  [@BellMcCaffrey2002; @PustejovskyTipton2018], which inflates the contributions
+  to compensate for the downward bias of CR1 at small $G$. The score is
+  factorised as $\mathbf{s}_{gd} = z_{gd}\,\tilde{\mathbf{x}}_{gd}$ into a scalar
+  whitened working residual $z_{gd}$ and an IRLS working-weighted ("whitened")
+  design row $\tilde{\mathbf{x}}_{gd}$ (for the GLM case,
+  $\tilde{\mathbf{x}}_{gd} = \sqrt{w_{gd}}\,\mathbf{x}_{gd}$ and
+  $z_{gd} = \sqrt{w_{gd}}\,(y_{gd} - \mu_{gd})$, with
+  $w_{gd} = (d\mu/d\eta)^2_{gd} / [\phi V(\mu_{gd})]$). Stacking the rows of
+  curve $g$ into $\tilde{\mathbf{X}}_g$ ($D_g \times p$) and $\mathbf{z}_g$, the
+  per-cluster hat block is the $D_g \times D_g$ matrix
+  $\mathbf{H}_{gg} = \tilde{\mathbf{X}}_g \mathbf{V}_p \tilde{\mathbf{X}}_g^\top$,
+  and the adjusted contribution is
+  $$
+  \mathbf{U}_g = \tilde{\mathbf{X}}_g^\top
+    (\mathbf{I} - \mathbf{H}_{gg})^{-1/2}\,\mathbf{z}_g,
+  $$
+  where $(\cdot)^{-1/2}$ is the *symmetric* inverse square root computed from the
+  eigendecomposition. To keep $(\mathbf{I} - \mathbf{H}_{gg})$ invertible when a
+  cluster has high leverage, the eigenvalues of $\mathbf{H}_{gg}$ are capped at
+  $0.999$ before the adjustment and a small eigenvalue floor is applied during
+  the inverse-square-root step. For `gaulss`, an exact CR2 block is not available
+  because the score has two heterogeneous components; instead each observation is
+  expanded into two pseudo-observations (one per linear predictor) and the
+  whitened rows are formed from a *sign-split* factorization $z = \mathrm{sign}(w)
+  \sqrt{|w|}$, $\tilde{\mathbf{x}} = \sqrt{|w|}\,\mathbf{x}$ of the location and
+  scale score weights $w^{(1)}, w^{(2)}$. This yields an *approximate* leverage
+  adjustment rather than the exact Bell--McCaffrey/CR2 block.
 
 An alternative default baseline is `mgcv`'s `unconditional = TRUE` covariance,
 which additionally accounts for smoothing-parameter uncertainty via a
 Kass--Steffey correction [@WoodPyaSafken2016]; our study focuses on the standard
-$V_p$ default, but comparing against `unconditional = TRUE` is a natural
+$\mathbf{V}_p$ default, but comparing against `unconditional = TRUE` is a natural
 direction for future work.
+
+#### Why the penalized bread matters {#sec-penalized-bread}
 
 A subtlety specific to the penalized setting motivates our own implementation
 rather than an off-the-shelf one. Generic cluster-robust tools such as
 `sandwich::vcovCL()` form the bread from the *unpenalized* cross-product
-$(X^\top X)^{-1}$ and compute CR2/HC2 leverages from the unpenalized hat matrix
-$X(X^\top X)^{-1} X^\top$. For a penalized fit the relevant operator is instead
-the penalized smoother $X V_p X^\top W$, so we use $V_p$ consistently in both the
-bread and the cluster leverage $H_{gg} = X_g V_p X_g^\top$. Supplying penalized
-fits to `vcovCL()` ignores this and returns invalid covariances, which is why
-the estimators above are implemented directly in `refund`.
+$(\mathbf{X}^\top \mathbf{X})^{-1}$ and compute CR2/HC2 leverages from the
+unpenalized hat matrix
+$\mathbf{X}(\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top$. For a penalized
+fit the relevant operator is instead the penalized smoother
+$\mathbf{X} \mathbf{V}_p \mathbf{X}^\top \mathbf{W}$, so we use $\mathbf{V}_p$
+consistently in both the bread of @eq-sandwich and the cluster leverage
+$\mathbf{H}_{gg} = \tilde{\mathbf{X}}_g \mathbf{V}_p \tilde{\mathbf{X}}_g^\top$.
+Supplying penalized fits to `vcovCL()` ignores this --- mixing a penalized
+$\mathbf{V}_p$-based `bread()` with an unpenalized hat matrix can inflate the
+HC2/CR2 leverages by orders of magnitude --- and returns invalid covariances,
+which is why the estimators above are implemented directly in `refund`.
+
+#### Reference distribution and band type {#sec-inference-choices}
+
+Two further inference choices interact with the covariance estimator. First, the
+pointwise critical value: all intervals reported here use a normal reference
+($z = 1.96$), but at small cluster counts $G$ a $t_{G-1}$ reference is the
+standard small-sample correction in the cluster-robust literature
+[@ImbensKolesar2016; @CameronMiller2015], and we examine its potential role when
+interpreting the small-$G$ results of @sec-study2. Second, our intervals are
+*pointwise* in $t$ rather than *simultaneous* over the whole coefficient
+function or surface; constructing simultaneous bands from a robust covariance is
+a natural extension that we do not pursue here. Both choices are evaluated
+empirically rather than asserted in advance.
 
 ### Performance measures {#sec-measures}
 
