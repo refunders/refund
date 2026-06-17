@@ -90,4 +90,73 @@ E3 sizing (to decide): Study 1 = 12 cells × 150 reps = 1800 base fits × B; Stu
 2. Run E1/E2 on **both** studies or Study 2 only (small-G is where t and boot
    matter most)?
 3. Bootstrap CI type: `percent` (default) vs `bca` (costlier, better).
+
+---
+
+## E4 — fastFMM / FUI comparison (NEW repeated-measures sub-study)
+
+**Finding (2026-06-17).** The first E4 driver
+(`sim-study-fastfmm-extension.R`) tried to run `fastFMM::fui()` on the EXISTING
+Study 1/2 DGPs. This is **infeasible**: those DGPs have ONE functional curve per
+subject (independent curves), so the subject random intercept `(1 | id)` that FUI
+requires is unidentifiable (n levels = n observations); lme4 rejects it at the
+grouping-factor check *before* variance estimation, and `override_zero_var = TRUE`
+does not help. fastFMM/FUI is a functional **mixed-model** method for
+**longitudinal / repeated** functional data — its own `fui` example uses
+`refund::DTI` with multiple visits per subject (`cca ~ visit + sex + (1|ID)`). So
+fastFMM cannot be compared on the function-on-function, independent-curve setting
+that is this paper's focus.
+
+**Decision (user, 2026-06-17): add a repeated-measures sub-study where fastFMM is
+valid (this section), reusing the fastFMM-paper DGP where possible.**
+
+### Aims
+Compare `pffr` (with a functional random intercept) vs `fastFMM::fui` for CI
+coverage (pointwise + simultaneous) of the function-on-**scalar** coefficients
+both can estimate, on a longitudinal functional DGP where FUI applies. This is the
+setting fastFMM was built for; it tests whether `pffr`'s Bayesian/sandwich CIs
+match FUI's massively-univariate-LME inference there, and complements the
+function-on-function studies (Study 1/2).
+
+### DGP — follow Cui, Leroux, Smirnova & Crainiceanu (2022, JCGS 31(1):219-230)
+*First action: check whether the FUI paper's published simulation code (or the
+package's `G_generate` / DTI structure) can be reused verbatim to set the random-
+effect eigenfunctions and eigenvalues.* Target structure:
+- N subjects, J visits each (e.g. N ∈ {50, 100}, J ∈ {3, 5}) → repeated curves per subject.
+- `Y_ij(t) = β0(t) + x_ij β1(t) [+ z_ij β2(t)] + b_i(t) + ε_ij(t)`, t on a regular
+  grid (L ≈ 50–100).
+- `b_i(t) = Σ_{k=1}^{K} ξ_ik ψ_k(t)`, K ≈ 2–4 eigenfunctions with decreasing
+  eigenvalues — the within-subject longitudinal correlation FUI models; `ε` white noise.
+- Known truth `β0, β1 [, β2]` → coverage computable. Gaussian first; binomial
+  variant (`fui(family="binomial", analytic=FALSE)` + bootstrap) as a stretch goal.
+- Scope: function-on-**scalar** only (fastFMM cannot fit the `ff` surface). Compare
+  the scalar-covariate coefficient function(s) and the functional intercept.
+
+### Methods
+- **pffr**: `pffr(Y ~ x + z + s(id, bs = "re"), ...)` (functional random intercept);
+  default Bayesian, `cluster`, and `cl2` sandwich CIs (cluster = by subject `id`).
+- **fastFMM**: `fui(Y ~ x + z + (1|id), data, analytic = TRUE)`; pointwise CIs from
+  `betaHat_var` diagonal; simultaneous via the FUI max-statistic band (recompute
+  `qn` at α = 0.10, as the current driver's `compute_qn_at_alpha()` already does).
+- Same seeds / same data; paired comparison; 90% nominal; MC SEs over R reps.
+
+### Estimands / measures
+`β0(t), β1(t) [, β2(t)]` on the response grid. Pointwise coverage + mean width;
+simultaneous joint coverage + band width (per Study 1/2 conventions).
+
+### Compute / where
+fastFMM analytic-Gaussian FUI is light (massively-univariate LMEs) → **local**
+pilot OK. Binomial/bootstrap FUI and the full pffr×reps grid → **LRZ**. Driver:
+new `sim-study-fastfmm-longitudinal.R` (or extend the existing driver with a
+repeated-measures DGP path); reuse `extract_fui_metrics()` /
+`compute_qn_at_alpha()` from the current driver.
+
+### Install status (2026-06-17)
+- fastFMM installs **locally** via PPM binaries (`fastFMM` + `Rfast` OK).
+- **LRZ install unresolved**: `Rfast` fails to compile on R 4.3.3 / gcc13 —
+  `Random.h` needs `#include <numeric>` for `std::iota`, plus a `LinkingTo`
+  include-path issue (RcppArmadillo.h not found though installed). Tried: CRAN
+  source (×2), `Ncpus=4` chain, GitHub dev (`RfastOfficial/Rfast`). Not needed for
+  the light Gaussian-analytic pilot; resolve before any LRZ FUI runs (try a patched
+  tarball with `<numeric>` added, or a spack/conda Rfast).
 </content>
