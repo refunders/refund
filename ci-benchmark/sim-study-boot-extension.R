@@ -136,6 +136,9 @@ extract_boot_metrics <- function(fit, sim, B, ncpus = 1L) {
     pffr_coefboot(
       fit,
       B = B,
+      n1 = 50L,
+      n2 = 25L,
+      n3 = 15L,
       conf = 0.90,
       type = "percent",
       method = "resample",
@@ -247,17 +250,27 @@ run_study1_boot_rep <- function(row, rep_id, B, ncpus = 1L) {
   )
 
   frml <- build_study1_formula(sim$s_grid)
-  bs_yindex <- list(bs = "ps", k = STUDY1_K_YINDEX, m = c(2, 1))
   fam <- if (row$family == "poisson") poisson() else binomial()
+
+  # Store data and yind in the formula environment so pffr_coefboot can
+  # resolve them. pffr_coefboot evaluates modcall$data and modcall$yind in
+  # frml_env for each bootstrap replicate. sim$data/t_grid are not in frml_env.
+  # bs.yindex is passed as a literal list() call so match.call() captures it
+  # as an evaluable expression (not a symbol), making eval(modcall_boot) safe.
+  pffr_data <- sim$data
+  pffr_yind <- sim$t_grid
+  frml_env  <- environment(frml)
+  assign("pffr_data", pffr_data, envir = frml_env)
+  assign("pffr_yind", pffr_yind, envir = frml_env)
 
   t0 <- Sys.time()
   fit <- pffr(
     frml,
-    yind = sim$t_grid,
-    data = sim$data,
-    family = fam,
-    bs.yindex = bs_yindex,
-    sandwich = "none"
+    yind      = pffr_yind,
+    data      = pffr_data,
+    family    = fam,
+    bs.yindex = list(bs = "ps", k = STUDY1_K_YINDEX, m = c(2, 1)),
+    sandwich  = "none"
   )
   fit_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
@@ -422,7 +435,6 @@ run_study2_boot_pair <- function(
       k_smooth = 12,
       k_ff = c(12L, 12L)
     )
-    bs_yindex <- list(bs = "ps", k = 12L, m = c(2L, 1L))
 
     extra <- list(
       corr_type = row$corr_type,
@@ -434,14 +446,24 @@ run_study2_boot_pair <- function(
       grid_label = grid_label
     )
 
+    # Store data and yind in the formula environment so pffr_coefboot can
+    # resolve them. bs.yindex is passed as a literal list() expression so
+    # that eval(modcall_boot) in pffr_coefboot can evaluate it without needing
+    # a symbol lookup (list() is always available, unlike local variables).
+    pffr_data <- sim$data
+    pffr_yind <- sim$t_grid
+    frml_env  <- environment(frml)
+    assign("pffr_data", pffr_data, envir = frml_env)
+    assign("pffr_yind", pffr_yind, envir = frml_env)
+
     t0 <- Sys.time()
     fit <- tryCatch(
       pffr(
         frml,
-        yind = sim$t_grid,
-        data = sim$data,
-        bs.yindex = bs_yindex,
-        sandwich = "none"
+        yind      = pffr_yind,
+        data      = pffr_data,
+        bs.yindex = list(bs = "ps", k = 12L, m = c(2L, 1L)),
+        sandwich  = "none"
       ),
       error = function(e) {
         warning(sprintf(
@@ -591,7 +613,8 @@ run_study2_boot_cell <- function(
           conditionMessage(e),
           extra
         )
-        # save a catch-all failure marker (uses finest grid key)
+        # Save catch-all failure to the finest-grid key so the loader
+        # (which matches ^dgp\d+_n\d+_y\d+_rep\d+\.rds$) picks it up.
         ny_fine <- max(vapply(STUDY2_GRIDS, `[[`, integer(1), "nygrid"))
         save_key <- sprintf(
           "dgp%03d_n%03d_y%03d_rep%03d",
@@ -600,7 +623,7 @@ run_study2_boot_cell <- function(
           ny_fine,
           rep_id
         )
-        save_path <- file.path(output_dir, paste0(save_key, "_fail.rds"))
+        save_path <- file.path(output_dir, paste0(save_key, ".rds"))
         atomic_saveRDS(result, save_path)
       }
     )

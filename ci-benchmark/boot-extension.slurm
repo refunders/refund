@@ -5,14 +5,18 @@
 #
 # One array task = one DGP cell; the R script loops over its reps sequentially.
 #
-# SUBMISSION:
+# SUBMISSION (run from the repo root on the login node):
+#   # Create the logs directory before submitting — SLURM opens log files
+#   # before the job script runs, so the directory must already exist.
+#   mkdir -p logs
+#
 #   # Study 1: 12 DGP cells  (array indices 1..12)
 #   sbatch --clusters=serial --export=STUDY=study1 \
-#          --array=1-12 boot-extension.slurm
+#          --array=1-12 ci-benchmark/boot-extension.slurm
 #
 #   # Study 2: 18 DGP cells  (array indices 1..18)
 #   sbatch --clusters=serial --export=STUDY=study2 \
-#          --array=1-18 boot-extension.slurm
+#          --array=1-18 ci-benchmark/boot-extension.slurm
 #
 # SIZING RATIONALE:
 #   A single pffr_coefboot() call at B=499 on a Study 1 cell (n=400, small
@@ -44,6 +48,9 @@
 #SBATCH --mail-user=fabian.scheipl@stat.uni-muenchen.de
 #SBATCH --export=NONE
 
+# Fail the job immediately if the Rscript (or any other command) exits non-zero
+set -euo pipefail
+
 # Load modules
 module load slurm_setup
 module load r/4.3.3-gcc13-mkl
@@ -56,6 +63,9 @@ export NCPUS="${SLURM_CPUS_PER_TASK:-1}"
 
 # Study to run: set via --export=STUDY=study1 or --export=STUDY=study2
 STUDY="${STUDY:-study1}"
+
+# Create logs dir defensively (belt-and-suspenders; must also exist before sbatch)
+mkdir -p logs
 
 echo "=== boot-extension.slurm ==="
 echo "  STUDY              : ${STUDY}"
