@@ -7,6 +7,27 @@ author:
         department: Department of Statistics
         city: Munich
         country: Germany
+abstract: |
+  The `pffr()` function in the \proglang{R} package \pkg{refund} fits
+  function-on-function and more general functional regression models by recasting
+  them as penalized generalized additive models. Its default pointwise confidence
+  intervals are built from the Bayesian posterior covariance of the penalized fit,
+  which assumes that the many evaluation points of a single curve are independent
+  conditional on the additive predictor. This assumption is routinely violated in
+  functional data, where within-curve dependence is the rule rather than the
+  exception, and the resulting intervals can undercover substantially. We adapt
+  observation-level (HC), cluster-robust (CR1), and leverage-adjusted (CR2/CL2)
+  sandwich covariance estimators --- clustering by curve --- to the penalized
+  function-on-function setting, provide an implementation for `pffr()`, and
+  evaluate them in two simulation studies reported under the ADEMP framework. The
+  default intervals undercover whenever within-curve correlation is present and,
+  counter-intuitively, degrade *further* as the response grid is refined; the
+  cluster-robust intervals remain stable across response families, correlation
+  structures, and grid resolutions, and the leverage-adjusted CL2 variant recovers
+  roughly 5--10 percentage points of coverage when the number of curves is small.
+  We close with practical guidance on when robust intervals are needed and which
+  variant to use.
+keywords: [functional data, function-on-function regression, penalized regression, sandwich covariance, cluster-robust standard errors, confidence intervals, refund, R]
 format:
     jss-pdf:
         keep-tex: true
@@ -173,9 +194,10 @@ entries $w_{id} = \{(d\mu/d\eta)^2 / [\phi\,V(\mu)]\}_{id}$ and a working
 response. `mgcv` returns two covariance matrices for
 $\hat{\boldsymbol{\theta}}$: the **Bayesian posterior** covariance
 $\mathbf{V}_p$ --- formally
-$(\mathbf{X}^\top \mathbf{W} \mathbf{X} + \mathbf{S})^{-1}$, though in practice
-`mgcv` returns the posterior covariance of the reparameterized coefficients and
-this raw inverse need not exist for rank-deficient or constrained penalties ---
+$(\mathbf{X}^\top \mathbf{W} \mathbf{X} + \mathbf{S})^{-1}$ (the penalty
+$\mathbf{S}$ regularizes the possibly rank-deficient
+$\mathbf{X}^\top \mathbf{W} \mathbf{X}$; `mgcv` forms $\mathbf{V}_p$ in a
+stabilized reparameterization rather than by direct inversion) ---
 and the **frequentist** covariance
 $\mathbf{V}_e = \mathbf{V}_p (\mathbf{X}^\top \mathbf{W} \mathbf{X}) \mathbf{V}_p$.
 Default `pffr()` CIs use $\mathbf{V}_p$, which delivers good
@@ -202,8 +224,12 @@ $$
   \mathbf{V}_p \;+\; \mathbf{B}_2,
 \qquad c = \frac{G}{G-1}, \qquad \mathbf{B}_2 = \mathbf{V}_p \mathbf{S} \mathbf{V}_p,
 $$ {#eq-sandwich}
-where $c = G/(G-1)$ is a simplified cluster correction (analogous to CR1, *not*
-the HC1 factor $N/(N-p)$), $\mathbf{B}_2 = \mathbf{V}_p \mathbf{S} \mathbf{V}_p$
+where $c = G/(G-1)$ is a simplified finite-cluster correction of CR1 type
+(dropping the additional $(N-1)/(N-p)$ term of the full CR1 correction); the sum
+runs over the $G$ curve-clusters for the Cluster and CL2 estimators, while HC is
+the observation-level special case (each of the $N$ observations is its own
+cluster), obtained directly from `mgcv::vcov.gam(sandwich = TRUE)`.
+$\mathbf{B}_2 = \mathbf{V}_p \mathbf{S} \mathbf{V}_p$
 is the Marra--Wood penalty-induced bias term (set $\mathbf{B}_2 = \mathbf{0}$ to
 obtain the purely frequentist sandwich), and the cluster contributions
 $\mathbf{U}_g$ differ across estimators. The building block is the
@@ -262,7 +288,8 @@ Prior weights, when present, scale both components.
   $\sum_{g} \mathbf{U}_g \mathbf{U}_g^\top$ with the $c = G/(G-1)$ factor. Summing
   within a curve captures arbitrary within-curve heteroskedasticity and
   autocorrelation, requiring only that distinct curves be independent. (We use
-  the simplified CR1 factor rather than the leverage-based HC1 correction.)
+  the simplified $c = G/(G-1)$ factor rather than the full CR1 correction
+  $[G/(G-1)][(N-1)/(N-p)]$.)
 - **CL2** (CR2): a Bell--McCaffrey leverage adjustment of the cluster sandwich
   [@BellMcCaffrey2002; @PustejovskyTipton2018], which inflates the contributions
   to compensate for the downward bias of CR1 at small $G$. The score is
@@ -270,8 +297,9 @@ Prior weights, when present, scale both components.
   whitened working residual $z_{gd}$ and an IRLS working-weighted ("whitened")
   design row $\tilde{\mathbf{x}}_{gd}$ (for the GLM case,
   $\tilde{\mathbf{x}}_{gd} = \sqrt{w_{gd}}\,\mathbf{x}_{gd}$ and
-  $z_{gd} = \sqrt{w_{gd}}\,(y_{gd} - \mu_{gd})$, with
-  $w_{gd} = (d\mu/d\eta)^2_{gd} / [\phi V(\mu_{gd})]$). Stacking the rows of
+  $z_{gd} = (y_{gd} - \mu_{gd}) / \sqrt{\phi V(\mu_{gd})}$, with
+  $w_{gd} = (d\mu/d\eta)^2_{gd} / [\phi V(\mu_{gd})]$, so that
+  $z_{gd}\,\tilde{\mathbf{x}}_{gd} = \mathbf{s}_{gd}$ exactly). Stacking the rows of
   curve $g$ into $\tilde{\mathbf{X}}_g$ ($D_g \times p$) and $\mathbf{z}_g$, the
   per-cluster hat block is the $D_g \times D_g$ matrix
   $\mathbf{H}_{gg} = \tilde{\mathbf{X}}_g \mathbf{V}_p \tilde{\mathbf{X}}_g^\top$,
@@ -293,8 +321,8 @@ Prior weights, when present, scale both components.
   adjustment rather than the exact Bell--McCaffrey/CR2 block.
 
 An alternative default baseline is `mgcv`'s `unconditional = TRUE` covariance,
-which additionally accounts for smoothing-parameter uncertainty via a
-Kass--Steffey correction [@WoodPyaSafken2016]; our study focuses on the standard
+which additionally accounts for smoothing-parameter uncertainty via the
+$\mathbf{V}_c$ correction [@WoodPyaSafken2016]; our study focuses on the standard
 $\mathbf{V}_p$ default, but comparing against `unconditional = TRUE` is a natural
 direction for future work.
 
@@ -302,24 +330,31 @@ direction for future work.
 
 A subtlety specific to the penalized setting motivates our own implementation
 rather than an off-the-shelf one. Generic cluster-robust tools such as
-`sandwich::vcovCL()` form the bread from the *unpenalized* cross-product
+`sandwich::vcovCL()` [@Rpkg_sandwich] form the bread from the *unpenalized* cross-product
 $(\mathbf{X}^\top \mathbf{X})^{-1}$ and compute CR2/HC2 leverages from the
 unpenalized hat matrix
 $\mathbf{X}(\mathbf{X}^\top \mathbf{X})^{-1} \mathbf{X}^\top$. For a penalized
-fit the relevant operator is instead the penalized smoother
-$\mathbf{X} \mathbf{V}_p \mathbf{X}^\top \mathbf{W}$, so we use $\mathbf{V}_p$
-consistently in both the bread of @eq-sandwich and the cluster leverage
-$\mathbf{H}_{gg} = \tilde{\mathbf{X}}_g \mathbf{V}_p \tilde{\mathbf{X}}_g^\top$.
+fit the relevant operator is instead the *penalized* hat
+$\mathbf{X} \mathbf{V}_p \mathbf{X}^\top \mathbf{W}$, equivalently its symmetric
+whitened form $\sqrt{\mathbf{W}}\,\mathbf{X} \mathbf{V}_p \mathbf{X}^\top
+\sqrt{\mathbf{W}}$, so we use $\mathbf{V}_p$ consistently in both the bread of
+@eq-sandwich and the (symmetric, whitened) cluster leverage blocks
+$\mathbf{H}_{gg} = \tilde{\mathbf{X}}_g \mathbf{V}_p \tilde{\mathbf{X}}_g^\top$
+with $\tilde{\mathbf{X}}_g = \sqrt{\mathbf{W}}_g\,\mathbf{X}_g$.
 Supplying penalized fits to `vcovCL()` ignores this --- mixing a penalized
 $\mathbf{V}_p$-based `bread()` with an unpenalized hat matrix can inflate the
 HC2/CR2 leverages by orders of magnitude --- and returns invalid covariances,
-which is why the estimators above are implemented directly in `refund`.
+which is why the estimators above are implemented directly in `refund`. The
+cluster and CL2 estimators are implemented for the standard exponential-family
+GLM fits and for `gaulss`; for families that supply their own `family$sandwich`
+method (e.g.\ multinomial) the implementation falls back to the
+observation-level HC sandwich.
 
 #### Reference distribution and band type {#sec-inference-choices}
 
 Two further inference choices interact with the covariance estimator. First, the
 pointwise critical value: all intervals reported here use a normal reference
-($z = 1.96$), but at small cluster counts $G$ a $t_{G-1}$ reference is the
+($z_{0.95} = 1.645$), but at small cluster counts $G$ a $t_{G-1}$ reference is the
 standard small-sample correction in the cluster-robust literature
 [@ImbensKolesar2016; @CameronMiller2015], and we examine its potential role when
 interpreting the small-$G$ results of @sec-study2. Second, our intervals are
@@ -378,7 +413,7 @@ Three within-curve error structures are common to both studies:
 
 - **IID**: $\varepsilon_i(t) \overset{\text{iid}}{\sim} \mathcal{N}(0,\sigma^2)$ (diagonal covariance).
 - **AR1(0.9)**: $\text{Cov}(\varepsilon_i(t_j), \varepsilon_i(t_k)) = \sigma^2 \, 0.9^{|j-k|}$.
-- **Fourier$^+$(0.3)**: $\text{Cov}(\varepsilon_i(t_j), \varepsilon_i(t_k)) = \sigma^2 \max(0, \cos(2\pi|t_j - t_k|/0.3))$; non-monotone, always non-negative.
+- **Fourier$^+$(0.3)**: $\text{Cov}(\varepsilon_i(t_j), \varepsilon_i(t_k)) = \sigma^2 \max(0, \cos(2\pi|t_j - t_k|/0.3))$, projected to the nearest positive-definite matrix (`Matrix::nearPD`); non-monotone, always non-negative.
 
 True coefficient functions and surfaces are random draws from tensor B-spline
 bases (6 knots per margin), re-scaled so that each term contributes comparable
@@ -400,10 +435,12 @@ $\beta$ despite the non-collapsibility of the logit link.
 2 SNR levels (25 [high], 3 [low])
 $= \mathbf{18}$ **DGP cells**, each evaluated at 3 response grid resolutions
 ($n_y \in \{40, 80, 120\}$), giving $54$ (DGP, grid) combinations with $R = 50$
-replications each ($2{,}700$ total fits). The predictor grid is fixed at $n_x = 60$.
-Data are generated once on the finest grid ($90 \times 120$) and deterministically
-subsampled (evenly spaced indices) to coarser resolutions, ensuring paired
-comparisons across grids.
+replications each ($2{,}700$ total fits). The response grid is refined across
+$n_y \in \{40, 80, 120\}$ while the predictor grid is held fixed at $n_x = 60$.
+To guarantee paired comparisons across response resolutions, data are generated
+once per replication on a fine $90 \times 120$ truth grid and then
+deterministically subsampled (evenly spaced indices) along each axis --- to
+$n_x = 60$ for the predictor and to the target $n_y$ for the response.
 
 A side-by-side comparison of the two designs:
 
@@ -449,7 +486,7 @@ the sandwich corrections are applied post-hoc at the coefficient level:
   finite-sample downward bias of CR1 at small $G$ (@sec-sandwich).
 
 All intervals are symmetric and pointwise: $\hat\beta \pm z_{0.95} \cdot \text{SE}$,
-with a standard normal critical value $z_{0.95} = 1.96$ ($\alpha = 0.10$) in
+with a standard normal critical value $z_{0.95} = 1.645$ ($\alpha = 0.10$) in
 both studies.
 
 ### Performance measures
@@ -892,7 +929,7 @@ ggplot(
 @fig-s2-cl2-gain shows the incremental coverage gain of CL2 over cluster. Under
 correlation, CL2 consistently adds approximately 5--10 percentage points, with
 the largest gains at small $n$ (few clusters). Under IID, CL2 also improves over
-cluster, possibly because the cluster sandwich undercovers due to using $z = 1.96$
+cluster, possibly because the cluster sandwich undercovers due to using $z_{0.95} = 1.645$
 critical values rather than a $t_{G-1}$ distribution at small $G$ (a conjecture
 to be confirmed by a direct reference-distribution experiment).
 
@@ -957,10 +994,6 @@ response-grid resolution $n_y$, exactly the axis Study 2 varies.
 <!-- DRAFT: narrative below uses the established findings recorded in
      PAPER-PLAN.md (Part A4); verify every quoted figure against the
      regenerated Study 2 summaries before submission. -->
-
-<!-- DRAFT: narrative below uses the established findings recorded in
-     PAPER-PLAN.md (Part A4); verify every quoted figure against the
-     regenerated Study 2 summaries before submission. -->
 Study 2 isolates a phenomenon that is easy to miss in practice: refining the
 response grid, normally regarded as harmless or even beneficial, actively
 *degrades* default coverage under within-curve correlation. For the `ff` term
@@ -983,16 +1016,12 @@ each replicate, and it resolves once $n_y \geq 80$ (@fig-s2-intercept). Finally,
 at the small cluster counts of Study 2 ($G = 20$--$80$) the CL2 leverage
 adjustment matters, adding approximately 5--10 percentage points of coverage over
 CR1 (@fig-s2-cl2-gain); part of this gain reflects the leverage inflation proper
-and part may reflect CL2 partially compensating for the use of $z = 1.96$ rather
+and part may reflect CL2 partially compensating for the use of $z_{0.95} = 1.645$ rather
 than a $t_{G-1}$ reference at small $G$ (a conjecture to be confirmed by a direct
 $t_{G-1}$ experiment) [@ImbensKolesar2016; @CameronMiller2015].
 
 
 ## Discussion {#sec-discussion}
-
-<!-- DRAFT: synthesis below uses the established findings recorded in
-     PAPER-PLAN.md (Part A4); verify quoted figures against regenerated
-     summaries before submission. -->
 
 <!-- DRAFT: synthesis below uses the established findings recorded in
      PAPER-PLAN.md (Part A4); verify quoted figures against regenerated
@@ -1033,7 +1062,7 @@ of the dependence.
 The behaviour of CL2 is governed by the number of clusters. At the large $G$ of
 Study 1 the leverage adjustment is negligible, whereas at the small $G$ of
 Study 2 it contributes approximately 5--10 percentage points, partly by inflating
-for leverage and partly (conjecturally) by compensating for the use of $z = 1.96$
+for leverage and partly (conjecturally) by compensating for the use of $z_{0.95} = 1.645$
 rather than a small-sample $t_{G-1}$ reference distribution --- a direct
 comparison of $z$- and $t_{G-1}$-based intervals remains to be run. This mirrors
 the cluster-robust inference literature in econometrics, where small-$G$

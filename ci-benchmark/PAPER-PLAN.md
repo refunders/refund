@@ -37,46 +37,52 @@ this and know where everything is and what to do next. **Keep it current.**
   empty). Findings + required fixes in section "Council review" below.
 - **Real-data application (B3):** deferred by decision. **Theory (B4):** not started.
 
-## SESSION HANDOFF — end of 2026-06-17 (RESUME HERE)
+## SESSION HANDOFF — 2026-06-17 (afternoon, RESUME HERE)
 
-Work paused for the day mid-orchestration. Everything committed is pushed; local
-agents were stopped by power-down (their uncommitted work is lost — verify/redo).
+**E3 boot bug ROOT-CAUSED & fixed; LRZ jobs submitted; full council done + fixes applied.**
 
-**Done today:** literature search (49 verified refs); all prose drafted; council
-round-1 fixes applied; production data fetched from LRZ (study1/study1-cl2/study2
-now local, symlinks resolve); render fixed (extension `partials/*.tex` were
-git-ignored — `d58bd1e9`); author feedback round 2 items 2–5 done (title, §2.1
-GLM rewrite, §2.2 expansion, Results restructure — renders 22 pp); fastFMM scoped
-(E4); B2 drivers written (E1/E2 validated; E3 boot all-NA fix committed).
+**Done this session:**
+- **E3 boot all-NA root cause found** (Codex): the stored model call captured
+  `family = fam` (a *local* var in the driver); when `boot::boot()` re-ran the call
+  in another frame, `fam` was gone → every refit errored → all-NA. Fix in
+  `prepare_modcall_for_bootstrap()` carries `object$family` forward (commit
+  `10e0241b` on `ci-experiments`, + regression test). The earlier `refund::pffr`
+  qualification (`3af325d6`) was necessary but not sufficient. **Validated on LRZ**:
+  smoke now gives non-NA coverage, all replicates succeed.
+- **E3 + cl2-timing submitted on LRZ** (cluster serial, partition serial_long/std):
+  study1 boot `5267685_[1-12]`, study2 boot `5267686_[1-18]`, cl2-timing `5267687`.
+  (Cancelled duplicate older arrays `5266858`/`5266859`.) Fetch when done:
+  `rsync -az lrz:refund/ci-benchmark/study{1,2}-boot/ ci-benchmark/study{1,2}-boot/`
+  and `study2-cl2-timing/`.
+- **Full council review (all 3 legs: Codex, Gemini, Claude)** run on the revised
+  paper; findings verified against code and applied (see "Council round 2" below).
+  Headline: nominal-level error `z=1.96`→`1.645` (code was right, prose wrong);
+  CL2 `z_{gd}` prose factorization corrected; Fourier⁺ PSD-projection note; Study 2
+  grid story (`nx=60` vs `90×120` truth grid) clarified; Vp/CR1/HC notation, leverage
+  symmetry, `sandwich`/`V_c` citations; duplicated DRAFT blocks removed.
+- **Abstract + keywords written** (were placeholders). Keywords must be PLAIN text
+  (no `\pkg`/`\proglang` — they leak into `pdfkeywords`/`\Plainkeywords` and break
+  LaTeX).
 
-**Branches:** paper prose → `claude/practical-wright-mljg9q` (HEAD ~b0ca229a + W3's
-boldface commit if it landed); experiments → `ci-experiments` (boot all-NA fix
-`3af325d6` "qualify refund::pffr", SLURM 96h `1ed89762`).
+**Branches:** paper prose → `claude/practical-wright-mljg9q`; experiments →
+`ci-experiments` (boot fix `10e0241b`).
 
-**IN FLIGHT at power-down (local agents died — verify each):**
-- **W3 boldface sweep** (paper branch): DONE — captured + committed (renders 22 pp,
-  122 \mathbf/\boldsymbol). All 5 round-2 feedback items now complete.
-- **E4/fastFMM builder** (`ci-experiments`): `sim-study-fastfmm-extension.R` is
-  untracked WIP — verify it runs (the degenerate `(1|id)` RE question) and commit, or finish it.
-- **LRZ E3 agent**: committed the all-NA fix + SLURM 96h, was validating. **squeue was
-  EMPTY at handoff → B=499 array NOT submitted.** Resume: validate 1 cell gives non-NA
-  boot coverage, then `sbatch boot-extension.slurm` for both studies; fetch with
-  `rsync -az lrz:refund/ci-benchmark/study{1,2}-boot/ ci-benchmark/study{1,2}-boot/`.
-- **cl2-timing LRZ agent**: **not in squeue → not submitted.** Resubmit on LRZ; fetch
-  `study2-cl2-timing/` for the cost table.
-- Claude council leg on the B2 drivers (read-only) — can ignore/re-run.
-
-**Uncommitted in `ci-experiments` worktree:** the E4 fastfmm WIP file (untracked).
+**IN FLIGHT / BLOCKED:**
+- **E4/fastFMM**: `sim-study-fastfmm-extension.R` is complete & parses (the
+  `method="fastfmm"` label bug was already fixed; still untracked WIP — commit it).
+  **Blocked on LRZ**: `fastFMM` needs `Rfast`, which fails to compile on LRZ
+  (`Rfast` dep). Retrying; if it keeps failing, ask user / try a binary mirror.
+- **LRZ boot/cl2 jobs**: queued, will run over hours/days. Monitor `squeue`.
 
 **TO RESUME (ordered):**
-1. Verify W3 committed the boldface sweep (else redo); render to confirm 22 pp.
-2. Run a FULL council review of the revised paper (all 3 legs — Gemini now fixed).
-3. LRZ: validate boot fix (1 cell, non-NA) → submit E3 B=499 array (both studies)
-   + cl2-timing job; confirm `squeue`; fetch results when done.
-4. Finish + commit E4/fastFMM driver; pilot E1/E2 locally (≤3 cores).
-5. Verify & de-provisionalize the report numbers from the now-local data; fill the
-   `TODO(data)` cost table from `study2-cl2-timing/`.
-6. Write the abstract + keywords (still `—!!!—...required—!!!—` placeholders).
+1. Confirm paper renders clean (PDF) after this session's edits; commit qmd.
+2. Fetch LRZ results (E3 boot, cl2-timing) when jobs finish; integrate into report
+   (`load_*` helpers) and de-provisionalize numbers; fill `TODO(data)` cost table.
+3. Resolve LRZ `Rfast`/`fastFMM` install → run E4; commit the driver.
+4. Optional council polish: gaulss `logb` detail (M6), leverage cap/floor wording
+   (M7), index `g`/`i` & `n_g`/`D_g` unification (M12/M13), M10 ff-identifiability
+   (`∫β ds=0` vs per-t centering) — verify against DGP truth-centering.
+5. Pilot E1/E2 locally (≤3 cores) or on LRZ.
 
 ---
 
