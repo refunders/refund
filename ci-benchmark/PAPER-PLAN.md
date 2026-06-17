@@ -16,14 +16,17 @@ this and know where everything is and what to do next. **Keep it current.**
   in `R/pffr-core.R`). Numbers in the Discussions are still **provisional ranges**
   flagged `DRAFT/verify` — now regenerable since the data is local (see below).
 - **Literature search:** complete; `pffr-ci-refs.bib` has 49 verified entries.
-- **New experiments (Part B2):** plan written
-  (`ci-benchmark/NEW-EXPERIMENTS-PLAN.md` on branch `ci-experiments`).
-  **Foundation built + validated** (commit b323db6 on `ci-experiments`):
-  `extract_term_ci_df()` now supports t_{G-1} critical values (`df`) and bands
-  taken from `coef()` (`ci_from_coef`), plus `extract_simultaneous_term_metrics()`;
-  single-fit smoke test passes. Decisions locked: **E3 bootstrap = B=499,
-  percentile, curve resample, both studies (LRZ)**; real-data app (B3)
-  **deferred**. Next: per-study E1/E2 driver scripts + E3 SLURM.
+- **New experiments (Part B2):** foundation + drivers written on `ci-experiments`
+  (foundation b323db6; drivers 87f48652). Decisions: **E3 = B=499, percentile,
+  curve resample, both studies (LRZ)**; B3 deferred.
+  **R1 council code-review done (2026-06-17, all 3 legs):** E1 (t_{G-1}) and E2
+  (simultaneous) drivers validated — Study 2 seed-fidelity correct, G=n/df=G-1 on
+  cluster+cl2 only, joint/pointwise coverage correct (confirmed by reading smoke
+  output). **3 driver bugs found, fixer in progress:** (1) E3 bootstrap produces
+  all-NA rows (extractor fails silently); (2) Study 1 competitors driver
+  `run_competitors1_rep` has a truncated/incomplete simulate+fit call;
+  (3) `boot-extension.slurm` lacks `set -euo pipefail`, doesn't ensure `logs/`,
+  and its Study 2 failure markers are silently dropped by the loader.
 - **Council review (2026-06-17):** Claude + Codex legs returned (Gemini failed,
   empty). Findings + required fixes in section "Council review" below.
 - **Real-data application (B3):** deferred by decision. **Theory (B4):** not started.
