@@ -702,9 +702,6 @@ if ("cl2" %in% levels(s1$method)) {
 
 #### Discussion {#sec-s1-discussion}
 
-<!-- DRAFT: narrative below uses the established findings recorded in
-     PAPER-PLAN.md (Part A4); verify every quoted figure against the
-     regenerated Study 1 summaries before submission. -->
 
 Study 1 delivers four messages. First, the cluster-robust sandwich is essential
 once within-curve dependence is present: under AR1(0.9) and Fourier$^+$(0.3)
@@ -991,20 +988,19 @@ response-grid resolution $n_y$, exactly the axis Study 2 varies.
 
 #### Discussion {#sec-s2-discussion}
 
-<!-- DRAFT: narrative below uses the established findings recorded in
-     PAPER-PLAN.md (Part A4); verify every quoted figure against the
-     regenerated Study 2 summaries before submission. -->
 Study 2 isolates a phenomenon that is easy to miss in practice: refining the
 response grid, normally regarded as harmless or even beneficial, actively
 *degrades* default coverage under within-curve correlation. For the `ff` term
 under AR1(0.9), default coverage falls from approximately 60--65% on the coarse
 grid ($n_y = 40$) to around 40--45% on the fine grid ($n_y = 120$), while the
-cluster sandwich stays essentially flat near approximately 86--87% (@fig-s2-hero).
+cluster sandwich stays essentially flat *across grid resolutions* --- at a
+sample-size-dependent level, from approximately 57% at $G = 20$ to approximately
+82% at $G = 80$ --- rather than collapsing (@fig-s2-hero).
 The mechanism is visible in the diagonal variance ratio (@fig-s2-diag-ratio): as
 the grid is refined, each additional, highly correlated evaluation point is
 counted by the default formula as fresh information, so the model-based variance
 shrinks far faster than the true sampling variance (the diagonal ratio falling
-from around 0.3 on coarse grids toward around 0.1 on fine grids under
+from around 0.3 on coarse grids toward roughly 0.09 on fine grids under
 correlation). The cluster sandwich, which pools the score over the whole curve
 before squaring, is largely resistant to this double-counting.
 
@@ -1023,9 +1019,6 @@ $t_{G-1}$ experiment) [@ImbensKolesar2016; @CameronMiller2015].
 
 ## Discussion {#sec-discussion}
 
-<!-- DRAFT: synthesis below uses the established findings recorded in
-     PAPER-PLAN.md (Part A4); verify quoted figures against regenerated
-     summaries before submission. -->
 Taken together, the two studies tell a consistent story about *why* default
 `pffr()` intervals fail and *what* fixes them. The failure mode is a mismatch
 between the working error model --- independent grid points with a common
@@ -1035,13 +1028,14 @@ information, it understates the sampling variance, and the understatement *grows
 with the number of grid points per curve. This is the unifying mechanism behind
 both the family-wide collapse of Study 1 and the grid-refinement collapse of
 Study 2, where the diagonal variance ratio for default standard errors falls
-from around 0.3 on coarse grids toward around 0.1 on fine grids under
+from around 0.3 on coarse grids toward roughly 0.09 on fine grids under
 correlation. The cluster-robust sandwich removes the mismatch by requiring only
 independence *across* curves, and is correspondingly stable across families,
 correlation structures, and grid resolutions.
 
-The residual coverage gap --- cluster intervals plateauing around 84--89% rather
-than the nominal 90% --- deserves emphasis precisely because it is *not* fixed by
+The residual coverage gap --- cluster intervals plateauing around 84--89% under
+correlated errors rather than the nominal 90% --- deserves emphasis precisely
+because it is *not* fixed by
 the sandwich machinery. The strongest evidence that this is not a finite-sample
 variance-estimation artifact is that the gap persists at large $G$ (Study 1,
 $G = 200$--$400$), where both the per-cluster leverage correction and any
