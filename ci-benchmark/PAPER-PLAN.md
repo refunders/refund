@@ -68,17 +68,26 @@ this and know where everything is and what to do next. **Keep it current.**
 `ci-experiments` (boot fix `10e0241b`).
 
 **IN FLIGHT / BLOCKED:**
-- **E4/fastFMM**: `sim-study-fastfmm-extension.R` is complete & parses (the
-  `method="fastfmm"` label bug was already fixed; still untracked WIP — commit it).
-  **Blocked on LRZ**: `fastFMM` needs `Rfast`, which fails to compile on LRZ
-  (`Rfast` dep). Retrying; if it keeps failing, ask user / try a binary mirror.
-- **LRZ boot/cl2 jobs**: queued, will run over hours/days. Monitor `squeue`.
+- **E4/fastFMM — REFRAMED.** The driver (`sim-study-fastfmm-extension.R`) is
+  committed (`c5c7703e`), but `fui()` **cannot fit the existing Study 1/2 DGPs**:
+  one curve per subject → degenerate `(1|id)` random effect (lme4 rejects it).
+  fastFMM/FUI needs **repeated/longitudinal** functional data. **Decision (user):
+  add a repeated-measures function-on-scalar sub-study following Cui et al. (2022,
+  JCGS) where FUI is valid — PLANNED in `NEW-EXPERIMENTS-PLAN.md` (E4 section),
+  not yet implemented.** fastFMM installs **locally** (PPM binaries); **LRZ Rfast
+  install unresolved** (gcc13 `<numeric>`/`std::iota` + LinkingTo path) — not
+  needed for the light local Gaussian-analytic pilot.
+- **LRZ boot/cl2 jobs**: queued, will run over hours/days. Monitor `squeue`;
+  fetch when done.
 
 **TO RESUME (ordered):**
 1. Confirm paper renders clean (PDF) after this session's edits; commit qmd.
 2. Fetch LRZ results (E3 boot, cl2-timing) when jobs finish; integrate into report
    (`load_*` helpers) and de-provisionalize numbers; fill `TODO(data)` cost table.
-3. Resolve LRZ `Rfast`/`fastFMM` install → run E4; commit the driver.
+3. Implement the planned E4 **repeated-measures** sub-study (see
+   `NEW-EXPERIMENTS-PLAN.md` E4 section): new longitudinal function-on-scalar DGP
+   per Cui et al. (2022) where `fui` is valid; pilot locally (fastFMM installs via
+   PPM binaries). Resolve LRZ `Rfast` only if LRZ FUI runs are needed.
 4. Optional council polish: gaulss `logb` detail (M6), leverage cap/floor wording
    (M7), index `g`/`i` & `n_g`/`D_g` unification (M12/M13), M10 ff-identifiability
    (`∫β ds=0` vs per-t centering) — verify against DGP truth-centering.
