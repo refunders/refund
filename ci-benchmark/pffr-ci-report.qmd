@@ -346,34 +346,166 @@ $\text{SD}(\text{coverage}) / \sqrt{R}$, where each coverage observation is
 already a proportion over grid points.
 
 
-## Study 1: Non-Gaussian Families {#sec-study1}
+## Simulation studies {#sec-results}
+
+We evaluate the four CI methods under two complementary simulation studies,
+designed and reported following the ADEMP framework of @MorrisWhiteCrowther2019.
+
+### Aims
+
+Both studies target nominal 90% pointwise coverage of each coefficient term
+under conditions that are routine in functional data analysis. Study 1 asks
+whether cluster-robust (CR1) and leverage-adjusted (CL2) sandwich CIs maintain
+coverage when the response family is non-Gaussian (Poisson, Binomial) and
+within-curve errors are correlated, using the default Bayesian and observation-level
+HC intervals as foils known to undercover under within-curve correlation.
+Study 2 asks how coverage and SE calibration change as the response evaluation
+grid is refined, and in particular whether finer grids amplify the failure of
+default SEs under within-curve dependence.
+
+### Data-generating mechanisms
+
+Both studies share the same general `pffr()` model structure: curves $i = 1,
+\ldots, G$ are observed over a response domain $t \in \mathcal{T}$ and a
+predictor domain $s \in \mathcal{S}$; the linear predictor contains at minimum
+a functional intercept $\beta_0(t)$, a function-on-function term
+$\int \mathbf{X}_{1,i}(s)\,\beta(s,t)\,ds$, and a varying-coefficient linear
+term $z_{\text{lin},i}\,\beta_{\text{lin}}(t)$. Study 2 additionally includes
+a smooth interaction $f(z_{\text{smoo},i}, t)$ and a concurrent term
+$X_{\text{conc},i}(t)\,\beta_{\text{conc}}(t)$.
+
+Three within-curve error structures are common to both studies:
+
+- **IID**: $\varepsilon_i(t) \overset{\text{iid}}{\sim} \mathcal{N}(0,\sigma^2)$ (diagonal covariance).
+- **AR1(0.9)**: $\text{Cov}(\varepsilon_i(t_j), \varepsilon_i(t_k)) = \sigma^2 \, 0.9^{|j-k|}$.
+- **Fourier$^+$(0.3)**: $\text{Cov}(\varepsilon_i(t_j), \varepsilon_i(t_k)) = \sigma^2 \max(0, \cos(2\pi|t_j - t_k|/0.3))$; non-monotone, always non-negative.
+
+True coefficient functions and surfaces are random draws from tensor B-spline
+bases (6 knots per margin), re-scaled so that each term contributes comparable
+variation ($k_{\text{truth}} = 6$; fitting basis $k = 12$ to limit smoothing bias).
+
+**Study 1** is fully factorial over:
+2 families (Poisson log; Binomial logit) $\times$
+3 correlation structures $\times$
+2 sample sizes ($G \in \{200, 400\}$)
+$= \mathbf{12}$ **DGP cells**, each with $R = 150$ replications ($1{,}800$ total
+fits). The predictor grid is fixed at $n_x = 30$; the response grid at $n_y = 40$.
+For Poisson, the log link is collapsible, so conditional and marginal $\beta$ coincide.
+For Binomial, a Gaussian copula construction preserves the marginal logit
+$\beta$ despite the non-collapsibility of the logit link.
+
+**Study 2** is fully factorial over:
+3 correlation structures $\times$
+3 sample sizes ($G \in \{20, 40, 80\}$) $\times$
+2 SNR levels (25 [high], 3 [low])
+$= \mathbf{18}$ **DGP cells**, each evaluated at 3 response grid resolutions
+($n_y \in \{40, 80, 120\}$), giving $54$ (DGP, grid) combinations with $R = 50$
+replications each ($2{,}700$ total fits). The predictor grid is fixed at $n_x = 60$.
+Data are generated once on the finest grid ($90 \times 120$) and deterministically
+subsampled (evenly spaced indices) to coarser resolutions, ensuring paired
+comparisons across grids.
+
+A side-by-side comparison of the two designs:
+
+| Feature | Study 1 | Study 2 |
+|---|---|---|
+| Response family | Poisson, Binomial | Gaussian |
+| Model terms | ff + linear | ff + linear + smooth + concurrent |
+| $G$ (curves) | 200, 400 | 20, 40, 80 |
+| $n_y$ (response grid) | 40 (fixed) | 40, 80, 120 (varied) |
+| $n_x$ (predictor grid) | 30 | 60 |
+| SNR varied | No | Yes (25, 3) |
+| DGP cells | 12 | 18 × 3 grids = 54 |
+| Reps per cell | 150 | 50 |
+| Total fits | 1,800 | 2,700 |
+| Covariance-quality diagnostics | No | Yes |
+
+: Comparison of Study 1 and Study 2 simulation designs. {#tbl-design-comparison}
+
+### Estimands
+
+In both studies the estimands are the pointwise values of each coefficient
+function or surface at the fitted evaluation grid: the bivariate ff surface
+$\beta(s,t)$, the linear varying coefficient $\beta_{\text{lin}}(t)$, and the
+functional intercept $\beta_0(t)$. Study 2 additionally targets the smooth
+$f(z_{\text{smoo}},t)$ and concurrent $\beta_{\text{conc}}(t)$ terms.
+The predicted mean response $\mathbf{E}[Y_i(t)]$ (the full $G \times n_y$
+fitted surface) is also recorded. Coefficient truths are centred to match
+identifiability constraints imposed by the fitting basis (e.g.\ the ff surface
+satisfies $\int \beta(s,t)\,ds = 0$; Study 2 terms satisfy sum-to-zero per
+evaluation point).
+
+### Methods
+
+All four CI methods are computed from a **single** `pffr()` fit per replicate;
+the sandwich corrections are applied post-hoc at the coefficient level:
+
+- **Default**: pointwise CIs from the Bayesian posterior covariance $\mathbf{V}_p$.
+- **HC**: observation-level (White/HC) sandwich; corrects for heteroskedasticity
+  but not within-curve dependence (@sec-sandwich).
+- **Cluster** (CR1): cluster-robust sandwich, treating each curve as one cluster;
+  captures arbitrary within-curve heteroskedasticity and autocorrelation.
+- **CL2** (CR2): Bell–McCaffrey leverage-adjusted cluster sandwich; reduces
+  finite-sample downward bias of CR1 at small $G$ (@sec-sandwich).
+
+All intervals are symmetric and pointwise: $\hat\beta \pm z_{0.95} \cdot \text{SE}$,
+with a standard normal critical value $z_{0.95} = 1.96$ ($\alpha = 0.10$) in
+both studies.
+
+### Performance measures
+
+Per replicate, per term type, we compute the following performance measures
+(following @MorrisWhiteCrowther2019 Section 4):
+
+- **Coverage**: fraction of evaluation grid points where the pointwise CI contains
+  the true value; target 0.90. Monte Carlo standard errors are $\text{SD}(\text{coverage})/\sqrt{R}$.
+- **$z$-score diagnostics**: $z_{it} = (\hat\beta_{it} - \beta_{it}^*)/\text{SE}_{it}$;
+  reported as $\bar z$ (mean; target 0) and $\text{SD}(z)$ (target 1). Values
+  $\text{SD}(z) > 1$ indicate anti-conservative SEs.
+- **Diagonal variance ratio** (Study 2 only): $\text{mean}(\text{SE}^2) /
+  \text{Var}_{\text{MC}}(\hat\beta - \beta^*)$, targeting 1. Values below 1
+  indicate systematic SE underestimation; computed by pooling coefficient vectors
+  across replications per (DGP, grid, method, term) and summarised as median $\pm$ IQR.
+- **Interval width**: mean pointwise CI width, as a secondary measure of
+  efficiency.
+
+### Reproducibility
+
+Seeds follow the scheme $\text{seed} = \text{base} + 1000 \cdot \text{DGP\_id} + \text{rep\_id}$,
+with base $= 3001$ in Study 1 (DGP 1–12, rep 1–150) and base $= 4001$ in
+Study 2 (DGP 1–18, rep 1–50). The same seed is reused across the three
+$n_y$ values in Study 2, so that grid comparisons are paired draws from
+identical residual processes. Results are saved atomically per replicate (tempfile
++ rename) to support restart without re-running completed replicates.
+Parallelisation uses `furrr` with $\leq \min(6, \text{cores}-1)$ workers
+(Study 1) or $\leq \min(10, \text{cores}-1)$ (Study 2, one task $=$ one
+(DGP, rep) fitting all three grids sequentially).
+
+### Study 1: Non-Gaussian Families {#sec-study1}
 
 ```{r}
 #| label: s1-load
 s1 <- load_study1()
 ```
 
-### Design {#sec-s1-design}
+#### Design {#sec-s1-design}
 
 Study 1 evaluates CI coverage for `pffr()` under Poisson (log link) and
-Binomial (logit link) families. The model includes a function-on-function term
-`ff(X1)` and a varying-coefficient linear term `z_lin`.
+Binomial (logit link) families, extending the Gaussian-identity setting to
+non-Gaussian responses routinely encountered in practice (e.g.\ count and
+binary functional outcomes). The model is fitted as `Y ~ ff(X1) + zlin`
+with basis dimensions $k = (12, 12)$ for the ff term and $k = 12$ for the
+linear term. The factorial design yields 12 DGP cells (2 families $\times$ 3
+correlation structures $\times$ 2 sample sizes) with $R = 150$ replications
+each; see @tbl-design-comparison for the full factor table.
 
-The factorial design crosses 2 families $\times$ 3 correlation structures (IID,
-AR1(0.9), Fourier$^+$(0.3)) $\times$ 2 sample sizes ($n = 200, 400$) = 12 DGP
-cells, each with 150 replications. Four CI methods are compared: default, HC,
-cluster, and CL2.
+Key DGP decisions specific to Study 1: for Poisson, an additive Gaussian error
+on the linear predictor ensures the log link is collapsible (conditional
+$\beta$ = marginal $\beta$, overdispersion $\sigma_\varepsilon = 0.5$); for
+Binomial, a Gaussian copula construction preserves the marginal logit $\beta$
+despite non-collapsibility of the logit link.
 
-Key design decisions:
-
-- **Poisson DGP**: additive $\varepsilon$ on the linear predictor; log link is
-  collapsible, so conditional $\beta$ = marginal $\beta$.
-- **Binomial DGP**: Gaussian copula preserves marginal $\beta$ (logit is *not*
-  collapsible).
-- Grid: $30 \times 40$ ($s \times t$). Basis: $k = (12, 12)$ for ff,
-  $k = 12$ for linear.
-
-### Results {#sec-s1-results}
+#### Results {#sec-s1-results}
 
 ```{r}
 #| label: s1-summary
@@ -483,7 +615,7 @@ s1_summary |>
   )
 ```
 
-### CL2 at large G {#sec-s1-cl2}
+#### CL2 at large G {#sec-s1-cl2}
 
 At $G = 200$--$400$ (Study 1), the per-cluster leverage is small
 ($\text{trace}(H_{gg}) \approx 0.22$), so the CL2 bias correction produces
@@ -531,7 +663,7 @@ if ("cl2" %in% levels(s1$method)) {
 }
 ```
 
-### Discussion {#sec-s1-discussion}
+#### Discussion {#sec-s1-discussion}
 
 <!-- DRAFT: narrative below uses the established findings recorded in
      PAPER-PLAN.md (Part A4); verify every quoted figure against the
@@ -566,7 +698,7 @@ penalization bias has the strongest theoretical support. We return to this point
 in @sec-discussion.
 
 
-## Study 2: Grid Refinement {#sec-study2}
+### Study 2: Grid Refinement {#sec-study2}
 
 ```{r}
 #| label: s2-load
@@ -576,19 +708,19 @@ s2_grid_labels <- attr(s2, "grid_labels")
 s2_cov <- load_study2_cov(s2_grid_levels, s2_grid_labels)
 ```
 
-### Design {#sec-s2-design}
+#### Design {#sec-s2-design}
 
-Study 2 investigates how response grid resolution affects CI quality. The design
-is fully factorial: 3 correlation structures (IID, AR1(0.9), Fourier$^+$(0.3))
-$\times$ 3 sample sizes ($n = 20, 40, 80$) $\times$ 2 SNR levels (3, 25)
-$\times$ 3 response grids ($n_y = 40, 80, 120$ with $n_x$ fixed at 60) = 54
-cells, each with 50 replications. Four methods are compared: default, cluster,
-HC, and CL2.
+Study 2 investigates how response grid resolution affects CI quality for the
+full `pffr()` model `Y ~ ff(X1) + zlin + s(zsmoo) + Xconc` under Gaussian
+errors. The design is summarised in @tbl-design-comparison. The key feature
+specific to this study is the paired grid structure: data are generated once
+at the finest resolution ($n_x = 90$, $n_y = 120$) and deterministically
+subsampled to $n_y \in \{40, 80, 120\}$ (with $n_x$ fixed at 60 in the main
+study), ensuring that grid comparisons are paired draws from the same
+residual process. The two SNR levels (25 = high, 3 = low) gauge sensitivity
+to signal strength; all four CI methods are compared in each cell.
 
-Data are generated on the finest grid ($90 \times 120$) and deterministically
-subsampled for coarser grids, ensuring paired comparisons.
-
-### Results {#sec-s2-results}
+#### Results {#sec-s2-results}
 
 ```{r}
 #| label: s2-summary
@@ -718,7 +850,7 @@ if (!is.null(s2_cov)) {
 }
 ```
 
-### Intercept discretization artifact {#sec-s2-intercept}
+#### Intercept discretization artifact {#sec-s2-intercept}
 
 On the coarsest grid ($n_y = 40$), intercept coverage drops sharply despite
 near-zero mean $z$-scores, an apparent paradox. @fig-s2-intercept reveals the
@@ -755,7 +887,7 @@ ggplot(
   )
 ```
 
-### CL2 vs. cluster at small G {#sec-s2-cl2}
+#### CL2 vs. cluster at small G {#sec-s2-cl2}
 
 @fig-s2-cl2-gain shows the incremental coverage gain of CL2 over cluster. Under
 correlation, CL2 consistently adds approximately 5--10 percentage points, with
@@ -801,7 +933,7 @@ if (sum(as.character(s2$method) == "cl2", na.rm = TRUE) > 0) {
 }
 ```
 
-### Computational cost {#sec-s2-cost}
+#### Computational cost {#sec-s2-cost}
 
 The three robust estimators differ markedly in cost, and the difference is
 structural rather than incidental. The CR1 cluster sandwich adds only a single
@@ -820,7 +952,7 @@ response-grid resolution $n_y$, exactly the axis Study 2 varies.
      directories are available in the build environment; report cluster overhead
      as a percentage of the base fit and the CL2 scaling in n_y. -->
 
-### Discussion {#sec-s2-discussion}
+#### Discussion {#sec-s2-discussion}
 
 <!-- DRAFT: narrative below uses the established findings recorded in
      PAPER-PLAN.md (Part A4); verify every quoted figure against the
