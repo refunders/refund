@@ -9,11 +9,12 @@ this and know where everything is and what to do next. **Keep it current.**
 
 - **Implementation:** merged to `master`, shipped in `refund` 0.1-40 (2026-03-17). Done.
 - **Simulation studies (Study 1, Study 2):** run; results archived (see Data status). Done.
-- **Report prose:** all TODO stubs in `pffr-ci-report.qmd` now drafted
-  (Introduction/related-work, Methods/estimator definitions, both study
-  Discussions, cross-study Discussion, Conclusions). Numbers in the Discussions
-  are **provisional** — drafted from established findings (Part A4) and flagged
-  `DRAFT/verify` in-source; must be regenerated from summaries.
+- **Report prose:** all TODO stubs in `pffr-ci-report.qmd` drafted; **council
+  peer-review fixes applied** (commit 09791ae8: Vp/B2 precision, de-provisionalized
+  numbers, "immune"→"largely resistant", gap-attribution rewrite, gaulss-CL2/HC1/
+  leverage-cap caveats, Nychka 1988 + `unconditional=TRUE`, CR1 one-cluster guard
+  in `R/pffr-core.R`). Numbers in the Discussions are still **provisional ranges**
+  flagged `DRAFT/verify` — now regenerable since the data is local (see below).
 - **Literature search:** complete; `pffr-ci-refs.bib` has 49 verified entries.
 - **New experiments (Part B2):** plan written
   (`ci-benchmark/NEW-EXPERIMENTS-PLAN.md` on branch `ci-experiments`).
@@ -45,14 +46,16 @@ the benchmark harness. The paper branch has the package code but not the
 result dirs produced by the experiments must be made loadable by the report
 (`load_study1()`/`load_study2()` in `_pffr-ci-helpers.R`).
 
-**Data status (ACTION NEEDED):** the heavy result directories
-(`study1-nongaussian[-cl2]`, `study2-grid-refinement`, `study2-cl2-timing`,
-`results`) are **git-ignored and currently absent** in the checkouts on this
-machine — the `ci-paper` worktree symlinks to `~/fda/refund/ci-benchmark/<dir>`,
-which do not resolve. They must be **located or regenerated** (harness on
-`pffr-refactor`/`ci-experiments`) before the provisional report numbers can be
-verified and before `quarto render` will run the analysis chunks. The
-`study2-cl2-timing/` dir is needed for the `TODO(data)` computational-cost table.
+**Data status:** the production result data was on **LRZ** (`~/refund/ci-benchmark/`)
+and has been **rsync'd local** into `~/fda/refund/ci-benchmark/`:
+`study1-nongaussian/` (1801 rds), `study1-nongaussian-cl2/` (1801),
+`study2-grid-refinement/` (2702; per-rep in `main/`, plus `main_results_combined.rds`
+and `cov_quality.rds`). The `ci-paper` worktree symlinks now **resolve**, so
+`load_study1()`/`load_study2()` and `quarto render` work. STILL MISSING (not on
+LRZ): `study2-cl2-timing/` and `study2-results-extracted/` — the
+`study2-cl2-timing/` run must be **regenerated** for the `TODO(data)`
+computational-cost table. Refetch command: `rsync -az lrz:refund/ci-benchmark/<dir>/
+ci-benchmark/<dir>/`.
 
 ---
 
@@ -176,15 +179,17 @@ Required fixes before submission (convergent across both reviewers unless noted)
 ---
 
 ## NEXT STEPS (ordered)
-1. Apply council prose fixes 1–4, 6 to `pffr-ci-report.qmd` (+ bib: Nychka 1988).
-2. Fix council #5 (CR1 one-cluster guard) in `R/pffr-core.R` + test.
-3. Implement E1 (t-crit) and E2 (simultaneous) extension scripts on
-   `ci-experiments`; smoke (1–2 reps, ≤3 cores) → R1 code-review gate → pilot.
-4. Locate/regenerate the result data; verify & de-provisionalize all report
-   numbers; fill the computational-cost table.
-5. Size + launch E3 (bootstrap) on LRZ via `lrz-remote` (SLURM array per cell).
-6. Decide + build the real-data application (B3).
-7. Re-render the report; council R3 results review.
+1. ~~Apply council prose fixes + Nychka~~ DONE (09791ae8).
+2. ~~CR1 one-cluster guard~~ DONE (09791ae8).
+3. ~~Fetch production result data~~ DONE (rsync from LRZ; symlinks resolve).
+4. E1/E2 driver scripts on `ci-experiments` (in progress, agent) → R1 council
+   code-review gate → pilot.
+5. E3 bootstrap driver + LRZ SLURM (in progress, agent) → submit on LRZ.
+6. **Verify & de-provisionalize report numbers** now that data is local: render
+   the analysis chunks, compare computed summaries to the provisional ranges,
+   update prose, remove `DRAFT/verify` flags.
+7. Regenerate `study2-cl2-timing/` → fill the `TODO(data)` cost table.
+8. Real-data application (B3, deferred). Re-render; council R3 results review.
 
 ## Process notes
 - Convene `council-of-bots` on each major draft and before production runs.
