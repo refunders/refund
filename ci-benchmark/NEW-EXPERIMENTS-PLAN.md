@@ -151,17 +151,65 @@ new `sim-study-fastfmm-longitudinal.R` (or extend the existing driver with a
 repeated-measures DGP path); reuse `extract_fui_metrics()` /
 `compute_qn_at_alpha()` from the current driver.
 
-### Install status (2026-06-17)
+### Status (2026-06-17)
+
+Driver `ci-benchmark/sim-study-fastfmm-longitudinal.R` implemented and smoke-tested (2 reps, cell 1: N=50, J=3, L=60).
+
+**Smoke result summary:**
+| method | term | mean_coverage (2 reps) | mean_width |
+|--------|------|------------------------|------------|
+| fastfmm | intercept | 1.00 | 0.430 |
+| fastfmm | linear | 0.93 | 0.080 |
+| pffr_cl2 | intercept | 1.00 | 0.274 |
+| pffr_cl2 | linear | 0.74 | 0.236 |
+| pffr_cluster | intercept | 0.98 | 0.065 |
+| pffr_cluster | linear | 0.31 | 0.036 |
+| pffr_default | intercept | 0.98 | 0.065 |
+| pffr_default | linear | 0.31 | 0.036 |
+
+Validation: coverage in [0,1] ✓, widths positive ✓, joint width ≥ pointwise (fui) ✓, all methods/terms present ✓.
+
+**Key finding from smoke run:**
+- fui coverage is near-nominal for both terms (100%, 93% — 2 reps, high MC variance).
+- pffr intercept coverage is near-nominal (98-100%) when using centered beta0(t) truth.
+- pffr linear coverage is severely **undercovering** (~31% for default/cluster). Root cause:
+  pffr's sandwich CIs cluster **by curve** (each of the N*J rows = one cluster), but the
+  correct unit is the **subject** (N clusters of J curves each). The cluster-by-curve SE
+  ≈ Bayesian SE and underestimates uncertainty by ~3x for the linear term. CL2 helps
+  (coverage 74%, SE ratio ~2x) but still undercovering.
+  **This is a core scientific finding** of this sub-study: pffr's current sandwich
+  infrastructure is not designed for repeated-measures functional data; the RE term
+  `c(s(id, bs="re"))` captures the within-subject correlation for point estimates but
+  not for the sandwich variance.
+
+**DGP design notes:**
+- Uses scalar (constant-over-t) RE `b_i ~ N(0, sigma_b^2)` matching FUI's `(1|id)`.
+  Original plan had a functional RE `b_i(t)`; changed to scalar for apples-to-apples.
+- `beta0(t)` and `beta1(t)` are zero-mean B-spline functions; `zlin` is centered
+  per-rep. This prevents mgcv centering from shifting truth alignment.
+- pffr uses `c(s(id, bs="re"))` (c() wrapper = constant over t = scalar RE).
+
+**Next steps before pilot:**
+- Add subject-level cluster sandwich to pffr output (requires custom cluster ID
+  mapping N*J rows → N subjects). This is new capability needed for longitudinal pffr.
+- Run pilot (10 reps, all 4 cells) after above fix, or run pilot as-is and document
+  the undercoverage as the finding.
+- Consider adding a 5th method: pffr with subject-clustered sandwich (custom).
+
+Output dir: `ci-benchmark/study4-longitudinal/`
+
+### Install status
 - fastFMM installs **locally** via PPM binaries (`fastFMM` + `Rfast` OK).
-- **LRZ install unresolved**: `Rfast` fails to compile on R 4.3.3 / gcc13 —
-  `Random.h` needs `#include <numeric>` for `std::iota`, plus a `LinkingTo`
-  include-path issue (RcppArmadillo.h not found though installed). Tried: CRAN
-  source (×2), `Ncpus=4` chain, GitHub dev (`RfastOfficial/Rfast`). Not needed for
-  the light Gaussian-analytic pilot; resolve before any LRZ FUI runs (try a patched
-  tarball with `<numeric>` added, or a spack/conda Rfast).
-- **Handed to Codex (2026-06-17):** a detailed prompt to fix the LRZ `Rfast` build
-  (diagnose the missing `LinkingTo`/`inst/include` flags in `Rfast`'s Makevars +
-  add `#include <numeric>` for `std::iota`; fallback = version-pin or spack/conda
-  `Rfast`). Done = `Rfast` and `fastFMM` both load on LRZ under `r/4.3.3-gcc13-mkl`.
-  Record which fix worked here when it lands.
+- **LRZ install RESOLVED (Codex, 2026-06-17)** — `Rfast` + `fastFMM` now load under
+  `r/4.3.3-gcc13-mkl` (`requireNamespace(...)` TRUE; `library(fastFMM)` loads). Fix:
+  1. **`~/.Rprofile` printed a banner to stdout** (`cat("*** Successfully loaded
+     .Rprofile ***\n")`) — **removed**; that stdout pollution was breaking
+     build-time include-path detection (the "RcppArmadillo.h not found" symptom).
+  2. **Patched Rfast source** — added `#include <numeric>` (for `std::iota`/
+     `std::accumulate`) to `src/{Random.h, pc_skel.cpp, sw_regs.cpp, group.cpp,
+     k_nn.cpp, col_row_utilities.cpp}` and `inst/include/Rfast/templates.h`.
+  3. **Hardened `src/Makevars`** — `PKG_CPPFLAGS` `=` → `+=`, so the `LinkingTo`
+     package include dirs (Rcpp/RcppArmadillo) are appended rather than clobbered.
+  Artifacts on LRZ: patched tarball `~/rfast-src/Rfast-patched2.tar.gz`, build logs
+  in `~/rfast-src/`. **→ E4 longitudinal FUI runs can now go on LRZ.**
 </content>
