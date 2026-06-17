@@ -25,31 +25,74 @@ source("_pffr-ci-helpers.R")
 
 ## Introduction {#sec-intro}
 
-<!-- TODO: Motivate the practical importance of valid pointwise CIs for pffr().
-     Key points: functional regression widely used in biomedical/environmental
-     applications; inference quality under-studied compared to point estimation;
-     default Bayesian CIs from mgcv may break under within-curve dependence. -->
+Functional data --- repeated measurements that can be viewed as noisy
+realisations of underlying smooth curves --- are now routine in biomedical,
+environmental, and engineering applications [@RamsaySilverman2005; @Morris2015].
+Function-on-function regression, in which both the response and one or more
+predictors are functions, is a central tool in this setting
+[@RamsayDalzell1991; @IvanescuStaicuScheiplGreven2015; @SunDuWangMa2018]. The
+`pffr()` function in the `refund` package [@ScheiplStaicuGreven2015;
+@Rpkg_refund] fits such models by recasting them as large penalized generalized
+additive models within the `mgcv` framework [@Wood2017; @WoodPyaSafken2016], a
+strategy that unifies a broad family of functional regression models under one
+estimation engine [@GrevenScheipl2017].
 
-Penalized functional regression models, as implemented by `pffr()` in the
-`refund` package [@ScheiplStaicuGreven2015; @Rpkg_refund], are widely used for
-analyzing functional data. These models leverage the penalized spline framework
-of `mgcv` [@Wood2017] to estimate smooth functional effects, but the default
-pointwise confidence intervals (CIs) rely on Bayesian posterior covariance
-matrices that assume correctly specified error structures.
+The point-estimation properties of these models are well understood, but their
+*inferential* properties have received far less attention than for their
+scalar-on-function counterparts [@ReissGoldsmithShangOgden2017]. By default,
+`pffr()` reports pointwise confidence intervals (CIs) built from the Bayesian
+posterior covariance matrix of the penalized fit. These intervals enjoy a strong
+justification --- they achieve close-to-nominal *across-the-function* frequentist
+coverage [@MarraWood2012; @RuppertWandCarroll2003; @Wood2013] --- but only when
+the working error model is correctly specified. In functional data this
+assumption is routinely violated: the many evaluation points of a single curve
+are strongly dependent, yet the default working model treats them as independent
+up to a common variance. When such within-curve dependence is present, the
+resulting CIs can undercover substantially.
 
-When within-curve dependence is present --- as is typical in longitudinal and
-functional data settings --- these default CIs can severely undercover.
-Sandwich-based covariance estimators offer a robust alternative
-[@LiangZeger1986; @ZeileisKoellGraham2020], and bias-corrected variants such as
-the CR2 estimator [@BellMcCaffrey2002; @PustejovskyTipton2018] can further
-improve finite-sample performance.
+A natural remedy is to replace the model-based covariance with a robust
+(sandwich) estimator. Heteroskedasticity-consistent estimators [@White1980] and
+cluster-robust estimators that treat each curve as a cluster
+[@LiangZeger1986; @CameronMiller2015; @ZeileisKoellGraham2020] require only that
+distinct curves be independent, accommodating arbitrary within-curve
+heteroskedasticity and autocorrelation. Because the number of curves (clusters)
+$G$ can be modest, finite-sample bias of the cluster sandwich matters; the
+Bell--McCaffrey/CR2 leverage adjustment [@BellMcCaffrey2002; @PustejovskyTipton2018]
+and a $t_{G-1}$ (rather than normal) reference distribution
+[@ImbensKolesar2016] are the standard corrections. Resampling alternatives ---
+the cluster/curve bootstrap [@FieldWelsh2007] and the wild cluster bootstrap
+[@CameronGelbachMiller2008; @MacKinnonWebb2017] --- provide a further route to
+robust intervals.
 
-This report presents two simulation studies evaluating pointwise CI methods for
-`pffr()`, following the ADEMP framework for simulation study reporting
-[@MorrisWhiteCrowther2019]. Study 1 examines non-Gaussian families (Poisson,
-Binomial) under varying correlation structures. Study 2 investigates how
-response grid resolution interacts with CI quality, revealing a previously
-undocumented collapse of default standard errors on fine grids under correlation.
+Robust and resampling-based inference is comparatively well developed for the
+*functional mean* and for scalar-on-function and function-on-scalar models,
+where a sizeable literature constructs pointwise and *simultaneous* confidence
+bands: FPCA-corrected bands [@GoldsmithGrevenCrainiceanu2013], tube- and
+kinematic-formula bands [@SunLoader1994; @KrivobokovaKneibClaeskens2010;
+@Degras2011], geometric and "fast-and-fair" bands for functional parameters
+[@ChoiReimherr2018; @LieblReimherr2023], wild-bootstrap bands for
+function-on-scalar coefficients [@ChangLinOgden2017], and interval-wise testing
+[@PiniVantini2017]. Inference for the bivariate coefficient *surface* of a
+function-on-function model is far less developed, with @DetteTang2024 a recent
+exception in the unpenalized RKHS setting. To our knowledge, robust pointwise
+inference for *penalized* function-on-function regression --- the workhorse
+`pffr()` setting --- has not been systematically studied, and no implementation
+is available in widely used software.
+
+This report takes a first step in that direction. We adapt observation-level
+(HC), cluster-robust (CR1), and leverage-adjusted (CR2/CL2) sandwich covariance
+estimators to the penalized function-on-function setting, clustering by curve,
+and evaluate them through two simulation studies reported under the ADEMP
+framework [@MorrisWhiteCrowther2019]. Our contributions are threefold: (i) we
+provide penalized-GAM cluster and CR2 sandwich estimators for `pffr()`, together
+with the corresponding software (@sec-sandwich); (ii) we document a previously
+unreported phenomenon whereby the default standard errors *collapse* on finer
+response grids under within-curve correlation, so that refining the measurement
+grid --- usually thought benign --- actively degrades coverage (@sec-study2);
+and (iii) we give practical guidance on when robust intervals are needed and
+which variant to use. Study 1 examines non-Gaussian families (Poisson, Binomial)
+under varying correlation structures; Study 2 isolates the interaction between
+response-grid resolution and CI quality.
 
 
 ## Methods {#sec-methods}
