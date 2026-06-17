@@ -578,6 +578,12 @@ prepare_modcall_for_bootstrap <- function(object) {
   if (is.language(modcall$yind)) {
     modcall$yind <- eval(modcall$yind, frml_env)
   }
+  # Carry the evaluated family object forward explicitly. The stored call can
+  # contain a local symbol such as `fam`, which is not visible when the
+  # bootstrap refit is evaluated inside `boot::boot()`.
+  if (!is.null(object$family)) {
+    modcall$family <- object$family
+  }
   # Always qualify the function call as refund::pffr so that eval(modcall_boot)
   # inside the boot statistic resolves pffr via the installed package namespace,
   # not via the search path.  This is critical when the package was loaded with
