@@ -259,18 +259,18 @@ run_study1_boot_rep <- function(row, rep_id, B, ncpus = 1L) {
   # as an evaluable expression (not a symbol), making eval(modcall_boot) safe.
   pffr_data <- sim$data
   pffr_yind <- sim$t_grid
-  frml_env  <- environment(frml)
+  frml_env <- environment(frml)
   assign("pffr_data", pffr_data, envir = frml_env)
   assign("pffr_yind", pffr_yind, envir = frml_env)
 
   t0 <- Sys.time()
   fit <- pffr(
     frml,
-    yind      = pffr_yind,
-    data      = pffr_data,
-    family    = fam,
+    yind = pffr_yind,
+    data = pffr_data,
+    family = fam,
     bs.yindex = list(bs = "ps", k = STUDY1_K_YINDEX, m = c(2, 1)),
-    sandwich  = "none"
+    sandwich = "none"
   )
   fit_time <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
 
@@ -452,7 +452,7 @@ run_study2_boot_pair <- function(
     # a symbol lookup (list() is always available, unlike local variables).
     pffr_data <- sim$data
     pffr_yind <- sim$t_grid
-    frml_env  <- environment(frml)
+    frml_env <- environment(frml)
     assign("pffr_data", pffr_data, envir = frml_env)
     assign("pffr_yind", pffr_yind, envir = frml_env)
 
@@ -460,10 +460,10 @@ run_study2_boot_pair <- function(
     fit <- tryCatch(
       pffr(
         frml,
-        yind      = pffr_yind,
-        data      = pffr_data,
+        yind = pffr_yind,
+        data = pffr_data,
         bs.yindex = list(bs = "ps", k = 12L, m = c(2L, 1L)),
-        sandwich  = "none"
+        sandwich = "none"
       ),
       error = function(e) {
         warning(sprintf(

@@ -471,7 +471,17 @@ run_competitors2 <- function(
           row$rep_id,
           conditionMessage(e)
         ))
-        NULL
+        seed <- STUDY2_BASE_SEED + 1000L * row$dgp_id + row$rep_id
+        dplyr::bind_rows(lapply(grid_labels, function(gl) {
+          make_null_competitor_row(
+            row,
+            row$rep_id,
+            seed,
+            gl,
+            STUDY2_GRIDS[[gl]],
+            conditionMessage(e)
+          )
+        }))
       }
     )
   }
