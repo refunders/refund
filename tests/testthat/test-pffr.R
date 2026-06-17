@@ -1458,6 +1458,29 @@ test_that("coefboot.pffr runs on simple pffr model", {
   expect_lte(boot_ci$ci_meta$failure_rate, 1)
 })
 
+test_that("coefboot.pffr handles family objects from local scope", {
+  skip_on_cran()
+
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+
+  boot_ci <- (function() {
+    fam <- gaussian()
+    m <- pffr(
+      Y ~ xlin,
+      yind = t,
+      data = dat,
+      family = fam,
+      sandwich = "none"
+    )
+    pffr_coefboot(m, B = 3, showProgress = FALSE)
+  })()
+
+  expect_true(is.list(boot_ci))
+  expect_lt(boot_ci$ci_meta$n_failed, boot_ci$ci_meta$B_requested)
+  expect_gte(boot_ci$ci_meta$B_used, 1)
+})
+
 test_that("coefboot.pffr residual resampling method works", {
   skip_on_cran()
 
