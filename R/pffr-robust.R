@@ -578,9 +578,14 @@ prepare_modcall_for_bootstrap <- function(object) {
   if (is.language(modcall$yind)) {
     modcall$yind <- eval(modcall$yind, frml_env)
   }
-  # Ensure bootstrap refits do not trigger robust covariance recalculation.
+  # Always qualify the function call as refund::pffr so that eval(modcall_boot)
+  # inside the boot statistic resolves pffr via the installed package namespace,
+  # not via the search path.  This is critical when the package was loaded with
+  # devtools::load_all() (pffr lives in the namespace but is NOT on the search
+  # path), causing every bootstrap refit to error and fall back to NA.
   fit_fun <- safeDeparse(modcall[[1]])
   if (fit_fun %in% c("pffr", "refund::pffr")) {
+    modcall[[1]] <- quote(refund::pffr)
     modcall$sandwich <- "none"
   }
   modcall$fit <- TRUE
