@@ -74,26 +74,65 @@ smoothing penalties.
 
 ### Sandwich covariance estimators {#sec-sandwich}
 
-<!-- TODO: Define the three sandwich variants: HC (observation-level), cluster
-     (Liang-Zeger), and CL2 (Bell-McCaffrey bias correction). Explain why
-     cluster is needed for within-curve dependence and why CL2 matters at
-     small G. -->
+After basis expansion, `pffr()` stacks all $N = \sum_{i=1}^{G} m_i$ scalar
+response evaluations (curve $i$ observed at $m_i$ grid points) into a single
+penalized GAM with design matrix $X$ ($N \times p$), coefficient vector
+$\hat\theta$ collecting the spline coefficients of every model term, and a
+block-diagonal smoothing penalty $S = \sum_j \lambda_j S_j$. `mgcv` returns two
+covariance matrices for $\hat\theta$: the **Bayesian posterior** covariance
+$$
+V_p = (X^\top W X + S)^{-1},
+$$
+with $W$ the (working) weight matrix, and the **frequentist** covariance
+$V_e = V_p (X^\top W X) V_p$. Default `pffr()` CIs use $V_p$, which delivers good
+*across-the-function* frequentist coverage under a correctly specified error
+model because the term $V_p - V_e \succeq 0$ absorbs the smoothing-penalty
+(prior) contribution to the sampling error [@MarraWood2012]. This guarantee,
+however, presumes independent, correctly weighted residuals; it says nothing
+about within-curve dependence, which is the norm in functional data.
 
-The default CIs from `mgcv` use the Bayesian posterior covariance
-$V_\beta = (X^\top W X + S)^{-1}$, which provides valid frequentist coverage
-under correct specification [@MarraWood2012]. Under misspecified error structure,
-we consider:
+All three robust estimators replace the model-based meat of the covariance while
+retaining the *penalized* bread $V_p$ and the Bayesian correction term. They
+share the form
+$$
+\widehat{V} \;=\; c \, V_p \Bigl( \textstyle\sum_{g=1}^{G} U_g U_g^\top \Bigr) V_p \;+\; B_2,
+\qquad c = \frac{G}{G-1}, \qquad B_2 = V_p - V_e,
+$$
+where $c$ is the HC1 finite-sample scaling, $B_2$ is the Marra--Wood Bayesian
+term (set $B_2 = 0$ to obtain the purely frequentist sandwich), and the cluster
+score contributions $U_g$ differ across estimators. For a single-predictor
+exponential family the per-observation score is
+$s_i = \bigl[\mu'(\eta_i)(y_i - \mu_i) / (\phi\, V(\mu_i))\bigr] x_i^\top$, with
+$x_i$ the $i$th row of $X$, $\phi$ the dispersion, and $V(\cdot)$ the variance
+function; for the Gaussian location--scale family (`gaulss`) the location and
+scale scores are computed analytically and mapped to coefficient space. The
+estimators are:
 
-- **HC** (heteroskedasticity-consistent): observation-level sandwich
-  [@White1980], which corrects for heteroskedasticity but not within-curve
-  dependence.
-- **Cluster**: the cluster-robust sandwich estimator [@LiangZeger1986;
-  @ZeileisKoellGraham2020] with clusters defined as curves (subjects), targeting
-  within-curve dependence.
-- **CL2**: the bias-corrected cluster sandwich with CR2 leverage adjustment
-  [@BellMcCaffrey2002; @PustejovskyTipton2018], which inflates standard errors
-  to compensate for finite-sample sandwich bias when the number of clusters $G$
-  is small.
+- **HC** (heteroskedasticity-consistent): each observation is its own cluster,
+  $U_i = s_i$, giving the observation-level White/Huber sandwich [@White1980].
+  It corrects for heteroskedasticity but, treating grid points as independent,
+  *not* for within-curve dependence.
+- **Cluster** (CR1): clusters are curves, $U_g = \sum_{i \in g} s_i$
+  [@LiangZeger1986; @ZeileisKoellGraham2020]. Summing scores within a curve
+  before squaring captures arbitrary within-curve heteroskedasticity and
+  autocorrelation, requiring only that distinct curves be independent.
+- **CL2** (CR2): a Bell--McCaffrey leverage adjustment of the cluster sandwich
+  [@BellMcCaffrey2002; @PustejovskyTipton2018]. With whitened working design
+  rows $X_g$ and working residuals $z_g$ for curve $g$, the cluster hat block is
+  $H_{gg} = X_g V_p X_g^\top$ and the adjusted contribution is
+  $U_g = X_g^\top (I - H_{gg})^{-1/2} z_g$, where $(\cdot)^{-1/2}$ is the
+  symmetric inverse square root. The inflation compensates for the downward bias
+  of CR1 when the number of clusters $G$ is small.
+
+A subtlety specific to the penalized setting motivates our own implementation
+rather than an off-the-shelf one. Generic cluster-robust tools such as
+`sandwich::vcovCL()` form the bread from the *unpenalized* cross-product
+$(X^\top X)^{-1}$ and compute CR2/HC2 leverages from the unpenalized hat matrix
+$X(X^\top X)^{-1} X^\top$. For a penalized fit the relevant operator is instead
+the penalized smoother $X V_p X^\top W$, so we use $V_p$ consistently in both the
+bread and the cluster leverage $H_{gg} = X_g V_p X_g^\top$. Supplying penalized
+fits to `vcovCL()` ignores this and returns invalid covariances, which is why
+the estimators above are implemented directly in `refund`.
 
 ### Performance measures {#sec-measures}
 
