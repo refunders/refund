@@ -369,7 +369,7 @@ Both studies share the same general `pffr()` model structure: curves $i = 1,
 \ldots, G$ are observed over a response domain $t \in \mathcal{T}$ and a
 predictor domain $s \in \mathcal{S}$; the linear predictor contains at minimum
 a functional intercept $\beta_0(t)$, a function-on-function term
-$\int \mathbf{X}_{1,i}(s)\,\beta(s,t)\,ds$, and a varying-coefficient linear
+$\int X_{1,i}(s)\,\beta(s,t)\,ds$, and a varying-coefficient linear
 term $z_{\text{lin},i}\,\beta_{\text{lin}}(t)$. Study 2 additionally includes
 a smooth interaction $f(z_{\text{smoo},i}, t)$ and a concurrent term
 $X_{\text{conc},i}(t)\,\beta_{\text{conc}}(t)$.
@@ -429,7 +429,7 @@ function or surface at the fitted evaluation grid: the bivariate ff surface
 $\beta(s,t)$, the linear varying coefficient $\beta_{\text{lin}}(t)$, and the
 functional intercept $\beta_0(t)$. Study 2 additionally targets the smooth
 $f(z_{\text{smoo}},t)$ and concurrent $\beta_{\text{conc}}(t)$ terms.
-The predicted mean response $\mathbf{E}[Y_i(t)]$ (the full $G \times n_y$
+The predicted mean response $\mathbb{E}[Y_i(t)]$ (the full $G \times n_y$
 fitted surface) is also recorded. Coefficient truths are centred to match
 identifiability constraints imposed by the fitting basis (e.g.\ the ff surface
 satisfies $\int \beta(s,t)\,ds = 0$; Study 2 terms satisfy sum-to-zero per
@@ -618,7 +618,7 @@ s1_summary |>
 #### CL2 at large G {#sec-s1-cl2}
 
 At $G = 200$--$400$ (Study 1), the per-cluster leverage is small
-($\text{trace}(H_{gg}) \approx 0.22$), so the CL2 bias correction produces
+($\text{trace}(\mathbf{H}_{gg}) \approx 0.22$), so the CL2 bias correction produces
 negligible SE inflation. @fig-s1-cl2 confirms that CL2 and cluster coverage are
 nearly indistinguishable, consistent with theoretical expectations.
 
@@ -691,7 +691,7 @@ targets finite-sample sandwich bias --- does not close this gap, and crucially t
 gap persists at the large $G$ of Study 1 ($G = 200$--$400$), where both leverage
 and $t$-vs-$z$ reference-distribution effects are negligible. The leading
 explanation is penalization/smoothing bias of the coefficient estimates themselves:
-the sandwich corrects the *variance* of $\hat\theta$ but not the *bias* induced by
+the sandwich corrects the *variance* of $\hat{\boldsymbol{\theta}}$ but not the *bias* induced by
 the smoothing penalty, which no covariance estimator can remove. Other contributors
 (smoothing parameter uncertainty, basis effects) cannot be fully excluded, but
 penalization bias has the strongest theoretical support. We return to this point
@@ -942,7 +942,7 @@ cluster totals and combined into a $p \times p$ meat matrix, so its overhead
 relative to the default fit is small and essentially independent of the response
 grid. The CL2 estimator is more expensive because the leverage adjustment is
 computed *per cluster*: for each curve $g$ it forms the $n_g \times n_g$ hat
-block $H_{gg} = X_g V_p X_g^\top$ and its symmetric inverse square root via an
+block $\mathbf{H}_{gg} = \tilde{\mathbf{X}}_g \mathbf{V}_p \tilde{\mathbf{X}}_g^\top$ and its symmetric inverse square root via an
 eigendecomposition, where $n_g$ is the number of evaluation points on that
 curve. This $O(n_g^3)$ per-cluster step makes CL2 cost grow sharply with the
 response-grid resolution $n_y$, exactly the axis Study 2 varies.
@@ -1017,7 +1017,7 @@ the sandwich machinery. The strongest evidence that this is not a finite-sample
 variance-estimation artifact is that the gap persists at large $G$ (Study 1,
 $G = 200$--$400$), where both the per-cluster leverage correction and any
 $t$-vs-$z$ reference-distribution effect are negligible. The leading explanation
-is therefore smoothing/penalization bias in $\hat\theta$ itself: a robust
+is therefore smoothing/penalization bias in $\hat{\boldsymbol{\theta}}$ itself: a robust
 covariance estimator corrects the spread of the sampling distribution but not its
 centre, so penalty-induced bias in the coefficient surface leaks directly into
 coverage. We do not claim to have ruled out other contributors --- smoothing
