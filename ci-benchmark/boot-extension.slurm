@@ -12,11 +12,11 @@
 #
 #   # Study 1: 12 DGP cells  (array indices 1..12)
 #   sbatch --clusters=serial --export=STUDY=study1 \
-#          --array=1-12 ci-benchmark/boot-extension.slurm
+#          --array=1-12 --partition=serial_long ci-benchmark/boot-extension.slurm
 #
 #   # Study 2: 18 DGP cells  (array indices 1..18)
 #   sbatch --clusters=serial --export=STUDY=study2 \
-#          --array=1-18 ci-benchmark/boot-extension.slurm
+#          --array=1-18 --partition=serial_long ci-benchmark/boot-extension.slurm
 #
 # SIZING RATIONALE:
 #   A single pffr_coefboot() call at B=499 on a Study 1 cell (n=400, small
@@ -38,12 +38,12 @@
 #SBATCH -D /dss/dsshome1/lxc04/ri68suz2/refund
 #SBATCH --get-user-env
 #SBATCH --clusters=serial
-#SBATCH --partition=serial_std
+#SBATCH --partition=serial_long
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32000mb
-#SBATCH --time=48:00:00
+#SBATCH --time=96:00:00
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=fabian.scheipl@stat.uni-muenchen.de
 #SBATCH --export=NONE
