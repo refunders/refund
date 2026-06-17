@@ -15,6 +15,12 @@ this and know where everything is and what to do next. **Keep it current.**
   leverage-cap caveats, Nychka 1988 + `unconditional=TRUE`, CR1 one-cluster guard
   in `R/pffr-core.R`). Numbers in the Discussions are still **provisional ranges**
   flagged `DRAFT/verify` — now regenerable since the data is local (see below).
+- **Rendering:** `quarto render pffr-ci-report.qmd --to jss-pdf` **works** (18-page
+  PDF, visually verified). Was broken by the `.gitignore` `*.tex` rule swallowing
+  the `_extensions/.../partials/*.tex` JSS/ACM templates so they were never
+  committed — fixed in d58bd1e9 (restored partials + `!_extensions/**/*.tex`).
+  **Outstanding content gap:** the **abstract and keywords are still placeholders**
+  ("—!!!—...required—!!!—") and must be written.
 - **Literature search:** complete; `pffr-ci-refs.bib` has 49 verified entries.
 - **New experiments (Part B2):** foundation + drivers written on `ci-experiments`
   (foundation b323db6; drivers 87f48652). Decisions: **E3 = B=499, percentile,
