@@ -74,9 +74,11 @@ this and know where everything is and what to do next. **Keep it current.**
   fastFMM/FUI needs **repeated/longitudinal** functional data. **Decision (user):
   add a repeated-measures function-on-scalar sub-study following Cui et al. (2022,
   JCGS) where FUI is valid — PLANNED in `NEW-EXPERIMENTS-PLAN.md` (E4 section),
-  not yet implemented.** fastFMM installs **locally** (PPM binaries); **LRZ Rfast
-  install unresolved** (gcc13 `<numeric>`/`std::iota` + LinkingTo path) — not
-  needed for the light local Gaussian-analytic pilot.
+  not yet implemented.** fastFMM installs **locally** (PPM binaries); **LRZ Rfast +
+  fastFMM install RESOLVED by Codex (2026-06-17)** — removed the `~/.Rprofile`
+  stdout banner (was breaking include-path detection), added `<numeric>` to Rfast
+  sources, and `PKG_CPPFLAGS =`→`+=` in Rfast `Makevars`. Both load on LRZ now;
+  details in `NEW-EXPERIMENTS-PLAN.md` (E4 install status).
 - **LRZ E3 boot jobs**: `5267685_[1-12]` (study1), `5267686_[1-18]` (study2)
   queued, run over hours/days. Monitor `squeue`; fetch when done.
 - **`study2-cl2-timing/` + `study2-results-extracted/` RECOVERED (2026-06-17)** from
