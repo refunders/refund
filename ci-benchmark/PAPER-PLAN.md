@@ -202,17 +202,17 @@ Required fixes before submission (convergent across both reviewers unless noted)
 ---
 
 ## Author feedback — round 2 (2026-06-17)
-1. **Notation:** boldface ALL matrix/vector quantities consistently. [W1 did its
-   sections; global sweep W3 PENDING.]
+1. **Notation:** boldface ALL matrix/vector quantities consistently. IN PROGRESS
+   (W3 global sweep; W1/W2 did their own sections).
 2. **Title:** "Confidence Intervals for Function-on-Function Regression". DONE (aae08bf4).
 3. **§2.1 (model):** generalized GLM rewrite (link + random effects, Gaussian-only
    residuals, Greven & Scheipl 2017 notation, explicit conditional-independence-
    on-the-additive-predictor assumption). DONE (aae08bf4).
 4. **§2.2 (sandwich):** expanded methodological core incl. detailed gaulss score
    block, CR1/CL2 derivation, leverage cap, penalized-bread. DONE (aae08bf4).
-5. **§3 + §4 → one Results section** with ADEMP setup intro. IN PROGRESS (W2; ADEMP
-   material extracted to /tmp/ademp-studies.md). Then W3 boldface sweep + council.
-   Report renders to 20 pp (jss-pdf) after W1.
+5. **§3 + §4 → one Results section** with ADEMP setup intro. DONE (36b3a50b):
+   `## Simulation studies {#sec-results}` with Study 1/2 as `###` subsections,
+   anchors preserved, no broken refs; renders 22 pp. Then W3 boldface sweep + council.
 
 ## NEXT STEPS (ordered)
 1. ~~Apply council prose fixes + Nychka~~ DONE (09791ae8).
