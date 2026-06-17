@@ -1,0 +1,44 @@
+title: acmart (ACM) format template
+author: Carlos Scheidegger
+version: 0.0.3
+quarto-required: ">= 1.2.198"
+contributes:
+  format:
+    common:
+      # define below YAML configuration common to all formats
+      filters:
+        # You can include here Lua filters from your extension format 
+        - color-text.lua
+        - build-acm-authors.lua
+        - add-bibliography.lua
+        - fancy-figure.lua
+      shortcodes:
+        # You can include here Lua filters defining shortcodes from your extension
+        - shortcodes.lua
+      knitr:
+        opts_chunk:
+          echo: false
+    pdf:
+      # define default configuration for the pdf version of your format
+      template: acmarttemplate.tex
+      colorlinks: true
+      urlcolor: red
+      fig-width: 6.5
+      fig-height: 4.5
+      biblio-style: te.bst
+      documentclass: acmart
+      header-includes: |
+        \definecolor{mypink}{RGB}{219, 48, 122}
+      template-partials:
+        # Add here the partials your format is using
+        - "partials/title.tex"
+        - "partials/_acmart_preamble.tex"
+        - "partials/_acmart_authors.tex"
+        - "partials/_acmart_abstract.tex"
+      cite-method: natbib
+    html:
+      # define default configuration for the html version of your format
+      number-sections: true
+      toc: true
+      theme: custom.scss
+      csl: association-for-computing-machinery.csl        

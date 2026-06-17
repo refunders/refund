@@ -1,0 +1,619 @@
+---
+title: "Pointwise Confidence Intervals for Penalized Function-on-Function Regression: A Simulation Study"
+author:
+  - name: Fabian Scheipl
+    affiliations:
+      - name: LMU München
+        department: Department of Statistics
+        city: Munich
+        country: Germany
+format:
+    jss-pdf:
+        keep-tex: true
+    jss-html: default
+bibliography: pffr-ci-refs.bib
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+source("_pffr-ci-helpers.R")
+```
+
+## Introduction {#sec-intro}
+
+<!-- TODO: Motivate the practical importance of valid pointwise CIs for pffr().
+     Key points: functional regression widely used in biomedical/environmental
+     applications; inference quality under-studied compared to point estimation;
+     default Bayesian CIs from mgcv may break under within-curve dependence. -->
+
+Penalized functional regression models, as implemented by `pffr()` in the
+`refund` package [@ScheiplStaicuGreven2015; @Rpkg_refund], are widely used for
+analyzing functional data. These models leverage the penalized spline framework
+of `mgcv` [@Wood2017] to estimate smooth functional effects, but the default
+pointwise confidence intervals (CIs) rely on Bayesian posterior covariance
+matrices that assume correctly specified error structures.
+
+When within-curve dependence is present --- as is typical in longitudinal and
+functional data settings --- these default CIs can severely undercover.
+Sandwich-based covariance estimators offer a robust alternative
+[@LiangZeger1986; @ZeileisKoellGraham2020], and bias-corrected variants such as
+the CR2 estimator [@BellMcCaffrey2002; @PustejovskyTipton2018] can further
+improve finite-sample performance.
+
+This report presents two simulation studies evaluating pointwise CI methods for
+`pffr()`, following the ADEMP framework for simulation study reporting
+[@MorrisWhiteCrowther2019]. Study 1 examines non-Gaussian families (Poisson,
+Binomial) under varying correlation structures. Study 2 investigates how
+response grid resolution interacts with CI quality, revealing a previously
+undocumented collapse of default standard errors on fine grids under correlation.
+
+
+## Methods {#sec-methods}
+
+### The pffr model {#sec-pffr}
+
+<!-- TODO: Brief mathematical description of the pffr model class.
+     Y_i(t) = eta_i(t) + eps_i(t), with eta combining intercept, ff, linear,
+     smooth, and concurrent terms. Reference Wood 2017 for the penalized
+     likelihood framework. -->
+
+The `pffr()` function fits penalized function-on-function additive models of the
+form
+$$
+Y_i(t) = \beta_0(t) + \int X_i(s)\beta(s,t)\,ds + z_i \beta_{\text{lin}}(t) + f(x_i, t) + X_i(t)\beta_{\text{conc}}(t) + \varepsilon_i(t),
+$$
+where $i = 1,\ldots,G$ indexes curves (clusters), $t$ is the functional domain,
+$\beta(s,t)$ is a bivariate coefficient surface, and $\varepsilon_i(t)$ is the
+error process. The model is fit as a large penalized generalized additive model
+via `mgcv::gam()` [@Wood2017], with tensor product spline bases and appropriate
+smoothing penalties.
+
+### Sandwich covariance estimators {#sec-sandwich}
+
+<!-- TODO: Define the three sandwich variants: HC (observation-level), cluster
+     (Liang-Zeger), and CL2 (Bell-McCaffrey bias correction). Explain why
+     cluster is needed for within-curve dependence and why CL2 matters at
+     small G. -->
+
+The default CIs from `mgcv` use the Bayesian posterior covariance
+$V_\beta = (X^\top W X + S)^{-1}$, which provides valid frequentist coverage
+under correct specification [@MarraWood2012]. Under misspecified error structure,
+we consider:
+
+- **HC** (heteroskedasticity-consistent): observation-level sandwich
+  [@White1980], which corrects for heteroskedasticity but not within-curve
+  dependence.
+- **Cluster**: the cluster-robust sandwich estimator [@LiangZeger1986;
+  @ZeileisKoellGraham2020] with clusters defined as curves (subjects), targeting
+  within-curve dependence.
+- **CL2**: the bias-corrected cluster sandwich with CR2 leverage adjustment
+  [@BellMcCaffrey2002; @PustejovskyTipton2018], which inflates standard errors
+  to compensate for finite-sample sandwich bias when the number of clusters $G$
+  is small.
+
+### Performance measures {#sec-measures}
+
+<!-- TODO: Define coverage, z-scores (z_mean, z_sd), diagonal variance ratio,
+     and MC SE computation. Explain that coverage is pointwise over the
+     evaluation grid. -->
+
+For each simulation replicate and term type, we compute:
+
+- **Coverage**: the fraction of evaluation grid points where the pointwise CI
+  contains the true value.
+- **$z$-score diagnostics**: $z_{it} = (\hat\beta_{it} - \beta_{it}^*) /
+  \text{SE}_{it}$, summarized as $\bar{z}$ (mean, target 0) and $\text{SD}(z)$
+  (target 1). Values of $\text{SD}(z) > 1$ indicate anti-conservative SEs.
+- **Diagonal variance ratio**: $\text{mean}(\text{SE}^2) /
+  \text{Var}_{\text{MC}}(\hat\beta - \beta^*)$, targeting 1.
+  Values below 1 indicate systematic SE underestimation.
+
+Monte Carlo standard errors for coverage are computed as
+$\text{SD}(\text{coverage}) / \sqrt{R}$, where each coverage observation is
+already a proportion over grid points.
+
+
+## Study 1: Non-Gaussian Families {#sec-study1}
+
+```{r}
+#| label: s1-load
+s1 <- load_study1()
+```
+
+### Design {#sec-s1-design}
+
+<!-- TODO: Describe the 12 DGP cells, 150 reps, and 4 methods in detail.
+     Poisson (log link, additive eps, collapsible) and Binomial (logit,
+     Gaussian copula, non-collapsible). -->
+
+Study 1 evaluates CI coverage for `pffr()` under Poisson (log link) and
+Binomial (logit link) families. The model includes a function-on-function term
+`ff(X1)` and a varying-coefficient linear term `z_lin`.
+
+The factorial design crosses 2 families $\times$ 3 correlation structures (IID,
+AR1(0.9), Fourier$^+$(0.3)) $\times$ 2 sample sizes ($n = 200, 400$) = 12 DGP
+cells, each with 150 replications. Four CI methods are compared: default, HC,
+cluster, and CL2.
+
+Key design decisions:
+
+- **Poisson DGP**: additive $\varepsilon$ on the linear predictor; log link is
+  collapsible, so conditional $\beta$ = marginal $\beta$.
+- **Binomial DGP**: Gaussian copula preserves marginal $\beta$ (logit is *not*
+  collapsible).
+- Grid: $30 \times 40$ ($s \times t$). Basis: $k = (12, 12)$ for ff,
+  $k = 12$ for linear.
+
+### Results {#sec-s1-results}
+
+```{r}
+#| label: s1-summary
+s1_summary <- s1 |>
+  dplyr::filter(!is.na(coverage)) |>
+  group_by(family_f, corr_f, n_f, method, term_type) |>
+  summarize(
+    coverage = mean(coverage, na.rm = TRUE),
+    mc_se = sd(coverage, na.rm = TRUE) / sqrt(n()),
+    z_sd = mean(z_sd, na.rm = TRUE),
+    width = mean(mean_width, na.rm = TRUE),
+    n_reps = n(),
+    .groups = "drop"
+  )
+```
+
+@fig-s1-heatmap shows coverage across all 12 DGP cells. Under IID errors,
+default CIs provide adequate coverage for Binomial but undercover for Poisson
+due to unmodeled overdispersion. Under AR1 and Fourier$^+$ correlation, default
+coverage collapses across both families, while the cluster sandwich maintains
+coverage near 86--89%.
+
+```{r}
+#| label: fig-s1-heatmap
+#| fig-cap: "Study 1 coverage heatmap. White = 90% nominal. Red = undercoverage."
+#| fig-width: 7
+#| fig-height: 5
+s1_summary |>
+  ggplot(aes(
+    x = method,
+    y = interaction(corr_f, paste0("n=", n_f)),
+    fill = coverage
+  )) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = sprintf("%.0f%%", coverage * 100)), size = 2.5) +
+  scale_fill_gradient2(
+    low = "#d73027", mid = "white", high = "#4575b4",
+    midpoint = NOMINAL_COVERAGE, limits = c(0.4, 1),
+    labels = scales::percent
+  ) +
+  facet_grid(family_f ~ term_type) +
+  labs(x = "Method", y = "Correlation \u00d7 n", fill = "Coverage") +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, size = 7))
+```
+
+@fig-s1-improvement quantifies the coverage gain from switching to cluster-robust
+CIs. The improvement is largest under correlated errors (up to 40 percentage
+points for Poisson under AR1) and negligible under IID for Binomial.
+
+```{r}
+#| label: fig-s1-improvement
+#| fig-cap: "Coverage improvement (cluster $-$ default). Positive values indicate cluster-robust CIs help."
+#| fig-width: 7
+#| fig-height: 4.5
+s1_paired <- s1_summary |>
+  dplyr::filter(method %in% c("default", "cluster")) |>
+  select(family_f, corr_f, n_f, method, term_type, coverage) |>
+  pivot_wider(names_from = method, values_from = coverage) |>
+  mutate(diff = cluster - default)
+
+ggplot(
+  s1_paired,
+  aes(
+    x = interaction(corr_f, paste0("n=", n_f)),
+    y = diff, fill = family_f
+  )
+) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_hline(
+    yintercept = c(-PRACTICAL_THRESHOLD, PRACTICAL_THRESHOLD),
+    linetype = 3, color = "gray50"
+  ) +
+  facet_wrap(~term_type) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    x = "Correlation \u00d7 n", y = "Coverage Difference",
+    fill = "Family"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 6))
+```
+
+@fig-s1-zsd shows SE calibration via the $z$-score standard deviation. Under
+IID, cluster $\text{SD}(z)$ is near 1 for both families. Under correlation,
+default and HC show $\text{SD}(z) \gg 1$, confirming that their SEs are too
+small.
+
+```{r}
+#| label: fig-s1-zsd
+#| fig-cap: "SE calibration ($\\text{SD}(z)$, target = 1). Values above 1 indicate anti-conservative SEs."
+#| fig-width: 7
+#| fig-height: 5
+s1_summary |>
+  ggplot(aes(x = method, y = z_sd, color = corr_f, shape = term_type)) +
+  geom_point(size = 3, position = position_dodge(width = 0.4)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_hline(yintercept = c(0.85, 1.15), linetype = 3, color = "gray50") +
+  facet_grid(family_f ~ n_f) +
+  scale_color_brewer(palette = "Set1") +
+  labs(
+    x = "Method", y = "SD(z)",
+    color = "Correlation", shape = "Term"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1, size = 7)
+  )
+```
+
+### CL2 at large G {#sec-s1-cl2}
+
+<!-- TODO: Discuss why CL2 correction is negligible at G=200-400 (per-cluster
+     leverage tiny), contrasting with Study 2 where G=20-80. -->
+
+At $G = 200$--$400$ (Study 1), the per-cluster leverage is small
+($\text{trace}(H_{gg}) \approx 0.22$), so the CL2 bias correction produces
+negligible SE inflation. @fig-s1-cl2 confirms that CL2 and cluster coverage are
+nearly indistinguishable, consistent with theoretical expectations.
+
+```{r}
+#| label: fig-s1-cl2
+#| fig-cap: "CL2 vs.~cluster coverage at $G = 200$--$400$. The CL2 correction is negligible at these cluster counts."
+#| fig-width: 7
+#| fig-height: 5
+if ("cl2" %in% levels(s1$method)) {
+  s1_cl2_comparison <- s1_summary |>
+    dplyr::filter(method %in% c("cluster", "cl2")) |>
+    select(family_f, corr_f, n_f, method, term_type, coverage, mc_se)
+
+  ggplot(
+    s1_cl2_comparison,
+    aes(x = corr_f, y = coverage, color = method, group = method)
+  ) +
+    geom_point(size = 3, position = position_dodge(width = 0.4)) +
+    geom_line(linewidth = 0.6, position = position_dodge(width = 0.4)) +
+    geom_errorbar(
+      aes(
+        ymin = coverage - 1.96 * mc_se,
+        ymax = coverage + 1.96 * mc_se
+      ),
+      width = 0.2, linewidth = 0.5,
+      position = position_dodge(width = 0.4)
+    ) +
+    geom_hline(
+      yintercept = NOMINAL_COVERAGE,
+      linetype = "dashed", color = "red"
+    ) +
+    facet_grid(family_f ~ term_type + n_f) +
+    scale_y_continuous(labels = scales::percent, limits = c(0.7, 1)) +
+    scale_color_manual(values = COLORS_S1[c("cluster", "cl2")]) +
+    labs(
+      x = "Correlation", y = "Coverage", color = "Method"
+    ) +
+    theme(
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 30, hjust = 1, size = 7)
+    )
+}
+```
+
+### Discussion {#sec-s1-discussion}
+
+<!-- TODO: Summarize Study 1 findings. Key messages:
+     - Cluster sandwich essential under within-curve correlation
+     - HC corrects heteroskedasticity only, not dependence
+     - CL2 negligible at large G
+     - Poisson overdispersion requires sandwich even under IID
+     - Cluster coverage gap of ~84-89% (not reaching nominal) likely due to
+       penalization/smoothing bias, not finite-sample sandwich bias -->
+
+
+## Study 2: Grid Refinement {#sec-study2}
+
+```{r}
+#| label: s2-load
+s2 <- load_study2()
+s2_grid_levels <- attr(s2, "grid_levels")
+s2_grid_labels <- attr(s2, "grid_labels")
+s2_cov <- load_study2_cov(s2_grid_levels, s2_grid_labels)
+```
+
+### Design {#sec-s2-design}
+
+<!-- TODO: Describe the full factorial design: 3 corr x 3 n x 2 SNR x 3 nygrid
+     = 54 cells, 50 reps each, 4 methods. Gaussian family, wiggliness = 5. -->
+
+Study 2 investigates how response grid resolution affects CI quality. The design
+is fully factorial: 3 correlation structures (IID, AR1(0.9), Fourier$^+$(0.3))
+$\times$ 3 sample sizes ($n = 20, 40, 80$) $\times$ 2 SNR levels (3, 25)
+$\times$ 3 response grids ($n_y = 40, 80, 120$ with $n_x$ fixed at 60) = 54
+cells, each with 50 replications. Four methods are compared: default, cluster,
+HC, and CL2.
+
+Data are generated on the finest grid ($90 \times 120$) and deterministically
+subsampled for coarser grids, ensuring paired comparisons.
+
+### Results {#sec-s2-results}
+
+```{r}
+#| label: s2-summary
+s2_summary_by_n <- s2 |>
+  dplyr::filter(!is.na(coverage)) |>
+  group_by(n_f, snr_f, corr_f, grid_f, method, term_type) |>
+  summarize(
+    mc_se = sd(coverage, na.rm = TRUE) / sqrt(n()),
+    coverage = mean(coverage, na.rm = TRUE),
+    z_sd = mean(z_sd, na.rm = TRUE),
+    z_mean_sd = sd(z_mean, na.rm = TRUE),
+    z_mean = mean(z_mean, na.rm = TRUE),
+    width = mean(mean_width, na.rm = TRUE),
+    n_reps = n(),
+    .groups = "drop"
+  )
+
+s2_summary <- s2 |>
+  dplyr::filter(!is.na(coverage)) |>
+  group_by(snr_f, corr_f, grid_f, method, term_type) |>
+  summarize(
+    mc_se = sd(coverage, na.rm = TRUE) / sqrt(n()),
+    coverage = mean(coverage, na.rm = TRUE),
+    z_sd = mean(z_sd, na.rm = TRUE),
+    z_mean_sd = sd(z_mean, na.rm = TRUE),
+    z_mean = mean(z_mean, na.rm = TRUE),
+    width = mean(mean_width, na.rm = TRUE),
+    n_reps = n(),
+    .groups = "drop"
+  )
+
+s2_cov_by_term <- s2_summary_by_n |>
+  group_by(n_f, corr_f, grid_f, method, term_type) |>
+  summarize(
+    mc_se = sqrt(sum(mc_se^2, na.rm = TRUE)) / n(),
+    coverage = mean(coverage, na.rm = TRUE),
+    z_sd = mean(z_sd, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+@fig-s2-hero presents the central finding: under within-curve correlation,
+default SE calibration deteriorates dramatically as the response grid becomes
+finer. Coverage of the `ff` term drops from approximately 62% on the coarse grid
+to 43% on the fine grid under AR1(0.9), while the cluster sandwich remains
+stable. CL2 consistently outperforms cluster by 5--10 percentage points at
+$G = 20$--$80$.
+
+```{r}
+#| label: fig-s2-hero
+#| fig-cap: "Default SE collapse under correlation on finer grids. Red dashed = 90% nominal. SNR averaged. CL2 outperforms cluster by 5--10pp at $G = 20$--$80$."
+#| fig-width: 7
+#| fig-height: 7
+s2_cov_by_term |>
+  dplyr::filter(term_type == "ff") |>
+  ggplot(aes(
+    x = grid_f, y = coverage,
+    color = method, group = method
+  )) +
+  geom_point(size = 2.5, position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_errorbar(
+    aes(
+      ymin = coverage - 1.96 * mc_se,
+      ymax = coverage + 1.96 * mc_se
+    ),
+    width = 0.2, linewidth = 0.5,
+    position = position_dodge(width = 0.3)
+  ) +
+  geom_hline(
+    yintercept = NOMINAL_COVERAGE,
+    linetype = "dashed", color = "red", linewidth = 0.8
+  ) +
+  facet_grid(corr_f ~ n_f) +
+  scale_y_continuous(labels = scales::percent, limits = c(0.2, 1)) +
+  scale_color_manual(values = COLORS_S2) +
+  labs(
+    x = "Response Grid (nygrid)", y = "Coverage", color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1, size = 7)
+  )
+```
+
+@fig-s2-diag-ratio provides the mechanistic explanation: the diagonal variance
+ratio (model $\text{SE}^2$ / MC variance) drops sharply with finer grids for
+default SEs under correlation, while cluster remains closer to 1.
+
+```{r}
+#| label: fig-s2-diag-ratio
+#| fig-cap: "Diagonal variance ratio by grid resolution. Target = 1. Under correlation, default ratio drops with finer grids; cluster remains stable."
+#| fig-width: 7
+#| fig-height: 7
+if (!is.null(s2_cov)) {
+  s2_cov_agg <- s2_cov |>
+    group_by(snr_f, corr_f, grid_f, term_type, method) |>
+    summarize(
+      diag_ratio = median(diag_ratio_median, na.rm = TRUE),
+      diag_ratio_lo = quantile(diag_ratio_median, 0.25, na.rm = TRUE),
+      diag_ratio_hi = quantile(diag_ratio_median, 0.75, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  ggplot(
+    s2_cov_agg |> dplyr::filter(term_type != "intercept"),
+    aes(x = grid_f, y = diag_ratio, color = method, group = method)
+  ) +
+    geom_point(size = 2.5, position = position_dodge(width = 0.3)) +
+    geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+    geom_errorbar(
+      aes(ymin = diag_ratio_lo, ymax = diag_ratio_hi),
+      width = 0.2, linewidth = 0.5,
+      position = position_dodge(width = 0.3)
+    ) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "gray50") +
+    facet_grid(snr_f + corr_f ~ term_type) +
+    scale_color_manual(values = COLORS_S2) +
+    labs(
+      x = "Response Grid (nygrid)", y = "Diagonal Ratio", color = "Method"
+    ) +
+    coord_cartesian(ylim = c(0, 2.5)) +
+    theme(
+      legend.position = "bottom",
+      axis.text.x = element_text(angle = 30, hjust = 1, size = 7)
+    )
+}
+```
+
+### Intercept discretization artifact {#sec-s2-intercept}
+
+<!-- TODO: Explain the paradox: coarse grids show ~60-68% intercept coverage
+     despite z_mean ~ 0 and z_sd ~ 1. Spatially structured bias alternates in
+     sign, canceling in the average. Resolution: threshold around 60x80. -->
+
+On the coarsest grid ($n_y = 40$), intercept coverage drops sharply despite
+near-zero mean $z$-scores, an apparent paradox. @fig-s2-intercept reveals the
+mechanism: the between-replicate standard deviation of $\bar{z}$ is large on
+coarse grids, indicating systematic rep-to-rep intercept shifts that cancel in
+the average but cause undercoverage per replicate. The artifact resolves at
+$n_y \geq 80$.
+
+```{r}
+#| label: fig-s2-intercept
+#| fig-cap: "Intercept discretization artifact: between-rep SD of $\\bar{z}$ is large on coarse grids, indicating systematic intercept offsets that cancel on average."
+#| fig-width: 7
+#| fig-height: 4.5
+s2_intercept <- s2_summary |>
+  dplyr::filter(term_type == "intercept")
+
+ggplot(
+  s2_intercept,
+  aes(x = grid_f, y = z_mean_sd, color = method, group = method)
+) +
+  geom_point(size = 2.5, position = position_dodge(width = 0.3)) +
+  geom_line(linewidth = 0.8, position = position_dodge(width = 0.3)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  facet_grid(snr_f ~ corr_f) +
+  scale_color_manual(values = COLORS_S2) +
+  labs(
+    x = "Response Grid (nygrid)",
+    y = "SD(z-mean) across reps",
+    color = "Method"
+  ) +
+  theme(
+    legend.position = "bottom",
+    axis.text.x = element_text(angle = 30, hjust = 1, size = 7)
+  )
+```
+
+### CL2 vs. cluster at small G {#sec-s2-cl2}
+
+<!-- TODO: Discuss how CL2 outperforms cluster by 5-10pp at G=20-80.
+     The CR2 leverage correction produces substantial SE inflation that
+     compensates for finite-sample sandwich bias. -->
+
+@fig-s2-cl2-gain shows the incremental coverage gain of CL2 over cluster. Under
+correlation, CL2 consistently adds 5--10 percentage points, with the largest
+gains at small $n$ (few clusters). Under IID, CL2 also improves over cluster
+because the cluster sandwich undercovers due to using $z = 1.96$ critical values
+instead of the $t_{G-1}$ distribution at small $G$.
+
+```{r}
+#| label: fig-s2-cl2-gain
+#| fig-cap: "Coverage gain of CL2 over cluster by grid level. Positive = CL2 improves. Averaged over $n$."
+#| fig-width: 7
+#| fig-height: 4.5
+if (sum(as.character(s2$method) == "cl2", na.rm = TRUE) > 0) {
+  s2_paired_cl2 <- build_s2_paired_diff_summary(
+    s2_data = s2, num_method = "cl2", den_method = "cluster"
+  )
+
+  if (nrow(s2_paired_cl2) > 0) {
+    ggplot(s2_paired_cl2, aes(x = grid_f, y = mean_diff, fill = corr_f)) +
+      geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+      geom_errorbar(
+        aes(
+          ymin = mean_diff - 1.96 * se_diff,
+          ymax = mean_diff + 1.96 * se_diff
+        ),
+        position = position_dodge(width = 0.7), width = 0.2
+      ) +
+      geom_hline(yintercept = 0, linetype = "dashed") +
+      facet_grid(snr_f ~ term_type) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 0.1)) +
+      scale_fill_brewer(palette = "Set1") +
+      labs(
+        x = "Response Grid (nygrid)",
+        y = "Coverage Difference",
+        fill = "Correlation"
+      ) +
+      theme(
+        legend.position = "bottom",
+        axis.text.x = element_text(angle = 30, hjust = 1, size = 7)
+      )
+  }
+}
+```
+
+### Computational cost {#sec-s2-cost}
+
+<!-- TODO: Report fitting times for the four methods across grid sizes.
+     Cluster sandwich adds ~X% overhead; CL2 adds more due to leverage
+     computation scaling with nygrid. -->
+
+### Discussion {#sec-s2-discussion}
+
+<!-- TODO: Summarize Study 2 findings and connect to practical guidance. -->
+
+
+## Discussion {#sec-discussion}
+
+<!-- TODO: Synthesize findings across both studies. Key themes:
+
+1. Default SE collapse mechanism: more grid points per curve amplify
+   within-curve correlation that default SEs ignore. Diagonal variance ratio
+   drops from ~0.3 (coarse) to ~0.1 (fine) for default.
+
+2. The 84-89% cluster coverage gap: even with correct sandwich SEs, cluster
+   coverage does not reach 90% nominal. This is NOT finite-sample sandwich
+   bias (CL2 doesn't fully close the gap). Likely causes: penalization/
+   smoothing bias, penalty-induced distributional effects, grid discretization.
+
+3. CL2 G-dependence: negligible at G=200-400 (Study 1), substantial 5-10pp
+   improvement at G=20-80 (Study 2).
+
+4. Practical recommendations: always use cluster-robust sandwich when
+   within-curve dependence is possible; prefer CL2 when G < 100;
+   default CIs are safe only under IID errors; finer grids require sandwich
+   more urgently. -->
+
+
+## Conclusions {#sec-conclusions}
+
+<!-- TODO: Brief actionable summary of practical recommendations for pffr users. -->
+
+
+## References {.unnumbered}
+
+::: {#refs}
+:::
+
+
+\appendix
+
+## Computational Environment {#sec-environment}
+
+```{r}
+#| label: session-info
+sessionInfo()
+```
