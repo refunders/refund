@@ -159,4 +159,9 @@ repeated-measures DGP path); reuse `extract_fui_metrics()` /
   source (×2), `Ncpus=4` chain, GitHub dev (`RfastOfficial/Rfast`). Not needed for
   the light Gaussian-analytic pilot; resolve before any LRZ FUI runs (try a patched
   tarball with `<numeric>` added, or a spack/conda Rfast).
+- **Handed to Codex (2026-06-17):** a detailed prompt to fix the LRZ `Rfast` build
+  (diagnose the missing `LinkingTo`/`inst/include` flags in `Rfast`'s Makevars +
+  add `#include <numeric>` for `std::iota`; fallback = version-pin or spack/conda
+  `Rfast`). Done = `Rfast` and `fastFMM` both load on LRZ under `r/4.3.3-gcc13-mkl`.
+  Record which fix worked here when it lands.
 </content>
