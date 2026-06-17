@@ -78,8 +78,8 @@ function-on-scalar coefficients [@ChangLinOgden2017], and interval-wise testing
 function-on-function model is far less developed, with @DetteTang2024 a recent
 exception in the unpenalized RKHS setting. To our knowledge, robust pointwise
 inference for *penalized* function-on-function regression --- the workhorse
-`pffr()` setting --- has not been systematically studied, and no implementation
-is available in widely used software.
+`pffr()` setting --- had not been systematically studied before this work, and
+no implementation had been available in widely used software.
 
 This report takes a first step in that direction. We adapt observation-level
 (HC), cluster-robust (CR1), and leverage-adjusted (CR2/CL2) sandwich covariance
@@ -122,28 +122,32 @@ penalized GAM with design matrix $X$ ($N \times p$), coefficient vector
 $\hat\theta$ collecting the spline coefficients of every model term, and a
 block-diagonal smoothing penalty $S = \sum_j \lambda_j S_j$. `mgcv` returns two
 covariance matrices for $\hat\theta$: the **Bayesian posterior** covariance
-$$
-V_p = (X^\top W X + S)^{-1},
-$$
-with $W$ the (working) weight matrix, and the **frequentist** covariance
+$V_p$ --- formally $(X^\top W X + S)^{-1}$ with $W$ the working weight matrix,
+though in practice `mgcv` returns the posterior covariance of the
+reparameterized coefficients and the raw inverse need not exist for
+rank-deficient or constrained penalties --- and the **frequentist** covariance
 $V_e = V_p (X^\top W X) V_p$. Default `pffr()` CIs use $V_p$, which delivers good
 *across-the-function* frequentist coverage under a correctly specified error
-model because the term $V_p - V_e \succeq 0$ absorbs the smoothing-penalty
-(prior) contribution to the sampling error [@MarraWood2012]. This guarantee,
-however, presumes independent, correctly weighted residuals; it says nothing
-about within-curve dependence, which is the norm in functional data.
+model [@Nychka1988; @MarraWood2012]. The key identity is
+$B_2 \;{:=}\; V_p - V_e = V_p S V_p \succeq 0$ (positive semi-definite because
+the penalty $S \succeq 0$): this penalty-induced (Marra--Wood squared-bias)
+component [@MarraWood2012] inflates the Bayesian intervals just enough to
+achieve average frequentist coverage. This guarantee, however, presumes
+independent, correctly weighted residuals; it says nothing about within-curve
+dependence, which is the norm in functional data.
 
 All three robust estimators replace the model-based meat of the covariance while
-retaining the *penalized* bread $V_p$ and the Bayesian correction term. They
-share the form
+retaining the *penalized* bread $V_p$ and the penalty-induced correction $B_2$.
+They share the form
 $$
 \widehat{V} \;=\; c \, V_p \Bigl( \textstyle\sum_{g=1}^{G} U_g U_g^\top \Bigr) V_p \;+\; B_2,
-\qquad c = \frac{G}{G-1}, \qquad B_2 = V_p - V_e,
+\qquad c = \frac{G}{G-1}, \qquad B_2 = V_p S V_p,
 $$
-where $c$ is the HC1 finite-sample scaling, $B_2$ is the Marra--Wood Bayesian
-term (set $B_2 = 0$ to obtain the purely frequentist sandwich), and the cluster
-score contributions $U_g$ differ across estimators. For a single-predictor
-exponential family the per-observation score is
+where $c$ is the simplified $G/(G-1)$ cluster correction (analogous to CR1,
+not HC1, which is $N/(N-p)$), $B_2 = V_p S V_p$ is the Marra--Wood
+penalty-induced bias term (set $B_2 = 0$ to obtain the purely frequentist
+sandwich), and the cluster score contributions $U_g$ differ across estimators.
+For a single-predictor exponential family the per-observation score is
 $s_i = \bigl[\mu'(\eta_i)(y_i - \mu_i) / (\phi\, V(\mu_i))\bigr] x_i^\top$, with
 $x_i$ the $i$th row of $X$, $\phi$ the dispersion, and $V(\cdot)$ the variance
 function; for the Gaussian location--scale family (`gaulss`) the location and
@@ -159,12 +163,24 @@ estimators are:
   before squaring captures arbitrary within-curve heteroskedasticity and
   autocorrelation, requiring only that distinct curves be independent.
 - **CL2** (CR2): a Bell--McCaffrey leverage adjustment of the cluster sandwich
-  [@BellMcCaffrey2002; @PustejovskyTipton2018]. With whitened working design
-  rows $X_g$ and working residuals $z_g$ for curve $g$, the cluster hat block is
-  $H_{gg} = X_g V_p X_g^\top$ and the adjusted contribution is
-  $U_g = X_g^\top (I - H_{gg})^{-1/2} z_g$, where $(\cdot)^{-1/2}$ is the
-  symmetric inverse square root. The inflation compensates for the downward bias
-  of CR1 when the number of clusters $G$ is small.
+  [@BellMcCaffrey2002; @PustejovskyTipton2018]. With IRLS working-weighted
+  ("whitened") design rows $\tilde{X}_g$ and working residuals $z_g$ for curve
+  $g$ (distinct from the raw design rows $x_i$ used in the score $s_i$ above),
+  the cluster hat block is $H_{gg} = \tilde{X}_g V_p \tilde{X}_g^\top$ and the
+  adjusted contribution is $U_g = \tilde{X}_g^\top (I - H_{gg})^{-1/2} z_g$,
+  where $(\cdot)^{-1/2}$ is the symmetric inverse square root. The inflation
+  compensates for the downward bias of CR1 when the number of clusters $G$ is
+  small. For `gaulss`, the whitened rows are derived from a sign-split
+  pseudo-observation factorization, giving an *approximate* leverage adjustment
+  rather than the exact Bell--McCaffrey/CR2 block. To ensure $(I - H_{gg})$
+  stays invertible, eigenvalues of $H_{gg}$ are capped at 0.999 and a small
+  eigenvalue floor is applied during the square-root step.
+
+An alternative default baseline is `mgcv`'s `unconditional = TRUE` covariance,
+which additionally accounts for smoothing-parameter uncertainty via a
+Kass--Steffey correction [@WoodPyaSafken2016]; our study focuses on the standard
+$V_p$ default, but comparing against `unconditional = TRUE` is a natural
+direction for future work.
 
 A subtlety specific to the penalized setting motivates our own implementation
 rather than an off-the-shelf one. Generic cluster-robust tools such as
@@ -388,26 +404,30 @@ if ("cl2" %in% levels(s1$method)) {
 Study 1 delivers four messages. First, the cluster-robust sandwich is essential
 once within-curve dependence is present: under AR1(0.9) and Fourier$^+$(0.3)
 the default intervals collapse for both families, whereas the cluster estimator
-holds coverage near 86--89% (@fig-s1-heatmap, @fig-s1-improvement). Second, the
-observation-level HC estimator is *not* an adequate substitute --- because it
-still treats the grid points within a curve as independent, its $\text{SD}(z)$
-remains well above one under correlation (@fig-s1-zsd), confirming that the
-correction must operate at the curve (cluster) level. Third, the CL2 leverage
-adjustment is negligible at the cluster counts of Study 1 ($G = 200$--$400$):
-the per-cluster leverage is tiny, so CL2 and CR1 coverage are essentially
-indistinguishable (@fig-s1-cl2). Fourth, a robust covariance is sometimes needed
-even under independent errors: the Poisson default undercovers under IID because
-the working model omits overdispersion, while the Binomial default is adequate
-under IID, where its mean--variance link is correctly specified.
+holds coverage near approximately 86--89% (@fig-s1-heatmap, @fig-s1-improvement).
+Second, the observation-level HC estimator is *not* an adequate substitute ---
+because it still treats the grid points within a curve as independent, its
+$\text{SD}(z)$ remains well above one under correlation (@fig-s1-zsd), confirming
+that the correction must operate at the curve (cluster) level. Third, the CL2
+leverage adjustment is negligible at the cluster counts of Study 1
+($G = 200$--$400$): the per-cluster leverage is tiny, so CL2 and CR1 coverage
+are essentially indistinguishable (@fig-s1-cl2). Fourth, a robust covariance is
+sometimes needed even under independent errors: the Poisson default undercovers
+under IID because the working model omits overdispersion, while the Binomial
+default is adequate under IID, where its mean--variance link is correctly
+specified.
 
 A residual gap remains: even the cluster intervals do not reach the nominal 90%,
-plateauing around 84--89%. Because the CL2 correction --- which specifically
-targets finite-sample sandwich bias --- does not close this gap, the shortfall
-is unlikely to be a small-sample variance-estimation artifact. We attribute it
-instead to penalization/smoothing bias of the coefficient estimates themselves:
-the sandwich corrects the *variance* of $\hat\theta$ but not the *bias* induced
-by the smoothing penalty, which no covariance estimator can remove. We return to
-this point in @sec-discussion.
+plateauing around approximately 84--89%. The CL2 correction --- which specifically
+targets finite-sample sandwich bias --- does not close this gap, and crucially the
+gap persists at the large $G$ of Study 1 ($G = 200$--$400$), where both leverage
+and $t$-vs-$z$ reference-distribution effects are negligible. The leading
+explanation is penalization/smoothing bias of the coefficient estimates themselves:
+the sandwich corrects the *variance* of $\hat\theta$ but not the *bias* induced by
+the smoothing penalty, which no covariance estimator can remove. Other contributors
+(smoothing parameter uncertainty, basis effects) cannot be fully excluded, but
+penalization bias has the strongest theoretical support. We return to this point
+in @sec-discussion.
 
 
 ## Study 2: Grid Refinement {#sec-study2}
@@ -476,14 +496,14 @@ s2_cov_by_term <- s2_summary_by_n |>
 
 @fig-s2-hero presents the central finding: under within-curve correlation,
 default SE calibration deteriorates dramatically as the response grid becomes
-finer. Coverage of the `ff` term drops from approximately 62% on the coarse grid
-to 43% on the fine grid under AR1(0.9), while the cluster sandwich remains
-stable. CL2 consistently outperforms cluster by 5--10 percentage points at
-$G = 20$--$80$.
+finer. Coverage of the `ff` term drops from approximately 60--65% on the coarse
+grid to around 40--45% on the fine grid under AR1(0.9), while the cluster
+sandwich remains stable. CL2 consistently outperforms cluster by approximately
+5--10 percentage points at $G = 20$--$80$.
 
 ```{r}
 #| label: fig-s2-hero
-#| fig-cap: "Default SE collapse under correlation on finer grids. Red dashed = 90% nominal. SNR averaged. CL2 outperforms cluster by 5--10pp at $G = 20$--$80$."
+#| fig-cap: "Default SE collapse under correlation on finer grids. Red dashed = 90% nominal. SNR averaged. CL2 approximately outperforms cluster by 5--10pp at $G = 20$--$80$."
 #| fig-width: 7
 #| fig-height: 7
 s2_cov_by_term |>
@@ -602,10 +622,11 @@ ggplot(
 ### CL2 vs. cluster at small G {#sec-s2-cl2}
 
 @fig-s2-cl2-gain shows the incremental coverage gain of CL2 over cluster. Under
-correlation, CL2 consistently adds 5--10 percentage points, with the largest
-gains at small $n$ (few clusters). Under IID, CL2 also improves over cluster
-because the cluster sandwich undercovers due to using $z = 1.96$ critical values
-instead of the $t_{G-1}$ distribution at small $G$.
+correlation, CL2 consistently adds approximately 5--10 percentage points, with
+the largest gains at small $n$ (few clusters). Under IID, CL2 also improves over
+cluster, possibly because the cluster sandwich undercovers due to using $z = 1.96$
+critical values rather than a $t_{G-1}$ distribution at small $G$ (a conjecture
+to be confirmed by a direct reference-distribution experiment).
 
 ```{r}
 #| label: fig-s2-cl2-gain
@@ -669,17 +690,22 @@ response-grid resolution $n_y$, exactly the axis Study 2 varies.
      PAPER-PLAN.md (Part A4); verify every quoted figure against the
      regenerated Study 2 summaries before submission. -->
 
+<!-- DRAFT: narrative below uses the established findings recorded in
+     PAPER-PLAN.md (Part A4); verify every quoted figure against the
+     regenerated Study 2 summaries before submission. -->
 Study 2 isolates a phenomenon that is easy to miss in practice: refining the
 response grid, normally regarded as harmless or even beneficial, actively
 *degrades* default coverage under within-curve correlation. For the `ff` term
-under AR1(0.9), default coverage falls from roughly 62% on the coarse grid
-($n_y = 40$) to about 43% on the fine grid ($n_y = 120$), while the cluster
-sandwich stays essentially flat near 86--87% (@fig-s2-hero). The mechanism is
-visible in the diagonal variance ratio (@fig-s2-diag-ratio): as the grid is
-refined, each additional, highly correlated evaluation point is counted by the
-default formula as fresh information, so the model-based variance shrinks far
-faster than the true sampling variance. The cluster sandwich, which pools the
-score over the whole curve before squaring, is immune to this double-counting.
+under AR1(0.9), default coverage falls from approximately 60--65% on the coarse
+grid ($n_y = 40$) to around 40--45% on the fine grid ($n_y = 120$), while the
+cluster sandwich stays essentially flat near approximately 86--87% (@fig-s2-hero).
+The mechanism is visible in the diagonal variance ratio (@fig-s2-diag-ratio): as
+the grid is refined, each additional, highly correlated evaluation point is
+counted by the default formula as fresh information, so the model-based variance
+shrinks far faster than the true sampling variance (the diagonal ratio falling
+from around 0.3 on coarse grids toward around 0.1 on fine grids under
+correlation). The cluster sandwich, which pools the score over the whole curve
+before squaring, is largely resistant to this double-counting.
 
 Two secondary findings complete the picture. The intercept "paradox" on coarse
 grids --- low coverage despite $\bar z \approx 0$ and $\text{SD}(z) \approx 1$
@@ -687,10 +713,11 @@ grids --- low coverage despite $\bar z \approx 0$ and $\text{SD}(z) \approx 1$
 offset in a spatially structured way that cancels in the average but not within
 each replicate, and it resolves once $n_y \geq 80$ (@fig-s2-intercept). Finally,
 at the small cluster counts of Study 2 ($G = 20$--$80$) the CL2 leverage
-adjustment matters, adding roughly 5--10 percentage points of coverage over CR1
-(@fig-s2-cl2-gain); part of this gain reflects the leverage inflation proper and
-part reflects CL2 compensating for the use of $z = 1.96$ rather than a $t_{G-1}$
-reference at small $G$ [@ImbensKolesar2016; @CameronMiller2015].
+adjustment matters, adding approximately 5--10 percentage points of coverage over
+CR1 (@fig-s2-cl2-gain); part of this gain reflects the leverage inflation proper
+and part may reflect CL2 partially compensating for the use of $z = 1.96$ rather
+than a $t_{G-1}$ reference at small $G$ (a conjecture to be confirmed by a direct
+$t_{G-1}$ experiment) [@ImbensKolesar2016; @CameronMiller2015].
 
 
 ## Discussion {#sec-discussion}
@@ -699,6 +726,9 @@ reference at small $G$ [@ImbensKolesar2016; @CameronMiller2015].
      PAPER-PLAN.md (Part A4); verify quoted figures against regenerated
      summaries before submission. -->
 
+<!-- DRAFT: synthesis below uses the established findings recorded in
+     PAPER-PLAN.md (Part A4); verify quoted figures against regenerated
+     summaries before submission. -->
 Taken together, the two studies tell a consistent story about *why* default
 `pffr()` intervals fail and *what* fixes them. The failure mode is a mismatch
 between the working error model --- independent grid points with a common
@@ -708,35 +738,42 @@ information, it understates the sampling variance, and the understatement *grows
 with the number of grid points per curve. This is the unifying mechanism behind
 both the family-wide collapse of Study 1 and the grid-refinement collapse of
 Study 2, where the diagonal variance ratio for default standard errors falls
-from roughly 0.3 on coarse grids toward 0.1 on fine grids under correlation. The
-cluster-robust sandwich removes the mismatch by requiring only independence
-*across* curves, and is correspondingly stable across families, correlation
-structures, and grid resolutions.
+from around 0.3 on coarse grids toward around 0.1 on fine grids under
+correlation. The cluster-robust sandwich removes the mismatch by requiring only
+independence *across* curves, and is correspondingly stable across families,
+correlation structures, and grid resolutions.
 
 The residual coverage gap --- cluster intervals plateauing around 84--89% rather
 than the nominal 90% --- deserves emphasis precisely because it is *not* fixed by
-the sandwich machinery. The CL2 correction, designed to remove finite-sample
-sandwich bias, narrows the gap at small $G$ but does not eliminate it, and at
-large $G$ the gap persists essentially unchanged. The most plausible explanation
-is smoothing/penalization bias in $\hat\theta$ itself: a robust covariance
-estimator corrects the spread of the sampling distribution but not its centre,
-so any penalty-induced bias in the coefficient surface leaks directly into
-coverage. An orthogonal remedy would be to model the within-curve error
-covariance explicitly --- for example via functional mixed models or covariance
-smoothing [@CederbaumPouplierHooleGreven2016; @CederbaumScheiplGreven2018] ---
-rather than to robustify against it; the sandwich's appeal is that it requires no
-such model and is agnostic to the form of the dependence.
+the sandwich machinery. The strongest evidence that this is not a finite-sample
+variance-estimation artifact is that the gap persists at large $G$ (Study 1,
+$G = 200$--$400$), where both the per-cluster leverage correction and any
+$t$-vs-$z$ reference-distribution effect are negligible. The leading explanation
+is therefore smoothing/penalization bias in $\hat\theta$ itself: a robust
+covariance estimator corrects the spread of the sampling distribution but not its
+centre, so penalty-induced bias in the coefficient surface leaks directly into
+coverage. We do not claim to have ruled out other contributors --- smoothing
+parameter uncertainty, basis and discretization effects, or distributional effects
+of the penalty at moderate $G$ --- but penalization bias has the strongest
+theoretical grounding in this setting. An orthogonal remedy would be to model the
+within-curve error covariance explicitly --- for example via functional mixed
+models or covariance smoothing [@CederbaumPouplierHooleGreven2016;
+@CederbaumScheiplGreven2018] --- rather than to robustify against it; the
+sandwich's appeal is that it requires no such model and is agnostic to the form
+of the dependence.
 
 The behaviour of CL2 is governed by the number of clusters. At the large $G$ of
 Study 1 the leverage adjustment is negligible, whereas at the small $G$ of
-Study 2 it contributes a material 5--10 percentage points, partly by inflating
-for leverage and partly by standing in for a small-sample $t_{G-1}$ reference
-distribution. This mirrors the cluster-robust inference literature in
-econometrics, where small-$G$ corrections and the choice of reference
-distribution are central [@CameronMiller2015; @ImbensKolesar2016], and where
-bootstrap alternatives --- the cluster/curve bootstrap [@FieldWelsh2007] and the
-wild cluster bootstrap [@CameronGelbachMiller2008; @MacKinnonWebb2017;
-@MacKinnonWebb2018] --- offer a further route that we do not pursue here.
+Study 2 it contributes approximately 5--10 percentage points, partly by inflating
+for leverage and partly (conjecturally) by compensating for the use of $z = 1.96$
+rather than a small-sample $t_{G-1}$ reference distribution --- a direct
+comparison of $z$- and $t_{G-1}$-based intervals remains to be run. This mirrors
+the cluster-robust inference literature in econometrics, where small-$G$
+corrections and the choice of reference distribution are central
+[@CameronMiller2015; @ImbensKolesar2016], and where bootstrap alternatives ---
+the cluster/curve bootstrap [@FieldWelsh2007] and the wild cluster bootstrap
+[@CameronGelbachMiller2008; @MacKinnonWebb2017; @MacKinnonWebb2018] --- offer a
+further route that we do not pursue here.
 
 Several limitations frame these conclusions. Our intervals are *pointwise*;
 inference targeting the whole coefficient surface jointly requires simultaneous
@@ -757,8 +794,8 @@ exception, not the rule, in functional data. Whenever within-curve dependence is
 plausible, use the cluster-robust (`sandwich = "cluster"`) intervals, which were
 stable across every family, correlation structure, and grid resolution we
 examined. When the number of curves is small (roughly $G < 100$), prefer the
-leverage-adjusted `sandwich = "cl2"` variant, which recovers a further 5--10
-percentage points of coverage. Counter-intuitively, a finer response grid makes
+leverage-adjusted `sandwich = "cl2"` variant, which recovers approximately
+5--10 percentage points of coverage. Counter-intuitively, a finer response grid makes
 robust intervals *more* necessary, not less, because it amplifies the
 double-counting that sinks the default standard errors. Finally, users should not
 expect even robust intervals to attain exact nominal coverage: a modest residual

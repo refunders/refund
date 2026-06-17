@@ -1135,6 +1135,10 @@ build_cl2_working_gaulss <- function(b, cluster_id) {
 #' @returns A p x p covariance matrix.
 #' @keywords internal
 assemble_cluster_sandwich <- function(scores, cluster_id, Vp, B2) {
+  G_check <- length(unique(cluster_id))
+  if (G_check < 2) {
+    stop("Need at least two clusters for cluster sandwich.", call. = FALSE)
+  }
   U <- rowsum(scores, cluster_id)
   meat <- crossprod(U)
   hc1 <- length(unique(cluster_id)) / (length(unique(cluster_id)) - 1)
