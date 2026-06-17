@@ -77,8 +77,15 @@ this and know where everything is and what to do next. **Keep it current.**
   not yet implemented.** fastFMM installs **locally** (PPM binaries); **LRZ Rfast
   install unresolved** (gcc13 `<numeric>`/`std::iota` + LinkingTo path) — not
   needed for the light local Gaussian-analytic pilot.
-- **LRZ boot/cl2 jobs**: queued, will run over hours/days. Monitor `squeue`;
-  fetch when done.
+- **LRZ E3 boot jobs**: `5267685_[1-12]` (study1), `5267686_[1-18]` (study2)
+  queued, run over hours/days. Monitor `squeue`; fetch when done.
+- **`study2-cl2-timing/` + `study2-results-extracted/` RECOVERED (2026-06-17)** from
+  the "Teleport auto-stash" (`git stash@{0}`, main tree — teleport had `git add`-ed
+  everything) via `git restore --source=stash@{0} -- <paths>`; now present in
+  `~/fda/refund/ci-benchmark/` and the ci-paper symlinks resolve. The redundant LRZ
+  cl2-timing job (`5267687`) was **cancelled**. → The `TODO(data)` cost table is now
+  fillable from `study2-cl2-timing/summary_by_method.csv` (+ `summary_overheads.csv`).
+  Keep the stash (it holds the full pre-teleport working state, 19,498 files).
 
 **TO RESUME (ordered):**
 1. Confirm paper renders clean (PDF) after this session's edits; commit qmd.
