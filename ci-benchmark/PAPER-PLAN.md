@@ -68,17 +68,15 @@ this and know where everything is and what to do next. **Keep it current.**
 `ci-experiments` (boot fix `10e0241b`).
 
 **IN FLIGHT / BLOCKED:**
-- **E4/fastFMM — REFRAMED.** The driver (`sim-study-fastfmm-extension.R`) is
-  committed (`c5c7703e`), but `fui()` **cannot fit the existing Study 1/2 DGPs**:
-  one curve per subject → degenerate `(1|id)` random effect (lme4 rejects it).
-  fastFMM/FUI needs **repeated/longitudinal** functional data. **Decision (user):
-  add a repeated-measures function-on-scalar sub-study following Cui et al. (2022,
-  JCGS) where FUI is valid — PLANNED in `NEW-EXPERIMENTS-PLAN.md` (E4 section),
-  not yet implemented.** fastFMM installs **locally** (PPM binaries); **LRZ Rfast +
-  fastFMM install RESOLVED by Codex (2026-06-17)** — removed the `~/.Rprofile`
-  stdout banner (was breaking include-path detection), added `<numeric>` to Rfast
-  sources, and `PKG_CPPFLAGS =`→`+=` in Rfast `Makevars`. Both load on LRZ now;
-  details in `NEW-EXPERIMENTS-PLAN.md` (E4 install status).
+- **E4/fastFMM — ABANDONED (2026-06-18, user).** The fui comparison is **not** in
+  the paper. A council (Codex+Gemini+Claude, unanimous) found that even a correct
+  repeated-measures comparison opens a methodological rabbit hole (pffr's
+  penalized-RE bread under-propagates between-subject variance; FUI targets a
+  different longitudinal/marginal setting; not apples-to-apples) tangential to the
+  paper's function-on-function-independent-curve focus. Full write-up:
+  `ci-benchmark/E4-FASTFMM-FINDINGS.md`. Kept byproduct: `coef.pffr(cluster=)` for
+  subject/nested-level sandwich clustering (`b0cee3d8`, tested). Competitor set for
+  the paper is now **E1/E2/E3** only.
 - **LRZ E3 boot jobs**: `5267685_[1-12]` (study1), `5267686_[1-18]` (study2)
   queued, run over hours/days. Monitor `squeue`; fetch when done.
 - **`study2-cl2-timing/` + `study2-results-extracted/` RECOVERED (2026-06-17)** from
@@ -93,10 +91,8 @@ this and know where everything is and what to do next. **Keep it current.**
 1. Confirm paper renders clean (PDF) after this session's edits; commit qmd.
 2. Fetch LRZ results (E3 boot, cl2-timing) when jobs finish; integrate into report
    (`load_*` helpers) and de-provisionalize numbers; fill `TODO(data)` cost table.
-3. Implement the planned E4 **repeated-measures** sub-study (see
-   `NEW-EXPERIMENTS-PLAN.md` E4 section): new longitudinal function-on-scalar DGP
-   per Cui et al. (2022) where `fui` is valid; pilot locally (fastFMM installs via
-   PPM binaries). Resolve LRZ `Rfast` only if LRZ FUI runs are needed.
+3. ~~Implement E4 (fastFMM/FUI) sub-study~~ — **ABANDONED** (see above +
+   `E4-FASTFMM-FINDINGS.md`). Competitor set is E1/E2/E3.
 4. Optional council polish: gaulss `logb` detail (M6), leverage cap/floor wording
    (M7), index `g`/`i` & `n_g`/`D_g` unification (M12/M13), M10 ff-identifiability
    (`∫β ds=0` vs per-t centering) — verify against DGP truth-centering.
