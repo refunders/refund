@@ -151,50 +151,52 @@ new `sim-study-fastfmm-longitudinal.R` (or extend the existing driver with a
 repeated-measures DGP path); reuse `extract_fui_metrics()` /
 `compute_qn_at_alpha()` from the current driver.
 
-### Status (2026-06-17)
+### Status (2026-06-18) — first driver superseded; design corrected
 
-Driver `ci-benchmark/sim-study-fastfmm-longitudinal.R` implemented and smoke-tested (2 reps, cell 1: N=50, J=3, L=60).
+The first driver (`sim-study-fastfmm-longitudinal.R`, commit `a321cd9e`) had two
+problems found in review + a diagnostic (see below). Both are now resolved at the
+infrastructure level; the **driver itself still needs the corresponding revision**.
 
-**Smoke result summary:**
-| method | term | mean_coverage (2 reps) | mean_width |
-|--------|------|------------------------|------------|
-| fastfmm | intercept | 1.00 | 0.430 |
-| fastfmm | linear | 0.93 | 0.080 |
-| pffr_cl2 | intercept | 1.00 | 0.274 |
-| pffr_cl2 | linear | 0.74 | 0.236 |
-| pffr_cluster | intercept | 0.98 | 0.065 |
-| pffr_cluster | linear | 0.31 | 0.036 |
-| pffr_default | intercept | 0.98 | 0.065 |
-| pffr_default | linear | 0.31 | 0.036 |
+**(1) Subject-level clustering — root cause found and FIXED in the package.**
+pffr's sandwich always clustered **by curve** (each of the N×J rows). For
+repeated measures the independent unit is the **subject** (J curves each), so
+by-curve clustering ≈ the Bayesian SE and undercovers. **`coef.pffr()` now takes a
+`cluster=` argument** (per-curve grouping → subject), commit `b0cee3d8` + test.
+The subagent's framing ("pffr's sandwich is not designed for repeated measures")
+was wrong — it just needed the correct cluster level.
 
-Validation: coverage in [0,1] ✓, widths positive ✓, joint width ≥ pointwise (fui) ✓, all methods/terms present ✓.
+**(2) Functional RE works — the "centering issue" was a non-problem.**
+`pffr(Y ~ zlin + s(id, bs="re"))` fits a *functional* random intercept fine
+(~13s, smterms `Intercept(yindex) | zlin(yindex) | s(id,yindex)`), and the
+subject-clustered sandwich works on it. The subagent had dodged this by switching
+to a scalar RE. **User decision (2026-06-18): use the functional RE per the plan.**
 
-**Key finding from smoke run:**
-- fui coverage is near-nominal for both terms (100%, 93% — 2 reps, high MC variance).
-- pffr intercept coverage is near-nominal (98-100%) when using centered beta0(t) truth.
-- pffr linear coverage is severely **undercovering** (~31% for default/cluster). Root cause:
-  pffr's sandwich CIs cluster **by curve** (each of the N*J rows = one cluster), but the
-  correct unit is the **subject** (N clusters of J curves each). The cluster-by-curve SE
-  ≈ Bayesian SE and underestimates uncertainty by ~3x for the linear term. CL2 helps
-  (coverage 74%, SE ratio ~2x) but still undercovering.
-  **This is a core scientific finding** of this sub-study: pffr's current sandwich
-  infrastructure is not designed for repeated-measures functional data; the RE term
-  `c(s(id, bs="re"))` captures the within-subject correlation for point estimates but
-  not for the sandwich variance.
+**Diagnostic (functional-RE DGP, N=50, J=4, L=50, 12 reps) — β1(t) coverage:**
+| method | coverage (vs per-rep truth) |
+|--------|------|
+| pffr default | **0.19** |
+| pffr cluster **by subject** | **0.45** |
+| pffr cl2 **by subject** | **0.80** |
+| fastFMM (fui) | **0.88** |
 
-**DGP design notes:**
-- Uses scalar (constant-over-t) RE `b_i ~ N(0, sigma_b^2)` matching FUI's `(1|id)`.
-  Original plan had a functional RE `b_i(t)`; changed to scalar for apples-to-apples.
-- `beta0(t)` and `beta1(t)` are zero-mean B-spline functions; `zlin` is centered
-  per-rep. This prevents mgcv centering from shifting truth alignment.
-- pffr uses `c(s(id, bs="re"))` (c() wrapper = constant over t = scalar RE).
+→ The subject-level cluster sandwich + cl2 recover pffr's coverage dramatically
+(0.19→0.80), approaching fui. This is the headline result and it is favourable:
+pffr's robust CIs work on longitudinal data, and pffr also handles the
+function-on-function case fui cannot. (Caveat: a bias-vs-SE decomposition was NOT
+obtained — the diagnostic redrew the truth each rep, so empirical-SD/bias columns
+are invalid. For the real study, FIX the truth per cell so bias/empSE are valid.)
 
-**Next steps before pilot:**
-- Add subject-level cluster sandwich to pffr output (requires custom cluster ID
-  mapping N*J rows → N subjects). This is new capability needed for longitudinal pffr.
-- Run pilot (10 reps, all 4 cells) after above fix, or run pilot as-is and document
-  the undercoverage as the finding.
-- Consider adding a 5th method: pffr with subject-clustered sandwich (custom).
+**Driver revision still TODO (de-risked, clearly specified):**
+- DGP: functional RE `b_i(t)=Σ_k ξ_ik ψ_k(t)` (K≈3, decreasing λ). FIX β0/β1 truth
+  per cell (random across cells, fixed across reps) → enables bias/empSE.
+- pffr fit: `Y ~ zlin + s(id, bs="re")`; coef with `sandwich∈{none,cluster,cl2}`
+  AND `cluster = as.integer(id)` (per curve) for the cluster/cl2 variants.
+- fui: `Y ~ zlin + (1|id)`, analytic.
+- Factorial: vary N, J, and **RE strength** (scale λ) ; add ≥1 misspecification
+  cell (e.g. heteroskedastic / AR ε, or non-Gaussian) per setup-benchmark.
+- Fixes: M1 intercept `seWithMean` (doc≠code; make β1 the primary clean term);
+  M3 add bias/rmse to the fui rows for metric symmetry.
+- Then: council review → smoke/pilot → LRZ (fastFMM/Rfast now install there).
 
 Output dir: `ci-benchmark/study4-longitudinal/`
 
