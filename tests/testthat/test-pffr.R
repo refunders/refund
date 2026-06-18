@@ -1722,6 +1722,47 @@ test_that("pffr with sandwich='cluster' yields cluster-robust covariance", {
   expect_equal(coef_cl$pterms[, "se"], coef_std_cl$pterms[, "se"])
 })
 
+test_that("coef.pffr `cluster` argument clusters at a custom (subject) level", {
+  skip_on_cran()
+
+  # Repeated-measures data: J curves per subject share a subject random
+  # intercept (constant over t), so curves are NOT independent within subject.
+  set.seed(99)
+  N <- 20L
+  J <- 3L
+  L <- 15L
+  t <- seq(0, 1, length.out = L)
+  id <- rep(seq_len(N), each = J)
+  x <- rnorm(N * J)
+  b <- rnorm(N, sd = 1)
+  Y <- matrix(rnorm(N * J * L, sd = 0.5), N * J, L) +
+    matrix(b[id], N * J, L) +
+    outer(x, sin(2 * pi * t))
+  dat <- data.frame(id = factor(id), x = x)
+  dat$Y <- I(Y)
+  fit <- suppressWarnings(
+    pffr(Y ~ x + c(s(id, bs = "re")), yind = t, data = dat)
+  )
+
+  subj <- as.integer(dat$id) # one entry per curve
+
+  co_curve <- coef(fit, sandwich = "cluster") # default: cluster by curve
+  co_subj <- coef(fit, sandwich = "cluster", cluster = subj) # by subject
+
+  se_curve <- unlist(lapply(co_curve$smterms, function(s) s$coef$se))
+  se_subj <- unlist(lapply(co_subj$smterms, function(s) s$coef$se))
+
+  # Clustering at the subject level changes the standard errors.
+  expect_false(isTRUE(all.equal(se_curve, se_subj)))
+  # cl2 with a custom cluster also runs.
+  expect_type(coef(fit, sandwich = "cl2", cluster = subj), "list")
+  # A wrong-length cluster errors cleanly.
+  expect_error(
+    coef(fit, sandwich = "cluster", cluster = 1:3),
+    "one entry per curve"
+  )
+})
+
 test_that("pffr with sandwich='hc' yields observation-level HC sandwich", {
   skip_on_cran()
 
