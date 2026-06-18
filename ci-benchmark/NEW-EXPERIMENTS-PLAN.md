@@ -95,6 +95,14 @@ E3 sizing (to decide): Study 1 = 12 cells × 150 reps = 1800 base fits × B; Stu
 
 ## E4 — fastFMM / FUI comparison (NEW repeated-measures sub-study)
 
+> **ABANDONED (2026-06-18, user decision): the fastFMM/FUI comparison will NOT be
+> in the paper.** See `E4-FASTFMM-FINDINGS.md` for the full write-up (council
+> verdict: subject-level clustering is correct but the binding constraint is
+> pffr's penalized-RE bread under-propagating between-subject variance; FUI targets
+> a different, longitudinal/repeated-measures setting and is not apples-to-apples).
+> The reusable byproduct — `coef.pffr(cluster=)` for subject/nested clustering
+> (`b0cee3d8`) — is kept. The rest of this section is retained for the record only.
+
 **Finding (2026-06-17).** The first E4 driver
 (`sim-study-fastfmm-extension.R`) tried to run `fastFMM::fui()` on the EXISTING
 Study 1/2 DGPs. This is **infeasible**: those DGPs have ONE functional curve per
