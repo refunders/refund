@@ -952,8 +952,32 @@ pffr_expand_variables <- function(
 #' @param pffr_meta The `pffr` metadata list from a fitted model.
 #' @returns Integer vector of length equal to the number of fitted rows.
 #' @keywords internal
-build_cluster_id <- function(pffr_meta) {
-  if (isTRUE(pffr_meta$is_sparse)) {
+build_cluster_id <- function(pffr_meta, cluster = NULL) {
+  if (!is.null(cluster)) {
+    # User-supplied grouping: one entry per curve (functional observation),
+    # mapping each curve to its independent unit (e.g. subject for repeated
+    # measures). Expanded to one entry per vectorized observation. This lets
+    # the cluster-robust sandwich cluster at the correct level when curves are
+    # nested in higher-level units, rather than the default by-curve clustering.
+    if (isTRUE(pffr_meta$is_sparse)) {
+      stop(
+        "Custom `cluster` is only supported for densely-observed (gridded) ",
+        "responses, not sparse/irregular fits.",
+        call. = FALSE
+      )
+    }
+    if (length(cluster) != pffr_meta$nobs) {
+      stop(
+        sprintf(
+          "`cluster` must have one entry per curve (length %d); got %d.",
+          pffr_meta$nobs,
+          length(cluster)
+        ),
+        call. = FALSE
+      )
+    }
+    cluster_id <- rep(cluster, each = pffr_meta$nyindex)
+  } else if (isTRUE(pffr_meta$is_sparse)) {
     cluster_id <- pffr_meta$ydata$.obs
   } else {
     cluster_id <- rep(seq_len(pffr_meta$nobs), each = pffr_meta$nyindex)

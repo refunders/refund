@@ -1044,6 +1044,14 @@ compute_ci_critical <- function(
 #'   \code{"none"}: use model's default covariance.
 #'   If the model was fitted with a matching sandwich type, the pre-computed
 #'   covariance matrices are used directly.
+#' @param cluster optional grouping for the cluster-robust sandwich
+#'   (\code{sandwich = "cluster"} or \code{"cl2"}): a vector with one entry per
+#'   curve (functional observation) mapping each curve to its independent unit.
+#'   Defaults to \code{NULL}, i.e. each curve is its own cluster. Supply this for
+#'   nested / repeated-measures designs where several curves share a higher-level
+#'   unit (e.g. a subject id with multiple visits), so the sandwich clusters at
+#'   the correct level. Only supported for densely-observed responses. When
+#'   supplied, the pre-computed-covariance shortcut is bypassed.
 #' @param seWithMean logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?
 #' @param n1 see below
 #' @param n2 see below
@@ -1086,6 +1094,7 @@ coef.pffr <- function(
   se = TRUE,
   freq = FALSE,
   sandwich = c("cluster", "cl2", "hc", "none"),
+  cluster = NULL,
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
@@ -1260,17 +1269,17 @@ coef.pffr <- function(
         model_sandwich <- if (model_sandwich) "cluster" else "none"
       }
 
-      if (model_sandwich == sandwich) {
+      if (is.null(cluster) && model_sandwich == sandwich) {
         covmat <- if (freq) object$Ve else (object$Vc %||% object$Vp)
       } else if (sandwich == "cluster") {
         object_stripped <- object
         class(object_stripped) <- setdiff(class(object_stripped), "pffr")
-        cluster_id <- build_cluster_id(object$pffr)
+        cluster_id <- build_cluster_id(object$pffr, cluster = cluster)
         covmat <- gam_sandwich_cluster(object_stripped, cluster_id, freq = freq)
       } else if (sandwich == "cl2") {
         object_stripped <- object
         class(object_stripped) <- setdiff(class(object_stripped), "pffr")
-        cluster_id <- build_cluster_id(object$pffr)
+        cluster_id <- build_cluster_id(object$pffr, cluster = cluster)
         covmat <- gam_sandwich_cluster_cl2(
           object_stripped,
           cluster_id,
