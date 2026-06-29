@@ -10,6 +10,9 @@
   se = TRUE,
   freq = FALSE,
   sandwich = c("cluster", "cl2", "hc", "none"),
+  cluster = NULL,
+  dof_correction = NULL,
+  edf_type = NULL,
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
@@ -42,6 +45,26 @@ curve).
 \code{"none"}: use model's default covariance.
 If the model was fitted with a matching sandwich type, the pre-computed
 covariance matrices are used directly.}
+
+\item{cluster}{optional grouping for the cluster-robust sandwich
+(\code{sandwich = "cluster"} or \code{"cl2"}): a vector with one entry per
+curve (functional observation) mapping each curve to its independent unit.
+Defaults to \code{NULL}, i.e. each curve is its own cluster. Supply this for
+nested / repeated-measures designs where several curves share a higher-level
+unit (e.g. a subject id with multiple visits), so the sandwich clusters at
+the correct level. Only supported for densely-observed responses. When
+supplied, the pre-computed-covariance shortcut is bypassed.}
+
+\item{dof_correction}{Optional CR1 small-sample dof correction for
+\code{sandwich = "cluster"}: \code{"none"} or \code{"edf"} (see
+\code{\link{pffr}}). Defaults to \code{NULL}, i.e. inherit whatever the
+model was fitted with, so the stored covariance is reused. Supplying a value
+that differs from the fit forces recomputation with the requested option.
+Ignored (with a warning) for \code{sandwich} other than \code{"cluster"}.}
+
+\item{edf_type}{Which EDF the \code{"edf"} correction uses
+(\code{"trace"}/\code{"edf2"}/\code{"basis"}; see \code{\link{pffr}}).
+Defaults to \code{NULL} (inherit from the fit).}
 
 \item{seWithMean}{logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?}
 

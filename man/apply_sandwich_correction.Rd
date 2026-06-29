@@ -4,7 +4,13 @@
 \alias{apply_sandwich_correction}
 \title{Apply sandwich correction to model covariance matrices}
 \usage{
-apply_sandwich_correction(m, algorithm, type = "cluster")
+apply_sandwich_correction(
+  m,
+  algorithm,
+  type = "cluster",
+  dof_correction = "none",
+  edf_type = "trace"
+)
 }
 \arguments{
 \item{m}{Fitted model.}
@@ -13,6 +19,13 @@ apply_sandwich_correction(m, algorithm, type = "cluster")
 
 \item{type}{`"cluster"` (default) for CR1 cluster-robust, `"cl2"` for
 leverage-adjusted cluster-robust CL2, or `"hc"` for observation-level HC.}
+
+\item{dof_correction}{Optional CR1 small-sample dof correction
+(`"none"`/`"edf"`); applied only when `type = "cluster"`. Ignored (with a
+warning) for `"cl2"`, which already corrects per-cluster leverage.}
+
+\item{edf_type}{Which EDF the `"edf"` correction uses (`"trace"`/`"edf2"`/
+`"basis"`).}
 }
 \value{
 Model with corrected covariance matrices.

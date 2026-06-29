@@ -176,6 +176,22 @@
 #'   \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
 #'   heteroskedasticity but ignores within-curve correlation.
 #'   \code{"none"}: no sandwich correction.
+#' @param dof_correction Optional small-sample degrees-of-freedom correction for
+#'   the \code{sandwich = "cluster"} (CR1) covariance. \code{"none"} (default)
+#'   reproduces the previous behaviour exactly. \code{"edf"} additionally
+#'   multiplies the cluster-robust "meat" by the textbook CR1 factor
+#'   \eqn{(N-1)/(N-\mathrm{EDF})}, where \eqn{N} is the number of fitted
+#'   observations and EDF the model's effective degrees of freedom (selected by
+#'   \code{edf_type}). This is OFF by default and is applied ONLY to
+#'   \code{sandwich = "cluster"}: it is deliberately not combined with
+#'   \code{sandwich = "cl2"}, whose per-cluster leverage adjustment already
+#'   targets the same downward bias (combining them would double-correct).
+#'   Ignored (with a warning) for other \code{sandwich} choices.
+#' @param edf_type Which effective degrees of freedom the \code{"edf"}
+#'   correction uses: \code{"trace"} (default, \code{sum(model$edf)} = trace of
+#'   the penalized hat), \code{"edf2"} (mgcv's bias-corrected EDF), or
+#'   \code{"basis"} (the basis dimension). Only relevant when
+#'   \code{dof_correction = "edf"}.
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}},
 #'   \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
 #'   \code{'\link[mgcv]{jagam}'}. \code{subset} is not implemented.
@@ -269,6 +285,8 @@ pffr <- function(
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
   sandwich = c("cluster", "cl2", "hc", "none"),
+  dof_correction = c("none", "edf"),
+  edf_type = c("trace", "edf2", "basis"),
   ...
 ) {
   call <- match.call()
@@ -277,6 +295,20 @@ pffr <- function(
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
   sandwich <- match.arg(sandwich)
+  dof_correction <- match.arg(dof_correction)
+  edf_type <- match.arg(edf_type)
+  if (dof_correction != "none" && sandwich != "cluster") {
+    warning(
+      "dof_correction = \"",
+      dof_correction,
+      "\" only applies to sandwich = \"cluster\" and is ignored for ",
+      "sandwich = \"",
+      sandwich,
+      "\".",
+      call. = FALSE
+    )
+    dof_correction <- "none"
+  }
   if (sandwich_missing) {
     message(
       "Note: pffr() now defaults to sandwich = \"cluster\" ",
@@ -376,7 +408,9 @@ pffr <- function(
     missing_indices = prep$missing_indices,
     is_sparse = prep$is_sparse,
     ydata = prep$ydata,
-    sandwich = sandwich
+    sandwich = sandwich,
+    dof_correction = dof_correction,
+    edf_type = edf_type
   )
 
   m <- pffr_attach_metadata(m, prep$algorithm, ret)
@@ -384,5 +418,11 @@ pffr <- function(
   if (sandwich == "none") {
     return(m)
   }
-  apply_sandwich_correction(m, prep$algorithm, type = sandwich)
+  apply_sandwich_correction(
+    m,
+    prep$algorithm,
+    type = sandwich,
+    dof_correction = dof_correction,
+    edf_type = edf_type
+  )
 }

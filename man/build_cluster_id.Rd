@@ -4,10 +4,16 @@
 \alias{build_cluster_id}
 \title{Build cluster ID vector from pffr metadata}
 \usage{
-build_cluster_id(pffr_meta)
+build_cluster_id(pffr_meta, cluster = NULL)
 }
 \arguments{
 \item{pffr_meta}{The `pffr` metadata list from a fitted model.}
+
+\item{cluster}{Optional user-supplied grouping with one entry per curve,
+mapping each curve to its independent unit (e.g. a subject id for repeated
+measures). Expanded to one entry per vectorized observation so the
+cluster-robust sandwich clusters at that level instead of by curve.
+`NULL` (default) clusters by curve. Only supported for dense responses.}
 }
 \value{
 Integer vector of length equal to the number of fitted rows.

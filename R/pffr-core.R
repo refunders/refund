@@ -448,6 +448,7 @@ pffr_build_call <- function(
   newcall$yind <- newcall$tensortype <- newcall$bs.int <-
     newcall$bs.yindex <- newcall$algorithm <- newcall$ydata <- NULL
   newcall$sandwich <- NULL
+  newcall$dof_correction <- newcall$edf_type <- NULL
   newcall$formula <- new_formula
   newcall$data <- quote(pffr_data)
   newcall[[1]] <- algorithm
@@ -672,7 +673,9 @@ pffr_build_metadata <- function(
   missing_indices,
   is_sparse,
   ydata,
-  sandwich
+  sandwich,
+  dof_correction = "none",
+  edf_type = "trace"
 ) {
   list(
     call = call,
@@ -692,7 +695,9 @@ pffr_build_metadata <- function(
     missing_indices = missing_indices,
     is_sparse = is_sparse,
     ydata = ydata,
-    sandwich = sandwich
+    sandwich = sandwich,
+    dof_correction = dof_correction,
+    edf_type = edf_type
   )
 }
 
@@ -950,6 +955,11 @@ pffr_expand_variables <- function(
 #' Maps each row of the vectorized model matrix back to its curve.
 #'
 #' @param pffr_meta The `pffr` metadata list from a fitted model.
+#' @param cluster Optional user-supplied grouping with one entry per curve,
+#'   mapping each curve to its independent unit (e.g. a subject id for repeated
+#'   measures). Expanded to one entry per vectorized observation so the
+#'   cluster-robust sandwich clusters at that level instead of by curve.
+#'   `NULL` (default) clusters by curve. Only supported for dense responses.
 #' @returns Integer vector of length equal to the number of fitted rows.
 #' @keywords internal
 build_cluster_id <- function(pffr_meta, cluster = NULL) {
@@ -1081,8 +1091,26 @@ build_cl2_working_standard <- function(b, cluster_id) {
 
 #' Build CL2 working representation for gaulss family
 #'
-#' Uses a pseudo-observation expansion with one pseudo-row per linear predictor
-#' component (location and scale).
+#' Uses a Fisher-weighted two-block IRLS whitening, with one pseudo-row per
+#' linear predictor component (location and scale). For `gaulss` the expected
+#' Fisher information is block-diagonal in the location (`eta1`) and scale
+#' (`eta2`) predictors,
+#' \deqn{I_{11} = \tau^2,\quad I_{22} = 2 (\mathrm{d}\tau/\mathrm{d}\eta_2)^2 /
+#' \tau^2,\quad I_{12} = 0,}
+#' and each score block factorizes as (Fisher weight) times (residual). The two
+#' blocks therefore decouple: each pseudo-row is whitened with its own Fisher
+#' working weight \eqn{W_k}, putting `Xtilde_k = sqrt(W_k) X_k` into the design
+#' and `z_k = w_k / sqrt(W_k)` into the residual, where `w_k` are the
+#' (prior-weighted) score weights from [compute_gaulss_scores()]. Both blocks
+#' reconstruct the exact gaulss score (`Xtilde_k^T z_k = w_k X_k`), but because
+#' `Xtilde` carries the Fisher weight, the per-cluster hat block
+#' `H_gg = Xtilde_g Vp Xtilde_g^T` is the genuine penalized hat: its total trace
+#' equals the model EDF.
+#'
+#' This replaces an earlier `sign(w) sqrt(|w|)` sign-split factorization, whose
+#' hat block scaled with the residual magnitude `|r|` rather than the
+#' (dimensionless) leverage and so collapsed the small-cluster BRL leverage
+#' inflation.
 #'
 #' @param b Fitted GAM object with `family = gaulss`.
 #' @param cluster_id Cluster vector for original observations.
@@ -1112,33 +1140,43 @@ build_cl2_working_gaulss <- function(b, cluster_id) {
   eta2 <- b$linear.predictors[n_obs + seq_len(n_obs)]
   r <- b$y - mu
 
+  mu_eta1 <- b$family$linfo[[1]]$mu.eta(eta1) # location link derivative
+  mu_eta2 <- b$family$linfo[[2]]$mu.eta(eta2) # dtau/deta2
+
   # Same score components used by compute_gaulss_scores()
-  w1 <- (tau^2 * r) * b$family$linfo[[1]]$mu.eta(eta1)
-  w2 <- (1 / tau - tau * r^2) * b$family$linfo[[2]]$mu.eta(eta2)
+  w1 <- (tau^2 * r) * mu_eta1
+  w2 <- (1 / tau - tau * r^2) * mu_eta2
 
   pw <- b$prior.weights
-  if (!is.null(pw) && any(pw != 1)) {
+  if (is.null(pw)) pw <- rep(1, n_obs)
+  if (any(pw != 1)) {
     w1 <- pw * w1
     w2 <- pw * w2
   }
 
-  make_block <- function(w, lp_idx) {
-    abs_sqrt <- sqrt(abs(w))
-    abs_sqrt[!is.finite(abs_sqrt)] <- 0
+  # Expected Fisher working weights (block-diagonal location/scale).
+  # General (link-robust) location weight uses mu_eta1; W2 uses dtau/deta2.
+  W1 <- pw * tau^2 * mu_eta1^2 # location
+  W2 <- pw * 2 * mu_eta2^2 / tau^2 # scale
 
-    z <- sign(w) * abs_sqrt
+  make_block <- function(W, w, lp_idx) {
+    s <- sqrt(W)
+    s[!is.finite(s)] <- 0
+
+    # z_k = w_k / sqrt(W_k); guard zero/non-finite Fisher weights.
+    z <- w / s
     z[!is.finite(z)] <- 0
 
     Xw_block <- matrix(0, nrow = n_obs, ncol = ncol(X))
     if (!is.null(lp_idx) && length(lp_idx) > 0) {
-      Xw_block[, lp_idx] <- X[, lp_idx, drop = FALSE] * abs_sqrt
+      Xw_block[, lp_idx] <- X[, lp_idx, drop = FALSE] * s
       Xw_block[!is.finite(Xw_block)] <- 0
     }
     list(Xw = Xw_block, z = z)
   }
 
-  block1 <- make_block(w1, lpi[[1]])
-  block2 <- make_block(w2, lpi[[2]])
+  block1 <- make_block(W1, w1, lpi[[1]])
+  block2 <- make_block(W2, w2, lpi[[2]])
 
   list(
     Xw = rbind(block1$Xw, block2$Xw),
@@ -1150,19 +1188,96 @@ build_cl2_working_gaulss <- function(b, cluster_id) {
 #' Assemble cluster-robust sandwich from score matrix
 #'
 #' Given a per-observation score matrix, aggregates by cluster and forms
-#' \eqn{V_{CL} = c \cdot V_p M_{CL} V_p + B_2} with HC1 correction.
+#' \eqn{V_{CL} = f \cdot c \cdot V_p M_{CL} V_p + B_2} with HC1 correction
+#' \eqn{c = G / (G - 1)} and an optional small-sample dof factor \eqn{f}
+#' (default 1; see [compute_dof_factor()]).
 #'
 #' @param scores Per-observation score matrix (n_obs x p).
 #' @param cluster_id Cluster membership vector.
 #' @param Vp Bayesian posterior covariance (p x p).
 #' @param B2 Bias correction matrix (p x p, or scalar 0).
+#' @param dof_factor Scalar multiplier on the meat (default 1). Used to apply
+#'   the optional CR1 small-sample correction \eqn{(N-1)/(N-\mathrm{EDF})}.
 #' @returns A p x p covariance matrix.
 #' @keywords internal
-assemble_cluster_sandwich <- function(scores, cluster_id, Vp, B2) {
+assemble_cluster_sandwich <- function(
+  scores,
+  cluster_id,
+  Vp,
+  B2,
+  dof_factor = 1
+) {
   U <- rowsum(scores, cluster_id)
   meat <- crossprod(U)
   hc1 <- length(unique(cluster_id)) / (length(unique(cluster_id)) - 1)
-  hc1 * Vp %*% meat %*% Vp + B2
+  dof_factor * hc1 * Vp %*% meat %*% Vp + B2
+}
+
+#' Compute the optional CR1 small-sample dof factor
+#'
+#' Returns the scalar \eqn{(N-1)/(N-\mathrm{EDF})} when `dof_correction = "edf"`,
+#' or `1` when `dof_correction = "none"`. Here \eqn{N} is the number of fitted
+#' observations (`length(cluster_id)`) and the effective degrees of freedom is
+#' selected by `edf_type`: `"trace"` uses `sum(b$edf)` (= trace of the penalized
+#' hat), `"edf2"` uses `sum(b$edf2)` (mgcv's bias-corrected EDF), and `"basis"`
+#' uses the basis dimension (`length(b$coefficients)`).
+#'
+#' This is the textbook CR1 finite-sample factor (Stata's cluster-robust default
+#' multiplies the meat by an analogous \eqn{(N-1)/(N-k)} term). It is applied
+#' ONLY in the CR1 path ([gam_sandwich_cluster()]); the CL2 path
+#' ([gam_sandwich_cluster_cl2()]) already performs a per-cluster leverage
+#' correction targeting the same downward bias, so combining the two would
+#' double-correct.
+#'
+#' @param b Fitted GAM object.
+#' @param cluster_id Cluster membership vector (length = number of fitted obs).
+#' @param dof_correction `"none"` (factor 1) or `"edf"`.
+#' @param edf_type Which EDF to use: `"trace"`, `"edf2"`, or `"basis"`.
+#' @returns A finite positive scalar.
+#' @keywords internal
+compute_dof_factor <- function(
+  b,
+  cluster_id,
+  dof_correction = c("none", "edf"),
+  edf_type = c("trace", "edf2", "basis")
+) {
+  dof_correction <- match.arg(dof_correction)
+  if (dof_correction == "none") {
+    return(1)
+  }
+  edf_type <- match.arg(edf_type)
+
+  N <- length(cluster_id)
+  if (!is.finite(N) || N < 2) {
+    stop(
+      "dof_correction = \"edf\" requires at least N = 2 fitted observations.",
+      call. = FALSE
+    )
+  }
+  G <- length(unique(cluster_id))
+  if (G < 2) {
+    stop("Need at least two clusters for cluster sandwich.", call. = FALSE)
+  }
+
+  edf <- switch(
+    edf_type,
+    trace = if (!is.null(b$edf)) sum(b$edf) else NA_real_,
+    edf2 = if (!is.null(b$edf2)) sum(b$edf2) else NA_real_,
+    basis = length(b$coefficients)
+  )
+  if (!is.finite(edf) || edf < 0 || edf >= N) {
+    stop(
+      "dof_correction = \"edf\": effective degrees of freedom (edf_type = \"",
+      edf_type,
+      "\") evaluated to ",
+      format(edf),
+      ", which must be finite and in [0, N) with N = ",
+      N,
+      ". (Is 'edf2' available for this fit?)",
+      call. = FALSE
+    )
+  }
+  (N - 1) / (N - edf)
 }
 
 #' Cluster-robust sandwich covariance estimator
@@ -1176,15 +1291,38 @@ assemble_cluster_sandwich <- function(scores, cluster_id, Vp, B2) {
 #'   each vectorized observation to its curve.
 #' @param freq If `TRUE`, use frequentist sandwich (`B2 = 0`).
 #'   If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).
+#' @param dof_correction Optional small-sample correction multiplying the meat:
+#'   `"none"` (default, factor 1 = current behavior) or `"edf"`, which applies
+#'   the textbook CR1 factor \eqn{(N-1)/(N-\mathrm{EDF})}. This is OFF by default
+#'   and is applied only here (CR1), never in the CL2 path, which already
+#'   corrects per-cluster leverage; see [compute_dof_factor()].
+#' @param edf_type Which effective degrees of freedom the `"edf"` correction
+#'   uses: `"trace"` (default, `sum(b$edf)`), `"edf2"`, or `"basis"`.
 #' @returns A p x p covariance matrix.
 #' @keywords internal
-gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
+gam_sandwich_cluster <- function(
+  b,
+  cluster_id,
+  freq = FALSE,
+  dof_correction = c("none", "edf"),
+  edf_type = c("trace", "edf2", "basis")
+) {
+  dof_correction <- match.arg(dof_correction)
+  edf_type <- match.arg(edf_type)
+  dof_factor <- compute_dof_factor(b, cluster_id, dof_correction, edf_type)
+
   B2 <- if (freq) 0 else b$Vp - b$Ve
   X <- model.matrix(b)
 
   if (b$family$family == "gaulss") {
     scores <- compute_gaulss_scores(b, X)
-    return(assemble_cluster_sandwich(scores, cluster_id, b$Vp, B2))
+    return(assemble_cluster_sandwich(
+      scores,
+      cluster_id,
+      b$Vp,
+      B2,
+      dof_factor = dof_factor
+    ))
   }
 
   # Families that define family$sandwich (e.g. multinom) use custom
@@ -1206,7 +1344,13 @@ gam_sandwich_cluster <- function(b, cluster_id, freq = FALSE) {
     (b$y - mu) /
     (b$sig2 * b$family$variance(mu)) *
     X
-  assemble_cluster_sandwich(scores, cluster_id, b$Vp, B2)
+  assemble_cluster_sandwich(
+    scores,
+    cluster_id,
+    b$Vp,
+    B2,
+    dof_factor = dof_factor
+  )
 }
 
 #' Cluster-robust CL2 sandwich covariance estimator
@@ -1310,9 +1454,20 @@ gam_sandwich_cluster_cl2 <- function(
 #' @param algorithm Algorithm symbol.
 #' @param type `"cluster"` (default) for CR1 cluster-robust, `"cl2"` for
 #'   leverage-adjusted cluster-robust CL2, or `"hc"` for observation-level HC.
+#' @param dof_correction Optional CR1 small-sample dof correction
+#'   (`"none"`/`"edf"`); applied only when `type = "cluster"`. Ignored (with a
+#'   warning) for `"cl2"`, which already corrects per-cluster leverage.
+#' @param edf_type Which EDF the `"edf"` correction uses (`"trace"`/`"edf2"`/
+#'   `"basis"`).
 #' @returns Model with corrected covariance matrices.
 #' @keywords internal
-apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
+apply_sandwich_correction <- function(
+  m,
+  algorithm,
+  type = "cluster",
+  dof_correction = "none",
+  edf_type = "trace"
+) {
   gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
 
   gam_obj_stripped <- gam_obj
@@ -1320,21 +1475,42 @@ apply_sandwich_correction <- function(m, algorithm, type = "cluster") {
 
   if (type %in% c("cluster", "cl2")) {
     cluster_id <- build_cluster_id(gam_obj$pffr)
-    cov_fun <- if (type == "cl2") {
-      gam_sandwich_cluster_cl2
+    if (type == "cl2") {
+      if (!identical(dof_correction, "none")) {
+        warning(
+          "dof_correction = \"",
+          dof_correction,
+          "\" is ignored for sandwich = \"cl2\": the CL2 leverage adjustment ",
+          "already targets the same small-sample bias.",
+          call. = FALSE
+        )
+      }
+      gam_obj$Vp <- gam_obj$Vc <- gam_sandwich_cluster_cl2(
+        gam_obj_stripped,
+        cluster_id,
+        freq = FALSE
+      )
+      gam_obj$Ve <- gam_sandwich_cluster_cl2(
+        gam_obj_stripped,
+        cluster_id,
+        freq = TRUE
+      )
     } else {
-      gam_sandwich_cluster
+      gam_obj$Vp <- gam_obj$Vc <- gam_sandwich_cluster(
+        gam_obj_stripped,
+        cluster_id,
+        freq = FALSE,
+        dof_correction = dof_correction,
+        edf_type = edf_type
+      )
+      gam_obj$Ve <- gam_sandwich_cluster(
+        gam_obj_stripped,
+        cluster_id,
+        freq = TRUE,
+        dof_correction = dof_correction,
+        edf_type = edf_type
+      )
     }
-    gam_obj$Vp <- gam_obj$Vc <- cov_fun(
-      gam_obj_stripped,
-      cluster_id,
-      freq = FALSE
-    )
-    gam_obj$Ve <- cov_fun(
-      gam_obj_stripped,
-      cluster_id,
-      freq = TRUE
-    )
   } else if (type == "hc") {
     gam_obj$Vp <- gam_obj$Vc <- mgcv::vcov.gam(
       gam_obj_stripped,

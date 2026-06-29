@@ -4,7 +4,7 @@
 \alias{assemble_cluster_sandwich}
 \title{Assemble cluster-robust sandwich from score matrix}
 \usage{
-assemble_cluster_sandwich(scores, cluster_id, Vp, B2)
+assemble_cluster_sandwich(scores, cluster_id, Vp, B2, dof_factor = 1)
 }
 \arguments{
 \item{scores}{Per-observation score matrix (n_obs x p).}
@@ -14,12 +14,17 @@ assemble_cluster_sandwich(scores, cluster_id, Vp, B2)
 \item{Vp}{Bayesian posterior covariance (p x p).}
 
 \item{B2}{Bias correction matrix (p x p, or scalar 0).}
+
+\item{dof_factor}{Scalar multiplier on the meat (default 1). Used to apply
+the optional CR1 small-sample correction \eqn{(N-1)/(N-\mathrm{EDF})}.}
 }
 \value{
 A p x p covariance matrix.
 }
 \description{
 Given a per-observation score matrix, aggregates by cluster and forms
-\eqn{V_{CL} = c \cdot V_p M_{CL} V_p + B_2} with HC1 correction.
+\eqn{V_{CL} = f \cdot c \cdot V_p M_{CL} V_p + B_2} with HC1 correction
+\eqn{c = G / (G - 1)} and an optional small-sample dof factor \eqn{f}
+(default 1; see [compute_dof_factor()]).
 }
 \keyword{internal}

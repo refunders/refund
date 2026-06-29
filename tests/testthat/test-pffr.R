@@ -1976,6 +1976,274 @@ test_that("gam_sandwich_cluster_cl2 works for gaulss family", {
   }
 })
 
+test_that("gaulss CL2 uses Fisher two-block whitening (trace(H) = EDF)", {
+  skip_on_cran()
+
+  m <- get_gaulss_model()
+  b <- m
+  class(b) <- setdiff(class(b), "pffr")
+  cluster_id <- build_cluster_id(m$pffr)
+
+  work <- refund:::build_cl2_working_gaulss(b, cluster_id)
+  Vp <- b$Vp
+
+  # (1) Score reconstruction is exact: Xw^T z reproduces the gaulss score.
+  X <- model.matrix(b)
+  score_total <- colSums(refund:::compute_gaulss_scores(b, X))
+  reconstructed <- as.vector(crossprod(work$Xw, work$z))
+  expect_equal(reconstructed, unname(score_total), tolerance = 1e-9)
+
+  # (2) Per-cluster hat trace equals the model EDF (defining property of the
+  #     penalized hat — the old sign-split gave trace ~5x too small).
+  groups <- unique(work$cluster_id)
+  trace_H <- 0
+  infl <- numeric(length(groups))
+  for (k in seq_along(groups)) {
+    idx <- which(work$cluster_id == groups[k])
+    Xwg <- work$Xw[idx, , drop = FALSE]
+    zg <- work$z[idx]
+    Hgg <- Xwg %*% Vp %*% t(Xwg)
+    Hgg <- 0.5 * (Hgg + t(Hgg))
+    trace_H <- trace_H + sum(diag(Hgg))
+    Ag <- refund:::sym_inv_sqrt(diag(length(idx)) - Hgg)
+    ug_raw <- crossprod(Xwg, zg)
+    ug <- crossprod(Xwg, Ag %*% zg)
+    infl[k] <- sqrt(sum(ug^2)) / max(sqrt(sum(ug_raw^2)), 1e-12)
+  }
+  edf_total <- sum(b$edf)
+  expect_equal(trace_H, edf_total, tolerance = 0.05 * edf_total)
+
+  # (3) Discriminate against the OLD sign-split factorization, whose hat block
+  #     scaled with |r| instead of leverage: its total trace is several times
+  #     smaller than the EDF. Reconstruct it here and confirm the Fisher hat is
+  #     far larger (the definitive regression guard for the fix).
+  eta1 <- b$linear.predictors[seq_len(length(b$y))]
+  eta2 <- b$linear.predictors[length(b$y) + seq_len(length(b$y))]
+  tau <- b$fitted.values[length(b$y) + seq_len(length(b$y))]
+  rr <- b$y - b$fitted.values[seq_len(length(b$y))]
+  lpi <- attr(X, "lpi")
+  w1 <- (tau^2 * rr) * b$family$linfo[[1]]$mu.eta(eta1)
+  w2 <- (1 / tau - tau * rr^2) * b$family$linfo[[2]]$mu.eta(eta2)
+  mk_ss <- function(w, lp) {
+    a <- sqrt(abs(w))
+    Xb <- matrix(0, length(b$y), ncol(X))
+    Xb[, lp] <- X[, lp, drop = FALSE] * a
+    Xb
+  }
+  Xw_ss <- rbind(mk_ss(w1, lpi[[1]]), mk_ss(w2, lpi[[2]]))
+  cid_ss <- rep(cluster_id, times = 2L)
+  trace_ss <- 0
+  for (g in unique(cid_ss)) {
+    Xwg <- Xw_ss[cid_ss == g, , drop = FALSE]
+    trace_ss <- trace_ss + sum(diag(Xwg %*% Vp %*% t(Xwg)))
+  }
+  expect_lt(trace_ss, 0.5 * edf_total) # old behaviour: trace << EDF
+  expect_gt(trace_H, 2 * trace_ss) # Fisher hat is the genuine, larger one
+
+  # The leverage adjustment inflates cluster contributions (magnitude depends
+  # on the per-cluster leverage of this fixture; just confirm it is > 1).
+  expect_gt(median(infl), 1)
+
+  # (4) Resulting covariance is finite, symmetric, PSD-ish, and the typical SE
+  #     is inflated relative to CR1 (aggregate criterion, not componentwise).
+  V_cl2 <- gam_sandwich_cluster_cl2(b, cluster_id, freq = FALSE)
+  V_cr1 <- gam_sandwich_cluster(b, cluster_id, freq = FALSE)
+  expect_equal(V_cl2, t(V_cl2), tolerance = 1e-10)
+  expect_true(all(is.finite(V_cl2)))
+  expect_true(all(diag(V_cl2) >= 0))
+  se_cl2 <- sqrt(pmax(diag(V_cl2), 0))
+  se_cr1 <- sqrt(pmax(diag(V_cr1), 0))
+  keep <- se_cr1 > 1e-10
+  expect_gt(median(se_cl2[keep] / se_cr1[keep]), 1)
+})
+
+test_that("CR1 dof_correction is off by default and CL2 never applies it", {
+  skip_on_cran()
+
+  m <- get_gaulss_model()
+  b <- m
+  class(b) <- setdiff(class(b), "pffr")
+  cluster_id <- build_cluster_id(m$pffr)
+
+  # (a) Default (= "none") regression-locks the current output, byte-for-byte.
+  V_default <- gam_sandwich_cluster(b, cluster_id, freq = TRUE)
+  V_none <- gam_sandwich_cluster(
+    b,
+    cluster_id,
+    freq = TRUE,
+    dof_correction = "none"
+  )
+  expect_identical(V_default, V_none)
+
+  # (b) "edf" multiplies the meat by the expected (N-1)/(N-EDF) scalar.
+  #     With freq = TRUE (B2 = 0) the whole covariance scales by the factor.
+  N <- length(cluster_id)
+  edf <- sum(b$edf)
+  factor <- (N - 1) / (N - edf)
+  expect_gt(factor, 1)
+  V_edf <- gam_sandwich_cluster(
+    b,
+    cluster_id,
+    freq = TRUE,
+    dof_correction = "edf",
+    edf_type = "trace"
+  )
+  expect_equal(V_edf, factor * V_none, tolerance = 1e-10)
+
+  # With freq = FALSE the factor scales ONLY the meat, not the Bayesian B2 term.
+  B2 <- b$Vp - b$Ve
+  V_edf_b <- gam_sandwich_cluster(
+    b,
+    cluster_id,
+    freq = FALSE,
+    dof_correction = "edf"
+  )
+  V_none_b <- gam_sandwich_cluster(b, cluster_id, freq = FALSE)
+  expect_equal(V_edf_b - B2, factor * (V_none_b - B2), tolerance = 1e-9)
+
+  # compute_dof_factor agrees and guards bad EDF.
+  expect_equal(
+    refund:::compute_dof_factor(b, cluster_id, "edf", "trace"),
+    factor
+  )
+  expect_identical(
+    refund:::compute_dof_factor(b, cluster_id, "none", "trace"),
+    1
+  )
+
+  # (c) The CL2 path does NOT apply the dof factor (it has no such argument and
+  #     requesting one via the fitting surface warns).
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+  expect_warning(
+    m_cl2 <- pffr(
+      Y ~ xlin,
+      yind = t,
+      data = dat,
+      sandwich = "cl2",
+      dof_correction = "edf"
+    ),
+    "ignored for sandwich = \"cl2\""
+  )
+})
+
+test_that("dof_correction is stored and invalidates the coef.pffr cache", {
+  skip_on_cran()
+
+  dat <- get_xlin_data()
+  t <- attr(dat, "yindex")
+
+  # The dof factor and its effect on the recomputed covariance are locked
+  # exactly at the gam_sandwich_cluster level in the test above; here we check
+  # the public surface: storage, cache reuse, and cache invalidation.
+
+  # (a) Default fit stores dof_correction = "none".
+  m0 <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
+  expect_identical(m0$pffr$dof_correction, "none")
+  expect_identical(m0$pffr$edf_type, "trace")
+
+  # Requesting "edf" invalidates the cache and changes the SEs.
+  se_none <- coef(m0, sandwich = "cluster")$pterms[, "se"]
+  se_edf <- coef(
+    m0,
+    sandwich = "cluster",
+    dof_correction = "edf"
+  )$pterms[, "se"]
+  expect_false(isTRUE(all.equal(unname(se_none), unname(se_edf))))
+
+  # (b) Fit with dof = "edf": stored as metadata.
+  m1 <- pffr(
+    Y ~ xlin,
+    yind = t,
+    data = dat,
+    sandwich = "cluster",
+    dof_correction = "edf"
+  )
+  expect_identical(m1$pffr$dof_correction, "edf")
+
+  # Default coef() inherits the stored "edf" and reuses the cached covariance;
+  # an explicit matching request returns the identical cached matrix.
+  se_inherit <- coef(m1, sandwich = "cluster")$pterms[, "se"]
+  se_explicit <- coef(
+    m1,
+    sandwich = "cluster",
+    dof_correction = "edf"
+  )$pterms[, "se"]
+  expect_identical(unname(se_inherit), unname(se_explicit))
+
+  # Overriding to "none" differs from the inherited "edf" (cache invalidated).
+  se_override <- coef(
+    m1,
+    sandwich = "cluster",
+    dof_correction = "none"
+  )$pterms[, "se"]
+  expect_false(isTRUE(all.equal(unname(se_inherit), unname(se_override))))
+})
+
+test_that("compute_dof_factor guards against invalid EDF / N / G", {
+  skip_on_cran()
+
+  cid <- rep(1:4, each = 5) # N = 20, G = 4
+
+  # "none" always returns the scalar 1, regardless of (missing) edf.
+  expect_identical(refund:::compute_dof_factor(list(), cid, "none", "trace"), 1)
+
+  # EDF >= N is rejected.
+  expect_error(
+    refund:::compute_dof_factor(list(edf = rep(1, 20)), cid, "edf", "trace"),
+    "must be finite and in"
+  )
+  # edf2 unavailable -> NA -> rejected with an informative message.
+  expect_error(
+    refund:::compute_dof_factor(list(edf = rep(0.1, 5)), cid, "edf", "edf2"),
+    "must be finite and in"
+  )
+  # N < 2 is rejected.
+  expect_error(
+    refund:::compute_dof_factor(list(edf = 0.5), 1L, "edf", "trace"),
+    "at least N = 2"
+  )
+  # G < 2 is rejected.
+  expect_error(
+    refund:::compute_dof_factor(list(edf = 0.5), rep(1L, 10), "edf", "trace"),
+    "at least two clusters"
+  )
+
+  # "edf2" and "basis" produce valid, finite factors when available.
+  b <- list(edf = rep(0.4, 5), edf2 = rep(0.5, 5), coefficients = rep(0, 6))
+  f_edf2 <- refund:::compute_dof_factor(b, cid, "edf", "edf2")
+  f_basis <- refund:::compute_dof_factor(b, cid, "edf", "basis")
+  expect_equal(f_edf2, (20 - 1) / (20 - sum(b$edf2)))
+  expect_equal(f_basis, (20 - 1) / (20 - length(b$coefficients)))
+})
+
+test_that("gaulss CL2 whitening preserves the score under prior weights", {
+  skip_on_cran()
+
+  m <- get_gaulss_model()
+  b <- m
+  class(b) <- setdiff(class(b), "pffr")
+  cluster_id <- build_cluster_id(m$pffr)
+
+  # Inject non-unit positive prior weights and confirm the whitened working
+  # object still reconstructs the (prior-weighted) gaulss score exactly — i.e.
+  # the prior weight cancels correctly in z_k = w_k / s_k.
+  set.seed(11)
+  b$prior.weights <- runif(length(b$y), 0.5, 2)
+  X <- model.matrix(b)
+
+  work <- refund:::build_cl2_working_gaulss(b, cluster_id)
+  recon <- as.vector(crossprod(work$Xw, work$z))
+  score <- colSums(refund:::compute_gaulss_scores(b, X))
+  expect_equal(recon, unname(score), tolerance = 1e-9)
+
+  # And the resulting CL2 covariance is still finite, symmetric, PSD-ish.
+  V <- gam_sandwich_cluster_cl2(b, cluster_id, freq = FALSE)
+  expect_equal(V, t(V), tolerance = 1e-10)
+  expect_true(all(is.finite(V)))
+  expect_true(all(diag(V) >= 0))
+})
+
 test_that("CL2 falls back to HC for unsupported custom family$sandwich", {
   skip_on_cran()
 

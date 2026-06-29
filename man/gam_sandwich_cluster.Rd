@@ -4,7 +4,13 @@
 \alias{gam_sandwich_cluster}
 \title{Cluster-robust sandwich covariance estimator}
 \usage{
-gam_sandwich_cluster(b, cluster_id, freq = FALSE)
+gam_sandwich_cluster(
+  b,
+  cluster_id,
+  freq = FALSE,
+  dof_correction = c("none", "edf"),
+  edf_type = c("trace", "edf2", "basis")
+)
 }
 \arguments{
 \item{b}{Fitted GAM object (must not have class `"pffr"`).}
@@ -14,6 +20,15 @@ each vectorized observation to its curve.}
 
 \item{freq}{If `TRUE`, use frequentist sandwich (`B2 = 0`).
 If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).}
+
+\item{dof_correction}{Optional small-sample correction multiplying the meat:
+`"none"` (default, factor 1 = current behavior) or `"edf"`, which applies
+the textbook CR1 factor \eqn{(N-1)/(N-\mathrm{EDF})}. This is OFF by default
+and is applied only here (CR1), never in the CL2 path, which already
+corrects per-cluster leverage; see [compute_dof_factor()].}
+
+\item{edf_type}{Which effective degrees of freedom the `"edf"` correction
+uses: `"trace"` (default, `sum(b$edf)`), `"edf2"`, or `"basis"`.}
 }
 \value{
 A p x p covariance matrix.

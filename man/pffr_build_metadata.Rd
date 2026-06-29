@@ -22,7 +22,9 @@ pffr_build_metadata(
   missing_indices,
   is_sparse,
   ydata,
-  sandwich
+  sandwich,
+  dof_correction = "none",
+  edf_type = "trace"
 )
 }
 \description{

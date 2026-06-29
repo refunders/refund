@@ -1052,6 +1052,15 @@ compute_ci_critical <- function(
 #'   unit (e.g. a subject id with multiple visits), so the sandwich clusters at
 #'   the correct level. Only supported for densely-observed responses. When
 #'   supplied, the pre-computed-covariance shortcut is bypassed.
+#' @param dof_correction Optional CR1 small-sample dof correction for
+#'   \code{sandwich = "cluster"}: \code{"none"} or \code{"edf"} (see
+#'   \code{\link{pffr}}). Defaults to \code{NULL}, i.e. inherit whatever the
+#'   model was fitted with, so the stored covariance is reused. Supplying a value
+#'   that differs from the fit forces recomputation with the requested option.
+#'   Ignored (with a warning) for \code{sandwich} other than \code{"cluster"}.
+#' @param edf_type Which EDF the \code{"edf"} correction uses
+#'   (\code{"trace"}/\code{"edf2"}/\code{"basis"}; see \code{\link{pffr}}).
+#'   Defaults to \code{NULL} (inherit from the fit).
 #' @param seWithMean logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?
 #' @param n1 see below
 #' @param n2 see below
@@ -1095,6 +1104,8 @@ coef.pffr <- function(
   freq = FALSE,
   sandwich = c("cluster", "cl2", "hc", "none"),
   cluster = NULL,
+  dof_correction = NULL,
+  edf_type = NULL,
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
@@ -1110,6 +1121,30 @@ coef.pffr <- function(
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
   sandwich <- match.arg(sandwich)
   ci <- match.arg(ci)
+
+  # dof_correction / edf_type default to inheriting whatever the model was
+  # fitted with (so coef() with no override returns the stored covariance);
+  # an explicit value triggers recomputation (see cache logic below).
+  dof_explicitly_set <- !is.null(dof_correction)
+  model_dof_correction <- object$pffr$dof_correction %||% "none"
+  model_edf_type <- object$pffr$edf_type %||% "trace"
+  if (is.null(dof_correction)) dof_correction <- model_dof_correction
+  if (is.null(edf_type)) edf_type <- model_edf_type
+  dof_correction <- match.arg(dof_correction, c("none", "edf"))
+  edf_type <- match.arg(edf_type, c("trace", "edf2", "basis"))
+  # Only warn when the user *explicitly* asked for a dof correction on a
+  # non-cluster sandwich; an inherited "edf" (from the fit) stays silent.
+  if (dof_explicitly_set && dof_correction != "none" && sandwich != "cluster") {
+    warning(
+      "dof_correction = \"",
+      dof_correction,
+      "\" only applies to sandwich = \"cluster\" and is ignored for ",
+      "sandwich = \"",
+      sandwich,
+      "\".",
+      call. = FALSE
+    )
+  }
 
   is_gls_fit <- !is.null(object$pffr$hatSigma)
   if (is_gls_fit) {
@@ -1269,13 +1304,29 @@ coef.pffr <- function(
         model_sandwich <- if (model_sandwich) "cluster" else "none"
       }
 
-      if (is.null(cluster) && model_sandwich == sandwich) {
+      # The cached covariance is only valid if the requested options also match
+      # what the fit stored. For "cluster", that includes the dof correction;
+      # for "cl2"/"hc" there are no extra options to compare.
+      opts_match <- if (sandwich == "cluster") {
+        dof_correction == model_dof_correction &&
+          (dof_correction == "none" || edf_type == model_edf_type)
+      } else {
+        TRUE
+      }
+
+      if (is.null(cluster) && model_sandwich == sandwich && opts_match) {
         covmat <- if (freq) object$Ve else (object$Vc %||% object$Vp)
       } else if (sandwich == "cluster") {
         object_stripped <- object
         class(object_stripped) <- setdiff(class(object_stripped), "pffr")
         cluster_id <- build_cluster_id(object$pffr, cluster = cluster)
-        covmat <- gam_sandwich_cluster(object_stripped, cluster_id, freq = freq)
+        covmat <- gam_sandwich_cluster(
+          object_stripped,
+          cluster_id,
+          freq = freq,
+          dof_correction = dof_correction,
+          edf_type = edf_type
+        )
       } else if (sandwich == "cl2") {
         object_stripped <- object
         class(object_stripped) <- setdiff(class(object_stripped), "pffr")

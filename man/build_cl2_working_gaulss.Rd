@@ -15,7 +15,26 @@ build_cl2_working_gaulss(b, cluster_id)
 List with `Xw`, `z`, and expanded `cluster_id`.
 }
 \description{
-Uses a pseudo-observation expansion with one pseudo-row per linear predictor
-component (location and scale).
+Uses a Fisher-weighted two-block IRLS whitening, with one pseudo-row per
+linear predictor component (location and scale). For `gaulss` the expected
+Fisher information is block-diagonal in the location (`eta1`) and scale
+(`eta2`) predictors,
+\deqn{I_{11} = \tau^2,\quad I_{22} = 2 (\mathrm{d}\tau/\mathrm{d}\eta_2)^2 /
+\tau^2,\quad I_{12} = 0,}
+and each score block factorizes as (Fisher weight) times (residual). The two
+blocks therefore decouple: each pseudo-row is whitened with its own Fisher
+working weight \eqn{W_k}, putting `Xtilde_k = sqrt(W_k) X_k` into the design
+and `z_k = w_k / sqrt(W_k)` into the residual, where `w_k` are the
+(prior-weighted) score weights from [compute_gaulss_scores()]. Both blocks
+reconstruct the exact gaulss score (`Xtilde_k^T z_k = w_k X_k`), but because
+`Xtilde` carries the Fisher weight, the per-cluster hat block
+`H_gg = Xtilde_g Vp Xtilde_g^T` is the genuine penalized hat: its total trace
+equals the model EDF.
+}
+\details{
+This replaces an earlier `sign(w) sqrt(|w|)` sign-split factorization, whose
+hat block scaled with the residual magnitude `|r|` rather than the
+(dimensionless) leverage and so collapsed the small-cluster BRL leverage
+inflation.
 }
 \keyword{internal}
