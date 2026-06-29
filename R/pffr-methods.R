@@ -1432,7 +1432,11 @@ coef.pffr <- function(
 
     if (se && ci != "none") {
       p_se <- ret$pterms[, "se"]
-      p_crit <- if (ci == "pointwise") {
+      p_crit <- if (
+        ci == "pointwise" ||
+          length(p_se) == 0 ||
+          (length(p_se) <= 1 && is.null(t_scale))
+      ) {
         stats::qnorm((1 + level) / 2)
       } else {
         eps <- sqrt(.Machine$double.eps)
