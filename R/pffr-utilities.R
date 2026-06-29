@@ -694,7 +694,7 @@ sample_pspline_coef_1d <- function(k, wiggliness) {
 #' Sample coefficients from 2D tensor P-spline prior
 #'
 #' Samples from tensor product P-spline prior with additive penalties:
-#' P = (1/wiggliness) * (P_s ⊗ I_t + I_s ⊗ P_t) + I
+#' \eqn{P = (1/\mathrm{wiggliness}) \cdot (P_s \otimes I_t + I_s \otimes P_t) + I}{P = (1/wiggliness) * (P_s x I_t + I_s x P_t) + I}
 #'
 #' @param k_s Basis dimension for first margin.
 #' @param k_t Basis dimension for second margin.

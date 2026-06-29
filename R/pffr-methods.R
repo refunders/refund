@@ -779,6 +779,8 @@ ensure_grid_axis_attributes <- function(d, trm, is_pcre, pffr_info) {
 #' @param ci One of "none", "pointwise", "simultaneous".
 #' @param level Confidence level for intervals.
 #' @param coef_draws Simulated coefficient perturbations (for simultaneous CIs).
+#' @param t_scale Optional multiplier-t scaling, one positive value per
+#'   simulation draw.
 #' @returns List with x, y, z coordinates, value, se, coef data frame, dim.
 #' @keywords internal
 #' @importFrom mgcv PredictMat
@@ -793,7 +795,8 @@ coef_get_predictions <- function(
   is_pcre,
   ci = "none",
   level = 0.95,
-  coef_draws = NULL
+  coef_draws = NULL,
+  t_scale = NULL
 ) {
   X <- PredictMat(trm, data_grid)
 
@@ -829,7 +832,8 @@ coef_get_predictions <- function(
         level = level,
         se_vec = P$se,
         linear_map = linear_map,
-        coef_draws = coef_draws
+        coef_draws = coef_draws,
+        t_scale = t_scale
       )
       P$crit <- crit
       ci_half <- crit * P$se
@@ -928,9 +932,11 @@ compute_coef_se <- function(linear_map, covmat) {
 #' @param covmat Covariance matrix.
 #' @param n_sim Number of simulation draws.
 #' @param sim_seed Optional integer seed.
-#' @returns Matrix with one simulated perturbation vector per column.
+#' @param df Optional degrees of freedom for multiplier-t scaling.
+#' @returns Matrix with one simulated perturbation vector per column, or a list
+#'   with elements `draws` and `t_scale` when `df` is supplied.
 #' @keywords internal
-draw_coef_perturbations <- function(covmat, n_sim, sim_seed = NULL) {
+draw_coef_perturbations <- function(covmat, n_sim, sim_seed = NULL, df = NULL) {
   if (!is.null(sim_seed)) {
     has_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
     if (has_seed)
@@ -955,12 +961,20 @@ draw_coef_perturbations <- function(covmat, n_sim, sim_seed = NULL) {
   eig$values <- pmax(eig$values, 0)
   root_cov <- eig$vectors %*% diag(sqrt(eig$values), nrow = length(eig$values))
 
-  root_cov %*%
+  draws <- root_cov %*%
     matrix(
       stats::rnorm(ncol(covmat) * n_sim),
       nrow = ncol(covmat),
       ncol = n_sim
     )
+  if (is.null(df)) return(draws)
+  if (!is.numeric(df) || length(df) != 1 || !is.finite(df) || df <= 0) {
+    stop("`df` must be a single positive finite number.", call. = FALSE)
+  }
+  list(
+    draws = draws,
+    t_scale = sqrt(df / stats::rchisq(n_sim, df = df))
+  )
 }
 
 #' Compute critical value for pointwise/simultaneous intervals
@@ -970,6 +984,8 @@ draw_coef_perturbations <- function(covmat, n_sim, sim_seed = NULL) {
 #' @param se_vec Standard errors for one term.
 #' @param linear_map List returned by build_coef_linear_map().
 #' @param coef_draws Simulated coefficient perturbations for simultaneous CIs.
+#' @param t_scale Optional multiplier-t scaling, one positive value per
+#'   simulation draw.
 #' @returns Scalar critical value.
 #' @keywords internal
 compute_ci_critical <- function(
@@ -977,7 +993,8 @@ compute_ci_critical <- function(
   level,
   se_vec,
   linear_map,
-  coef_draws = NULL
+  coef_draws = NULL,
+  t_scale = NULL
 ) {
   if (ci == "none") return(NA_real_)
   if (ci == "pointwise") return(stats::qnorm((1 + level) / 2))
@@ -988,6 +1005,19 @@ compute_ci_critical <- function(
 
   if (is.null(coef_draws)) {
     stop("coef_draws must be supplied for simultaneous intervals.")
+  }
+  if (!is.null(t_scale)) {
+    if (
+      !is.numeric(t_scale) ||
+        length(t_scale) != ncol(coef_draws) ||
+        any(!is.finite(t_scale)) ||
+        any(t_scale <= 0)
+    ) {
+      stop(
+        "`t_scale` must be a positive finite vector with one value per simulation draw.",
+        call. = FALSE
+      )
+    }
   }
 
   term_draws <- if (linear_map$use_full) {
@@ -1001,6 +1031,7 @@ compute_ci_critical <- function(
     2,
     max
   )
+  if (!is.null(t_scale)) max_stat <- max_stat * t_scale
   as.numeric(stats::quantile(
     max_stat,
     probs = level,
@@ -1069,6 +1100,14 @@ compute_ci_critical <- function(
 #' @param ci Type of confidence intervals to return in addition to standard
 #'   errors. One of \code{"none"} (default), \code{"pointwise"}, or
 #'   \code{"simultaneous"}.
+#' @param ci_ref Reference distribution for \code{ci = "simultaneous"}.
+#'   \code{"t"} (default) uses a finite-sample
+#'   \eqn{t_{G-1}}{t_(G-1)} multiplier reference, where \eqn{G} is the number of
+#'   independent curves or user-supplied clusters. This widens simultaneous
+#'   bands at small \eqn{G} and converges to the Gaussian multiplier reference
+#'   as \eqn{G} grows. \code{"normal"} restores the previous Gaussian
+#'   multiplier reference. Pointwise intervals are unaffected and continue to
+#'   use a normal quantile.
 #' @param level Confidence level for confidence intervals, defaults to
 #'   \code{0.95}.
 #' @param n_sim Number of simulations for simultaneous intervals, defaults to
@@ -1111,6 +1150,7 @@ coef.pffr <- function(
   n2 = 40,
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
+  ci_ref = c("t", "normal"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
@@ -1121,6 +1161,7 @@ coef.pffr <- function(
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
   sandwich <- match.arg(sandwich)
   ci <- match.arg(ci)
+  ci_ref <- match.arg(ci_ref)
 
   # dof_correction / edf_type default to inheriting whatever the model was
   # fitted with (so coef() with no override returns the stored covariance);
@@ -1262,7 +1303,8 @@ coef.pffr <- function(
         is_pcre,
         ci = ci,
         level = level,
-        coef_draws = coef_draws
+        coef_draws = coef_draws,
+        t_scale = t_scale
       )
 
       # Add proper labeling
@@ -1347,12 +1389,38 @@ coef.pffr <- function(
     }
 
     coef_draws <- NULL
+    t_scale <- NULL
+    ci_ref_n_clusters <- NA_integer_
+    ci_ref_df <- NA_real_
+    ci_ref_used <- NA_character_
     if (ci == "simultaneous") {
+      ci_cluster_id <- build_cluster_id(object$pffr, cluster = cluster)
+      ci_ref_n_clusters <- length(unique(ci_cluster_id))
+      ci_ref_df <- ci_ref_n_clusters - 1
+      draw_df <- NULL
+      ci_ref_used <- "normal"
+      if (ci_ref == "t") {
+        if (ci_ref_df >= 1) {
+          draw_df <- ci_ref_df
+          ci_ref_used <- "t"
+        } else {
+          warning(
+            "ci_ref = \"t\" requires at least two independent curves or clusters; ",
+            "using ci_ref = \"normal\" for this simultaneous band.",
+            call. = FALSE
+          )
+        }
+      }
       coef_draws <- draw_coef_perturbations(
         covmat = covmat,
         n_sim = n_sim,
-        sim_seed = sim_seed
+        sim_seed = sim_seed,
+        df = draw_df
       )
+      if (is.list(coef_draws)) {
+        t_scale <- coef_draws$t_scale
+        coef_draws <- coef_draws$draws
+      }
     }
 
     ret <- list()
@@ -1364,7 +1432,7 @@ coef.pffr <- function(
 
     if (se && ci != "none") {
       p_se <- ret$pterms[, "se"]
-      p_crit <- if (ci == "pointwise" || length(p_se) <= 1) {
+      p_crit <- if (ci == "pointwise") {
         stats::qnorm((1 + level) / 2)
       } else {
         eps <- sqrt(.Machine$double.eps)
@@ -1378,6 +1446,7 @@ coef.pffr <- function(
             2,
             max
           )
+          if (!is.null(t_scale)) max_stat <- max_stat * t_scale
           as.numeric(stats::quantile(
             max_stat,
             probs = level,
@@ -1405,7 +1474,11 @@ coef.pffr <- function(
       type = ci,
       level = level,
       n_sim = if (ci == "simultaneous") n_sim else NA_integer_,
-      sim_seed = sim_seed
+      sim_seed = sim_seed,
+      ci_ref = if (ci == "simultaneous") ci_ref else NA_character_,
+      ci_ref_used = ci_ref_used,
+      ci_ref_n_clusters = ci_ref_n_clusters,
+      ci_ref_df = ci_ref_df
     )
     return(ret)
   }

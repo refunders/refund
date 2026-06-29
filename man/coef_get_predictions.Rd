@@ -15,7 +15,8 @@ coef_get_predictions(
   is_pcre,
   ci = "none",
   level = 0.95,
-  coef_draws = NULL
+  coef_draws = NULL,
+  t_scale = NULL
 )
 }
 \arguments{
@@ -40,6 +41,9 @@ coef_get_predictions(
 \item{level}{Confidence level for intervals.}
 
 \item{coef_draws}{Simulated coefficient perturbations (for simultaneous CIs).}
+
+\item{t_scale}{Optional multiplier-t scaling, one positive value per
+simulation draw.}
 }
 \value{
 List with x, y, z coordinates, value, se, coef data frame, dim.

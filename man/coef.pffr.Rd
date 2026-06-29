@@ -18,6 +18,7 @@
   n2 = 40,
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
+  ci_ref = c("t", "normal"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
@@ -78,6 +79,15 @@ used in the marginal equidistant grids over the range of the covariates at which
 \item{ci}{Type of confidence intervals to return in addition to standard
 errors. One of \code{"none"} (default), \code{"pointwise"}, or
 \code{"simultaneous"}.}
+
+\item{ci_ref}{Reference distribution for \code{ci = "simultaneous"}.
+\code{"t"} (default) uses a finite-sample
+\eqn{t_{G-1}}{t_(G-1)} multiplier reference, where \eqn{G} is the number of
+independent curves or user-supplied clusters. This widens simultaneous
+bands at small \eqn{G} and converges to the Gaussian multiplier reference
+as \eqn{G} grows. \code{"normal"} restores the previous Gaussian
+multiplier reference. Pointwise intervals are unaffected and continue to
+use a normal quantile.}
 
 \item{level}{Confidence level for confidence intervals, defaults to
 \code{0.95}.}

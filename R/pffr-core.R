@@ -1365,7 +1365,8 @@ gam_sandwich_cluster <- function(
 #'   If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).
 #' @param tol Eigenvalue floor for numerical stability.
 #' @param leverage_cap Cap for cluster leverage eigenvalues (< 1).
-#' @returns A p x p covariance matrix.
+#' @returns A p x p covariance matrix with attributes `n_capped_clusters` and
+#'   `max_leverage` for the CL2 leverage diagnostic.
 #' @keywords internal
 gam_sandwich_cluster_cl2 <- function(
   b,
@@ -1413,6 +1414,7 @@ gam_sandwich_cluster_cl2 <- function(
   p <- ncol(Xw)
   meat <- matrix(0, nrow = p, ncol = p)
   n_capped_clusters <- 0L
+  max_leverage <- NA_real_
 
   for (g in groups) {
     idx <- which(cluster_id_work == g)
@@ -1423,6 +1425,14 @@ gam_sandwich_cluster_cl2 <- function(
     Hgg <- 0.5 * (Hgg + t(Hgg))
 
     ee_H <- eigen(Hgg, symmetric = TRUE)
+    cluster_max_leverage <- max(ee_H$values, na.rm = TRUE)
+    if (is.finite(cluster_max_leverage)) {
+      max_leverage <- if (is.na(max_leverage)) {
+        cluster_max_leverage
+      } else {
+        max(max_leverage, cluster_max_leverage)
+      }
+    }
     if (any(ee_H$values > leverage_cap, na.rm = TRUE)) {
       n_capped_clusters <- n_capped_clusters + 1L
       ee_H$values <- pmin(ee_H$values, leverage_cap)
@@ -1441,6 +1451,29 @@ gam_sandwich_cluster_cl2 <- function(
   V <- hc1 * Vp %*% meat %*% Vp + B2
   V <- 0.5 * (V + t(V))
   attr(V, "n_capped_clusters") <- n_capped_clusters
+  attr(V, "max_leverage") <- max_leverage
+  if (n_capped_clusters > 0) {
+    max_leverage_label <- if (is.finite(max_leverage)) {
+      sprintf("%.3f", max_leverage)
+    } else {
+      "NA"
+    }
+    warning(
+      sprintf(
+        paste0(
+          "CL2 leverage adjustment hit the leverage cap %.3f in %d of %d ",
+          "clusters (max pre-cap eigenvalue %s). CL2 can be unreliable ",
+          "with small G or saturated per-cluster leverage; consider ",
+          "sandwich = \"cluster\" as the safer choice."
+        ),
+        leverage_cap,
+        n_capped_clusters,
+        G,
+        max_leverage_label
+      ),
+      call. = FALSE
+    )
+  }
   V
 }
 

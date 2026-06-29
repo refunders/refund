@@ -42,6 +42,14 @@
   `ci = "simultaneous"` in addition to standard errors. Simultaneous intervals
   are computed with a coefficient-level Gaussian simulation and max-|t|
   calibration over each smooth term's evaluation grid.
+* `coef.pffr(ci = "simultaneous")` now uses a finite-sample
+  `t_{G-1}` multiplier reference by default via `ci_ref = "t"`, which widens
+  simultaneous bands at small numbers of independent curves or clusters. Set
+  `ci_ref = "normal"` for the previous Gaussian-multiplier behavior.
+* `pffr(..., sandwich = "cl2")` and `coef.pffr(..., sandwich = "cl2")` now
+  report CL2 leverage diagnostics: the returned covariance carries
+  `max_leverage` and `n_capped_clusters` attributes, and a warning is emitted
+  when one or more clusters hit the leverage cap.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.

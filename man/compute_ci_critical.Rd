@@ -4,7 +4,14 @@
 \alias{compute_ci_critical}
 \title{Compute critical value for pointwise/simultaneous intervals}
 \usage{
-compute_ci_critical(ci, level, se_vec, linear_map, coef_draws = NULL)
+compute_ci_critical(
+  ci,
+  level,
+  se_vec,
+  linear_map,
+  coef_draws = NULL,
+  t_scale = NULL
+)
 }
 \arguments{
 \item{ci}{One of "none", "pointwise", "simultaneous".}
@@ -16,6 +23,9 @@ compute_ci_critical(ci, level, se_vec, linear_map, coef_draws = NULL)
 \item{linear_map}{List returned by build_coef_linear_map().}
 
 \item{coef_draws}{Simulated coefficient perturbations for simultaneous CIs.}
+
+\item{t_scale}{Optional multiplier-t scaling, one positive value per
+simulation draw.}
 }
 \value{
 Scalar critical value.

@@ -26,7 +26,8 @@ If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).}
 \item{leverage_cap}{Cap for cluster leverage eigenvalues (< 1).}
 }
 \value{
-A p x p covariance matrix.
+A p x p covariance matrix with attributes `n_capped_clusters` and
+  `max_leverage` for the CL2 leverage diagnostic.
 }
 \description{
 Computes a cluster-robust covariance matrix with a Bell-McCaffrey style

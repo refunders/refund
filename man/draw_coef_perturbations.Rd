@@ -4,7 +4,7 @@
 \alias{draw_coef_perturbations}
 \title{Draw coefficient perturbations for simultaneous intervals}
 \usage{
-draw_coef_perturbations(covmat, n_sim, sim_seed = NULL)
+draw_coef_perturbations(covmat, n_sim, sim_seed = NULL, df = NULL)
 }
 \arguments{
 \item{covmat}{Covariance matrix.}
@@ -12,9 +12,12 @@ draw_coef_perturbations(covmat, n_sim, sim_seed = NULL)
 \item{n_sim}{Number of simulation draws.}
 
 \item{sim_seed}{Optional integer seed.}
+
+\item{df}{Optional degrees of freedom for multiplier-t scaling.}
 }
 \value{
-Matrix with one simulated perturbation vector per column.
+Matrix with one simulated perturbation vector per column, or a list
+  with elements `draws` and `t_scale` when `df` is supplied.
 }
 \description{
 Draw coefficient perturbations for simultaneous intervals

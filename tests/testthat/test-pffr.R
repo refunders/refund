@@ -1755,7 +1755,10 @@ test_that("coef.pffr `cluster` argument clusters at a custom (subject) level", {
   # Clustering at the subject level changes the standard errors.
   expect_false(isTRUE(all.equal(se_curve, se_subj)))
   # cl2 with a custom cluster also runs.
-  expect_type(coef(fit, sandwich = "cl2", cluster = subj), "list")
+  expect_type(
+    suppressWarnings(coef(fit, sandwich = "cl2", cluster = subj)),
+    "list"
+  )
   # A wrong-length cluster errors cleanly.
   expect_error(
     coef(fit, sandwich = "cluster", cluster = 1:3),
@@ -1814,6 +1817,48 @@ test_that("pffr with sandwich='cl2' yields leverage-adjusted covariance", {
   expect_equal(coef_cl2$pterms[, "se"], coef_std_cl2$pterms[, "se"])
 })
 
+test_that("CL2 reports leverage diagnostics and warns when the cap is hit", {
+  skip_on_cran()
+
+  m <- get_xlin_model()
+  b <- m
+  class(b) <- setdiff(class(b), "pffr")
+  cluster_id <- build_cluster_id(m$pffr)
+
+  expect_warning(
+    V_benign <- gam_sandwich_cluster_cl2(b, cluster_id, freq = FALSE),
+    NA
+  )
+  expect_identical(attr(V_benign, "n_capped_clusters"), 0L)
+  expect_true(is.finite(attr(V_benign, "max_leverage")))
+  expect_gt(attr(V_benign, "max_leverage"), 0)
+  expect_lt(attr(V_benign, "max_leverage"), 0.999)
+
+  expect_warning(
+    V_capped <- gam_sandwich_cluster_cl2(
+      b,
+      cluster_id,
+      freq = FALSE,
+      leverage_cap = 0.001
+    ),
+    "CL2 leverage adjustment hit the leverage cap"
+  )
+  expect_gt(attr(V_capped, "n_capped_clusters"), 0L)
+  expect_gt(attr(V_capped, "max_leverage"), 0.001)
+
+  V_capped_repeat <- suppressWarnings(gam_sandwich_cluster_cl2(
+    b,
+    cluster_id,
+    freq = FALSE,
+    leverage_cap = 0.001
+  ))
+  expect_equal(
+    as.matrix(V_capped),
+    as.matrix(V_capped_repeat),
+    tolerance = 1e-12
+  )
+})
+
 test_that("gam_sandwich_cluster_cl2 works for poisson and binomial", {
   skip_on_cran()
 
@@ -1829,14 +1874,18 @@ test_that("gam_sandwich_cluster_cl2 works for poisson and binomial", {
     cluster_id <- build_cluster_id(m$pffr)
 
     V_cl <- gam_sandwich_cluster(m_stripped, cluster_id, freq = FALSE)
-    V_cl2 <- gam_sandwich_cluster_cl2(m_stripped, cluster_id, freq = FALSE)
+    V_cl2 <- suppressWarnings(gam_sandwich_cluster_cl2(
+      m_stripped,
+      cluster_id,
+      freq = FALSE
+    ))
 
     expect_equal(V_cl2, t(V_cl2), tolerance = 1e-10)
     expect_true(all(is.finite(diag(V_cl2))))
     expect_true(all(diag(V_cl2) >= 0))
     expect_gt(max(abs(V_cl2 - V_cl)), 0)
 
-    coef_cl2 <- coef(m, sandwich = "cl2")
+    coef_cl2 <- suppressWarnings(coef(m, sandwich = "cl2"))
     expect_true(all(is.finite(coef_cl2$pterms[, "se"])))
   }
 })
@@ -2298,6 +2347,143 @@ test_that("coef.pffr adds pointwise and simultaneous CIs", {
   width_pw <- sm_pw$upper - sm_pw$lower
   width_sim <- sm_sim$upper - sm_sim$lower
   expect_gte(median(width_sim), median(width_pw))
+})
+
+test_that("coef.pffr simultaneous CI uses finite-G t reference by default", {
+  skip_on_cran()
+
+  m <- get_xlin_model()
+
+  coef_t <- coef(
+    m,
+    sandwich = "none",
+    ci = "simultaneous",
+    ci_ref = "t",
+    level = 0.95,
+    n_sim = 800,
+    sim_seed = 1701,
+    n1 = 40
+  )
+  coef_t_repeat <- coef(
+    m,
+    sandwich = "none",
+    ci = "simultaneous",
+    ci_ref = "t",
+    level = 0.95,
+    n_sim = 800,
+    sim_seed = 1701,
+    n1 = 40
+  )
+  coef_normal <- coef(
+    m,
+    sandwich = "none",
+    ci = "simultaneous",
+    ci_ref = "normal",
+    level = 0.95,
+    n_sim = 800,
+    sim_seed = 1701,
+    n1 = 40
+  )
+
+  crit_t <- coef_t$smterms[[1]]$crit
+  crit_normal <- coef_normal$smterms[[1]]$crit
+  expect_gt(crit_t, crit_normal)
+  expect_identical(crit_t, coef_t_repeat$smterms[[1]]$crit)
+  expect_identical(coef_t$ci_meta$ci_ref, "t")
+  expect_identical(coef_t$ci_meta$ci_ref_used, "t")
+  expect_identical(coef_t$ci_meta$ci_ref_n_clusters, m$pffr$nobs)
+  expect_equal(coef_t$ci_meta$ci_ref_df, m$pffr$nobs - 1)
+
+  cluster <- rep(seq_len(10), each = 3)
+  coef_t_clustered <- coef(
+    m,
+    sandwich = "none",
+    cluster = cluster,
+    ci = "simultaneous",
+    ci_ref = "t",
+    level = 0.95,
+    n_sim = 800,
+    sim_seed = 1701,
+    n1 = 40
+  )
+  expect_identical(coef_t_clustered$ci_meta$ci_ref_n_clusters, 10L)
+  expect_equal(coef_t_clustered$ci_meta$ci_ref_df, 9)
+  expect_gt(coef_t_clustered$smterms[[1]]$crit, crit_t)
+  expect_error(
+    coef(
+      m,
+      sandwich = "none",
+      cluster = cluster[-1],
+      ci = "simultaneous",
+      ci_ref = "t",
+      n_sim = 50,
+      sim_seed = 1701,
+      n1 = 20
+    ),
+    "one entry per curve"
+  )
+
+  # Legacy Gaussian multiplier path is unchanged when ci_ref = "normal".
+  expect_equal(crit_normal, 3.144624273969, tolerance = 1e-12)
+
+  # At large G the t scale is close to one, so the critical values converge.
+  m_large <- m
+  m_large$pffr$nobs <- 2000L
+  coef_t_large <- coef(
+    m_large,
+    sandwich = "none",
+    ci = "simultaneous",
+    ci_ref = "t",
+    level = 0.95,
+    n_sim = 800,
+    sim_seed = 1701,
+    n1 = 40
+  )
+  coef_normal_large <- coef(
+    m_large,
+    sandwich = "none",
+    ci = "simultaneous",
+    ci_ref = "normal",
+    level = 0.95,
+    n_sim = 800,
+    sim_seed = 1701,
+    n1 = 40
+  )
+  large_ratio <- coef_t_large$smterms[[1]]$crit /
+    coef_normal_large$smterms[[1]]$crit
+  expect_lt(abs(large_ratio - 1), 0.03)
+
+  # G <= 1 falls back to the Gaussian multiplier without failing.
+  m_one <- m
+  m_one$pffr$nobs <- 1L
+  coef_one_t <- expect_warning(
+    coef(
+      m_one,
+      sandwich = "none",
+      ci = "simultaneous",
+      ci_ref = "t",
+      level = 0.95,
+      n_sim = 200,
+      sim_seed = 1701,
+      n1 = 20
+    ),
+    "requires at least two independent curves or clusters"
+  )
+  coef_one_normal <- coef(
+    m_one,
+    sandwich = "none",
+    ci = "simultaneous",
+    ci_ref = "normal",
+    level = 0.95,
+    n_sim = 200,
+    sim_seed = 1701,
+    n1 = 20
+  )
+  expect_identical(coef_one_t$ci_meta$ci_ref_used, "normal")
+  expect_identical(
+    coef_one_t$smterms[[1]]$crit,
+    coef_one_normal$smterms[[1]]$crit
+  )
 })
 
 test_that("coef.pffr simultaneous CI works for poisson family", {
