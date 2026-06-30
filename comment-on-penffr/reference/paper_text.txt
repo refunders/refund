@@ -1,0 +1,3416 @@
+
+
+========== PAGE 1 ==========
+
+REGULAR ARTICLE
+Advances in Data Analysis and Classification
+https://doi.org/10.1007/s11634-026-00681-w
+Extended author information available on the last page of the article
+Received: 26 January 2026 / Revised: 26 January 2026 / Accepted: 5 April 2026
+© The Author(s) 2026
+A penalized spline estimator for functional linear 
+regression with functional response
+Jean Steve Tamo Tchomgui1,2 · Julien Jacques1
+ · Guillaume Fraysse2 · 
+Vincent Barriac2 · Stéphane Chretien1
+Abstract
+In many scientific studies in recent years, data have been collected at such a high 
+frequency that they can be considered as functional data. In the case when both the 
+response variable to be predicted and the covariates are functions, we provide a 
+novel and easy-to-implement method addressing function-on-function linear model­
+ling and obtain interpretable parameters. Two main types of models are considered: 
+(i) the concurrent model which explains the response curve inline-eq-IEq1 at time t from the 
+values at same time t of the covariates in
+line-eq-IEq2; (ii) the (feed-forward) integral model 
+which explains inline-eq-IEq3 based on the values of covariate curves in
+line-eq-IEq4 observed at 
+any times i n line-eq-IEq5. A regularized inference approach is proposed, which accurately 
+selects an appropriate set of basis functions that can be used for functional data 
+reconstruction and at the same time provides smooth and interpretable functional 
+parameters. A functional confidence interval procedure is also proposed which uses 
+the conformalization framework. Numerical studies on simulated data with different 
+scenarios illustrate the good performance of our method to capture the relationship 
+between covariates and response. The method is finally applied to well-known data 
+and compared to a baseline: on Canadian weather data (predicting precipitations 
+from temperature measurements) and on Hawaii ocean data (predicting ocean sa­
+linity from temperature, oxygen, chloropigments and density measurements). Our 
+method shows significant improvements on prediction error.
+Keywords  Functional data analysis · Function-on-function regression · Penalized 
+splines · Conformal prediction
+Mathematics Subject Classification  62 Statistics
+
+
+========== PAGE 2 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+1  Introduction
+Most of the machine learning problems encountered in various fields of applied sci­
+ences, including economics, finance, geosciences, or medicine ..., involve data that are 
+no longer collected in a scalar form, i.e., a response i n line-eq-IEq6 described by a finite number 
+of covariates. i n line - e q - IEq 7
+. We instead observe several recordings (over 
+time), sometimes for both the response, i n l i ne-eq-IEq8, and the covariates i n l i ne-eq-IEq9. 
+As a result, new tools are needed to process and analyze this very fast growing resource 
+of data. A quite natural idea that has emerged lately is to extend classical tools from 
+data analysis to a new paradigm called Functional Data Analysis (FDA). This new 
+paradigm has proven very successful at addressing the statistical analysis of data where 
+at least one of the variables of interest needs to be processed as a function. Extension of 
+linear regression to the functional setting has therefore naturally become a major area 
+of research in FDA. While the literature is too vast to report here, references such as 
+Ramsay and Silverman (2005), Ramsay et al. (2009), Horváth and Kokoszka (2012) 
+and Kokoszka and Reimherr (2017) provide excellent introductions to FDA. Moreover 
+Goldsmith et al. (2011) and Morris (2014) provide a broad overview of the methods of 
+functional linear regression. As far as functional setting is concerned, different types of 
+functional linear regression have been considered, depending on the functional nature 
+of the response and/or at least one of the covariates. Thus, using the convention that 
+first term denotes response-type and second term denotes covariate-type, all the fol­
+lowing regression models are possible options to consider: function-on-scalar, scalar-
+on-function and function-on-function. The scalar-on-function linear regression models 
+are the most thoroughly studied ones in the current literature. Some references include 
+Cardot et al. (1999) and Hastie and Tibshirani (1993).
+Most of the inference approaches for these models rely on a basis expansion 
+assumption. For instance Besse and Cardot (1996) and Ramsay and Silverman (2005) 
+proposed spline-type approximations of the functional covariates and then performed 
+the estimation step by minimizing a least squares criterion. Among other useful refer­
+ences, Antoch et al. (2010) uses B-spline expansions for both the functional param­
+eters and the functional covariates. The issue of possible non-identifiability was 
+pursued in Scheipl and Greven (2016). In theses approaches, the functional regres­
+sion models become equivalent to multivariate models on the basis expansion coef­
+ficients. An alternative way is to consider Functional Principal Components Analysis 
+(FPCA, Ramsay and Silverman (2005)), possibly using smoothness promoting penal­
+ization (Silverman 1996; Besse et al. 1997). Appropriately determining the number 
+of components is still an active area of research. Indeed, it was shown in Crainiceanu 
+et al. (2009) that the shape of the functional parameters can drastically change as 
+one or two additional principal components are included, making the process quite 
+unstable and relatively difficult to interpret.
+In comparison with scalar-on-function problems, function-on-function models, as 
+addressed here, have been much less studied in the literature. For instance, Ivanescu 
+et al. (2015) proposes, via the pffr method (penalized flexible functional regression), 
+to estimate a function-on-function regression model using a penalized mixed model. 
+In this setting as well, the main issue faced is not only the problem of accurately 
+selecting the number of basis functions and the location of the knots (Li and Ruppert 
+
+
+========== PAGE 3 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+2008), but also the possible interpretability of the obtained estimators (James et al. 
+2009). Signal compression approach (wSigcomp) designed by Luo et al. (2016) is 
+another way to address function-on-function models. It first applies wavelets trans­
+formation to covariates and then, with the functional response and the obtained mul­
+tivariate covariates, proposes a method to estimate the functional bivariate parameter 
+by characterizing it as the solution of a generalized functional eigenvalue problem. 
+The Optimal Penalized Function-on-Function Regression (OPFFR) proposed by 
+(Sun et al. 2018), produces an estimator of the 2D functional parameter as optimizer 
+in a form of penalized least squares problem, where the penalty enforces a certain 
+level of smoothness.
+In mathematical terms, the problem considered in this paper is to estimate a linear 
+relationship between functional covariates and a functional response based on the 
+n-sample:
+	
+d
+isplay -eq-E q
+u
+34
+where the output variable inline-eq-IEq10 and the p input variables inline-eq-IEq1 1
+ are assumed 
+to belong to the separable Hilbert inline-eq-IEq1
+2
+. In the rest of this paper, we focus in 
+particular on the following two functional linear models:
+	
+displ ay-eq- E
+q
+u
+1
+ (1)
+	
+displ ay-eq- E
+q
+u
+2
+ (2)
+where 
+β(t) 
+= 
+i
+nline-eq-IEq131
+0
+ 
+and 
+inli ne -eq-IEq14
+i
+nline-eq-IEq141 0
+ are unknown functional parameters and are 
+assumed to be square integrable; inline-eq-IEq15 is the model error and is a sample of centred 
+random variables with variance in
+line-eq-IEq16 , specific to the inline-eq-IEq17 individual (Ramsay and Silver­
+man (2005), Chapter 13); inline-eq-IEq18 and inline-eq-IEq19 are assumed to be uncorrelated. The noise 
+functions inline-eq-IEq20 can be rigorously defined using the white noise theory presented in Hida 
+et al. (1993). In our context, we will only use the fact that, when sampled at various 
+times from a finite set inline-eq-IEq21 , the vector inline-eq-IEq22 can be expressed as a sum of a vector 
+with i.i.d. components and a vector with prescribed covariance matrix, i.e., a vector 
+with constant components in the simplest case. Model (1), known as the "concurrent 
+model", assumes that the response function at time t, inline-eq-IEq23, is explained by covariate 
+functions in
+line-eq-IEq24, at exactly the same time t, the functional parameters being allowed to 
+vary with t as well. The second model (2), called the “integral model", represents inline-eq-IEq25 
+using the values of the covariates curves in
+line-eq-IEq26 for all the observed times i n line-eq-IEq27. Clearly, 
+
+
+========== PAGE 4 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+Model (2) is more general and richer than Model (1). Exploring the “concurrent model" 
+further in a first step is of great interest because, as mentioned in Hastie and Tibshirani 
+(1993), any functional linear model can be reduced to this form.
+In this paper, we firstly develop an efficient approach named PenFFR (i.e. FFR for 
+the non penalized version) to estimate the functional parameters inline-eq-IEq28 of the concur­
+rent model (1) and inli ne-eq-IEq29 of the integral model (2). For this purpose, we use cubic 
+B-spline basis expansion for both functional covariates and functional parameters. 
+We propose a penalized estimator of the corresponding functional basis coefficients. 
+As shown below, our approach allows to simply choose equispaced knots and a suf­
+ficient number of basis functions to capture the main features of the covariates. Over­
+fitting is naturally avoided by penalizing roughness via controlling (maximizing) the 
+second derivatives of the functional parameters. Rather than using LASSO penalties, 
+like the FLiRTI method of James et al. (2009) or S-LASSO estimator of Centofanti 
+et al. (2022), that produces sparse derivatives of the functional parameter, we use 
+Ridge-type penalty, as in Manrique et al. (2018), but only on second derivative to 
+ensure local linear relation between covariates and response. Another reason is moti­
+vated by the lack of exact sparsity observed in real problems.
+Secondly, we propose a method to build confidence intervals of the predictions 
+given by the method. To achieve this, we draw a functional quantile regression by 
+perturbing the standard linear regression and compute functional quantiles by optimal 
+transport. This functional quantile regression is then combined with the conformal­
+ized method to build a functional conformalized quantiles regression. Indeed, con­
+fidence intervals are one way to guarantee how good the predictions are. They also 
+help to assess statistical significance, model validation or decision making.  That is 
+why in some practical situations the final inference goal is generally the estimation of 
+a confidence interval of the predictions. To build confidence intervals with desirable 
+properties such as distribution-freeness or non-asymptoticity, conformal prediction 
+is paramount in modern machine-learning for providing reliable measures of predic­
+tion uncertainty. A comprehensive development of this topic is originally presented 
+in Vovk et al. (2005) and Lei et al. (2016). Angelopoulos and Bates (2023) propose a 
+comprehensive overview, Tibshirani et al. (2019) present a weighted version which 
+can be used for problems where the test and training covariate distributions differ.
+Outline of the paper The paper is organized as follows: Sect. 2 shows how, under the 
+assumption of functional basis expansion, the concurrent and integral models are trans­
+formed into mixed matrix models. Section 3 details a two-step estimation scheme. The 
+first step recovers the functional nature of the covariates, by approximating them into 
+a functional basis. The second one computes the penalized estimation of the functional 
+regression coefficients, which are themselves decomposed into another functional 
+basis. Section 4 develops the functional quantile regression model by perturbing linear 
+regression in order to provide conformal predictions. Section 5 contains a simulation-
+based exploration of the method and confirms the efficiency of the proposed approach. 
+Section 6 presents an illustration of the method on two real data sets. The first one is the 
+well-known Canadian weather data set, in which the goal is to explain precipitation as 
+a function of temperatures in different Canadian cities. The second one is the Hawaii 
+ocean data set in which salinity is explained as a function of four functional covariates. 
+Finally, Sect. 7 concludes the paper and presents some future work.
+
+
+========== PAGE 5 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+2  Linear models for function-on-function regression
+This section shows how the functional models (1) and (2) can be, under the basis 
+expansion assumption of covariates and parameters, reduced to a linear mixed model 
+onto the discrete observations of the functional response and functional covariates.
+2.1  Functional concurrent model
+Linear regression for a functional response involving one or more functional covari­
+ates in the concurrent model is a well-known problem. The main issue is to estimate an 
+infinite dimensional parameter inline-eq-IEq30 through a finite sample of observations. As shown 
+in Hastie and Tibshirani (1993), the interest of Model (1), also called the varying coef­
+ficient model, is that any functional model can be theoretically reduced to this form. 
+Chapter 14 in Ramsay and Silverman (2005) describes how this model can be fitted by 
+minimizing an unweighted least squares criterion. The method proposed in this paper 
+addresses the estimation problem using a penalized function-on-function regression as 
+proposed in Ivanescu et al. (2015), where the problem is represented as a mixed model. 
+Nevertheless, our work differs by the choice of the penalization criterion enforced on 
+the functional parameter. The parameter inline-eq-IEq31 is expanded in functional basis using inline-eq-IEq32 
+basis functions to get back to a classical mixed model for which the estimations of 
+the parameters are well known. Furthermore, we allow to choose the number of basis 
+functions inline-eq-IEq33 to be large enough to capture any desired variation of inline-eq-IEq34, and we add a 
+roughness penalty term to get a smooth solution for the parameter at the end. As a first 
+step of our modelling, we recover the underlying functional process, by using penalized 
+cubic B-splines expansion for all the functional covariates.
+2.1.1  Functional basis expansion of covariates and model parameters
+In practice, a continuous curve for each realization of both the response variable inline-eq-IEq35 
+and the covariate variables 
+i
+nl
+ine-
+e
+q-IEq36 cannot be properly observed. Indeed, as 
+opposed to the ideal observation setting, we only have access to a set of noisy observa­
+tions at a finite number of points on a grid. As a result, the functional data can be pre­
+sented as a numerical vector. In order to recover the continuous form, which generally 
+belongs to an infinite dimensional space (e.g. Hilbert separable space inline -eq-IEq37), one 
+efficient way to proceed is to expand the considered functions in a functional basis. The 
+functional response, which is assumed in model (1) and even in model (2) to be writ­
+ten as a linear combination of these predictors, is not mandatory to be pre-processed. 
+The advantage of this approach is that, by truncating the series at a given level inline-eq-IEq38, an 
+approximation of the covariate function in
+line-eq-IEq39 in a inline-eq-IEq40 dimensional space is obtained.
+Therefore, for all the p covariates inline-eq-IEq41, a representation in cubic B-splines func­
+tional basis can be recovered. As indicated by Li and Ruppert (2008), the choice of 
+
+
+========== PAGE 6 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+the number of knots depends on the complexity of the variable and should be large 
+enough to capture its patterns. It is reasonable to suppose that this number and, thus, the 
+number of basis functions depend on the covariate. As a consequence, to distinguish 
+between the basis functions of each covariate, although just differing by their number, 
+we will adopt in the rest of this paper the system 
+i
+nl
+ine-e q-IEq4
+2
+ as 
+the basis function of inline-eq-IEq43. Then, any functional covariate can be written as:
+	
+di
+spla y
+-eq
+-
+Equ
+3
+
+(3)
+Knowing the basis functions in
+line-eq-IEq44, the estimation of coefficients in
+line-eq-IEq45 is done as a 
+preliminary step (Li and Ruppert 2008; Ruppert 2002; Ramsay and Silverman 2005).
+Like the functional covariates, all the functional parameters 
+i
+nline
+-
+eq-IEq46 of the con­
+current model can be expanded in functional basis. The number of basis functions i
+nline-eq-IEq47 
+must be chosen as sufficiently large to capture the patterns of any inline-eq-IEq48:
+	
+displ a
+y-e
+q
+-Eq
+u4
+
+(4)
+Using the expressions (3) and (4), the components in Model (1) become:
+	
+disp l
+a
+y
+-
+e
+q-Equ
+35
+and
+	
+displ a
+y
+-
+e
+q
+-
+Eq
+u 36
+By plugging these expressions into Model (1), we get:
+	
+displ ay-
+e q-Equ5
+
+(5)
+with inlin e -eq-I Eq49
+ is the design matrix and b the unknown parameters to 
+be estimated.
+
+
+========== PAGE 7 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+2.1.2  Functional concurrent model on the observations
+The concurrent model implicitly assumes that the functional covariates and the func­
+tional response are observed at the same timestamps. The observation grid will con­
+sist of m points inli n e - e q-IEq50. In mathematical terms we have:
+	
+displa y -eq-Equ6
+
+(6)
+One very specific issue to take care of is that the successive values of the observation 
+noise inline-eq-IEq5 1
+ can not be assumed independent of each other.
+A way to address the question of dependency is to use a Linear Mixed Model 
+(LMM, Wood (2006)). We therefore assume that the model error can be decomposed 
+as inline - eq - IEq52 with inline-eq-IEq53 a Gaussian white noise and inline-eq-IEq54 a random variable which 
+considers the random effect in each individual i n li n e - e q-IEq55. To summarize, our model 
+consists of a LMM with fixed effects b and random effects inline-eq-IEq56. In matrix form this gives:
+	
+d i spl a y - e q-Equ7
+
+(7)
+where 
+i n
+l
+ine-eq- I E q 5 7
+, 
+i n
+l
+ine-eq
+-
+IEq58 the design matrix of dimension in l ine-eq-IEq59 with in l i
+n e
+-eq-IEq60 , 
+i n
+l
+ine-eq-IEq6
+1
+, i n line-eq- I Eq62
+ and
+	
+d i
+s
+p
+l
+a
+y-eq
+-Equ
+3 7
+The specific notations we use here are the matrices inline-eq-IEq63 and inline-eq-IEq64 of size i n line-eq-IEq65, which are 
+composed of zeros and ones, respectively; The notations inline-eq-IEq66 and inline-eq-IEq67 refer to the correspond­
+ing null vector and the unknown covariance matrix of the random effects respectively.
+The parameters are then the fixed effects vectors b and the variance components 
+inline-eq-IEq68 and inline-eq-IEq69. We describe how to perform the inference in Sect. 3.
+2.2  Functional integral model
+The integral Model (2) assumes cumulative effects of covariates. More clearly, the 
+model proposed here makes use of observations of covariates up to time t to predict 
+the response at time t. It is important to note that in most models found in the lit­
+erature (Ramsay and Silverman 2005; Horváth and Kokoszka 2012; Crambes and 
+Mas 2013; Yao et al. 2005), for which both covariates and response have the same 
+
+
+========== PAGE 8 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+time domain, consider that the response at any time t depends on the influence of the 
+covariates on the whole domain. Such model implicitly assumes that the covariates at 
+any time i n line-eq-IEq70 can influence the response variable at time t. However, in the integral 
+model, the functional parameters are bivariate functions inlin e-eq-IEq71, except for the con­
+stant of the model, which remains univariate. In this section, we start by expanding 
+the parameters in a finite-dimensional functional basis and then plug this expression 
+into the model.
+2.2.1  Functional basis expansion of covariates and model parameters
+The functional parameters are therefore expanded in a bivariate basis which may or 
+may not have the same number of basis functions on each of the two dimensions. 
+However, without loss of generality and for the sake of simplicity, we assume that 
+the number of basis functions is the same in the two dimensions. This leads to the 
+following expression:
+	
+displ ay -
+e
+q-
+E
+qu8
+
+(8)
+where 
+i
+nl
+ine-e
+q
+-IEq7
+2
+ and 
+i
+nl
+ine-e
+q
+-IEq7
+3
+ are the basis functions and 
+inl
+ine-eq-IEq
+74 the unknown basis coefficients to be estimated. This expression can 
+be rewritten in matrix form:
+	
+displ ay -eq- Eq
+u9
+
+(9)
+with
+	
+di s
+p
+la
+y-
+e q -
+Eq
+u38
+The functional constant being univariate, it can thus be written as in (4) in the fol­
+lowing form:
+	
+displ a
+y-e
+q
+-Eq
+u3
+9
+
+
+========== PAGE 9 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+2.2.2  Functional integral model on the observations
+By plugging covariates and parameters functional basis expansion in the integral 
+Model (2), we get:
+	
+displ ay-eq-Equ4 0
+with in
+line - eq
+-IEq7 5
+. Finally we obtain:
+	
+displ ay-eq-Eq u 10
+
+(10)
+with 
+i n line -eq -IE q 7 6
+ 
+and 
+inlin e-eq-IEq77
+i
+nline-eq-IEq771
+0
+ two vectors of length
+	
+di s pla y
+-
+e
+q-
+Equ4
+1
+Once again, we are facing the problem of lack of independence of the different mea­
+sured values for the same individual. We will proceed exactly in the same way as with 
+the concurrent model thanks to a linear mixed model with fixed effects given by the 
+vector a and random effects given by the random vector i n line-eq-IEq78. The model will 
+therefore be written as a LMM given by:
+	
+d i spl a y - e q-Equ11
+
+(11)
+with inline-eq-IEq79, inline-eq-IEq80 and inline-eq-IEq81 defined as in (7). We denote i n
+l
+ine-eq
+-
+IEq82 the design matrix of 
+dimension in l ine-eq-IEq83.
+As in the concurrent model, the parameters to estimate are the fixed effects vec­
+tors a and the variance components inline-eq-IEq84 and inline-eq-IEq85. The inference scheme is described in 
+Sect. 3.
+
+
+========== PAGE 10 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+3  B-spline-based penalized estimator
+In both the concurrent and the integral models presented in Sects. 2.1 and 2.2 respec­
+tively, we have used the decomposition of the infinite-dimensional functional covari­
+ates and parameters into a truncated functional basis depending on the chosen number 
+of basis functions. Such a number naturally needed to be correctly selected in order 
+to avoid over- or under-fitting. Nevertheless, precise adjustment often induces a high 
+computational effort. In the case of the B-spline basis, even more parameters have to 
+be properly tuned such as the choice of the spline order and the location of the knots. 
+In order to reduce the expected cost of such a computationally demanding procedure, 
+we made the choice of a sufficiently large a priori value for inline-eq-IEq86 (or inline-eq-IEq87) and then apply a 
+roughness penalty. This approach brings the benefit of reducing the overall computa­
+tional cost, and of possibly improving the interpretability of the estimated functional 
+coefficients. This last point is very interesting in the case of the linear model because 
+as we already know, the interpretation of the relationship between the predictors and 
+the response becomes more difficult when the shape of the functional parameter inline-eq-IEq88 (or 
+inline-eq-IEq89) does not have a simple structure.
+Various approaches to regularize the parameter shape have been proposed in the 
+literature. In our setting of interest, the main idea is to enhance the model perfor­
+mance and interpretability by adding a roughness penalty. The work of Leurgans et al. 
+(1993) is among the first ones to explore the functional penalization and shows that 
+the obtained estimator inline-eq-IEq90 (resp. inlin e-eq-IEq91) becomes less sensitive to the rather subjec­
+tive choice of the number of basis functions inline-eq-IEq92 (resp. inline-eq-IEq93). More recently, James et al. 
+(2009) proposed a method called Functional Linear Regression That is Interpretable 
+(FLiRTI) which addresses the issue of choosing relevant penalties. Based on variable 
+selection ideas such as the LASSO penalty, it produces accurate, flexible and highly 
+interpretable estimates of the functional parameters. The main idea here is, instead 
+of enforcing sparsity on the function themselves, to enforce sparsity of the deriva­
+tives. Using the notation inline-eq-IEq94 for the inline-eq-IEq95 derivative of inline-eq-IEq96, it may be deduced that 
+inline- e q-IEq97 guarantees that inline-eq-IEq98 has no effect on inline-eq-IEq99 at time t; inline- eq-IEq10
+0 implies 
+that inline-eq-IEq101 is constant at time t; inline- e q-IEq102 means that inline-eq-IEq103 is linear at time t, and so on 
+for upper derivatives. The FLiRTI approach also combines sparsity enforcing penal­
+ties for more than one derivative at a time, which can be useful for smooth parameters 
+that may even vanish on some intervals.
+Instead of the LASSO penalty applied in the FLiRTI method, where choosing the 
+derivatives remains a difficult computational issue, our approach uses a Ridge pen­
+alty on the second derivative of the functional parameters. The choice of penalizing 
+the second derivative is mainly motivated by the desire to obtain a possibly locally 
+linear relationship if needed. Moreover, the use of the Ridge penalty is motivated by 
+the lack of exact sparsity observed in real problems and the clear benefits of getting a 
+closed form formula for the estimators.
+
+
+========== PAGE 11 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+3.1  Penalized estimator for the concurrent model
+Let us first consider the concurrent model in the classical mixed model form as in (7). 
+In order to obtain an interpretable estimator, we use a roughness penalty in the form 
+of a Ridge-type penalty on the second derivatives, as advocated for in the previous 
+paragraph. The objective function is the penalized log-likelihood function given by
+	
+display -e q-Equ1 2
+
+(12)
+with,
+	
+disp l a y- eq-
+E
+q
+u1 3
+(13)
+using i n line-e q -IEq104 and the penalty
+	
+display -eq
+- E qu4
+2
+	
+disp
+la
+y- e
+q
+-E
+qu4 20
+When inline-eq-IEq105 is too large, the estimation of inline-eq-IEq106 is too smooth, and it is not possible to 
+account for the possible variations of the regression coefficients. When, instead, inline-eq-IEq107 is 
+too small, the estimators might become too rough and overfitting might occur.
+For a given value inline-eq-IEq108, the estimation of 
+i
+nline
+-
+eq-IEq109 is obtained by solving:
+	
+dis
+pl a y-eq-Eq u1 4
+
+(14)
+where in l ine -eq-IEq110 is given by:
+	
+di s
+p
+l
+a
+y
+-
+e
+q-Eq
+u43
+
+
+========== PAGE 12 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+Here, inline-eq-IEq11 1
+ is the standard notation for the null matrix of size in l ine-eq-IEq11 2. As inline-eq-IEq113 is a 
+symmetric positive-definite matrix for any i n l i ne-eq-IEq114, we can easily find its Cholesky 
+decomposition, which can be efficiently leveraged in the implementation.
+We first rewrite Model (7) in the form:
+	
+d i spl a y-eq-Equ44
+with in l i n e -eq-IEq115 and i n line-eq - I E q1 1 6
+ By setting the partial deriva­
+tives with respect to b and inline-eq-IEq117 to 0 and then solving the resulting linear system, we get:
+	
+dis p
+l
+ay -e
+q-E q u1
+5
+
+(15)
+(see Appendix 8.1 for more details).
+Let us now address the problem of choosing the smoothing parameters 
+i n line-eq-IEq118. The correct choice will make great use of the observed accuracy of 
+the prediction. For this purpose, for a fixed value of inline-eq-IEq119, we resort to a leave-one-out 
+cross-validation type approach and compute inline
+-eq-IEq120 based on the sample, except for the 
+inline-eq-IEq121 observation. Then, the prediction in
+line
+-eq-IEq122 at observation i is computed and finally, 
+the prediction error or cross-validation score associated with the parameter inline-eq-IEq123 as
+	
+displ a y
+-
+e
+q
+-Eq
+u
+45
+The value of inline-eq-IEq124 that achieves the lowest estimated risk will be selected.
+3.2  Penalized estimator for the integral model
+For the integral model, the penalized log-likelihood function can also be optimized 
+as in (12). However, the main difference lies in the specific form of the penalty. The 
+log-likelihood of the model will thus have the expression:
+	
+disp l a y- eq- Equ16
+
+(16)
+using i n line-e q -IEq125, and the penalized log-likelihood:
+	
+display - e q- Eq u 17
+
+(17)
+For this model, the parameters inline-eq-IEq126 will be bivariate functions except for inline-eq-IEq127, which is 
+univariate. The penalties for bivariate parameters will take the following expression:
+
+
+========== PAGE 13 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+	
+display - eq
+- E qu46
+Here inlin e-eq-IEq128 denotes the Hessian matrix of the bivariate function f and i n line-eq-IEq129 is 
+the standard Frobenius norm. To simplify expressions we will use the notation: 
+inline- eq
+-I Eq
+1 30
+. This gives eventually:
+	
+display -eq
+- E q
+u18
+
+(18)
+We know from (9) that:
+	
+displ ay- e
+q
+-Equ47
+The expressions for the partial derivatives are then as follows:
+	
+d
+i
+s
+p
+l
+a
+y
+-
+e
+q
+-
+E
+q
+u
+4
+8
+with 
+the 
+notation 
+in
+line
+-eq -
+I
+E
+q131
+ 
+and 
+in
+line
+-eq -
+I
+Eq13
+2
+Back to the problem of minimizing the penalized log-likelihood (17), for fixed 
+values inline-eq-IEq133, the estimation of 
+i
+nline- eq-IE q13 4
+ is obtained by 
+solving the problem:
+	
+dis
+pl a y-eq-Eq u4 9
+
+
+========== PAGE 14 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+The penalty term for any bivariate parameter inlin e-eq-IEq135 can be seen as the tensor prod­
+uct between the three following terms: 
+(i)	
+the inline-eq-IEq136 matrix, the inline-eq-IEq137 order square tensor of dimension inline-eq-IEq138;
+(ii)	 the matrix inline-eq-IEq139 . We can rearrange this tensor product as a matrix 
+product by flattening the matrix to a vector;
+(iii)	 the inline-eq-IEq140  order tensor of basis functions flattened to a matrix.
+As a result, we have a matrix product between the row vector of length in
+line-eq-IEq141, the square 
+matrix of dimension inline-eq-IEq14 2
+ and the column matrix of length in
+line-eq-IEq143. The minimization 
+problem can be written in matrix form:
+	
+dis
+pl a y-eq-Eq u1 9
+
+(19)
+where inline-eq-IEq144 the matrix of dimension in l ine-eq-IEq145 with in l ine - eq
+-IE q1
+46 defined as 
+in (14). The main difference lies in the expression of the block matrix inline-eq-IEq147 for i n line-eq-IEq148 
+given by:
+	
+di s
+p
+la
+y-eq
+-Eq u5
+0
+With this expression, we proceed in the same way as in the concurrent model to 
+obtain the penalized estimator of a and then 
+i
+nline- eq
+-
+IEq149.
+4  Conformal prediction
+Conformal prediction (Vovk et al. 2005) is a framework that provides valid mea­
+sures of confidence for individual predictions. It aims to quantify the uncertainty 
+associated with predictions made by machine learning models, allowing users to 
+assess the reliability of the model’s predictions. The key idea of this method is 
+the construction of prediction regions around individual predictions to make sure 
+that, with a certain level of confidence, the true value of the response falls within 
+these regions. The resulting interval has desirable properties such as distribution 
+freeness and non-asymptoticity. Despite these, classical conformal methods lead to 
+intervals of constant or hardly varying length across the input space. Romano et al. 
+(2019) proposed a fully adaptive method to heteroscedasticity named Conformal­
+ized Quantile Regression (CQR) that combines conformal prediction to quantile 
+regression inheriting advantages of both methods. We decided to adapt the CQR 
+method to function-on-function regression.
+
+
+========== PAGE 15 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+4.1  Conformalized quantile regression
+In its original formulation, conformal prediction works with methods of point predic­
+tion such as linear regression but also decision trees, support vector, boosting or neu­
+ral networks (see Angelopoulos and Bates (2023) for a recent overview). Based on 
+the prediction given by the model, such method computes a non-conformity measure 
+of how unusual an example looks relative to previous examples. Then the conformal 
+prediction algorithm turns this nonconformity measure into prediction regions. The 
+CQR extension constructs prediction intervals around the quantile estimates, allow­
+ing users to assess the reliability of the model’s predictions at different quantile levels. 
+Quantile regression attempts to learn the inline-eq-IEq150-conditional quantile of i nline-eq - IEq151 
+for any possible value of x(t).
+Since 
+i nline-eq - IEq1 5 2
+ 
+with 
+probability 
+inline-eq-IEq153 
+and 
+i nline-eq - IEq1 5 4
+ with probability inline-eq-IEq155, then inline-eq-IEq 156
+ 
+is a valid interval with inline-eq-IEq157 coverage.
+For a given labeled dataset inline-eq -IEq158
+, CQR 
+works as follows: 
+1.	 Two conditional quantiles regression functions inli
+n
+e-eq-I
+Eq159
+ and inli
+n
+e-eq-I
+Eq160
+ 
+with in l ine-eq-IEq16 1 are fit on a proper training set inline-eq-IEq162.
+2.	 On the calibration set inline-eq-IEq163, conformity scores inline-eq-IEq164 are computed, given by: 
+	
+di sp
+l
+ay-
+e
+q-Eq
+u
+51
+3.	 Finally, the prediction interval of a new observation inline-eq-IEq165 with input inline-eq-IEq166 
+is given by
+	
+d
+i
+splay-eq
+-
+E
+q
+u20
+(20)
+where inline-eq-IEq167 is the 
+i
+nl i ne-e q
+-
+IEq16
+8
+ quantile of the multivariate errors inline-eq-IEq169.
+Romano et  al. (2019) establish that if the elements of the sample 
+i
+n
+line-eq -IEq17
+0
+ are interchangeable and conformity scores inline-eq-IEq171 are 
+almost surely distinct, the predictive interval (20) satisfies:
+	
+d i s p l
+a
+y-eq-Equ5 2
+As described in the steps of the method above, we need to build: (i) the functional 
+quantile regression inline-eq-IEq172 and (ii) the quantile of multivariate conformity scores inline-eq-IEq173. 
+This process is described in the two next subsections.
+
+
+========== PAGE 16 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+4.2  Multivariate quantiles
+Multivariate quantiles extend the concept of univariate quantiles to multivariate data, 
+allowing for the characterization of the joint distribution of several random variables. 
+But unlike in the 1-dimensional space inline-eq-IEq174, the d-dimensional space inline-eq-IEq175 (with i n line-eq-IEq176) is 
+not canonically ordered. So strongly order-related notions such as quantiles, ranking, 
+signs and distribution are not quite natural and still an open problem. Hallin et al. 
+(2021) proposed a center-outward definition of multivariate distribution and quantile 
+functions based on measure transportation introduced by Chernozhukov et al. (2017) 
+for the so-called Monge-Kantorovitch problem. These definitions are made under the 
+assumption of non-vanishing density support, whose main advantage is the fact that 
+it satisfies desirable properties, such as distribution-freeness and maximal invariance, 
+that make univariate quantiles be successful tools for statistical inference.
+We consider two distributions: a discrete n-sample (empirical) distribution inline-eq-IEq177 rep­
+resented by a set of points inli
+n
+e - e q - IEq1
+78 in inline-eq-IEq179 and an augmented uniform grid 
+distribution inline-eq-IEq180. The goals of the optimal transport are (i) to find the map inline-eq-IEq181 between 
+the samples and (ii) to build the uniform grid that minimizes the total transportation 
+cost. It is also the most efficient way to redistribute mass from the sample points to 
+the grid points while minimizing the inline-eq-IEq18
+2 distance. Mathematically, the optimal inline-eq-IEq183 
+transport map can be defined as:
+	
+d is pla y-e
+q -E qu21
+
+(21)
+where i nli ne-eq-IEq184 is the set of all transports mapping inline-eq-IEq185 to inline-eq-IEq186.
+Optimal transport can be used to estimate multivariate quantiles in a robust man­
+ner, particularly in the presence of heterogeneous data. In the context of multivariate 
+distributions, quantiles represent values that partition the distribution into segments 
+of equal probability mass. In a similar way, optimal transport can be used to estimate 
+multivariate quantiles by minimizing the transportation cost required to redistribute 
+mass from the distribution tails to the quantile levels.
+To define multivariate quantiles using optimal transport, we firstly consider a ref­
+erence distribution inline-eq-IEq187. The common choice is the uniform distribution on the unit ball. 
+We also consider the empirical distribution inline-eq-IEq188 derived from the data. inline-eq-IEq189 is the optimal 
+transport that pushes inline-eq-IEq190 forward to inline-eq-IEq191: inl i ne-eq-IEq192. The second step consists in reduc­
+ing the radius of the unit ball to exclude a inline-eq-IEq193-probability to be in the crown delimited 
+by the unit ball and the ball of radius r. The third step is dedicated to defining the inline-eq-IEq194
+-quantile simply by choosing the points with the lower ranks among the data points 
+excluded by the reduction of the radius of the unit ball.
+4.2.1  Step 1: Construct the uniform grid on the unit ball
+Since most of the volume of a unit ball is concentrated in a thin layer near its surface 
+in high dimensional space, it is not so trivial to generate a grid uniformly. To do so, 
+
+
+========== PAGE 17 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+we must first ensure that the resulting distribution must match with the volume of 
+crowns. In a d-dimensional space, the volumes of the ball of radius r and of the unit 
+ball (radius 1) are given respectively by
+	
+disp l
+ay-e
+q- E
+q u 53
+The volume of the crown is then: inl i ne-e q -IEq 1 95
+.
+The probability of being in this crown, for the generated distribution, is
+	
+dis p la
+y-eq
+- E q u54
+With this result, we can derive the probability distribution function (and the density 
+function) of the random variable inline-eq-IEq196 of the radii of balls required to be in the crown:
+	
+displ a y - eq- E qu 5 5
+Based on the demonstration above, we propose the following algorithm to generate a 
+uniform grid on the unit ball 
+1.	 Simulate a set of d-dimensional points according to the normal distribution.
+2.	 Normalize the simulated points.
+3.	 Simulate as many radii r as points generated to the distribution inline-eq-IEq197. Then 
+i n lin
+e
+-eq-IE
+q
+198
+ with i n line- eq-IEq199.
+4.	 Finally, each normalized point is multiplied by a simulated radius.
+With this process, we ensure that the generated uniform distribution will respect the 
+geometry and the distribution of volumes in high dimensional spaces.
+4.2.2  Step 2: Find the radius r that excludes inline-eq-IEq200-probability points
+In this sub-section, we answer the following question: "By how much should the 
+radius of the unit ball be reduced so that the excluded volume represents inline-eq-IEq201 of the 
+total volume ?"
+In this context, inline-eq-IEq202 = 100 x inline-eq-IEq203, where inline-eq-IEq204 represents the ratio of the volume of the 
+crown formed by the unit ball and the ball of radius r to the volume of the unit ball.
+	
+d i spl
+ay-e
+q - E qu
+22
+
+(22)
+Then, to exclude inline-eq-IEq205 from the total volume, the radius of the unit ball can be reduced 
+from 1 to r.
+
+
+========== PAGE 18 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+4.2.3  Step 3: Define the multivariate quantile
+Once we have understood how to properly construct an uniform grid on the d-dimen­
+sional unit ball and how to reduce the radius of this ball to extract a well-defined 
+volume, the final step is to the determine the empirical multivariate inline-eq-IEq206-quantile of 
+the set of points inli
+n
+e - e q - IEq2
+07 in inline-eq-IEq208. The empirical inline-eq-IEq209-quantile is obtained via an 
+optimal transport inline-eq-IEq210 of the sample distribution to the deterministic uniform grid on 
+the unit ball. By reducing the radius of that ball from 1 to r according to the formula 
+(22), the inline-eq-IEq211-quantile is given by the convex enclosure of the observations excluded by 
+radius reduction.
+4.3  Quantile function-on-function regression by perturbation
+Quantile regression introduced by Koenker and Bassett (1978) offers a convincing 
+solution by estimating conditional quantiles, which provide a more complete under­
+standing of the distribution of the response variable. In FDA, the main difficulty relies 
+on the fact that it is hard to design an equivalent to the pinball loss for functional 
+output variables. In the scalar-on-function setup, we can mention works from Fer­
+raty et al. (2005) and Cardot et al. (2005) which estimate conditional quantiles using 
+non-parametric estimation and spline estimators respectively. For function-on-scalar 
+and function-on-function setups, Liu et al. (2020) proposed a Bayesian framework by 
+developing a scalable Gibbs sampler for an asymmetric Laplace likelihood distribu­
+tion for the functional basis coefficients. Beyaztas et al. (2024) designed a pointwise 
+pinball loss and a quadratic roughness penalty to estimate the model. Rather than 
+using these techniques, we propose to use an alternative technique which does not 
+require the assumption of continuity.
+We developed a function-on-function quantile regression by perturbing linear 
+function-on-function regression repeatedly. As done by any resampling methods such 
+as bootstrap or jacknife, we generate artificial samples of predictions of the linear 
+regression. The resulting quantile regression is simply the multivariate quantiles of 
+those perturbing predictions. Originally, the use of perturbation in statistics can be 
+found at least back in Gauss (1809), who used them to linearize a non linear problem. 
+Later Stewart (1990)’s work examined the application of matrix perturbation theory 
+for solving least squares regression problems, when the design matrix is contaminated 
+by random errors. Our work is mostly inspired by Minnier et al. (2011), in which an 
+interesting innovative and robust perturbation approach for regularized regression 
+estimation is proposed and is particularly useful for high dimensional data. The idea 
+of the method is to create series of perturbed datasets using them to estimate the vari­
+ability of the regression coefficients. Specifically, for a given dataset each term in the 
+log-likelihood for the PenFFR algorithm for any models (1) or (2), is multiplicatively 
+weighted using i.i.d. exponential random variables with unit variance. Sampling this 
+multiplicative weights several times with the same i.i.d. exponential distribution, we 
+obtain independent realizations of the estimator of the functional prediction prob­
+lem. These estimators then provide several independent functional responses inli
+ne-eq-IEq212 
+
+
+========== PAGE 19 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+i n l i ne-eq-IEq213 for any given new data inline-eq-IEq214, i n li n e - e q-IEq215. Based on theses inline-eq-IEq216 predictions 
+for each input inline-eq-IEq217, i n li n e - e q - IEq218, Optimal Transport can thus compute the func­
+tional quantiles of these predictions, that we can take as estimators for the functional 
+quantiles inline-eq-IEq219 and inline-eq-IEq220. These functional quantile regression estimates can then be 
+made rigorous by applying a conformal error correction as presented in the next step.
+4.4  Theoretical guarantee
+Let inline-eq-IEq22
+1 be the training set (used to fit the quantile predictor and, if used, the OT 
+transform), and inline-eq-IEq22
+2 the calibration set of size m. For i n line-eq-IEq223, define the vector 
+nonconformity:
+	
+di s pla
+y
+-eq-Eq u 56
+for i n li n e - e q-IEq224.
+OT-based computation of quantiles for inl i n e - eq-IEq225: compute an empirical 
+OT map from the empirical distribution of inl i n e -eq-IEq226 to a uniform reference 
+on the m-ball. Let inline-eq-IEq227 be the functional inl i ne-e q -IEq228-th order statistic of 
+inline-eq - I E q229 in the sense of Chernozhukov et al. (2017). Define
+	
+displ a y- e q-Equ5 7
+Theorem 4.1  Assume that the tuples inlin e-e q - I Eq 2 30
+ are exchange­
+able, and that all training procedures (fitting the quantile bands and, if applicable, 
+computing the OT map) depend only on inline-eq-IEq23
+1 and on external randomness independent 
+of inlin e-e q - I Eq23
+2
+. Then, the split conformal set inline-eq-IEq233 satisfies
+	
+displa y -eq-Equ58
+Proof  Condition on all training outputs (including the perturbation randomness used 
+to fit the quantile predictor on inline-eq-IEq234). The calibration/test tuples are exchangeable. The 
+residual vectors inline-eq-IEq235 for i n li n e- e q-IEq236 are therefore exchangeable functions of 
+these tuples. Then, the scalar scores in l ine-eq-IEq237, i n line-eq-IEq238 are measurable functions 
+applied uniformly to each i; hence inl i n e -e q -I E q239 are exchangeable. Thus 
+the rank of inline-eq-IEq240 among inl i n e -e q -I Eq24
+1
+ is uniform on inl i n e - e q -IEq242, 
+proving
+	
+displa y -eq-E q u 5 9
+By definition of inline-eq-IEq243, the event inlin e -eq-IEq244 is exactly inlin e -eq-IEq245.  inline-eq-IEq246
+Remark 4.1  (Role of perturbation) The perturbation mechanism (Minnier et al.) is 
+used only to estimate the quantile bands on inline-eq-IEq247. As long as any randomness used 
+
+
+========== PAGE 20 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+there does not depend on labels from in l in e -eq-IEq248, it does not affect validity. No 
+asymptotic normality or consistency is needed for coverage, although they may 
+improve efficiency.
+Remark 4.2  (Functional responses) For functional outputs, i n li n e - e q-IEq249 indexes 
+discretization points. The same proof holds for any fixed m, and extends to continu­
+ous-time via appropriate discretization with stability guarantees if the scalarization 
+is upper semicontinuous (the practical implementation still computes on a grid).
+Remark 4.3  (Choice of scalarization) inline-eq-IEq250 recovers the standard CQR band logic. 
+inline-eq-IEq251 leverages multivariate geometry across j to tighten sets; coverage remains valid 
+because T is fitted on inline-eq-IEq25
+2 only (or on a fixed reference) and applied symmetrically.
+5  Simulation study
+This section has two goals. Firstly, it aims to illustrate and validate the estimation 
+and predictive capabilities of the proposed PenFFR algorithm described in Sects. 3 
+and 4, through a series of Monte Carlo simulations in the framework of “perfectly 
+controlled" data, i.e., in the set-up where the assumptions about the distribution are 
+the ones underlying our theory. Secondly, the performance of the PenFFR method 
+will be compared on the simulated datasets, with the performance of pffr. The main 
+properties of interest are accuracy, interpretability and smoothness of the estimated 
+parameters, prediction quality and coverage of confidence intervals. Only the concur­
+rent model is considered in this section, but similar results have been obtained for the 
+integral model. The R code for the FFR and PenFFR models are available on ​h​t​t​p​s​:​/​/​
+g​i​t​h​u​b​.​c​o​m​/​O​r​a​n​g​e​-​O​p​e​n​S​o​u​r​c​e​/​p​e​n​f​f​r​.​
+5.1  Data generation process
+We will first simulate the covariates and then use them as input to our regression 
+model in order to simulate the corresponding response. The i n line-eq-IEq253 functional covari­
+ates are simulated at i n line-eq-IEq254 equidistant viewpoints inline-eq-IEq255 over the domain i n lin e-eq-IEq256 
+according to the following procedure:
+	
+di
+splay -eq
+-Eq u
+2
+3
+
+(23)
+where in
+line-eq-IEq257 is drawn from i
+n
+line -e
+q-IEq258
+ (i n l i ne-eq-IEq259). We can see this data in Fig. (1a–e) 
+for one randomly chosen individual (blue dots).
+Before estimating the model, we first compute the underlying expan­
+sion into a basis made of B-Splines. We obtain the red curves in Fig.  1 
+
+
+========== PAGE 21 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+using i n line-eq-IEq26 0 basis functions and equidistant distributed knots. The func­
+tional parameters inli n
+e
+-eq-IE q26
+1
+ are chosen as follows: 
+inline -
+e
+q-IEq2 6 2
+ and inline - eq
+- IEq
+2
+63
+ where the parameter val­
+ues are chosen from a uniform law between inline-eq-IEq264 and 5: in l ine-eq-IEq265, in
+l i ne-eq-IEq266
+, in
+l i ne-eq-IEq267, in
+l i ne-eq-IEq268, in
+l i ne-eq-IEq269, in
+l i ne-eq-IEq27 0
+, in
+l i ne-eq-IEq271, inline-eq-IEq27
+2
+, in
+l i ne-eq-IEq273, in
+l i ne-eq-IEq274 and in
+l i ne-eq-IEq275. Figure 2 shows the corresponding repre­
+sentations of the functional parameters.
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+0.65
+0.70
+0.75
+0.80
+0.85
+Time obs.
+0t
+(a) β0(t)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3
+−2
+−1
+0
+1
+2
+3
+Time obs.
+1t
+(b) β1(t)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.0
+−0.5
+0.0
+0.5
+1.0
+Time obs.
+2t
+(c) β2(t)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3.0
+−2.5
+−2.0
+−1.5
+−1.0
+−0.5
+0.0
+Time obs.
+3t
+(d) β3(t)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.6
+−0.4
+−0.2
+0.0
+0.2
+0.4
+0.6
+Time obs.
+4t
+(e) β4(t)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.3
+−0.2
+−0.1
+0.0
+0.1
+0.2
+0.3
+Time obs.
+5t
+(f) β5(t)
+Fig. 2  Functional parameters in the concurrent model
+ 
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.8
+−0.6
+−0.4
+−0.2
+0.0
+0.2
+Time obs.
+X1(t)
+(a) Predictor 1
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+3.5
+4.0
+4.5
+5.0
+5.5
+6.0
+6.5
+7.0
+Time obs.
+X2(t)
+(b) Predictor 2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+3.0
+3.5
+4.0
+4.5
+Time obs.
+X3(t)
+(c) Predictor 3
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.8
+−0.6
+−0.4
+−0.2
+0.0
+Time obs.
+X4(t)
+(d) Predictor 4
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.4
+−0.3
+−0.2
+−0.1
+0.0
+0.1
+0.2
+Time obs.
+X5(t)
+(e) Predictor 5
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−15
+−10
+−5
+0
+5
+Time obs.
+Y(t)
+(f) Response
+Fig. 1  Simulated predictors (blue dots for raw data and red lines for functional recovery) and functional 
+(concurrent) response for a randomly chosen individual
+ 
+
+
+========== PAGE 22 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+Given the proposed functional covariates and functional parameters, the func­
+tional response can now be computed using the concurrent Model (1), for two dif­
+ferent sampling sizes i n line- eq-IEq276. In this experiment, inline-eq-IEq277 is a Gaussian noise 
+with mean 0 and two levels of variance in l ine -eq-IEq278. Table 1 list the 4 simulation 
+scenarios. For each configuration, we run i n line-eq-IEq279 Monte Carlo simulations.
+5.2  Assessment criteria
+The performance of the estimation procedure is assessed with two criteria: prediction 
+accuracy and estimation error for the model parameters. We extend to the functional 
+framework the well-known Mean Relative Prediction Error (MRPE), which is used 
+to quantify the distance between the actual and the predicted values of the functional 
+response:
+	
+disp l a
+y
+-
+e
+q-E
+qu2
+4
+
+(24)
+We also define an extension of the determination coefficient, which is the arithmetic 
+average of the classical determination coefficient along the time observation of the 
+functional response. This determination coefficient noted in
+line-eq-IEq281 is defined as follows:
+	
+di
+s p l
+a
+y
+-
+eq-
+E
+q u
+25
+
+(25)
+where inline-eq-IEq282 is the predicted output of the sample i at time inline-eq-IEq283 and inline-eq-IEq284 the mean 
+function of the output sample at time inline-eq-IEq285.
+To evaluate the performance of the estimation parameters, the actual functional 
+parameters are compared with those provided by our models, using the Mean Square 
+Error (MSE) given by:
+	
+dis p
+l
+a y -
+e
+q
+-Eq
+u
+2
+6
+
+(26)
+In addition, to assess the quality of produced confidence intervals, the coverage pro­
+portion is used. It is the proportion of actual data that fall inside the predicted con­
+Scenarios
+Number of observations: n
+Variance: inline-eq-IEq280
+S1
+200
+4
+S2
+200
+1
+S3
+500
+4
+S4
+500
+1
+Table 1  The four scenarios of 
+the simulation study
+ 
+
+
+========== PAGE 23 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+fidence interval. The ideal situation for level inline-eq-IEq286 is in l ine-eq-IEq287. The coverage proportion 
+(denoted by inline-eq-IEq288) is given by the formula
+	
+disp l a
+y -
+e
+q
+-Eq
+u
+2
+7
+
+(27)
+where in
+l ine-eq-IEq289 (resp. in
+l ine-eq-IEq290) is the lower (resp. upper) bound of the confidence inter­
+val for the observation i at time inline-eq-IEq291.
+5.3  Simulation results
+Figure 3 compares the boxplots of MSE (26) of the estimated parameters over Monte 
+Carlo repetitions of the 4 scenarios of the FFR method. As expected, for any param­
+eter, the MSE decreases as the number of observations increases (S1 vs S3 and S2 vs 
+S4) and it also decreases when there is a smaller variance of the model error (S1 vs 
+S2 and S3 vs S4). For a more specific comparison, Fig. 4 represents, for three out of 
+the six, actual parameters and their estimations given by the FFR, PenFFR and pffr 
+methods respectively for all the Monte Carlo repetitions in the S3 scenario. We noted 
+for all of them (except for the intercept) a good estimation of parameters, as well as 
+a substantial reduction of the random fluctuations of penalized parameters compared 
+to the non-penalized ones.
+Prediction accuracy
+We have generated a test sample with inlin e -eq-IEq293 observations, and we compare 
+the difference between the actual values of the functional response and the prediction 
+given by each method in the 4 scenarios through the MRPE. Table 2 shows in its first 
+column the average and standard deviation of MRPE. Like for the parameter estima­
+tion, the MRPE decreases as the number of observations in the train set increases, but 
+the additive noise has a more greater impact. In any scenario, PenFFR has slightly 
+better performances than FFR, which has itself better performances than pffr.
+0.0
+0.1
+0.2
+0.3
+ 0t
+ 1t
+ 2t
+ 3t
+ 4t
+ 5t
+ MSE 
+scenario
+S1
+S2
+S3
+S4
+Fig. 3  Boxplots of MSE of estimated parameters over the i n line-eq-IEq292 Monte Carlo repetitions for the non 
+penalized method
+ 
+
+
+========== PAGE 24 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+Test set MRPE (× 
+103)
+inline-eq-IEq295
+CovP
+inline-eq-IEq296
+ S1
+FFR
+inlin e-eq-IEq297
+inlin e-eq-IEq298
+inlin e-eq-IEq299
+0
+PenFFR
+inlin e-eq-IEq301
+inlin e-eq-IEq302
+inlin e-eq-IEq303
+inlin e-eq-IEq304
+pffr
+inlin e-eq-IEq305
+inlin e-eq-IEq306
+–
+inlin e-eq-IEq307
+S2
+FFR
+inlin e-eq-IEq308
+inlin e-eq-IEq309
+inlin e-eq-IEq31 0
+inlin e-eq-IEq311
+PenFFR
+inlin e-eq-IEq312
+inlin e-eq-IEq313
+inlin e-eq-IEq314
+inlin e-eq-IEq315
+pffr
+inlin e-eq-IEq316
+inlin e-eq-IEq317
+–
+inlin e-eq-IEq318
+S3
+FFR
+inlin e-eq-IEq319
+0
+inli ne-eq-IEq321
+inlin e-eq-IEq322
+PenFFR
+inlin e-eq-IEq323
+inlin e-eq-IEq324
+inli ne-eq-IEq325
+inlin e-eq-IEq326
+pffr
+inlin e-eq-IEq327
+inlin e-eq-IEq328
+–
+inlin e-eq-IEq329
+S4
+FFR
+inline-eq-IEq33 0
+inlin e-eq-IEq331
+inli ne-eq-IEq332
+inlin e-eq-IEq333
+PenFFR
+inlin e-eq-IEq334
+inlin e-eq-IEq335
+inli ne-eq-IEq336
+inlin e-eq-IEq337
+pffr
+inlin e-eq-IEq338
+inlin e-eq-IEq339
+–
+0
+Table 2  Average and standard deviation of accuracy criteria for the 4 simulated scenarios
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+0.4
+0.6
+0.8
+1.0
+1.2
+Time
+0t
+(a) β0(t), FFR
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−4
+−2
+0
+2
+4
+Time
+1t
+(b) β1(t), FFR
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.4
+−0.2
+0.0
+0.2
+0.4
+Time
+5t
+(c) β5(t), FFR
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+0.4
+0.6
+0.8
+1.0
+1.2
+Time
+0t
+(d) β0(t), PenFFR
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−4
+−2
+0
+2
+4
+Time
+1t
+(e) β1(t), PenFFR
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.4
+−0.2
+0.0
+0.2
+0.4
+Time
+5t
+(f) β5(t), PenFFR
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+0.4
+0.6
+0.8
+1.0
+1.2
+Time
+0t
+(g) β0(t), pﬀr
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−4
+−2
+0
+2
+4
+Time
+1t
+(h) β1(t), pﬀr
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.4
+−0.2
+0.0
+0.2
+0.4
+Time
+5t
+(i) β5(t), pﬀr
+Fig. 4  Estimated parameters vs actual ones in the simulated scenario 3 for the FFR, PenFFR and pffr 
+methods
+ 
+
+
+========== PAGE 25 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+The functional determination coefficient in
+line-eq-IEq341 computed over all the scenarios is 
+also presented in Table 2. From this table, we observe that, when the additive noise 
+increases (S2 vs S1 and S4 vs S3), the coefficient of determination gets smaller. By 
+increasing the sample size (S1 vs S3 and S2 vs S4), we improve the determination 
+coefficient.
+The CovP criterion given in Table 2 shows a better coverage when the noise level 
+decreases (S1 vs S2 and S3 vs S4).
+Finally, Fig. 5 illustrates for two randomly chosen observations, the actual values 
+(black dots), the predictive curves given by PenFFR method (red curve) and the inline-eq-IEq342 
+confidence interval of the PenFFR prediction.
+To summarize, the presented results show that the PenFFR has globally the best 
+performance. The FFR method, while effective in certain contexts, often struggles 
+with overfitting due to its lack of regularization, what can lead to less reliable esti­
+mates, especially when dealing with complex or noisy data. On the other hand, the 
+pffr method offers more flexibility by incorporating smoothness in both the func­
+tional predictor and response, as well as faster results, but it may not fully address 
+the issue of controlling model complexity. As a result, PenFFR consistently provides 
+MRPE : 0.011
+CovP   : 2 %
+−30
+−20
+−10
+0
+10
+0.00
+0.25
+0.50
+0.75
+1.00
+ Time 
+Y
+PenFFR 
+actual
+95% confidence Interval
+(a) prediction 1
+MRPE : 0.008
+CovP   : 54 %
+−30
+−20
+−10
+0
+10
+0.00
+0.25
+0.50
+0.75
+1.00
+ Time 
+Y
+PenFFR 
+actual
+95% confidence Interval
+(b) prediction 2
+Fig. 5  Actual values (black dots) and PenFFR predictive curves (red lines) of the functional response 
+for two randomly chosen individuals
+ 
+
+
+========== PAGE 26 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+better predictive accuracy and stability, making it the most robust and reliable choice 
+among the three methods.
+6  Application to real data
+In this section, we apply the proposed methodologies for function-on-function regres­
+sion (FFR and PenFFR) for concurrent and integral models. These models are applied 
+to two well-known data sets in the FDA research community: Canadian Weather 
+(CW) data available in the R package fda and Hawai Ocean (HO) data available in 
+the R package FRegSigComp. We compare the prediction accuracy obtained using 
+the proposed method with the accuracy obtained with other existing methods: (i) 
+integral and concurrent Penalized Function-on-Function Regression (pffr, Ivanescu 
+et al. (2015)) implemented in the R package refund; (ii) the signal compression 
+approach (wSigcomp) designed by Luo et al. (2016) for the integral model and imple­
+mented in the R packages FRegSigComp; (iii) the Optimal Penalized Function-on-
+Function Regression (OPFFR) for the integral model (Sun et al. 2018), the Functional 
+Principal Component Analysis (FPCA) and Functional Data Analysis method (FDA) 
+also for the integral model (Ramsay and Silverman 2005). Due to the unavailability 
+of code for the OPFFR approach, we simply use the published results as presented in 
+(Sun et al. 2018).
+Hyper-parameter tuning
+For our methods (FFR and PenFFR), we consider cubic B-splines basis functions 
+for both functional predictors and regression coefficients. On the CW data set, we use 
+100 basis functions to address the functional and complex nature of the predictors 
+and on HO data set we use 40 basis functions. This choice is motivated by the fact 
+that on the raw data, predictors on CW data set have 365 measurements while predic­
+tors in the HO data set have only 200 measurements. The number of basis functions 
+of parameters is set to 40 for the concurrent model and 10 for the integral model on 
+CW data. For the HO data, knowing that there are 4 functional predictors and that 
+the number of features of design matrix depends on the square of the number of 
+basis functions in the integral model, we choose 20 basis functions for the concurrent 
+model and only 6 for the integral model. The penalty parameters inline-eq-IEq343 of any predictor 
+are then selected using cross-validation on a predefined grid of values (10 equispaced 
+values between 0.1 and 2.0).
+For the pffr method, we used the default settings prescribed by the software and 
+only set the number of basis functions for both the functional parameters and predic­
+tors. To correctly compare to our proposed method, we also used a cubic splines basis 
+for both the functional predictors and parameters for the two (CW and HO) data sets, 
+as well as the same number of basis functions to recover the functional nature of the 
+predictors and on parameters as in our method.
+For the wSigcomp method designed for the integral model, the default settings of 
+the software are also used. For the HO data set, tested by authors in their package 
+description, the number of basis functions is set to 40 for the functional parameters 
+and 20 for predictors. For the CW data, we slightly changed, but in the same propor­
+tions, these value and set the number of basis functions involved for the functional 
+
+
+========== PAGE 27 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+parameters to 80 and 40 for the predictors. Although the values for hyperparameters 
+listed here may seem very precise, it should be noted that the performance of all these 
+methods remains slightly sensitive to a reasonable variation of these values (Table 3).
+6.1  Canadian weather data
+The data set consists in i n line-eq-IEq350 daily temperature measurements (averaged over the 
+years 1961 to 1994) at i n line-eq-IEq351 weather stations in Canada and their corresponding 
+daily precipitation (in log scale). The weather stations are located in K = 4 climate 
+zones: Atlantic, Pacific, Continental and Arctic. The aim is to use the daily tempera­
+ture to predict precipitation at each station.
+Figure 6 gives the daily average over the years 1961 to 1994 (temperature on the 
+left, precipitation on the right). Note that the stations in the Pacific zone have the 
+highest precipitation values, and stations from this zone also have the highest tem­
+peratures in winter. The same can be said about the stations in the Arctic zone for low 
+temperatures and precipitation level. A positive relationship between temperature and 
+precipitation can therefore be suspected.
+Our methods (FFR and PenFFR) for the concurrent (1) and integral (2) models 
+are compared with the PFFR, OPFFR, FPCA, FDA and wSigcomp methods. As men­
+tioned previously, for the OPFFR, FDA, and FPCA methods, the results presented in 
+Sun et al. (2018) are used in terms of prediction accuracy over the 365 days of the 
+year through the leave-one-out cross-validation integrated square error (ISE) given 
+by:
+	
+disp l
+a y-eq-Equ6
+0
+where the predictor inline-eq-IEq352 derives from the noisy daily temperature measurements; 
+the functional response inline-eq-IEq353 is the log of daily precipitation and inline-eq-IEq354 is the func­
+tional parameter estimated in the data set of all the observations, except for the inline-eq-IEq355 
+observation.
+In practice, in place of ISE, the inline-eq-IEq356-norm between the actual and prediction values 
+on a grid of values t is used as a surrogate. It is given by:
+Table 3  Number of basis functions for the regression coefficients inline-eq-IEq344 and the covariates in
+l ine-eq-IEq345
+Canadian weather data
+Hawaii ocean data
+Methods
+Type of basis
+in
+l ine-eq-IEq346
+inline-eq-IEq347
+Type of basis
+in
+l ine-eq-IEq348 inline-eq-IEq349
+Integral PenFFR / FFR
+cubic B-splines
+100
+10
+cubic B-splines
+40
+6
+Concurrent PenFFR / FFR
+cubic B-splines
+100
+40
+cubic B-splines
+40
+20
+Integral pffr
+cubic B-splines
+100
+10
+cubic B-splines
+40
+6
+Concurrent pffr
+cubic B-splines
+100
+40
+cubic B-splines
+40
+20
+wSigcomp
+wavelets + SVD
+40
+80
+wavelets + SVD
+20
+40
+OPFFR
+/
+/
+/
+/
+/
+/
+FDA
+Cubic B-splines
+/
+10
+/
+/
+/
+FPCA
+SVD
+/
+/
+/
+/
+/
+
+
+========== PAGE 28 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+	
+d
+ispl a
+y-e
+q
+-Eq
+u
+28
+
+(28)
+The average and standard deviation values of i
+nline-eq-IEq357 over the different leave-one-out 
+models are given in Table 4. They show the numerical advantage of our proposed 
+PenFFR method over the other methods. We also note that the variance observed in 
+our predictions remains quite high for the different models. This is due to the qual­
+ity of the input data. Let us recall readers that we are trying to predict precipitation 
+from temperature on a dataset of only 35 very different weather stations with daily 
+measurement for each of them.
+For the proposed method, the computing time (on an usual laptop, and with the 
+implementation available on https://github.com/Orange-OpenSource/penffr) is about 
+a few seconds per model estimation for the concurrent model without penality and a 
+few minutes with penalty. The integral model is computationally heavy, with about 
+one hour without penality to several hours with penalty. The pffr implementation is 
+computationally more efficient, with few seconds for the concurrent model and less 
+−30
+−20
+−10
+0
+10
+20
+Days of Year
+Temperature °C
+Jan
+Feb
+Mar
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Climates zones :
+Atlantic
+Continental
+Pacific
+Artic
+0
+5
+10
+15
+Days of Year
+precipitations mm
+Jan
+Feb
+Mar
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Climates zones :
+Atlantic
+Continental
+Pacific
+Artic
+Fig. 6  35 daily mean temperature (top) and precipitation (bottom) measurement curves
+ 
+
+
+========== PAGE 29 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+than one minute for the integral model. Similarly, the wSigcomp implementation is 
+also more efficient, with a few seconds per model estimation.
+Figure 7 shows, for a randomly chosen weather station, the predictive curve given 
+by the PenFFR method. We can also observe the good coverage of the inline-eq-IEq370 confi­
+dence interval given by our functional conformal prediction method.
+Figure 8 shows the prediction obtained using the integral model (since it appeared 
+to be the best model for this data set) with FFR, PenFFR and pffr. The predictions 
+−1.0
+−0.5
+0.0
+0.5
+1.0
+Days of Year
+log precipitations mm
+Jan
+Feb
+Mar
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Integral PenFFR
+Integral PFFR
+wSigcomp
+actual data
+(a) Churchill station
+−1.5
+−1.0
+−0.5
+0.0
+0.5
+Days of Year
+log precipitations mm
+Jan
+Feb
+Mar
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Integral PenFFR
+Integral PFFR
+wSigcomp
+actual data
+(b) Inuvik station
+Fig. 8  Prediction on two randomly chosen stations
+ 
+−1.0
+−0.5
+0.0
+0.5
+1.0
+Jan
+Feb
+Mar
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+ Time 
+log precipitations mm
+Fig. 7  Prediction (red curve), actual data (black dots) and confidence interval (cyan region) for the 
+Churchill station given by the PenFFR method
+ 
+Methods
+i
+nline-eq-IEq359
+Integral PenFFR
+inlin e-eq-IEq360
+Concurrent PenFFR
+inlin e-eq-IEq361
+Integral FFR
+inlin e-eq-IEq362
+Concurrent FFR
+inlin e-eq-IEq363
+Integral pffr
+inlin e-eq-IEq364
+Concurrent pffr
+inlin e-eq-IEq365
+wSigcomp
+inlin e-eq-IEq366
+OPFFR
+inlin e-eq-IEq367
+FDA
+inlin e-eq-IEq368
+FPCA
+inlin e-eq-IEq369
+Table 4  The average (and stan­
+dard deviation) of i
+nline-eq-IEq358 for the 
+Canadian Weather data set. The 
+best result is in boldface
+
+
+========== PAGE 30 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+are given for two randomly chosen weather stations (Churchill and Inuvik) and are 
+compared with the actual precipitation.
+Similar results are illustrated by Fig. 16 in the appendix for the concurrent model.
+Finally, Fig. 9 plots the parameters of the Integral PenFFR model. The intercept 
+inline-eq-IEq371 indicates an higher average amount of precipition in the second half of the year. 
+The parameter inli ne-eq-IEq372 is harder to interpret, but suggests an important impact of the 
+temperature on the precipitation during the summer. This is understandable because 
+the link between temperature and rainfall is especially important at this time of year: 
+warm temperatures encourage thunderstorms and rain lowers temperatures.
+6.2  Hawaii ocean data
+This data set is one of those used by Luo et al. (2016) to evaluate their wSigcomp 
+approach. The data set includes physical and biochemical oceanographic observa­
+tional data from the Hawaii Ocean Time-series (HOT) Program. The HOT program 
+makes repeated observations of the physics, biology and chemistry at a site approxi­
+mately 100 km north of Oahu, Hawaii. In this data set, five variables (Salinity, Poten­
+tial Density, Temperature, Oxygen and Chloropigment) are observed every two meters 
+between 0 and 200 m below the sea surface during 116 different days. This data set 
+is available from the R package "FRegSigComp", under the name Ocean data. It 
+consists of 5 functional variables with 116 individuals, each having 101 measurement 
+points. Here, we consider the function-on-function regression model with the salinity 
+curves as the response variable inline-eq-IEq373 and (Potential Density, Temperature, Oxygen, 
+Chloropigment) curves as functional predictors inli n
+e
+-eq-IE q374
+. We split the full data set into two train/test sub-data sets where the training data 
+consists of the 50 first days (observations) only.
+First of all, we expand all the functions considered into a cubic B-spline basis with 
+40 basis functions. Figure 10 displays the sample curves for these variables.
+Our FFR and PenFFR methods are compared with pffr and wSigcomp in the set­
+ting of integral models. We also consider PenFFR and pffr for the concurrent model. 
+The others previous competitors such as OPFFR, FPCA and FDA cannot be used here 
+due to the unavailability of the code. Figures 11 and 12 show the estimated param­
+1.0
+2.0
+3.0
+Days of Year
+0t
+Jan
+Mar
+May
+Jul
+Sep
+Nov
+Days of the year
+Days of the year
+b(s,t)
+Jan
+Feb Mar Apr MayJun JulAugSepOctNovDec
+Jan
+Feb
+Mar
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Fig. 9  Parameters of Integral PenFFR for the Canadian Weather data set
+ 
+
+
+========== PAGE 31 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+eters inline-eq-IEq375 and inline -eq - I E q 376 obtained with the three methods in the case of the 
+integral model. We first notice that the shape of the estimated parameters is smooth 
+for our method (third column), which makes them more interpretable. For example, 
+inline -eq-IEq377 is almost zero for any t when s is large, which means that the temperature 
+at depth does not have a significant impact on the salinity of the water, regardless of 
+the depth at which salinity is measured. In contrast, the surface temperature (when 
+s is close to 0) appears to have a strong positive effect on salinity, and this effect 
+increases with the depth at which salinity is measured. With wSigcomp and PFFR, 
+such an interpretation is harder or even impossible due to the lack of smoothness in 
+the estimated coefficients.
+In addition, Fig. 17 in the Appendix shows the estimates inline- e q - I Eq378 of the 
+concurrent model with the PenFFR and pffr methods.
+Prediction accuracy using i
+nline-eq-IEq381 on a test set of size 66 is shown in Table 5. Since the 
+number of individuals for this data (116) is larger than the size of the previous data 
+set, we evaluate the performance on a single test set rather than using cross-validation 
+in order to circumvent the potentially heavy computational burden. The efficiency of 
+our produced confidence intervals is illustrated by Fig. 13. Furthermore, our method 
+once again proves it outperforms all the other methods as illustrated in Fig. 14, which 
+shows predictions on two randomly chosen individuals.
+0
+50
+100
+150
+200
+22.5
+23.0
+23.5
+24.0
+24.5
+25.0
+25.5
+Potential Density curves
+meter below the sea surface
+X1
+0
+50
+100
+150
+200
+16
+18
+20
+22
+24
+26
+Temperature curves
+meter below the sea surface
+X2
+0
+50
+100
+150
+200
+180
+190
+200
+210
+220
+230
+Oxygen curves
+meter below the sea surface
+X3
+0
+50
+100
+150
+200
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Chloropigment curves
+meter below the sea surface
+X4
+Fig. 10  Original sample curves of predictors expanded by cubic B-splines basis with 40 basis functions
+ 
+
+
+========== PAGE 32 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+0
+5
+10
+(a) ˆγ1(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+0.00
+0.05
+0.10
+(b) ˆγ1(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+0
+500
+1000
+1500
+(c) ˆγ1(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+−1
+0
+1
+2
+3
+(d) ˆγ2(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+0.00
+0.01
+0.02
+0.03
+(e) ˆγ2(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+0
+200
+400
+600
+(f) ˆγ2(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+−0.05
+0.00
+(g) ˆγ3(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+−5e−05
+0e+00
+5e−05
+(h) ˆγ3(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+0
+10
+20
+30
+(i) ˆγ3(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+−0.2
+0.0
+0.2
+(j) ˆγ4(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+−0.005
+0.000
+0.005
+(k) ˆγ4(s, t)
+s
+0
+50
+100
+150
+200
+t
+0
+50
+100
+150
+200
+0
+500
+1000
+1500
+2000
+(l) ˆγ4(s, t)
+Fig. 11  Estimates inline -eq - I E q 379 for the three methods: wSigcomp (left column), integral PFFR 
+(middle column) and integral PenFFR (right column)
+ 
+
+
+========== PAGE 33 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+7  Conclusion
+In this article, we have presented a new estimation process for the linear regression 
+model with functional responses and functional covariates. We address the problem 
+via expanding the functions onto a common B-spline basis, hence allowing the reduc­
+tion of the functional model to a linear mixed model. Adaptation to unknown smooth­
+ness is performed by adding a roughness penalty on second derivatives. Unlike any 
+estimator based on basis functions, our estimates have a smooth shape and suffi­
+cient flexibility to capture the encountered variability in various experiments with 
+real-world data sets. We also design a framework for producing confidence interval 
+bands for functional predictions. The method draws a functional quantile regres­
+35.1
+35.2
+35.3
+0
+50
+100
+150
+200
+meter below the sea surface
+Salinity
+Fig. 13  Prediction (red curve), actual data (black dots) and confidence interval (cyan region) for a 
+randomly choose observation
+ 
+Methods
+i
+nline-eq-IEq383 (inline-eq-IEq384)
+Integral PenFFR
+inli ne-eq-IEq385
+Concurrent PenFFR
+inli ne-eq-IEq386
+Integral pffr
+inli ne-eq-IEq387
+Concurrent pffr
+inli ne-eq-IEq388
+wSigcomp
+inli ne-eq-IEq389
+Table 5  The average (and stan­
+dard deviation) of i
+nline-eq-IEq382 for the 
+Hawaii ocean data set. The best 
+result is in boldface
+0
+50
+100
+150
+200
+−8
+−6
+−4
+−2
+0
+2
+t
+0t
+(a) ˆγ0(t), wsigcomp
+0
+50
+100
+150
+200
+−2
+−1
+0
+1
+2
+3
+t
+0t
+(b) ˆγ0(t), pﬀr
+0
+50
+100
+150
+200
+−40
+−20
+0
+20
+t
+0t
+(c) ˆγ0(t), PenFFR
+Fig. 12  Estimates inline-eq-IEq38 0
+ for the three methods: wSigcomp (left column), integral pffr (mid­
+dle column) and integral PenFFR (right column)
+ 
+
+
+========== PAGE 34 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+sion by perturbing the standard linear regression and computes functional quantiles 
+by optimal transport. This functional quantile regression is then combined with the 
+conformalized method to build a functional conformalized quantiles regression. We 
+then illustrate the performance of our proposed estimation process in terms of pre­
+diction accuracy and parameter interpretability on simulated and real data sets. As 
+perspectives for future work, confidence bounds for predictions can be obtained in a 
+functional mixture-of-Experts regression framework Tamo Tchomgui et al. (2024). 
+While these models offer flexibility and strong predictive performance, quantifying 
+the uncertainty of their predictions remains a challenging and unexplored area.
+Appendix
+Mixed model estimator
+We first rewrite the model in the form:
+	
+d i spl a y-eq-Equ29
+(29)
+with in l i n e -eq-IEq390, from which we get i n line-eq - I E q3 9 1
+ We aim to 
+estimate the fixed effects b and the error variance inline-eq-IEq392 from the observed data. The most 
+popular estimation methods for the parameters in Model (7) are maximum likelihood 
+(ML) and restricted maximum likelihood (ReML) as described in Lindstrom and 
+Bates (1988). The log-likelihood of the model is written as:
+	
+display -e q-E qu30
+(30)
+First order condition: i
+nl
+i
+ne-eq-I Eq
+3
+9 3
+0
+50
+100
+150
+200
+34.95
+35.00
+35.05
+35.10
+35.15
+35.20
+35.25
+meter below the sea surface
+Salinity
+Integral PenFFR
+Integral pffr
+wSigcomp
+actual data
+0
+50
+100
+150
+200
+34.9
+35.0
+35.1
+35.2
+35.3
+meter below the sea surface
+Salinity
+Integral PenFFR
+Integral pffr
+wSigcomp
+actual data
+Fig. 14  Prediction given by the three methods for integral model on two randomly chosen observations 
+in the test sample: PenFFR in blue, PFFR in green and wSigcomp in red. Black dots are the true values
+ 
+
+
+========== PAGE 35 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+	
+displ
+ay
+- e
+q-
+Eq
+u6 1
+and by equalizing to 0, i.e. inlin
+e-
+e q-IEq394, we get:
+	
+displ a
+y
+- eq-Equ3 1
+
+(31)
+By replacing b by its estimator in the likelihood expression, we get the profiled log-
+likelihood given by:
+	
+displ a y -eq-Equ6
+2
+
+
+========== PAGE 36 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+On the other hand, there holds i n line-eq - IE
+q3 95
+, and thus, 
+inlin e -eq-I
+Eq 396. It is obviously not easy to derive this likelihood which no 
+longer depends on b. Moreover, maximizing this last function gives the MLE, which 
+is nevertheless biased. For these reasons, and in order to account for the degrees of 
+freedom of the fixed effects in the model, we propose to use the Restricted Maximum 
+Likelihood (ReML) which reads:
+	
+displ ay-eq- E qu3
+2
+
+(32)
+From a numerical viewpoint, we obtain the estimator inline-eq-IEq397 of the variance inline-eq-IEq398 by maxi­
+mizing this last likelihood from which we finally deduce the value of inline-eq-IEq399 given by:
+	
+d
+is
+p lay -e
+q-E q u33
+
+(33)
+Parameter representation on simulated data
+In each scenario, we estimate the functional parameters with cubic B-splines basis, 
+regular knots over the grid and inl i ne-eq-IEq40 0 basis functions. The parameters we obtain 
+with our model are close to the true parameters. However, we note that estimation 
+of inline-eq-IEq401 is noised by the two large numbers of considered basis functions. This con­
+firms the previously mentioned concerns about interpretability (smoothness) of the 
+estimated parameters without regularization. Figure 15 also confirms that estimation 
+accuracy increases with the number of observations.
+
+
+========== PAGE 37 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.8
+−1.6
+−1.4
+−1.2
+−1.0
+Times (sec.)
+n = 200 & 2  1
+(a) β0(t), case 1
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.8
+−1.6
+−1.4
+−1.2
+−1.0
+Times (sec.)
+n = 200 & 2  4
+(b) β0(t), case 2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.8
+−1.6
+−1.4
+−1.2
+−1.0
+Times (sec.)
+n = 500 & 2  1
+(c) β0(t), case 3
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.8
+−1.6
+−1.4
+−1.2
+−1.0
+Times (sec.)
+n = 500 & 2  4
+(d) β0(t), case 4
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3
+−2
+−1
+0
+1
+2
+3
+Times (sec.)
+(e) β1(t), case 1
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3
+−2
+−1
+0
+1
+2
+3
+Times (sec.)
+(f) β1(t), case 2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3
+−2
+−1
+0
+1
+2
+3
+Times (sec.)
+(g) β1(t), case 3
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3
+−2
+−1
+0
+1
+2
+3
+Times (sec.)
+(h) β1(t), case 4
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.0
+−0.8
+−0.6
+−0.4
+−0.2
+0.0
+Times (sec.)
+(i) β2(t), case 1
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.0
+−0.8
+−0.6
+−0.4
+−0.2
+0.0
+Times (sec.)
+(j) β2(t), case 2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.0
+−0.8
+−0.6
+−0.4
+−0.2
+0.0
+Times (sec.)
+(k) β2(t), case 3
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−1.0
+−0.8
+−0.6
+−0.4
+−0.2
+0.0
+Times (sec.)
+(l) β2(t), case 4
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3.0
+−2.5
+−2.0
+−1.5
+−1.0
+−0.5
+0.0
+Times (sec.)
+(m) β3(t), case 1
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3.0
+−2.5
+−2.0
+−1.5
+−1.0
+−0.5
+0.0
+Times (sec.)
+(n) β3(t), case 2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3.0
+−2.5
+−2.0
+−1.5
+−1.0
+−0.5
+0.0
+Times (sec.)
+(o) β3(t), case 3
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−3.0
+−2.5
+−2.0
+−1.5
+−1.0
+−0.5
+0.0
+Times (sec.)
+(p) β3(t), case 4
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.6
+−0.5
+−0.4
+−0.3
+−0.2
+−0.1
+0.0
+Times (sec.)
+(q) β4(t), case 1
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.6
+−0.5
+−0.4
+−0.3
+−0.2
+−0.1
+0.0
+Times (sec.)
+(r) β4(t), case 2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.6
+−0.5
+−0.4
+−0.3
+−0.2
+−0.1
+0.0
+Times (sec.)
+(s) β4(t), case 3
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.6
+−0.5
+−0.4
+−0.3
+−0.2
+−0.1
+0.0
+Times (sec.)
+(t) β4(t), case 4
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.3
+−0.2
+−0.1
+0.0
+0.1
+Times (sec.)
+(u) β5(t), case 1
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.3
+−0.2
+−0.1
+0.0
+0.1
+Times (sec.)
+(v) β5(t), case 2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.3
+−0.2
+−0.1
+0.0
+0.1
+Times (sec.)
+(w) β5(t), case 3
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+−0.3
+−0.2
+−0.1
+0.0
+0.1
+Times (sec.)
+(x) β5(t), case 4
+Fig. 15  Estimated and actual parameters for the concurrent model over the 4 scenarios of simulation
+ 
+
+
+========== PAGE 38 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+Prediction of concurrent models for Canadian Weather data
+Figure 16 plots, for two randomly chosen Canadian Weather stations, the prediction 
+of concurrent models.
+Parameters estimation for concurrent models on Hawaii Ocean Data
+Figure 17 plots the parameters estimation for concurrent models on Hawaii Ocean Data.
+0
+50
+100
+150
+200
+−4.0
+−3.5
+−3.0
+−2.5
+t
+0t
+(a) ˆβ0(t)
+0
+50
+100
+150
+200
+1.250
+1.255
+1.260
+1.265
+1.270
+1.275
+t
+1t
+(b) ˆβ1(t)
+0
+50
+100
+150
+200
+0.32
+0.33
+0.34
+0.35
+0.36
+0.37
+0.38
+t
+2t
+(c) ˆβ2(t)
+0
+50
+100
+150
+200
+−0.0015
+−0.0010
+−0.0005
+0.0000
+t
+3t
+(d) ˆβ3(t)
+0
+50
+100
+150
+200
+−8e−04
+−7e−04
+−6e−04
+−5e−04
+−4e−04
+t
+4t
+(e) ˆβ4(t)
+0
+50
+100
+150
+200
+−1.0
+−0.5
+0.0
+0.5
+1.0
+1.5
+2.0
+t
+0t
+(f) ˆβ0(t)
+0
+50
+100
+150
+200
+1.26
+1.28
+1.30
+1.32
+1.34
+t
+1t
+(g) ˆβ1(t)
+0
+50
+100
+150
+200
+0.32
+0.34
+0.36
+0.38
+0.40
+t
+2t
+(h) ˆβ2(t)
+0
+50
+100
+150
+200
+−4e−04
+−2e−04
+0e+00
+2e−04
+4e−04
+t
+3t
+(i) ˆβ3(t)
+0
+50
+100
+150
+200
+−0.010
+−0.006
+−0.002
+0.000
+0.002
+t
+4t
+(j) ˆβ4(t)
+Fig. 17  Estimates inline- e q - I Eq402 for the two methods (pffr and PenFFR) on concurrent model. The 
+first row shows the estimation provided by our PenFFR method. The second row shows the estimation 
+provided by the pffr method
+ 
+−1.0
+−0.5
+0.0
+0.5
+1.0
+Days of Year
+log precipitations mm
+Jan
+Feb
+Mar
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Concurrent PenFFR
+Concurrent PFFR
+actual data
+(a) Churchill station
+−1.5
+−1.0
+−0.5
+0.0
+0.5
+Days of Year
+log precipitations mm
+Jan
+Feb
+Mar
+Apr
+May
+Jun
+Jul
+Aug
+Sep
+Oct
+Nov
+Dec
+Concurrent PenFFR
+Concurrent PFFR
+actual data
+(b) Inuvik station
+Fig. 16  Prediction on two randomly chosen stations. For each figure, the black points are the actual 
+data, the red two-dashed line is the prediction given by our concurrent PenFFR and the magenta dashed 
+line is the prediction given by the concurrent PFFR method	
+ 
+
+
+========== PAGE 39 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+Funding  Open access funding provided by Université Lumière Lyon 2.
+Data Availability  The two real data set used in the paper are public datasets, available in the fda et FReg­
+SigComp R packages.
+Declarations
+Competing interests  The author declares no competing interests.
+Conflict of interest  The authors declare that they have no known financial or non-financial conflict of inter­
+est that could have appeared to influence the work reported in this paper.
+Ethics Approval  Ethical approval was not required for this study, as it used publicly available, fully ano­
+nymized datasets.
+Open Access  This article is licensed under a Creative Commons Attribution 4.0 International License, 
+which permits use, sharing, adaptation, distribution and reproduction in any medium or format, as long 
+as you give appropriate credit to the original author(s) and the source, provide a link to the Creative 
+Commons licence, and indicate if changes were made. The images or other third party material in this 
+article are included in the article’s Creative Commons licence, unless indicated otherwise in a credit line 
+to the material. If material is not included in the article’s Creative Commons licence and your intended use 
+is not permitted by statutory regulation or exceeds the permitted use, you will need to obtain permission 
+directly from the copyright holder. To view a copy of this licence, visit ​h​t​t​p​:​/​/​c​r​e​a​t​i​v​e​c​o​m​m​o​n​s​.​o​r​g​/​l​i​c​e​n​
+s​e​s​/​b​y​/​4​.​0​/​.​
+References
+Angelopoulos AN, Bates S (2023) Conformal prediction: a gentle introduction. Now Publishers Inc., 
+Hanover, MA, USA. https://doi.org/10.1561/2200000101
+Antoch J, Prchal L, De Rosaria Rosa M, Sarda P (2010) Electricity consumption prediction with functional 
+linear regression using spline estimators. J Appl Stat 37(12):2027–2041
+Besse PC, Cardot H (1996) Approximation spline de la prevision d’un processus fonctionnel autorégressif 
+d’ordre 1. Can J Stat 24(4):467–487. https://doi.org/10.2307/3315328
+Besse PC, Cardot H, Ferraty F (1997) Simultaneous non-parametric regressions of unbalanced longitudi­
+nal data. Comput Stat Data Anal 24(3):255–270
+Beyaztas U, Shang H, Saricam S (2024) Penalized function-on-function linear quantile regression. Com­
+put Stat. https://doi.org/10.1007/s00180-024-01494-1
+Cardot H, Crambes C, Sarda P (2005) Quantile regression when the covariates are functions. Nonparamet­
+ric Stat 17(7):841–856
+Centofanti F, Fontana M, Lepore A, Vantini S (2022) Smooth lasso estimator for the function-on-function 
+linear regression model. Comput Stat Data Anal 176:107556. ​h​t​t​p​s​:​/​/​d​o​i​.​o​r​g​/​1​0​.​1​0​1​6​/​j​.​c​s​d​a​.​2​0​2​2​.​1​
+0​7​5​5​6​
+Cardot H, Ferraty F, Sarda P (1999) Functional linear model. Stat Probab Lett 45(1):11–22
+Chernozhukov V, Galichon A, Hallin M, Henry M (2017) Monge–Kantorovich depth, quantiles, ranks and 
+signs. Ann Stat 45(1):223–256. https://doi.org/10.1214/16-AOS1450
+Crambes C, Mas A (2013) Asymptotics of prediction in functional linear regression with functional out­
+puts. Bernoulli 19:2627–2651
+Crainiceanu CM, Staicu A-M, Di C-Z (2009) Generalized multilevel functional regression. J Am Stat 
+Assoc 104(488):1550–1561. https://doi.org/10.1198/jasa.2009.tm08564. (PMID: 20625442)
+Ferraty F, Rabhi A, Vieu P (2005) Conditional quantiles for dependent functional data with application to 
+the climatic “el niño” phenomenon. Sankhya Indian J Stat 67:378–398. ​h​t​t​p​s​:​/​/​d​o​i​.​o​r​g​/​1​0​.​2​3​0​7​/​2​5​0​
+5​3​4​3​8​
+
+
+========== PAGE 40 ==========
+
+1 3
+J. S. Tamo Tchomgui et al.
+Gauss CF (1809) Theoria motus corporum coelestium in sectionibus conicis solem ambientium. Carl 
+Friedrich Gauss Werke. Sumtibus F. Perthes et I.H. Besser. ​h​t​t​p​s​:​/​/​b​o​o​k​s​.​g​o​o​g​l​e​.​f​r​/​b​o​o​k​s​?​i​d​=​O​R​U​
+O​A​A​A​A​Q​A​A​J​
+Goldsmith J, Bobb J, Crainiceanu CM, Caffo B, Reich D (2011) Penalized functional regression. J Comput 
+Graph Stat 20(4):830–851. https://doi.org/10.1198/jcgs.2010.10007
+Hallin M, Barrio E, Cuesta-Albertos J, Matrán C (2021) Distribution and quantile functions, ranks and 
+signs in dimension D: a measure transportation approach. Ann Stat 49(2):1139–1165. ​h​t​t​p​s​:​/​/​d​o​i​.​o​r​g​
+/​1​0​.​1​2​1​4​/​2​0​-​A​O​S​1​9​9​6​
+Hida T, Hui-Hsiung K, Potthoff J, Streit L (1993) White noise: an infinite dimensional calculus, mathemat­
+ics and its applications. Kluwer Academic Publishers
+Horváth L, Kokoszka P (2012) Inference for functional data with applications. Springer, New York
+Hastie T, Tibshirani R (1993) Varying-coefficient models. J Roy Stat Soc: Ser B (Methodol) 55(4):757–796
+Ivanescu A, Staicu A-M, Scheipl F, Greven S (2015) Penalized function-on-function regression. Comput 
+Stat 30(2):539–568. https://doi.org/10.1007/s00180-014-0548-4
+James GM, Wang J, Zhu J (2009) Functional linear regression that’s interpretable. Ann Stat 
+37(5A):2083–2108
+Koenker R, Bassett G (1978) Regression quantiles. Econometrica 46(1):33–50
+Kokoszka P, Reimherr M (2017) Introduction to functional data analysis. Chapman and Hall/CRC. ​h​t​t​p​s​:​
+/​/​d​o​i​.​o​r​g​/​1​0​.​1​2​0​1​/​9​7​8​1​3​1​5​1​1​7​4​1​6​
+Lindstrom MJ, Bates DM (1988) Newton–Raphson and EM algorithms for linear mixed-effects models for 
+repeated-measures data. J Am Stat Assoc 83(404):1014–1022
+Lei J, G’Sell MG, Rinaldo A, Tibshirani RJ, Wasserman LA (2016) Distribution-free predictive inference 
+for regression. J Am Stat Assoc 113:1094–1111
+Liu Y, Li M, Morris J (2020) Function-on-scalar quantile regression with application to mass spectrometry 
+proteomics data. Ann Appl Stat 14(2):521–541. https://doi.org/10.1214/19-AOAS1319
+Leurgans SE, Moyeed RA, Silverman BW (1993) Canonical correlation analysis when the data are curves. 
+J Roy Stat Soc 55(3):725–740. https://doi​.org/10.111​1/j.2517-61​61.1993.​tb01936.x
+Luo R, Qi X, Wang Y (2016) Functional wavelet regression for linear function-on-function models. Elec­
+tron J Stat 10(2):3179–3216. https://doi.org/10.1214/16-EJS1204
+Li Y, Ruppert D (2008) On the asymptotics of penalized splines. Biometrika 95(2):415–436
+Manrique T, Crambes C, Hilgert N (2018) Ridge regression for the functional concurrent model. Electron 
+J Stat 12:985–1018
+Morris J (2014) Functional regression. Ann Rev Stat Appl 2:321–359. ​h​t​t​p​s​:​/​/​d​o​i​.​o​r​g​/​1​0​.​1​1​4​6​/​a​n​n​u​r​e​v​-​s​t​
+a​t​i​s​t​i​c​s​-​0​1​0​8​1​4​-​0​2​0​4​1​3​
+Minnier J, Tian L, Cai T (2011) A perturbation method for inference on regularized regression estimates. J 
+Am Stat Assoc 106(496):1371–1382. https://doi.org/10.1198/jasa.2011.tm10382
+Ramsay JO, Hooker G, Graves S (2009) Functional data analysis with R and MATLAB, 1st edn. Springer, 
+New York
+Romano Y, Patterson E, Candes E (2019) Conformalized quantile regression. In: Wallach H, Larochelle 
+H, Beygelzimer A, Alché-Buc F, Fox E, Garnett R (eds) Advances in neural information processing 
+systems, vol 32. Curran Associates Inc
+Ramsay J, Silverman BW (2005) Functional data analysis, 2nd edn. Springer, New York. ​h​t​t​p​s​:​/​/​d​o​i​.​o​r​g​/​
+1​0​.​1​0​0​7​/​b​9​8​8​8​8​
+Ruppert D (2002) Selecting the number of knots for penalized splines. J Comput Graph Stat 11(4):735–
+757. https://doi.org/10.1198/106186002853
+Sun X, Du P, Wang X, Ma P (2018) Optimal penalized function-on-function regression under a reproduc­
+ing kernel Hilbert space framework. J Am Stat Assoc 113(524):1601–1611
+Scheipl F, Greven S (2016) Identifiability in penalized function-on-function regression models. Electron J 
+Stat 10(1):495–526. https://doi.org/10.1214/16-EJS1123
+Silverman BW (1996) Smoothed functional principal components analysis by choice of norm. Ann Stat 
+24(1):1–24. https://doi.org/10.1214/aos/1033066196
+Stewart GW (1990) Perturbation theory and least squares with errors in the variables. Contemp Math 
+112:171–181
+Tibshirani RJ, Foygel Barber R, Candes E (2019) Conformal prediction under covariate shift. In: Wallach 
+H, Larochelle H, Beygelzimer A, Alché-Buc F, Fox E, Garnett R (eds) Advances in neural informa­
+tion processing systems, vol 32. Curran Associates Inc
+
+
+========== PAGE 41 ==========
+
+1 3
+A penalized spline estimator for functional linear regression with…
+Tamo Tchomgui JS, Jacques J, Fraysse G, Barriac V, Chretien S (2024) A mixture of experts regression 
+model for functional response with functional covariates. Stat Comput 34(5):154. ​h​t​t​p​s​:​/​/​d​o​i​.​o​r​g​/​1​0​
+.​1​0​0​7​/​s​1​1​2​2​2​-​0​2​4​-​1​0​4​5​5​-​z​
+Vovk V, Gammerman A, Shafer G (2005) Algorithmic learning in a random world. Springer, Berlin, 
+Heidelberg
+Wood SN (2006) On confidence intervals for generalized additive models based on penalized regression 
+splines. Aust N Z J Stat 48(4):445–464
+Yao F, Müller H-G, Wang J-L (2005) Functional linear regression analysis for longitudinal data. Ann Stat 
+33:2873–2903
+Publisher's Note  Springer Nature remains neutral with regard to jurisdictional claims in published maps 
+and institutional affiliations.
+Authors and Affiliations
+Jean Steve Tamo Tchomgui1,2 · Julien Jacques1
+ · Guillaume Fraysse2 · 
+Vincent Barriac2 · Stéphane Chretien1
+	
+ Julien Jacques
+julien.jacques@univ-lyon2.fr
+Jean Steve Tamo Tchomgui
+jean-steve.tamo-tchomgui@univ-lyon2.fr
+Guillaume Fraysse
+guillaume.fraysse@orange.com
+Vincent Barriac
+vincent.barriac@orange.com
+Stéphane Chretien
+stephane.chretien@univ-lyon2.fr
+1	
+Université Lumière Lyon 2, Université Lyon 1, ERIC, 69007 Lyon, France
+2	
+Orange Research, Issy-les-Moulineaux, France

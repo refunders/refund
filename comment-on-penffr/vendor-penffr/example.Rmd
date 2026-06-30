@@ -1,0 +1,274 @@
+---
+title: "Example"
+author: "Jean Steve TAMO"
+date: "2024-12-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Install and Usage
+```{r}
+library(PenFFR)
+```
+
+
+## Example
+
+This is a basic example which shows you how to perform a linear function-on-function regression in different context :
+* Non penalized concurrent model
+* Penalized concurrent model
+* Non penalized integral model
+* Penalized integral model
+* Non Penalized Mixture-of-Experts concurrent model
+* Penalized Mixture-of-Experts concurrent model
+
+The example is based on the Canadian weather dataset.
+  
+  
+### Load the Canadian weather dataset
+```{r}
+data(fda::CanadianWeather)
+
+raw.temp <- t(fda::CanadianWeather[["dailyAv"]][,,1])
+raw.prec <- t(fda::CanadianWeather[["dailyAv"]][,,3])
+raw.clim <- c(rep(1,15), rep(2,9), rep(3,5), rep(2,3), rep(4,3))
+n <- 35 # number of individuals
+m <- 365 # number of observations points
+d <- 1 # number of predictors
+obs.grid <- ((1:365)-1)/(365-1) # observation grid
+```
+
+### Functional expansion of Temperature (cubic splines with 148 nodes)
+```{r}
+temp.fd <- my_functrep(data = raw.temp,
+                       nbasis = 150,
+                       name.obs = fda::CanadianWeather[["place"]])
+```
+  
+  
+To perform the different models, the first observation of the dataset will be use as the test set.
+  
+  
+### Load the PenFFR function
+  
+For the concurrent model, we used $15$ basis functions for the functional parameters in both penalized and non penalized models.
+### Non penalized version of concurrent linear model
+```{r}
+fofreg1 <- PenFFR(Y.mat = raw.prec[-1,],
+                  X_fd.list = list(temp.fd[-1]),
+                  X.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[-1,],
+                  nbasis = 15, pen = F,
+                  model.type = "concurrent", K.mixture = "No")
+```
+  
+  
+### Penalized version of concurrent linear model
+```{r}
+fofreg2 <- PenFFR(Y.mat = raw.prec[-1,],
+                  X_fd.list = list(temp.fd[-1]),
+                  X.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[-1,],
+                  nbasis = 15, pen = T,
+                  model.type = "concurrent", K.mixture = "No")
+```
+  
+  
+For the integral versions, we uses less basis functions than concurrent models and we set to $8$.
+### Non penalized version of integral model
+```{r, cache=TRUE}
+fofreg3 <- PenFFR(Y.mat = raw.prec[-1,],
+                  X_fd.list = list(temp.fd[-1]),
+                  X.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[-1,],
+                  nbasis = 8, pen = F,
+                  model.type = "integral", K.mixture = "No")
+```
+  
+  
+### Penalize version of integral model
+```{r, cache=TRUE}
+fofreg4 <- PenFFR(Y.mat = raw.prec[-1,],
+                  X_fd.list = list(temp.fd[-1]),
+                  X.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[-1,],
+                  nbasis = 8, pen = T,
+                  model.type = "integral", K.mixture = "No")
+```
+  
+  
+### Non Penalized concurrent Mixture-of-Experts model
+```{r, cache=TRUE}
+fofreg5 <- PenFFR(Y.mat = raw.prec[-1,],
+                  X_fd.list = list(temp.fd[-1]),
+                  X.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[-1,],
+                  nbasis = 10, pen = F,
+                  model.type = "concurrent", K.mixture = "BIC")
+```
+  
+  
+### Penalized concurrent Mixture-of-Experts model
+```{r, cache=TRUE}
+fofreg6 <- PenFFR(Y.mat = raw.prec[-1,],
+                  X_fd.list = list(temp.fd[-1]),
+                  X.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[-1,],
+                  nbasis = 10, pen = T,
+                  model.type = "concurrent", K.mixture = "BIC")
+```
+
+  
+### Todo
+Integral Mixture-of-Experts model coming soon !!!
+  
+  
+  
+## Visualization of parameters
+Here we are going to give the graphical representations of the estimated functional parameters.
+  
+  
+### Intercept of the different versions
+```{r}
+plot(fofreg1$beta.fd[[1]], xlab = "Days of Year", cex.lab = 1, ylim = c(0,3),
+     ylab = latex2exp::TeX("$\\hat{$\\beta}_0(t)"), col = 1, lwd = 2,
+     xaxt = "n")
+axis(1, at = (c(1,32,60,91,121,152,182,213,244,274,305,335)-1)/364,
+     labels = substr(month.name, 1, 3))
+lines(fofreg2$beta.fd[[1]], col = "red", lwd = 2)
+lines(fofreg3$beta.fd[[1]], col = "blue", lwd = 2)
+lines(fofreg4$beta.fd[[1]], col = "green", lwd = 2)
+abline(h = 0, lty = 3)
+```
+  
+  
+
+### Temperature effect parameters
+```{r}
+plot(fofreg1$beta.fd[[2]], xlab = "Days of Year", cex.lab = 1, ylim = c(-0.01,0.1),
+     ylab = latex2exp::TeX("$\\hat{$\\beta}_1(t)"), col = 1, lwd = 2,
+     xaxt = "n")
+axis(1, at = (c(1,32,60,91,121,152,182,213,244,274,305,335)-1)/364,
+     labels = substr(month.name, 1, 3))
+lines(fofreg2$beta.fd[[2]], col = "red", lwd = 2)
+
+tmp <- fda::eval.bifd(sevalarg = obs.grid,
+                 tevalarg = obs.grid,
+                 bifd = fofreg3$beta.fd[[2]])
+persp(x = obs.grid, y = obs.grid, z = tmp, theta = 45, phi = -5,
+      xlab = "s", ylab = "t", ticktype = "detailed",
+      main = " ", nticks = 4, zlab = "", col = "blue")
+tmp <- fda::eval.bifd(sevalarg = obs.grid,
+                 tevalarg = obs.grid,
+                 bifd = fofreg4$beta.fd[[2]])
+persp(x = obs.grid, y = obs.grid, z = tmp, theta = 45, phi = 5,
+      xlab = "s", ylab = "t", ticktype = "detailed",
+      main = " ", nticks = 4, zlab = "", col = "green")
+
+```
+  
+  
+## Prediction
+  
+```{r}
+pred1 <- pred.PenFFR(model = fofreg1,
+                      newX_fd.list = list(temp.fd[1]),
+                      newX.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[1,],
+                     model.type = "concurrent", K.mixture = "No")
+pred1 <- matrix(pred1, ncol = m, byrow = T)
+
+pred2 <- pred.PenFFR(model = fofreg2,
+                      newX_fd.list = list(temp.fd[1]),
+                      newX.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[1,],
+                     model.type = "concurrent", K.mixture = "No")
+pred2 <- matrix(pred2, ncol = m, byrow = T)
+
+pred3 <- pred.PenFFR(model = fofreg3,
+                      newX_fd.list = list(temp.fd[1]),
+                      newX.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[1,],
+                     model.type = "integral", K.mixture = "No")
+pred3 <- matrix(pred3, ncol = m, byrow = T)
+
+pred4 <- pred.PenFFR(model = fofreg4,
+                     newX_fd.list = list(temp.fd[1]),
+                     newX.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[1,],
+                     model.type = "integral", K.mixture = "No")
+pred4 <- matrix(pred4, ncol = m, byrow = T)
+
+pred5 <- pred.PenFFR(model = fofreg5,
+                      newX_fd.list = list(temp.fd[1]),
+                      newX.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[1,],
+                     model.type = "concurrent", K.mixture = "BIC")
+pred5 <- matrix(pred5, ncol = m, byrow = T)
+
+pred6 <- pred.PenFFR(model = fofreg6,
+                     newX_fd.list = list(temp.fd[1]),
+                     newX.scal = data.frame(unlist(fda::CanadianWeather[["coordinates"]]))[1,],
+                     model.type = "concurrent", K.mixture = "BIC")
+pred6 <- matrix(pred6, ncol = m, byrow = T)
+
+
+```
+  
+  
+  
+## Visualization of predictions
+```{r}
+plot(obs.grid, raw.prec[1,], xlab = "Days of Year", cex.lab = 1, ylim = c(-2,2),
+     ylab = "log precipitations mm", type = "p",
+     pch = 20, lwd=0.2, xaxt = "n")
+axis(1, at = (c(1,32,60,91,121,152,182,213,244,274,305,335)-1)/364,
+     labels = substr(month.name, 1, 3))
+lines(obs.grid, pred1[1,], lwd = 2)
+lines(obs.grid, pred2[1,], col = "red", lwd = 2)
+lines(obs.grid, pred3[1,], col = "blue", lwd = 2)
+lines(obs.grid, pred4[1,], col = "green", lwd = 2)
+```
+
+## Prediction error
+We give here the predictive error of each model through the integrated square error given by : $$\mathrm{ISE}_i = \int_0^{365}\,\Big(\mathrm{Y}_i(t) - \widehat{\beta}_{(\text{-}i)}\,\mathrm{X}_i(t)\Big)^2\,dt$$
+where the predictor $\mathrm{X}_i(.)$ derives from the noisy daily temperature measurements; the functional response $\mathrm{Y}_i(.)$ is the log daily precipitation and  $\widehat{\beta}_{(\text{-}i)}$ is the functional parameter estimated in the data set of all the observations except for the  $i^{th}$ observation.
+  
+For sake of reducing the computational burden, instead of the ISE, the $\mathrm{L}^2$-norm between the actual and prediction values on a grid of values $t$ is used as a surrogate. It is given by:
+$$\begin{eqnarray}
+    \widehat{\mathrm{ISE}}_i = \sum_{j=1}^{365}\Big(\mathrm{Y}_i(j) - \widehat{\beta}_{(\text{-}i)}\,\mathrm{X}_i(j)\Big)^2.
+\end{eqnarray}$$
+  
+### Non penalized concurrent model
+```{r}
+err1 <- my_ISE(Y.act = raw.prec[1,],
+               Y.hat = pred1)
+err1
+```
+  
+### Penalized concurrent model
+```{r}
+err2 <- my_ISE(Y.act = raw.prec[1,],
+               Y.hat = pred2)
+err2
+```
+  
+### Non penalized integral model
+```{r}
+err3 <- my_ISE(Y.act = raw.prec[1,],
+               Y.hat = pred3)
+err3
+```
+  
+### Penalized integral model
+```{r}
+err4 <- my_ISE(Y.act = raw.prec[1,],
+               Y.hat = pred4)
+err4
+```
+
+### Non penalized concurrent mixture-of-experts model
+```{r}
+err5 <- my_ISE(Y.act = raw.prec[1,],
+               Y.hat = pred5)
+err5
+```
+  
+### Penalized concurrent mixture-of-experts model
+```{r}
+err6 <- my_ISE(Y.act = raw.prec[1,],
+               Y.hat = pred6)
+err6
+```

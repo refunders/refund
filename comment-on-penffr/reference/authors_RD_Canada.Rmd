@@ -1,0 +1,500 @@
+---
+title: "JCGS Real Data Applications : Canadian Weather Data"
+author: "Jean Steve TAMO TCHOMGUI"
+date: '2023-09-09'
+output: pdf_document
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+# **Import the libraries**
+```{r, loadlib, echo=T, results='hide', message=F, warning=F}
+library("dplyr")
+library("glmnet")
+library("lme4")
+library("fda")
+library("gridExtra")
+library("mgcv")
+library("refund")
+library("mvtnorm")
+#library("fcr")
+library("flexmix")
+library("funcharts")
+library("latex2exp")
+library("stats")
+```
+
+# Set the seed
+  
+We start by fixing the random seed in order to obtain reproducible results. 
+The results obtained here will therefore be slightly different from those used in the manuscript. I will therefore take these new results into account in the corrected version of the manuscript.
+  
+```{r}
+set.seed(999)
+```
+
+# Integrated Square Error
+  
+To assess the predictive quality of the models, we define the integrated square error (ISE) given by:
+$$\mathrm{ISE}_i = \int_0^{T}\,\Big(\mathrm{Y}_i(t) - \widehat{\mathrm{Y}}_i(t)\Big)^2\,dt\,,$$
+where $\widehat{\mathrm{Y}}_i(t)$ is the prediction of the $i^\text{th}$ observation given by the trained model. For sake of reducing the computational burden, instead of the ISE, the $\mathrm{L}^2$-norm between the actual and prediction values on a grid of values $t$ is used as a surrogate. It is given by:
+$$\widehat{\mathrm{ISE}}_i = \sum_{j=1}^{m}\Big(\mathrm{Y}_i(j) - \widehat{\mathrm{Y}}_i(t)\Big)^2.$$
+  
+```{r}
+ISE <- function(Y.act, Y.hat, t.mat){
+  "
+  Y.act is the actual values of Y on a observation grid
+  Y.hat is the predictive values given by the model on the same grid
+  t.mat is the observation grid
+  "
+  
+  len <- sapply(1:nrow(t.mat), function(u){
+    length(as.vector(na.omit(as.vector(unlist(t.mat[u,])))))
+  })
+
+  tmp.1 <- sum((Y.act[1:len[1]] - Y.hat[1:len[1]])**2)
+
+  if (nrow(t.mat)>1) {
+    tmp.all <- sapply(1:(nrow(t.mat)-1), function(u){
+      tmp1 <- Y.act[(sum(len[1:u])+1):(sum(len[1:(u+1)]))]
+      tmp2 <- Y.hat[(sum(len[1:u])+1):(sum(len[1:(u+1)]))]
+
+      sum((tmp1 - tmp2)**2)
+    })
+
+    return(c(tmp.1, tmp.all))
+
+  } else {
+
+    return(tmp.1)
+  }
+}
+```
+
+
+# Load the data
+  
+```{r}
+data(CanadianWeather)
+
+raw.temp <- t(CanadianWeather[["dailyAv"]][,,1])
+raw.prec <- t(CanadianWeather[["dailyAv"]][,,3])
+raw.clim <- c(rep(1,15), rep(2,9), rep(3,5), rep(2,3), rep(4,3))
+n <- 35 # number of individuals
+m <- 365 # number of observations points
+d <- 1 # number of predictors
+obs.grid <- ((1:365)-1)/(365-1) # observation grid
+```
+
+# Graphic representation of the raw data
+  
+```{r}
+plot(1:365, raw.temp[1,], xlab = "Days of Year", cex.lab = 1, ylim = c(-35,24),
+     ylab = "Temperature °C", type = "l", col = raw.clim[1], xaxt = "n")
+axis(1, at = c(1,32,60,91,121,152,182,213,244,274,305,335),
+     labels = substr(month.name, 1, 3))
+for (i in 2:35) {
+  lines(1:365, raw.temp[i,], col = raw.clim[i])
+}
+legend("topright", legend=c("Atlantic", "Continental", "Pacific", "Artic"),
+       col=1:4, cex=0.8, lty = 1, title="Climates zones :", text.font=2)
+
+plot(1:365, raw.prec[1,], xlab = "Days of Year", cex.lab = 1, ylim = c(-2,3),
+     ylab = "precipitations mm", type = "l", col = raw.clim[1], xaxt = "n")
+axis(1, at = c(1,32,60,91,121,152,182,213,244,274,305,335),
+     labels = substr(month.name, 1, 3))
+for (i in 2:35) {
+  lines(1:365, raw.prec[i,], col = raw.clim[i])
+}
+legend("topright", legend=c("Atlantic", "Continental", "Pacific", "Artic"),
+       col=1:4, cex=0.8, lty = 1, title="Climates zones :", text.font=2)
+```
+
+  
+# Functional expansion of Temperature (cubic B-splines)
+```{r}
+source("R/my_functrep.R")
+temp.fd <- my_functrep(data = raw.temp,
+                       nbasis = 100,
+                       name.obs = CanadianWeather[["place"]])
+```
+
+# Integral model
+  
+The integral model is defined by :
+$$\mathrm{Y}_i(t)=\gamma_0(t) + \sum_{l=1}^p\,\int_0^t\gamma_l(s,t)\,\mathrm{X}^l_i(s)\,\mathrm{d}s + \varepsilon_i(t) = \gamma_0(t) + \int_0^t\,\mathrm{X}_i(s)^\top\gamma(s,t)\,\mathrm{d}s + \varepsilon_i(t)$$ 
+We will compare here three estimation methods of thi model. Our PenFFR method (Penalize and non penalize version), the pffr method and the wsigcomp method.
+  
+  
+The integral model takes quite a long time to run. For the $n=35$ models here, it takes just over 9h to perform. In order to implement all these models more quickly, as well as the penalised and non-penalised versions, a folder called *"BasisIntegralXXX"* with *"XXX"* the number of basis functions chosen for the functional basis expansion of the functional parameter is created in the working directory. It contains all the intermediate computations of the model integral. These operations are identical, with the number of basis functions of the parameter and also of the functional predictor fixed, it is calculated only once and saved during the first iteration. The other iterations will be slightly faster. The 9h of calculation is composed in: 30 minutes for the computations in the *"BasisIntegralXXX"* file and 15 minutes for each of the 35 iterations.
+
+## Integral FFR
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+source("R/penffr2.R")
+
+# Penalize Version ----
+mods.FFR_inte <- lapply(1:n, function(i){
+
+  ## model
+  fofreg <- penffr2(Y.mat = raw.prec[-i,],
+                    X_fd.list = list(temp.fd[-i]),
+                    X.scal = data.frame(unlist(CanadianWeather[["coordinates"]]))[-i,],
+                    nbasis = 10, pen = F)
+
+  ## Prediction
+  pred <- pred.penffr2(model = fofreg,
+                       newX_fd.list = list(temp.fd[i]),
+                       newX.scal = data.frame(unlist(CanadianWeather[["coordinates"]]))[i,])
+
+  ## Erreur de prediction
+  err <- ISE(Y.act = raw.prec[i,],
+             Y.hat = pred,
+             t.mat = matrix(obs.grid, nrow = 1))
+  print(CanadianWeather[["place"]][i])
+  print(err)
+
+  ## results
+  list(pred = pred, error.pred = err)
+  
+})
+```
+
+**average and standard deviation of Integrated square Error (ISE)**
+```{r}
+err <- sapply(1:n, function(i){mods.FFR_inte[[i]]$error.pred})
+cat( mean(err),"(",sd(err),")","\n")
+```
+  
+  
+## Integral PenFFR
+  
+The penalized version, if it uses the calculations in the "BasisIntegralXXX" folder created above, will be faster and will take 15 hours to calculate. Otherwise, add 30 minutes to that.
+  
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+source("R/penffr2.R")
+
+# Penalize Version ----
+mods.PenFFR_inte <- lapply(1:n, function(i){
+
+  ## model
+  fofreg <- penffr2(Y.mat = raw.prec[-i,],
+                    X_fd.list = list(temp.fd[-i]),
+                    X.scal = data.frame(unlist(CanadianWeather[["coordinates"]]))[-i,],
+                    nbasis = 10, pen = T)
+
+  ## Prediction
+  pred <- pred.penffr2(model = fofreg,
+                       newX_fd.list = list(temp.fd[i]),
+                       newX.scal = data.frame(unlist(CanadianWeather[["coordinates"]]))[i,])
+
+  ## Erreur de prediction
+  err <- ISE(Y.act = raw.prec[i,],
+             Y.hat = pred,
+             t.mat = matrix(obs.grid, nrow = 1))
+  print(CanadianWeather[["place"]][i])
+  print(err)
+
+  ## results
+  list(pred = pred, error.pred = err)
+  
+})
+```
+
+**average and standard deviation of Integrated square Error (ISE)**
+```{r}
+err <- sapply(1:n, function(i){mods.PenFFR_inte[[i]]$error.pred})
+cat( mean(err),"(",sd(err),")","\n")
+```
+  
+  
+## Integral PFFR
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+library("refund")
+mods.pffr.inte <- lapply(1:n, function(i){
+
+  ## model ----
+  tmp.prec <- raw.prec[-i,]
+  tmp.temp <- raw.temp[-i,]
+  lat = as.vector(unlist(CanadianWeather[["coordinates"]])[-i,1])
+  lat = matrix(rep(lat, m), ncol = m, byrow = F)
+  lon = as.vector(unlist(CanadianWeather[["coordinates"]])[-i,2])
+  lon = matrix(rep(lon, m), ncol = m, byrow = F)
+  
+  mod <- pffr(tmp.prec ~ ff(tmp.temp, xind = obs.grid, check.ident = FALSE,
+                            basistype = "te", integration = "rieman",
+                            splinepars = list(bs = "cr", k = 10)) + lat + lon,
+              yind = obs.grid,
+              #data = list(raw.temp = raw.temp[-i,]),
+              #control = list(epsilon = 1e-04, maxit = 100),
+              algorithm = "bam",
+              bs.int = list(bs="cr", k=50),
+              bs.yindex = list(bs="cr", k=50))
+  # summary(mod)
+  ## prediction ----
+  lat <- unlist(CanadianWeather[["coordinates"]])[i,1]
+  lat <- matrix(rep(lat, m), nrow = 1)
+  lon <- unlist(CanadianWeather[["coordinates"]])[i,2]
+  lon <- matrix(rep(lon, m), nrow = 1)
+  pred <- predict(mod, se.fit=F, type = "response",
+                  newdata = list(tmp.temp = matrix(raw.temp[i,], nrow=1),
+                                 lat = lat, lon = lon))
+  
+  source("R/utils.R")
+  err <- ISE(Y.act = raw.prec[i,],
+             Y.hat = pred,
+             t.mat = matrix(obs.grid, nrow = 1))
+  print(CanadianWeather[["place"]][i])
+  print(err)
+  
+  ## results ---- 
+  list(pred = pred, pred.error = err)
+})
+
+```
+  
+**Average and standard deviation of prediction error**
+```{r}
+err <- sapply(1:n, function(i){mods.pffr.inte[[i]]$pred.error})
+cat( mean(err),"(",sd(err),")","\n")
+```
+  
+  
+## wSigcomp
+```{r, cache=TRUE, warning=FALSE, message=FALSE}
+library(FRegSigCom)
+mods.wsigcomp <- lapply(1:n, function(i){
+  
+  print(i)
+  X.train.list <- list(raw.temp[-i,])
+  Y.train <- raw.prec[-i,]
+  t.x.list <- list(obs.grid)
+  t.y <- obs.grid
+  fit.fix.adaptive <- cv.ff.interaction(X.train.list, Y.train, t.x.list, t.y,
+                                        adaptive=TRUE, s.n.basis = 80,
+                                        t.n.basis = 80,
+                                        inter.n.basis = 40, 1)
+  X.test.list <- list(matrix(raw.temp[i,], nrow = 1))
+  Y.pred=pred.ff.interaction(fit.fix.adaptive, X.test.list)
+  
+  # Prediction Error
+  err <- ISE(Y.act = raw.prec[i,],
+             Y.hat = Y.pred,
+             t.mat = matrix(obs.grid,nrow = 1))
+  
+  print(CanadianWeather[["place"]][i])
+  print(err)
+  
+  list(pred = Y.pred, pred.error = err)
+  
+})
+```
+  
+  
+**Average and standard deviation of prediction error**
+```{r}
+err <- sapply(1:n, function(i){mods.wsigcomp[[i]]$pred.error})
+cat( mean(err),"(",sd(err),")","\n")
+```
+
+
+
+## Some prediction
+The actual data is the black dots, the predictions given by the four estimations process is detailled as : FFR version is the blue curves, the PenFFR the red one, pffr the green curve and magenta curve is the wsigcomp processs.
+```{r}
+i <- 19 # For Churchill station
+# graphic view of predictions ----
+plot(obs.grid, raw.prec[i,], xlab = "Days of Year", cex.lab = 1, ylim = c(-2,2),
+     ylab = "log precipitations mm", type = "p", col = "black",
+     pch = 20, lwd=0.2, xaxt = "n", main = "Churchill station")
+axis(1, at = (c(1,32,60,91,121,152,182,213,244,274,305,335)-1)/364,
+     labels = substr(month.name, 1, 3))
+lines(obs.grid, mods.FFR_inte[[i]]$pred, col = "blue", lwd = 2)
+lines(obs.grid, mods.PenFFR_inte[[i]]$pred, col = "brown1", lwd = 2)
+lines(obs.grid, mods.pffr.inte[[i]]$pred, col = "green", lwd = 2)
+lines(obs.grid, mods.wsigcomp[[i]]$pred, col = "magenta", lwd = 2)
+
+i <- 34 # 
+plot(obs.grid, raw.prec[i,], xlab = "Days of Year", cex.lab = 1, ylim = c(-2,2),
+     ylab = "log precipitations mm", type = "p", col = "black",
+     pch = 20, lwd=0.2, xaxt = "n", main = "Inuvik station")
+axis(1, at = (c(1,32,60,91,121,152,182,213,244,274,305,335)-1)/364,
+     labels = substr(month.name, 1, 3))
+lines(obs.grid, mods.FFR_inte[[i]]$pred, col = "blue", lwd = 2)
+lines(obs.grid, mods.PenFFR_inte[[i]]$pred, col = "brown1", lwd = 2)
+lines(obs.grid, mods.pffr.inte[[i]]$pred, col = "green", lwd = 2)
+lines(obs.grid, mods.wsigcomp[[i]]$pred, col = "magenta", lwd = 2)
+```
+
+# Concurrent model
+  
+We begin unlike in the paper by compare the three different estimation process of the concurrent model defined by :
+$$\mathrm{Y}_i(t)=\beta_0(t) + \sum_{l=1}^p\,\beta_l(t)\,\mathrm{X}^l_i(t) + \varepsilon_i(t)\quad = \quad \big(1,\,\mathrm{X}_i(t)\big)^\top\beta(t) + \varepsilon_i(t)$$
+We will compare our two method FFR and PenFFR to the PFFR process.
+
+## Concurrent FFR
+```{r, cache=TRUE}
+source("R/penffr1.R")
+source("R/utils.R")
+
+mods.FFR_conc <- lapply(1:n, function(i){
+
+  ## model
+  fofreg <- penffr1(Y.mat = raw.prec[-i,],
+                    X_fd.list = list(temp.fd[-i]),
+                    X.scal = data.frame(unlist(CanadianWeather[["coordinates"]]))[-i,],
+                    nbasis = 40, pen = F)
+
+  ## Prediction
+  pred <- pred.penffr1(model = fofreg,
+                       newX_fd.list = list(temp.fd[i]),
+                       newX.scal = data.frame(unlist(CanadianWeather[["coordinates"]]))[i,])
+
+  ## Erreur de prediction
+  err <- ISE(Y.act = raw.prec[i,],
+             Y.hat = pred,
+             t.mat = matrix(obs.grid, nrow = 1))
+  print(CanadianWeather[["place"]][i])
+  print(err)
+
+  ## results
+  list(pred = pred, error.pred = err)
+})
+```
+
+**Average and standard deviation of Integrated square Error (ISE)**
+```{r}
+err <- sapply(1:n, function(i){mods.FFR_conc[[i]]$error.pred})
+cat( mean(err),"(",sd(err),")","\n")
+```
+
+## Concurrent PenFFR
+```{r, cache=TRUE}
+source("R/penffr1.R")
+source("R/utils.R")
+
+mods.PenFFR_conc <- lapply(1:n, function(i){
+
+  ## model
+  fofreg <- penffr1(Y.mat = raw.prec[-i,],
+                    X_fd.list = list(temp.fd[-i]),
+                    X.scal = data.frame(unlist(CanadianWeather[["coordinates"]]))[-i,],
+                    nbasis = 40, pen = T)
+
+  ## Prediction
+  pred <- pred.penffr1(model = fofreg,
+                       newX_fd.list = list(temp.fd[i]),
+                       newX.scal = data.frame(unlist(CanadianWeather[["coordinates"]]))[i,])
+
+  ## Erreur de prediction
+  err <- ISE(Y.act = raw.prec[i,],
+             Y.hat = pred,
+             t.mat = matrix(obs.grid, nrow = 1))
+  print(CanadianWeather[["place"]][i])
+  print(err)
+
+  ## results
+  list(pred = pred, error.pred = err)
+})
+```
+
+**Average and standard deviation of Integrated square Error (ISE)**
+```{r}
+err <- sapply(1:n, function(i){mods.PenFFR_conc[[i]]$error.pred})
+cat( mean(err),"(",sd(err),")","\n")
+```
+
+## Concurrent PFFR
+```{r}
+library("refund")
+mods.pffr.conc <- lapply(1:n, function(i){
+  
+  ## model ----
+  tmp.prec <- raw.prec[-i,]
+  tmp.temp <- raw.temp[-i,]
+  lat = as.vector(unlist(CanadianWeather[["coordinates"]])[-i,1])
+  lat = matrix(rep(lat, m), ncol = m, byrow = F)
+  lon = as.vector(unlist(CanadianWeather[["coordinates"]])[-i,2])
+  lon = matrix(rep(lon, m), ncol = m, byrow = F)
+  
+  mod <- pffr(tmp.prec ~ tmp.temp + lat + lon,
+              yind = obs.grid,
+              #data = list(raw.temp = raw.temp[-i,]),
+              #control = list(epsilon = 1e-04, maxit = 100),
+              algorithm = "bam",
+              bs.int = list(bs="cr", k=50),
+              bs.yindex = list(bs="cr", k=50))
+  summary(mod)
+  ## prediction ----
+  lat <- unlist(CanadianWeather[["coordinates"]])[i,1]
+  lat <- matrix(rep(lat, m), nrow = 1)
+  lon <- unlist(CanadianWeather[["coordinates"]])[i,2]
+  lon <- matrix(rep(lon, m), nrow = 1)
+  pred <- predict(mod, se.fit=F, type = "response",
+                  newdata = list(tmp.temp = matrix(raw.temp[i,], nrow=1),
+                                 lat = lat, lon = lon))
+  
+  source("R/utils.R")
+  err <- ISE(Y.act = raw.prec[i,],
+             Y.hat = pred,
+             t.mat = matrix(obs.grid, nrow = 1))
+  
+  print(CanadianWeather[["place"]][i])
+  print(err)
+  
+  ## results ---- 
+  list(pred = pred, pred.error = err)
+})
+```
+  
+**average and standard deviation of Integrated square Error (ISE)**
+```{r}
+err <- sapply(1:n, function(i){mods.pffr.conc[[i]]$pred.error})
+cat( mean(err),"(",sd(err),")","\n")
+```
+
+
+
+## Some prediction
+The actual data is the black dots, the predictions given by the three estimations process : FFR version is the blue curves, the PenFFR the red one and pffr the green curves.
+  
+```{r}
+i <- sample(35,1)
+
+# graphic view of predictions ----
+plot(obs.grid, raw.prec[i,], xlab = "Days of Year", cex.lab = 1, ylim = c(-2,2),
+     ylab = "log precipitations mm", type = "p", col = "black",
+     pch = 20, lwd=0.2, xaxt = "n")
+axis(1, at = (c(1,32,60,91,121,152,182,213,244,274,305,335)-1)/364,
+     labels = substr(month.name, 1, 3))
+lines(obs.grid, mods.PenFFR_conc[[i]]$pred, col = "brown1", lwd = 2)
+lines(obs.grid, mods.FFR_conc[[i]]$pred, col = "blue", lwd = 2)
+lines(obs.grid, mods.pffr.conc[[i]]$pred, col = "green", lwd = 2)
+```
+  
+
+# Final tabular
+  
+\begin{tabular}{l  c}
+     {Methods} & $\widehat{\mathrm{ISE}}$\\
+     \hline\hline
+     \textbf{Integral PenFFR} & `r round(mean(sapply(1:n, function(i){mods.PenFFR_inte[[i]]$error.pred})),2)` (`r round(sd(sapply(1:n, function(i){mods.PenFFR_inte[[i]]$error.pred})),2)`)\\
+     \text{Concurrent PenFFR} & `r round(mean(sapply(1:n, function(i){mods.PenFFR_conc[[i]]$error.pred})),2)` (`r round(sd(sapply(1:n, function(i){mods.PenFFR_conc[[i]]$error.pred})),2)`)\\
+     \text{Integral FFR} & `r round(mean(sapply(1:n, function(i){mods.FFR_inte[[i]]$error.pred})),2)` (`r round(sd(sapply(1:n, function(i){mods.FFR_inte[[i]]$error.pred})),2)`)\\
+     \text{Concurrent FFR} & `r round(mean(sapply(1:n, function(i){mods.FFR_conc[[i]]$error.pred})),2)` (`r round(sd(sapply(1:n, function(i){mods.FFR_conc[[i]]$error.pred})),2)`)\\
+     \hline
+     Integral PFFR & `r round(mean(sapply(1:n, function(i){mods.pffr.inte[[i]]$pred.error})),2)` (`r round(sd(sapply(1:n, function(i){mods.pffr.inte[[i]]$pred.error})),2)`)  \\
+     Concurrent PFFR & `r round(mean(sapply(1:n, function(i){mods.pffr.conc[[i]]$pred.error})),2)` (`r round(sd(sapply(1:n, function(i){mods.pffr.conc[[i]]$pred.error})),2)`) \\
+    \hline
+     \textit{wSigcomp} & `r round(mean(sapply(1:n, function(i){mods.wsigcomp[[i]]$pred.error})),2)` (`r round(sd(sapply(1:n, function(i){mods.wsigcomp[[i]]$pred.error})),2)`)\\
+     \hline
+     \text{OPFFR} & $40.28\,(45.76)$ \\
+     \text{FDA} & $44.16\,(56.95)$ \\
+     \text{FPCA} & $45.51\,(45.78)$\\
+     \hline
+\end{tabular}
+
+
+
+

@@ -1,0 +1,4 @@
+"experiment","ISE_mean","ISE_sd","paper"
+"CW concurrent pffr (authors as-is)",89.5054320855461,52.0632053699623,"89.31 (52.03)"
+"CW concurrent pffr (lat/lon fixed)",64.7950746413788,46.3092410515549,"-"
+"CW concurrent pffr (temp only)",114.315040154641,50.458976475026,"-"
