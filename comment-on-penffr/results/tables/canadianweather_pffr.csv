@@ -1,0 +1,4 @@
+"model","ISE_mean","ISE_sd","paper_reference"
+"concurrent pffr (authors as-is)",89.5054320855461,52.0632053699623,"pffr 89.31 (52.03); PenFFR 36.40"
+"concurrent pffr (PenFFR-matched)",64.7950746413788,46.3092410515549,"PenFFR concurrent 36.40 (40.42)"
+"integral pffr (PenFFR-matched, historical)",37.9769038341361,36.6525134058885,"pffr 41.37 (48.91); PenFFR 33.66 (22.99)"
