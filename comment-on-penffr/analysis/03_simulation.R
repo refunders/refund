@@ -16,7 +16,7 @@ genY <- function(Xl,s2){ n<-nrow(Xl[[1]]); Y<-matrix(rep(b0,n),n,m,byrow=TRUE)
   for(l in 1:5) Y<-Y+Xl[[l]]*matrix(rep(B[,l],n),n,m,byrow=TRUE); Y+matrix(rnorm(n*m,sd=sqrt(s2)),n,m) }
 MRPE <- function(Ya,Yh) mean(rowSums((Ya-Yh)^2)/rowSums(Ya^2))
 fit_pffr <- function(Xtr,Ytr,Xte,k){ X1<-Xtr[[1]];X2<-Xtr[[2]];X3<-Xtr[[3]];X4<-Xtr[[4]];X5<-Xtr[[5]]
-  mod<-pffr(Ytr~X1+X2+X3+X4+X5, yind=tg, algorithm="bam",
+  mod<-pffr(Ytr~X1+X2+X3+X4+X5, yind=tg, algorithm="gam", method="REML",
             bs.yindex=list(bs="ps",k=k), bs.int=list(bs="ps",k=k), sandwich="none")
   predict(mod,type="response",newdata=list(X1=Xte[[1]],X2=Xte[[2]],X3=Xte[[3]],X4=Xte[[4]],X5=Xte[[5]])) }
 

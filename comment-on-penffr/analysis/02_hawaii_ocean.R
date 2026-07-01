@@ -11,7 +11,7 @@ ISE_set <- function(Yact,Yhat) rowSums((Yact-Yhat)^2)
 dens<-Dens[tr,]; temp<-Temp[tr,]; oxy<-Oxy[tr,]; chl<-Chl[tr,]; sal<-Sal[tr,]
 
 ## concurrent pffr (paper Table 5 reports this as the BEST method: 0.52 x10^-2)
-mc <- pffr(sal~dens+temp+oxy+chl, yind=depth, algorithm="bam",
+mc <- pffr(sal~dens+temp+oxy+chl, yind=depth, algorithm="gam", method="REML",
            bs.yindex=list(bs="ps",k=20), bs.int=list(bs="ps",k=20), sandwich="none")
 pc <- predict(mc, type="response", newdata=list(dens=Dens[te,],temp=Temp[te,],oxy=Oxy[te,],chl=Chl[te,]))
 ec <- ISE_set(Sal[te,], pc)
@@ -19,7 +19,7 @@ ec <- ISE_set(Sal[te,], pc)
 ## integral pffr
 mi <- pffr(sal~ff(dens,xind=depth,check.ident=FALSE)+ff(temp,xind=depth,check.ident=FALSE)+
                 ff(oxy,xind=depth,check.ident=FALSE)+ff(chl,xind=depth,check.ident=FALSE),
-           yind=depth, algorithm="bam", bs.yindex=list(bs="ps",k=20), bs.int=list(bs="ps",k=20), sandwich="none")
+           yind=depth, algorithm="gam", method="REML", bs.yindex=list(bs="ps",k=20), bs.int=list(bs="ps",k=20), sandwich="none")
 pii <- predict(mi, type="response", newdata=list(dens=Dens[te,],temp=Temp[te,],oxy=Oxy[te,],chl=Chl[te,]))
 ei <- ISE_set(Sal[te,], pii)
 
