@@ -1,0 +1,19 @@
+================ MATCHED: prec ~ temp + c(lat) + c(lon) ================
+Parametric (constant-over-t) coefficients:
+            Estimate Std. Error  t value Pr(>|t|)
+(Intercept)   0.9563     0.0413  23.1527        0
+lat          -0.0045     0.0009  -5.1185        0
+lon          -0.0053     0.0002 -34.2139        0
+Smooth terms:
+   smooth s(yindex.vec)                : 39 coefs, edf=14.5
+   smooth s(yindex.vec):raw.temp       : 40 coefs, edf=11.9
+
+================ AUTHORS' AS-IS: prec ~ temp + lat + lon (lat/lon as n x 365 matrices) ================
+Parametric coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)   0.8855     0.0485 18.2591        0
+Smooth terms (note lat/lon become time-varying smooths):
+   smooth s(yindex.vec)                : 49 coefs, edf=23.0
+   smooth s(yindex.vec):raw.temp       : 50 coefs, edf=17.3
+   smooth s(yindex.vec):latM           : 50 coefs, edf=26.0
+   smooth s(yindex.vec):lonM           : 50 coefs, edf=20.0
