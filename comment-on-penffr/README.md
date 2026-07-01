@@ -42,8 +42,15 @@ Rscript analysis/03_simulation.R
 
 ## Contents
 
+**Suggested process (measured):** raise the concerns with the authors first, privately
+(`authors-email-draft.md`), offering the reproduction materials so they can correct the
+record themselves; if that does not resolve it, submit the Comment to ADAC with the cover
+letter. The ask is a **correction** (proper attribution + a corrected, like-for-like
+comparison), not a retraction.
+
+- `authors-email-draft.md` — collegial message to the authors (recommended first step).
 - `comment.md` — the Comment (submission-ready source); `comment.pdf` — typeset version.
-- `cover-letter-editor.md` — cover note to the ADAC Editor-in-Chief.
+- `cover-letter-editor.md` — cover note to the ADAC editors (escalation step).
 - `analysis/` — reproduction scripts.
 - `results/` — output tables and figures.
 - `reference/` — extracted paper text, transcribed reported numbers, and the authors' own
