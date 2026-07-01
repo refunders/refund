@@ -1,6 +1,9 @@
 "model","ISE_mean","ISE_sd"
-"concurrent pffr (authors as-is, bam)",89.51,52.06
+"concurrent pffr (authors as-is, bam, cr basis)",89.51,52.06
+"concurrent pffr (authors as-is, cubic B-spline + 2nd-deriv penalty)",89.93,52.14
 "concurrent pffr (matched, gam/REML)",64.8,46.31
 "concurrent pffr (matched, gam/GCV.Cp)",64.85,46.14
-"integral pffr (matched, gam/REML, historical)",37.98,36.65
+"concurrent pffr (matched, pre-smoothed covariate, 100-basis)",65.02,46.19
+"integral pffr (matched, gam/REML, historical, cubic B-spline)",37.98,36.65
 "integral pffr (matched, gam/GCV.Cp, historical)",38.74,37.99
+"integral pffr (matched, gam/REML, historical, cr basis)",39.58,40.07
