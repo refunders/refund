@@ -6,7 +6,7 @@ Subject: Comment + request for correction: Tamo Tchomgui et al. (2026), DOI 10.1
 
 Dear Editors,
 
-I am submitting the attached Comment on Tamo Tchomgui, Jacques, Fraysse, Barriac and Chretien (2026), "A penalized spline estimator for functional linear regression with functional response" (DOI 10.1007/s11634-026-00681-w), and asking you to consider a correction. I have written to the authors directly in parallel, offering our reproduction materials so they can correct the record themselves.
+I am submitting the attached Comment on Tamo Tchomgui, Jacques, Fraysse, Barriac and Chretien (2026), "A penalized spline estimator for functional linear regression with functional response" (DOI 10.1007/s11634-026-00681-w), and asking you to consider a correction. I first raised these concerns with the authors directly and in private, offering our reproduction materials so they could correct the record themselves. The corresponding author replied only that the paper had "gone through the standard review process and is now published" and that I was "free to contact the ADAC editorial board", without engaging with any of the specific points; I am therefore doing exactly that.
 
 I am a co-author of the pffr method against which the article compares its proposal, so I have a declared interest; that is exactly why I am raising this formally and supporting the authors' right of reply. Having reproduced the authors' own analysis, my conclusion is that the paper's two central claims are both unfounded:
 
@@ -15,7 +15,7 @@ I am a co-author of the pffr method against which the article compares its propo
 
 Every uncontrolled choice in the comparison favours the authors' method (a pattern common in such studies; I do not impute intent). These are elementary, checkable issues, so a correction should be straightforward.
 
-I attach the Comment and a cover letter; complete reproduction materials (data, code, the authors' own analysis script) are available to the authors and reviewers.
+I attach the Comment and a cover letter; complete reproduction materials (data, code, the authors' own analysis script) are available to the authors and reviewers, and the full correspondence with the authors is available to you on request.
 
 Thank you for your consideration.
 

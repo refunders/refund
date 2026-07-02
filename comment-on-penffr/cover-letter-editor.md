@@ -10,7 +10,7 @@ I am writing, with my co-authors, to submit a Comment on
 
 I am a co-author of the `pffr` method (Ivanescu, Staicu, Scheipl and Greven, 2015) and of the functional additive mixed model framework it implements, against which this article compares its proposal. I have a declared interest, which is precisely why I am raising the matter formally, in a Comment, with the authors given a full right of reply.
 
-I raise these points constructively, and I have written to the authors directly in parallel — offering our reproduction materials so that, if they agree, they can correct the record themselves. I bring the matter to you as well because it bears on the published literature. Having reproduced the authors' own analysis, I believe the article requires a substantial correction; the reasons are documented and fully reproducible:
+I raise these points constructively, and I first raised them with the authors directly and in private, on [date], setting out the concerns in detail and offering our complete reproduction materials so that, if they agreed, they could correct the record themselves. In reply, the corresponding author, Prof. Jacques, wrote only that the article had "gone through the standard review process and is now published" and that I was "free to contact the ADAC editorial board", without addressing any of the specific points I had raised. I therefore bring the matter to you — as the authors themselves have suggested — because it bears on the published literature. Having reproduced the authors' own analysis, I believe the article requires a substantial correction; the reasons are documented and fully reproducible:
 
 1. **The method is not new — and is in fact a step backwards.** "FFR/PenFFR" is penalized-spline (P-spline) function-on-function regression — the approach `pffr` and the functional additive mixed model framework have implemented since 2015 — assembled from textbook components (Eilers and Marx 1996; Ruppert, Wand and Carroll 2003; Wood 2017), whose originating references are standard and are not cited. It is, moreover, a strict restriction of that method: PenFFR fits only a homoscedastic-Gaussian, least-squares model with no mixed effects and no working uncertainty quantification, whereas `pffr` handles general non-Gaussian and heteroscedastic responses and functional mixed models. The generalized functional additive mixed model framework (Scheipl, Gertheiss and Greven 2016, EJS — eqs. (1)–(4) and Table 1) already contains PenFFR's estimator, its integral/historical model, its generalized responses and functional random effects as special cases.
 
@@ -22,7 +22,7 @@ I raise these points constructively, and I have written to the authors directly 
 
 These are elementary, checkable points — the released code contradicts the paper's own Table 3, the missing references are canonical, and the claimed novelty is absent from the accompanying package — so a correction should be straightforward to adjudicate.
 
-I attach the Comment and our complete reproduction materials (data, code, and the authors' own analysis script), which I am glad to share with the authors and reviewers. I support the authors' right of reply and would welcome their response.
+I attach the Comment and our complete reproduction materials (data, code, and the authors' own analysis script), which I am glad to share with the authors and reviewers; the full correspondence with the authors is available to you on request. I support the authors' right of reply and would welcome their response.
 
 Yours sincerely,
 
