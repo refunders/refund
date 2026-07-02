@@ -15,6 +15,8 @@ I am a co-author of the pffr method against which the article compares its propo
 
 Every uncontrolled choice in the comparison favours the authors' method (a pattern common in such studies; I do not impute intent). These are elementary, checkable issues, so a correction should be straightforward.
 
+One further point, raised strictly as a matter of process and without any implication of impropriety on anyone's part: I note that one of the authors, Prof. Jacques, is an Associate Editor of ADAC. I would be grateful if you could confirm that the original submission was handled entirely independently of him, in line with the journal's and COPE's guidance on editor-authored submissions, and I ask that this Comment likewise be handled by editors with no connection to the authors. It was Prof. Jacques who, replying for the authors, directed me to the editorial board; given his position on it, I am writing to the Editors-in-Chief directly to avoid any conflict.
+
 I attach the Comment and a cover letter; complete reproduction materials (data, code, the authors' own analysis script) are available to the authors and reviewers, and the full correspondence with the authors is available to you on request.
 
 Thank you for your consideration.
