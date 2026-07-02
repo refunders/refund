@@ -418,6 +418,11 @@ pffr <- function(
   if (sandwich == "none") {
     return(m)
   }
+  # Stash the model-based covariance matrices before they are overwritten with
+  # the robust versions, so that later sandwich recomputations (coef, vcov,
+  # re-application) can restore the genuine bread; see restore_model_cov().
+  # (Only gam/bam reach this point: gamm/gamm4 force sandwich = "none".)
+  m$pffr$model_cov <- list(Vp = m$Vp, Ve = m$Ve, Vc = m$Vc)
   apply_sandwich_correction(
     m,
     prep$algorithm,

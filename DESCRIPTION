@@ -49,6 +49,7 @@ Imports:
 Suggests:
     RColorBrewer,
     reshape2,
+    sandwich,
     testthat
 Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
@@ -162,5 +163,5 @@ Collate:
     'fpca.lfda.R'
     'predict.fbps.R'
     'select_knots.R'
-RoxygenNote: 7.3.3
 Encoding: UTF-8
+Config/roxygen2/version: 8.0.0

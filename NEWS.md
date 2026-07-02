@@ -53,6 +53,33 @@
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.
+* New `vcov.pffr()` method. Plain `vcov()` returns the fit's stored
+  covariance (robust, for sandwich-corrected fits); `vcov(..., sandwich =
+  TRUE)` computes mgcv's HC sandwich from the model-based matrices.
+
+## Bug fixes
+
+* **Fixed double application of sandwich corrections on recomputation.**
+  Since `pffr()` defaults to `sandwich = "cluster"`, fitted objects carry
+  robust matrices in `Vp`/`Vc`/`Ve` — which the sandwich estimators also use
+  as their (penalized) bread. Recomputing via `coef(fit, sandwich = ...)` or
+  `coef(fit, cluster = ...)` therefore applied the correction on top of
+  itself (SEs inflated ~1.5-2x on a small test example), and
+  `coef(fit, sandwich = "none")` silently returned robust instead of
+  model-based SEs. `pffr()` now stashes the model-based matrices in
+  `$pffr$model_cov` and all recomputation paths restore them first.
+  Objects fitted with earlier development versions lack the stash and now
+  warn; refit to get correct recomputed results.
+* The CR1 cluster sandwich (`sandwich = "cluster"`) now includes prior
+  weights in the standard-GLM score, matching the CL2 and gaulss paths;
+  CR1 SEs for weighted fits were wrong before.
+* `pffr_coefboot(type = "norm")` returned all-NA intervals because
+  `boot::boot.ci()` names its result element `$normal`, not `$norm`; the
+  element names are now mapped correctly. `type = "stud"` errors up front
+  (the bootstrap statistic provides no replicate variances) instead of
+  silently yielding all-NA intervals.
+* `coef.pffr(cluster = ...)` with a single cluster now errors cleanly
+  instead of dividing by zero in the CR1 small-sample factor.
 
 # refund 0.1-37
 

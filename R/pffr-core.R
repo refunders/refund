@@ -1200,6 +1200,22 @@ build_cl2_working_gaulss <- function(b, cluster_id) {
 #'   the optional CR1 small-sample correction \eqn{(N-1)/(N-\mathrm{EDF})}.
 #' @returns A p x p covariance matrix.
 #' @keywords internal
+#' Number of clusters, requiring at least two
+#'
+#' The cluster sandwich's G/(G-1) small-sample factor is undefined for a
+#' single cluster.
+#'
+#' @param cluster_id Cluster membership vector.
+#' @returns The number of distinct clusters.
+#' @keywords internal
+n_clusters_checked <- function(cluster_id) {
+  G <- length(unique(cluster_id))
+  if (G < 2) {
+    stop("Need at least two clusters for cluster sandwich.", call. = FALSE)
+  }
+  G
+}
+
 assemble_cluster_sandwich <- function(
   scores,
   cluster_id,
@@ -1207,9 +1223,10 @@ assemble_cluster_sandwich <- function(
   B2,
   dof_factor = 1
 ) {
+  G <- n_clusters_checked(cluster_id)
   U <- rowsum(scores, cluster_id)
   meat <- crossprod(U)
-  hc1 <- length(unique(cluster_id)) / (length(unique(cluster_id)) - 1)
+  hc1 <- G / (G - 1)
   dof_factor * hc1 * Vp %*% meat %*% Vp + B2
 }
 
@@ -1254,10 +1271,7 @@ compute_dof_factor <- function(
       call. = FALSE
     )
   }
-  G <- length(unique(cluster_id))
-  if (G < 2) {
-    stop("Need at least two clusters for cluster sandwich.", call. = FALSE)
-  }
+  G <- n_clusters_checked(cluster_id)
 
   edf <- switch(
     edf_type,
@@ -1338,9 +1352,12 @@ gam_sandwich_cluster <- function(
   }
 
   # Standard GLM case: per-observation scores via general score weight
-  # w = (d mu/d eta) * (y - mu) / (phi * V(mu))
+  # w = pw * (d mu/d eta) * (y - mu) / (phi * V(mu)); prior weights enter the
+  # estimating equation (the CL2 and gaulss paths already include them).
   mu <- b$fitted.values
-  scores <- b$family$mu.eta(b$linear.predictors) *
+  pw <- b$prior.weights %||% 1
+  scores <- pw *
+    b$family$mu.eta(b$linear.predictors) *
     (b$y - mu) /
     (b$sig2 * b$family$variance(mu)) *
     X
@@ -1403,11 +1420,8 @@ gam_sandwich_cluster_cl2 <- function(
   z <- work$z
   cluster_id_work <- work$cluster_id
 
+  G <- n_clusters_checked(cluster_id_work)
   groups <- unique(cluster_id_work)
-  G <- length(groups)
-  if (G < 2) {
-    stop("Need at least two clusters for cluster sandwich.", call. = FALSE)
-  }
 
   Vp <- b$Vp
   B2 <- if (freq) 0 else b$Vp - b$Ve
@@ -1477,6 +1491,47 @@ gam_sandwich_cluster_cl2 <- function(
   V
 }
 
+#' Restore the model-based covariance matrices on a sandwich-corrected fit
+#'
+#' [apply_sandwich_correction()] overwrites `Vp`/`Vc`/`Ve` with the robust
+#' matrices; [pffr()] stashes the originals in `object$pffr$model_cov`
+#' beforehand. Any code that
+#' wants to (re)compute a sandwich covariance -- which uses `Vp`/`Ve` as the
+#' penalized bread -- must operate on the restored model-based matrices, or the
+#' correction is applied on top of itself. Returns the object with `Vp`/`Vc`/
+#' `Ve` reset to the model-based versions when the stash is available; warns if
+#' the fit was sandwich-corrected but carries no stash (objects from older
+#' versions), in which case results will double-apply the correction.
+#'
+#' @param object A fitted pffr model (or its stripped gam version with the
+#'   `$pffr` metadata still attached).
+#' @returns The object with model-based `Vp`/`Vc`/`Ve`.
+#' @keywords internal
+restore_model_cov <- function(object) {
+  mc <- object$pffr$model_cov
+  if (!is.null(mc)) {
+    object$Vp <- mc$Vp
+    object$Ve <- mc$Ve
+    object$Vc <- mc$Vc
+    return(object)
+  }
+  ms <- normalize_sandwich_type(object$pffr$sandwich)
+  if (!identical(ms, "none")) {
+    warning(
+      "This fit's covariance matrices were already sandwich-adjusted (fitted ",
+      "with sandwich = \"",
+      ms,
+      "\") and the object does not carry the original model-based matrices ",
+      "(created by an older refund version). Model-based covariances cannot ",
+      "be restored, and any newly requested sandwich correction will be ",
+      "applied ON TOP of the existing one; refit the model to get correct ",
+      "results.",
+      call. = FALSE
+    )
+  }
+  object
+}
+
 #' Apply sandwich correction to model covariance matrices
 #'
 #' Applies either observation-level HC sandwich (via [mgcv::vcov.gam()]) or
@@ -1503,6 +1558,16 @@ apply_sandwich_correction <- function(
 ) {
   gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
 
+  # The sandwich estimators use the fit's Vp/Ve as the (penalized) bread and
+  # this function then overwrites Vp/Vc/Ve with the robust matrices. pffr()
+  # stashes the model-based matrices in $pffr$model_cov before the first
+  # application, so restoring them here makes re-application idempotent
+  # instead of applying the correction on top of itself.
+  # (restore_model_cov() warns for stash-less objects from older versions.)
+  gam_obj <- restore_model_cov(gam_obj)
+  # reset the CL2 leverage-cap diagnostic; only the cl2 branch sets it
+  gam_obj$pffr$cl2_n_capped <- NULL
+
   gam_obj_stripped <- gam_obj
   class(gam_obj_stripped) <- setdiff(class(gam_obj_stripped), "pffr")
 
@@ -1518,11 +1583,15 @@ apply_sandwich_correction <- function(
           call. = FALSE
         )
       }
-      gam_obj$Vp <- gam_obj$Vc <- gam_sandwich_cluster_cl2(
+      V_cl2 <- gam_sandwich_cluster_cl2(
         gam_obj_stripped,
         cluster_id,
         freq = FALSE
       )
+      # gam_sandwich_cluster_cl2() itself warns when clusters hit the leverage
+      # cap; here we only persist the diagnostic on the fit.
+      gam_obj$pffr$cl2_n_capped <- attr(V_cl2, "n_capped_clusters") %||% 0L
+      gam_obj$Vp <- gam_obj$Vc <- V_cl2
       gam_obj$Ve <- gam_sandwich_cluster_cl2(
         gam_obj_stripped,
         cluster_id,

@@ -271,6 +271,10 @@ compute_single_boot_ci <- function(boot_result, index, conf, type) {
   }
 
   type_arg <- if (type == "percent") "perc" else type
+  # boot.ci names its result elements differently from its `type` argument:
+  # type = "norm" -> $normal, "stud" -> $student. Using ci[[type]] directly
+  # returned NULL for those, silently yielding all-NA intervals.
+  elem <- switch(type, norm = "normal", stud = "student", type)
   out <- tryCatch(
     {
       ci <- boot::boot.ci(
@@ -279,7 +283,7 @@ compute_single_boot_ci <- function(boot_result, index, conf, type) {
         index = index,
         type = type_arg
       )
-      bounds <- ci[[type]]
+      bounds <- ci[[elem]]
       if (is.null(bounds)) stop("CI bounds unavailable")
       lower <- bounds[, ncol(bounds) - 1L]
       upper <- bounds[, ncol(bounds)]
@@ -374,6 +378,14 @@ pffr_coefboot <- function(
   method <- match.arg(method)
   parallel <- match.arg(parallel)
   type <- match.arg(type, c("norm", "basic", "stud", "percent", "bca"))
+  if (type == "stud") {
+    stop(
+      "type = \"stud\" is not supported: the bootstrap statistic returns ",
+      "only coefficient values, not the per-replicate variances that ",
+      "studentized intervals require.",
+      call. = FALSE
+    )
+  }
 
   if (!is.numeric(B) || length(B) != 1 || !is.finite(B) || B < 1) {
     stop("'B' must be a single positive integer.")

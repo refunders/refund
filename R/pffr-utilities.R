@@ -10,6 +10,14 @@ safeDeparse <- function(expr) {
 # Null coalescing operator (returns y if x is NULL)
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+# Normalize a stored pffr sandwich type (from $pffr metadata or a summary):
+# NULL -> "none", legacy logical encoding TRUE/FALSE -> "cluster"/"none".
+normalize_sandwich_type <- function(sandwich) {
+  sandwich <- sandwich %||% "none"
+  if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
+  sandwich
+}
+
 #' Return call with all possible arguments
 #'
 #' Return a call in which all of the arguments which were supplied or have presets are specified by their full names and their supplied or default values.
