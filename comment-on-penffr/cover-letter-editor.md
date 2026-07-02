@@ -22,6 +22,8 @@ I raise these points constructively, and I first raised them with the authors di
 
 These are elementary, checkable points — the released code contradicts the paper's own Table 3, the missing references are canonical, and the claimed novelty is absent from the accompanying package — so a correction should be straightforward to adjudicate.
 
+One further point, raised strictly as a matter of process and without any implication of impropriety: one of the authors, Prof. Jacques, is an Associate Editor of ADAC. I would be grateful if you could confirm that the original submission was handled entirely independently of him, in line with the journal's and COPE's guidance on submissions authored by editors, and I ask that this Comment likewise be assigned to editors with no connection to the authors. Since it was Prof. Jacques who, replying for the authors, directed me to the editorial board, I am addressing the Editors-in-Chief directly to avoid any conflict.
+
 I attach the Comment and our complete reproduction materials (data, code, and the authors' own analysis script), which I am glad to share with the authors and reviewers; the full correspondence with the authors is available to you on request. I support the authors' right of reply and would welcome their response.
 
 Yours sincerely,
