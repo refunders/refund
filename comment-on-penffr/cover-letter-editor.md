@@ -16,9 +16,11 @@ I raise these points constructively, and I first raised them with the authors di
 
 2. **The comparison against `pffr` is invalid.** The released code enters two scalar covariates into `pffr` as 50-dimensional functional terms; it does not implement the basis settings the paper reports in its own Table 3; the integral models being compared are different estimands; and three of the competitors in the headline Canadian-Weather table (OPFFR, FDA, FPCA) were not run at all but copied from another paper. I reproduce the authors' worst-case `pffr` number exactly and show it is an artefact of this mis-specification. Every uncontrolled choice in the comparison favours the authors' method.
 
-3. **The conclusion is contradicted by the authors' own results.** Their Table 5 already ranks `pffr` as the most accurate method on the Hawaii Ocean data, which I reproduce.
+3. **Even the authors' own reported results are not produced by the method the paper describes.** The released code estimates PenFFR by ridge-penalized least squares (a call to `lm()`), not the linear mixed model estimated by ReML that the paper sets out; it selects the penalty by BIC over a degenerate grid — for the four-covariate Hawaii Ocean model, only the two endpoints of the range — rather than by the cross-validation the paper describes; and it omits the per-curve random intercept entirely (the curve identifier is dropped from the design, and the helper that would build the random effect is never called). The PenFFR numbers in Tables 2, 4 and 5 therefore do not correspond to the algorithm as described.
 
-4. **The one novel element does not exist in the software and fails where evaluated.** The conformal prediction bands are not implemented in the released package (which returns point predictions only), and the only coverage numbers reported reach 2–54% for nominal 95% intervals.
+4. **The conclusion is contradicted by the authors' own results.** Their Table 5 already ranks `pffr` as the most accurate method on the Hawaii Ocean data, which I reproduce.
+
+5. **The one novel element does not exist in the software and fails where evaluated.** The conformal prediction bands are not implemented in the released package (which returns point predictions only), and the only coverage numbers reported reach 2–54% for nominal 95% intervals.
 
 These are elementary, checkable points — the released code contradicts the paper's own Table 3, the missing references are canonical, and the claimed novelty is absent from the accompanying package — so a correction should be straightforward to adjudicate.
 
