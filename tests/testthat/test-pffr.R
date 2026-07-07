@@ -1068,13 +1068,15 @@ test_that("residuals.pffr returns correct dimensions and handles sparse data", {
 
 test_that("plot.pffr runs without error (smoke test)", {
   skip_on_cran()
-  # Skip due to known mgcv dispatch issue with plot.gam
-  # The plot.pffr method itself works but has object name scoping issues
-  skip("plot.pffr has known mgcv object dispatch issues")
+  # plot.pffr is now registered as an S3 method (S1: it previously lacked
+  # @export, so plot() bypassed it) and evaluates the modified local object,
+  # fixing the historical name-scoping glitch.
 
   m <- get_xlin_model()
 
   # Smoke test: plot should run without error
+  pdf(NULL)
+  on.exit(dev.off(), add = TRUE)
   expect_no_error(suppressWarnings(plot(m, pages = 1)))
 })
 
@@ -1696,15 +1698,19 @@ test_that("pffr with sandwich='cluster' yields cluster-robust covariance", {
   expect_identical(m_std$pffr$sandwich, "none")
   expect_identical(m_cl$pffr$sandwich, "cluster")
 
-  # Covariance matrices differ from uncorrected model
-  expect_false(identical(m_std$Vp, m_cl$Vp))
-  expect_false(identical(m_std$Ve, m_cl$Ve))
+  # $Vp/$Ve stay model-based (inviolate); the robust covariance is stored
+  # separately in $pffr$Vsandwich and differs from the model-based one.
+  expect_identical(m_std$Vp, m_cl$Vp)
+  expect_identical(m_std$Ve, m_cl$Ve)
+  expect_false(is.null(m_cl$pffr$Vsandwich))
+  expect_gt(max(abs(m_cl$pffr$Vsandwich - m_cl$Vp)), 0)
+  expect_identical(m_cl$pffr$sandwich_info$type, "cluster")
 
   # Cluster-robust differs from HC sandwich
   m_std_stripped <- m_std
   class(m_std_stripped) <- setdiff(class(m_std_stripped), "pffr")
   hc_Vp <- vcov(m_std_stripped, sandwich = TRUE)
-  expect_false(identical(m_cl$Vp, hc_Vp))
+  expect_false(identical(m_cl$pffr$Vsandwich, hc_Vp))
 
   # Coefficients identical (only covariance changes)
   expect_equal(coef(m_std, raw = TRUE), coef(m_cl, raw = TRUE))
@@ -1777,12 +1783,13 @@ test_that("pffr with sandwich='hc' yields observation-level HC sandwich", {
 
   expect_identical(m_hc$pffr$sandwich, "hc")
 
-  # HC sandwich matches mgcv::vcov.gam(sandwich=TRUE) on uncorrected model
+  # $Vp/$Vc stay model-based; the stored robust covariance matches
+  # mgcv::vcov.gam(sandwich=TRUE) computed on the uncorrected model.
   m_std_stripped <- m_std
   class(m_std_stripped) <- setdiff(class(m_std_stripped), "pffr")
   expected_Vp <- vcov(m_std_stripped, sandwich = TRUE)
-  expect_equal(m_hc$Vp, expected_Vp)
-  expect_equal(m_hc$Vc, expected_Vp)
+  expect_identical(m_hc$Vp, m_std$Vp)
+  expect_equal(m_hc$pffr$Vsandwich, expected_Vp)
 })
 
 test_that("pffr default sandwich is cluster", {
@@ -1807,9 +1814,11 @@ test_that("pffr with sandwich='cl2' yields leverage-adjusted covariance", {
   expect_identical(m_cl2$pffr$sandwich, "cl2")
   expect_equal(coef(m_std, raw = TRUE), coef(m_cl2, raw = TRUE))
 
-  # CL2 covariance should differ from both uncorrected and CR1 covariance.
-  expect_gt(max(abs(m_cl2$Vp - m_std$Vp)), 0)
-  expect_gt(max(abs(m_cl2$Vp - m_cl$Vp)), 0)
+  # $Vp stays model-based; the stored CL2 covariance differs from both the
+  # model-based and the stored CR1 covariance.
+  expect_identical(m_cl2$Vp, m_std$Vp)
+  expect_gt(max(abs(m_cl2$pffr$Vsandwich - m_std$Vp)), 0)
+  expect_gt(max(abs(m_cl2$pffr$Vsandwich - m_cl$pffr$Vsandwich)), 0)
 
   # coef.pffr on fitted model uses stored CL2 covariance.
   coef_cl2 <- coef(m_cl2, sandwich = "cl2")

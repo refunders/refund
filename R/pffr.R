@@ -176,6 +176,18 @@
 #'   \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
 #'   heteroskedasticity but ignores within-curve correlation.
 #'   \code{"none"}: no sandwich correction.
+#'
+#'   Storage contract: the fit's model-based (Bayesian posterior) covariance
+#'   matrices \code{$Vp}, \code{$Vc} and \code{$Ve} are \emph{always} left
+#'   exactly as \code{\link[mgcv]{gam}} produced them; the robust covariance is
+#'   stored separately in \code{$pffr$Vsandwich} (with metadata in
+#'   \code{$pffr$sandwich_info}). Consequently robust intervals are served by
+#'   refund's own methods (\code{\link{coef.pffr}}, \code{\link{plot.pffr}},
+#'   \code{\link{predict.pffr}} with \code{se.fit = TRUE}), while mgcv's generics
+#'   applied to the fit -- \code{\link[mgcv]{summary.gam}},
+#'   \code{\link[mgcv]{vcov.gam}}, \code{gam.check} -- report the model-based
+#'   uncertainty. Fits created by refund versions that overwrote \code{$Vp} can
+#'   be converted with \code{\link{pffr_upgrade_fit}}.
 #' @param dof_correction Optional small-sample degrees-of-freedom correction for
 #'   the \code{sandwich = "cluster"} (CR1) covariance. \code{"none"} (default)
 #'   reproduces the previous behaviour exactly. \code{"edf"} additionally
@@ -418,11 +430,11 @@ pffr <- function(
   if (sandwich == "none") {
     return(m)
   }
-  # Stash the model-based covariance matrices before they are overwritten with
-  # the robust versions, so that later sandwich recomputations (coef, vcov,
-  # re-application) can restore the genuine bread; see restore_model_cov().
-  # (Only gam/bam reach this point: gamm/gamm4 force sandwich = "none".)
-  m$pffr$model_cov <- list(Vp = m$Vp, Ve = m$Ve, Vc = m$Vc)
+  # $Vp/$Vc/$Ve remain the model-based matrices mgcv produced; the robust
+  # covariance is stored separately in $pffr$Vsandwich. Downstream sandwich
+  # recomputations therefore always use the genuine penalized bread and never
+  # double-apply the correction. (Only gam/bam reach this point: gamm/gamm4
+  # force sandwich = "none".)
   apply_sandwich_correction(
     m,
     prep$algorithm,

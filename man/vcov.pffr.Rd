@@ -18,14 +18,13 @@
 A covariance matrix, see \code{\link[mgcv]{vcov.gam}()}.
 }
 \description{
-Dispatches to \code{\link[mgcv]{vcov.gam}()}. Note that on a fit created
-with a sandwich option (e.g. the default \code{sandwich = "cluster"}), the
-default \code{vcov(object)} returns the fit's stored -- i.e. robust --
-covariance matrix. With \code{sandwich = TRUE}, mgcv recomputes an
-observation-level HC sandwich using the fit's \code{Vp}/\code{Ve} as the
-(penalized) bread; on a sandwich-corrected fit those slots already hold
-robust matrices, so this method restores the stashed model-based matrices
-first to avoid applying the correction on top of itself. For the
-cluster-robust estimators use \code{\link{coef.pffr}} with the
-\code{sandwich} argument instead.
+Dispatches to \code{\link[mgcv]{vcov.gam}()} on the fit's \emph{model-based}
+covariance. Since refund now keeps \code{$Vp}/\code{$Vc}/\code{$Ve}
+model-based on every fit (the robust covariance lives in
+\code{object$pffr$Vsandwich}), \code{vcov(object)} returns the Bayesian
+posterior (model-based) covariance even when the fit was created with a
+sandwich option. With \code{sandwich = TRUE}, mgcv recomputes an
+observation-level HC sandwich from that model-based bread. For the
+cluster-robust estimators (or to obtain the fit-time robust covariance) use
+\code{\link{coef.pffr}} with the \code{sandwich} argument.
 }

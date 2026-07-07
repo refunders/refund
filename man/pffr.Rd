@@ -66,17 +66,29 @@ m=c(2, 1))}, i.e. 20 cubic B-splines bases with first order difference
 penalty.}
 
 \item{sandwich}{Type of sandwich correction for robust covariance
-estimation.
-\code{"cluster"} (default): cluster-robust sandwich clustering by curve,
-which
-handles both heteroskedasticity and within-curve autocorrelation — the
-recommended choice for functional data.
-\code{"cl2"}: leverage-adjusted cluster-robust sandwich (Bell-McCaffrey
-style CL2), mainly relevant in smaller samples.
-\code{"hc"}: observation-level HC sandwich via
-\code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
-heteroskedasticity but ignores within-curve correlation.
-\code{"none"}: no sandwich correction.}
+  estimation.
+  \code{"cluster"} (default): cluster-robust sandwich clustering by curve,
+  which
+  handles both heteroskedasticity and within-curve autocorrelation — the
+  recommended choice for functional data.
+  \code{"cl2"}: leverage-adjusted cluster-robust sandwich (Bell-McCaffrey
+  style CL2), mainly relevant in smaller samples.
+  \code{"hc"}: observation-level HC sandwich via
+  \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
+  heteroskedasticity but ignores within-curve correlation.
+  \code{"none"}: no sandwich correction.
+
+  Storage contract: the fit's model-based (Bayesian posterior) covariance
+  matrices \code{$Vp}, \code{$Vc} and \code{$Ve} are \emph{always} left
+  exactly as \code{\link[mgcv]{gam}} produced them; the robust covariance is
+  stored separately in \code{$pffr$Vsandwich} (with metadata in
+  \code{$pffr$sandwich_info}). Consequently robust intervals are served by
+  refund's own methods (\code{\link{coef.pffr}}, \code{\link{plot.pffr}},
+  \code{\link{predict.pffr}} with \code{se.fit = TRUE}), while mgcv's generics
+  applied to the fit -- \code{\link[mgcv]{summary.gam}},
+  \code{\link[mgcv]{vcov.gam}}, \code{gam.check} -- report the model-based
+  uncertainty. Fits created by refund versions that overwrote \code{$Vp} can
+  be converted with \code{\link{pffr_upgrade_fit}}.}
 
 \item{dof_correction}{Optional small-sample degrees-of-freedom correction for
 the \code{sandwich = "cluster"} (CR1) covariance. \code{"none"} (default)

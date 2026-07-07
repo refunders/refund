@@ -305,6 +305,24 @@ predict.pffr <- function(
   }
   isIrregular <- missing(newdata) & object$pffr$is_sparse
 
+  # Honor the fit-time sandwich choice for standard errors: resolve the robust
+  # covariance through the accessor and inject it into the local `object` so
+  # predict.gam's se.fit uses it (the caller's object is not modified).
+  # sandwich = "none" fits are left untouched so predict.gam sees the fit's
+  # own model-based matrices exactly as mgcv produced them.
+  fit_sandwich_type <- normalize_sandwich_type(
+    object$pffr$sandwich_info$type %||% object$pffr$sandwich
+  )
+  if (
+    isTRUE(se.fit) &&
+      !identical(type, "lpmatrix") &&
+      !identical(fit_sandwich_type, "none")
+  ) {
+    vsw <- pffr_vcov(object, sandwich = NULL)
+    object$Vp <- vsw
+    object$Vc <- vsw
+  }
+
   #call predict.gam
   call[[1]] <- if (inherits(object, "bam")) {
     mgcv::predict.bam
@@ -580,15 +598,32 @@ fitted.pffr <- function(
 #' @param x a fitted \code{pffr}-object
 #' @param ... arguments handed over to \code{\link[mgcv]{plot.gam}}
 #'
-#' @return This function only generates plots.
+#' @return This function only generates plots (and invisibly returns
+#'   \code{\link[mgcv]{plot.gam}}'s plot data).
 #' @method plot pffr
+#' @export
 #' @importFrom mgcv plot.gam
 #' @author Fabian Scheipl
 plot.pffr <- function(x, ...) {
   call <- match.call()
   call[[1]] <- mgcv::plot.gam
+  # Honor the fit-time sandwich choice: inject the resolved robust covariance
+  # into the local `x` so plot.gam's standard-error bands use it. sandwich =
+  # "none" fits keep their model-based matrices untouched.
+  fit_sandwich_type <- normalize_sandwich_type(
+    x$pffr$sandwich_info$type %||% x$pffr$sandwich
+  )
+  if (!identical(fit_sandwich_type, "none")) {
+    vsw <- pffr_vcov(x, sandwich = NULL)
+    x$Vp <- vsw
+    x$Vc <- vsw
+  }
   #drop "pffr" class and replace <object> with changed value s.t. method dispatch works without glitches
   class(x) <- class(x)[-1]
+  # point the call at the modified local object (as in summary.pffr/
+  # predict.pffr); otherwise eval() would resolve the caller's original
+  # object and the class/covariance changes above would be ignored.
+  call$x <- as.name("x")
   invisible(eval(call))
 }
 
@@ -1339,55 +1374,18 @@ coef.pffr <- function(
       P
     }
 
-    if (sandwich != "none") {
-      # Use stored matrices if model was fitted with matching sandwich type
-      model_sandwich <- normalize_sandwich_type(object$pffr$sandwich)
-
-      # The cached covariance is only valid if the requested options also match
-      # what the fit stored. For "cluster", that includes the dof correction;
-      # for "cl2"/"hc" there are no extra options to compare.
-      opts_match <- if (sandwich == "cluster") {
-        dof_correction == model_dof_correction &&
-          (dof_correction == "none" || edf_type == model_edf_type)
-      } else {
-        TRUE
-      }
-
-      if (is.null(cluster) && model_sandwich == sandwich && opts_match) {
-        covmat <- if (freq) object$Ve else (object$Vc %||% object$Vp)
-      } else {
-        # Recomputation must use the model-based Vp/Ve as the bread: if the fit
-        # was created with a sandwich option, its Vp/Vc/Ve already hold robust
-        # matrices and reusing them would double-apply the correction.
-        object_stripped <- restore_model_cov(object)
-        class(object_stripped) <- setdiff(class(object_stripped), "pffr")
-        covmat <- if (sandwich == "cluster") {
-          gam_sandwich_cluster(
-            object_stripped,
-            build_cluster_id(object$pffr, cluster = cluster),
-            freq = freq,
-            dof_correction = dof_correction,
-            edf_type = edf_type
-          )
-        } else if (sandwich == "cl2") {
-          gam_sandwich_cluster_cl2(
-            object_stripped,
-            build_cluster_id(object$pffr, cluster = cluster),
-            freq = freq
-          )
-        } else {
-          stats::vcov(object_stripped, sandwich = TRUE, freq = freq)
-        }
-      }
-    } else {
-      # sandwich = "none" must return the model-based covariance even when the
-      # fit itself was sandwich-corrected (its Vp/Vc/Ve then hold the robust
-      # matrices; the originals are stashed in object$pffr$model_cov).
-      object_restored <- restore_model_cov(object)
-      # Prefer Vc (includes smoothing parameter uncertainty) over Vp if available
-      covmat <- if (freq) object_restored$Ve else
-        (object_restored$Vc %||% object_restored$Vp)
-    }
+    # Resolve the covariance through the single pffr accessor: $Vp/$Vc/$Ve are
+    # model-based, so recomputing a sandwich here never double-applies it.
+    # sandwich = "none" returns the genuinely model-based covariance; any other
+    # value (or a custom `cluster`) recomputes from the model-based bread.
+    covmat <- pffr_vcov(
+      object,
+      sandwich = sandwich,
+      freq = freq,
+      cluster = cluster,
+      dof_correction = dof_correction,
+      edf_type = edf_type
+    )
 
     coef_draws <- NULL
     t_scale <- NULL
@@ -1491,16 +1489,15 @@ coef.pffr <- function(
 
 #' Covariance matrix for a pffr fit
 #'
-#' Dispatches to \code{\link[mgcv]{vcov.gam}()}. Note that on a fit created
-#' with a sandwich option (e.g. the default \code{sandwich = "cluster"}), the
-#' default \code{vcov(object)} returns the fit's stored -- i.e. robust --
-#' covariance matrix. With \code{sandwich = TRUE}, mgcv recomputes an
-#' observation-level HC sandwich using the fit's \code{Vp}/\code{Ve} as the
-#' (penalized) bread; on a sandwich-corrected fit those slots already hold
-#' robust matrices, so this method restores the stashed model-based matrices
-#' first to avoid applying the correction on top of itself. For the
-#' cluster-robust estimators use \code{\link{coef.pffr}} with the
-#' \code{sandwich} argument instead.
+#' Dispatches to \code{\link[mgcv]{vcov.gam}()} on the fit's \emph{model-based}
+#' covariance. Since refund now keeps \code{$Vp}/\code{$Vc}/\code{$Ve}
+#' model-based on every fit (the robust covariance lives in
+#' \code{object$pffr$Vsandwich}), \code{vcov(object)} returns the Bayesian
+#' posterior (model-based) covariance even when the fit was created with a
+#' sandwich option. With \code{sandwich = TRUE}, mgcv recomputes an
+#' observation-level HC sandwich from that model-based bread. For the
+#' cluster-robust estimators (or to obtain the fit-time robust covariance) use
+#' \code{\link{coef.pffr}} with the \code{sandwich} argument.
 #'
 #' @param object a fitted \code{pffr}-object
 #' @param sandwich compute an observation-level HC sandwich covariance? See
@@ -1511,10 +1508,7 @@ coef.pffr <- function(
 #' @export
 #' @method vcov pffr
 vcov.pffr <- function(object, sandwich = FALSE, ...) {
-  if (isTRUE(sandwich)) {
-    object <- restore_model_cov(object)
-  }
-  class(object) <- setdiff(class(object), "pffr")
+  object <- pffr_model_based_gam(object)
   stats::vcov(object, sandwich = sandwich, ...)
 }
 
@@ -1692,9 +1686,12 @@ print.summary.pffr <- function(
   sw <- normalize_sandwich_type(x$sandwich)
   if (sw != "none") {
     cat(
-      "Sandwich correction (",
+      "Model fitted with sandwich = \"",
       sw,
-      ") applied to covariance matrices.\n",
+      "\"; this summary reports model-based uncertainty. ",
+      "Use coef(., sandwich = \"",
+      sw,
+      "\") for robust intervals.\n",
       sep = ""
     )
   }

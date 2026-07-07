@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr-core.R
 \name{restore_model_cov}
 \alias{restore_model_cov}
-\title{Restore the model-based covariance matrices on a sandwich-corrected fit}
+\title{Back-compat shim: restore model-based covariance on a fit}
 \usage{
 restore_model_cov(object)
 }
@@ -14,14 +14,9 @@ restore_model_cov(object)
 The object with model-based `Vp`/`Vc`/`Ve`.
 }
 \description{
-[apply_sandwich_correction()] overwrites `Vp`/`Vc`/`Ve` with the robust
-matrices; [pffr()] stashes the originals in `object$pffr$model_cov`
-beforehand. Any code that
-wants to (re)compute a sandwich covariance -- which uses `Vp`/`Ve` as the
-penalized bread -- must operate on the restored model-based matrices, or the
-correction is applied on top of itself. Returns the object with `Vp`/`Vc`/
-`Ve` reset to the model-based versions when the stash is available; warns if
-the fit was sandwich-corrected but carries no stash (objects from older
-versions), in which case results will double-apply the correction.
+Retained for backward compatibility. Sets `Vp`/`Vc`/`Ve` to the model-based
+matrices (a no-op for current-format fits, whose `Vp`/`Vc`/`Ve` are already
+model-based; a restore-from-stash for old-format fits). See
+[pffr_canonicalize_cov()].
 }
 \keyword{internal}

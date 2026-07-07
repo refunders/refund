@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr-core.R
 \name{apply_sandwich_correction}
 \alias{apply_sandwich_correction}
-\title{Apply sandwich correction to model covariance matrices}
+\title{Store a robust sandwich covariance on a fitted pffr model}
 \usage{
 apply_sandwich_correction(
   m,
@@ -28,11 +28,14 @@ warning) for `"cl2"`, which already corrects per-cluster leverage.}
 `"basis"`).}
 }
 \value{
-Model with corrected covariance matrices.
+Model with the robust covariance stored in `$pffr$Vsandwich`.
 }
 \description{
-Applies either observation-level HC sandwich (via [mgcv::vcov.gam()]) or
-cluster-robust sandwich (CR1 via [gam_sandwich_cluster()] or CL2 via
-[gam_sandwich_cluster_cl2()]) to a fitted pffr model.
+Computes the requested robust covariance (observation-level HC via
+[mgcv::vcov.gam()], or cluster-robust CR1 via [gam_sandwich_cluster()] / CL2
+via [gam_sandwich_cluster_cl2()]) from the fit's model-based bread and stores
+it in `$pffr$Vsandwich` (+ `$pffr$Vsandwich_freq`) together with
+`$pffr$sandwich_info`. The model-based `$Vp`/`$Vc`/`$Ve` are left untouched,
+so recomputing a sandwich later never double-applies the correction.
 }
 \keyword{internal}

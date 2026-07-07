@@ -1,9 +1,11 @@
 # Regression test: recomputing a sandwich covariance on a fit that was itself
 # created with a sandwich option (e.g. the default sandwich = "cluster") must
-# use the model-based Vp/Ve as the bread, not the already-robustified matrices.
-# Before the model_cov stash + restore_model_cov(), coef(fit, sandwich = "cl2")
+# use the model-based Vp/Ve as the bread, not an already-robustified matrix.
+# Under the current storage contract $Vp/$Vc/$Ve are model-based ALWAYS (the
+# robust covariance lives in $pffr$Vsandwich), so this holds by construction;
+# these tests lock the public surface. Historically, coef(fit, sandwich="cl2")
 # on a default-fitted model double-applied the correction (SEs inflated by
-# ~1.5-2x on this example); sandwich = "none" returned robust instead of
+# ~1.5-2x on this example) and sandwich = "none" returned robust instead of
 # model-based SEs.
 
 test_that("sandwich recomputation on a corrected fit uses model-based bread", {
@@ -24,10 +26,14 @@ test_that("sandwich recomputation on a corrected fit uses model-based bread", {
   fit_none <- pffr(Y ~ ff(X1), data = dat, yind = yind, sandwich = "none")
   fit_cluster <- pffr(Y ~ ff(X1), data = dat, yind = yind, sandwich = "cluster")
 
-  expect_false(is.null(fit_cluster$pffr$model_cov))
-  # stash holds the model-based matrices, not the robust ones
-  expect_equal(fit_cluster$pffr$model_cov$Vp, fit_none$Vp, tolerance = 1e-8)
-  expect_equal(fit_cluster$pffr$model_cov$Ve, fit_none$Ve, tolerance = 1e-8)
+  # $Vp/$Vc/$Ve are the model-based matrices on BOTH fits; the robust
+  # covariance is stored separately with its metadata.
+  expect_identical(fit_cluster$Vp, fit_none$Vp)
+  expect_identical(fit_cluster$Ve, fit_none$Ve)
+  expect_false(is.null(fit_cluster$pffr$Vsandwich))
+  expect_false(is.null(fit_cluster$pffr$Vsandwich_freq))
+  expect_identical(fit_cluster$pffr$sandwich_info$type, "cluster")
+  expect_null(fit_cluster$pffr$model_cov)
 
   # small evaluation grids: only SE equality matters, not grid resolution
   ff_se <- function(fit, ...) {
@@ -40,7 +46,7 @@ test_that("sandwich recomputation on a corrected fit uses model-based bread", {
     expect_equal(se_re, se_ref, tolerance = 1e-8, label = paste0("se_", type))
   }
 
-  # frequentist bread must be restored too
+  # frequentist bread must be model-based too
   se_ref <- ff_se(fit_none, sandwich = "cl2", freq = TRUE)
   se_re <- ff_se(fit_cluster, sandwich = "cl2", freq = TRUE)
   expect_equal(se_re, se_ref, tolerance = 1e-8)
@@ -56,8 +62,13 @@ test_that("sandwich recomputation on a corrected fit uses model-based bread", {
     "at least two clusters"
   )
 
-  # vcov(): default returns the stored (robust) matrix; sandwich = TRUE
-  # recomputes the HC sandwich from the restored model-based bread
+  # vcov(): returns the model-based covariance on every fit (mgcv's default is
+  # Vp); sandwich = TRUE recomputes the HC sandwich from the model-based bread
+  expect_equal(
+    unname(vcov(fit_cluster)),
+    unname(vcov(fit_none)),
+    tolerance = 1e-10
+  )
   expect_equal(
     unname(vcov(fit_cluster)),
     unname(fit_cluster$Vp),
@@ -69,26 +80,20 @@ test_that("sandwich recomputation on a corrected fit uses model-based bread", {
     tolerance = 1e-8
   )
 
-  # re-applying apply_sandwich_correction is idempotent
+  # re-applying apply_sandwich_correction is idempotent: $Vp untouched,
+  # identical robust matrices
   twice <- refund:::apply_sandwich_correction(
     fit_cluster,
     "gam",
     type = "cluster"
   )
-  expect_equal(twice$Vp, fit_cluster$Vp, tolerance = 1e-10)
-  expect_equal(twice$Ve, fit_cluster$Ve, tolerance = 1e-10)
-  expect_equal(twice$pffr$model_cov, fit_cluster$pffr$model_cov)
-
-  # pre-stash objects (older refund versions) warn instead of silently
-  # double-applying / mislabeling robust matrices as model-based
-  fit_old <- fit_cluster
-  fit_old$pffr$model_cov <- NULL
-  w_coef <- capture_warnings(ff_se(fit_old, sandwich = "cl2"))
-  expect_true(any(grepl("ON TOP", w_coef)))
-  w_apply <- capture_warnings(
-    refund:::apply_sandwich_correction(fit_old, "gam", type = "cluster")
+  expect_identical(twice$Vp, fit_cluster$Vp)
+  expect_identical(twice$Ve, fit_cluster$Ve)
+  expect_equal(
+    twice$pffr$Vsandwich,
+    fit_cluster$pffr$Vsandwich,
+    tolerance = 1e-10
   )
-  expect_true(any(grepl("ON TOP", w_apply)))
 })
 
 test_that("CR1 scores include prior weights (matches sandwich::vcovCL)", {

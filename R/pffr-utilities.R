@@ -18,6 +18,26 @@ normalize_sandwich_type <- function(sandwich) {
   sandwich
 }
 
+# Storage-format version for the pffr robust-covariance contract. Format 2
+# keeps $Vp/$Vc/$Ve model-based and stores the robust covariance in
+# $pffr$Vsandwich; format 1 (older) overwrote $Vp/$Vc/$Ve and stashed the
+# model-based matrices in $pffr$model_cov (see pffr_upgrade_fit()).
+PFFR_COV_STORAGE_FORMAT <- 2L
+
+# Package-internal state for session-scoped one-time warnings (e.g. the
+# back-compat notice emitted when an old-format fit is read).
+.pffr_state <- new.env(parent = emptyenv())
+
+# Emit `msg` as a warning at most once per R session, keyed by `key`. Tests may
+# reset by clearing `refund:::.pffr_state`.
+pffr_warn_once <- function(key, msg) {
+  if (!isTRUE(get0(key, envir = .pffr_state, ifnotfound = FALSE))) {
+    assign(key, TRUE, envir = .pffr_state)
+    warning(msg, call. = FALSE)
+  }
+  invisible(NULL)
+}
+
 #' Return call with all possible arguments
 #'
 #' Return a call in which all of the arguments which were supplied or have presets are specified by their full names and their supplied or default values.

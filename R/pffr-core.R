@@ -697,7 +697,13 @@ pffr_build_metadata <- function(
     ydata = ydata,
     sandwich = sandwich,
     dof_correction = dof_correction,
-    edf_type = edf_type
+    edf_type = edf_type,
+    # Covariance storage contract version: format 2 keeps $Vp/$Vc/$Ve
+    # model-based ALWAYS; the robust covariance lives in $pffr$Vsandwich.
+    cov_format = PFFR_COV_STORAGE_FORMAT,
+    # Cache for on-demand sandwich recomputation via pffr_vcov(); an
+    # environment so results persist on the fit across accessor calls.
+    Vsandwich_cache = new.env(parent = emptyenv())
   )
 }
 
@@ -1491,52 +1497,365 @@ gam_sandwich_cluster_cl2 <- function(
   V
 }
 
-#' Restore the model-based covariance matrices on a sandwich-corrected fit
+#' Resolve a pffr fit's covariance matrices to a canonical representation
 #'
-#' [apply_sandwich_correction()] overwrites `Vp`/`Vc`/`Ve` with the robust
-#' matrices; [pffr()] stashes the originals in `object$pffr$model_cov`
-#' beforehand. Any code that
-#' wants to (re)compute a sandwich covariance -- which uses `Vp`/`Ve` as the
-#' penalized bread -- must operate on the restored model-based matrices, or the
-#' correction is applied on top of itself. Returns the object with `Vp`/`Vc`/
-#' `Ve` reset to the model-based versions when the stash is available; warns if
-#' the fit was sandwich-corrected but carries no stash (objects from older
-#' versions), in which case results will double-apply the correction.
+#' The current storage contract (format 2) keeps `Vp`/`Vc`/`Ve` model-based
+#' ALWAYS and stores the robust covariance in `object$pffr$Vsandwich`
+#' (+ `Vsandwich_freq`). Older fits (format 1) instead overwrote `Vp`/`Vc`/`Ve`
+#' with the robust matrices and stashed the model-based originals in
+#' `object$pffr$model_cov`. This helper resolves either layout into a single
+#' shape, emitting a session-scoped one-time back-compat warning for old-format
+#' objects. All covariance recomputation must use the model-based matrices as
+#' the (penalized) bread, or the sandwich is applied on top of itself.
+#'
+#' @param object A fitted pffr model.
+#' @returns A list with `model` (list of model-based `Vp`/`Vc`/`Ve`),
+#'   `fit_type` (the fit-time sandwich type), `Vsandwich`/`Vsandwich_freq` (the
+#'   fit-time robust matrices or `NULL`), and `format`
+#'   (`"new"`/`"old"`/`"ancient"`).
+#' @keywords internal
+pffr_canonicalize_cov <- function(object) {
+  meta <- object$pffr
+  fit_type <- normalize_sandwich_type(meta$sandwich)
+
+  # Format 2 (current): model-based Vp/Vc/Ve, robust in $pffr$Vsandwich.
+  # The cov_format stamp is set at metadata-build time, so this branch is also
+  # taken during fitting, before apply_sandwich_correction() has stored
+  # Vsandwich (Vp/Vc/Ve are model-based there too).
+  if (
+    isTRUE((meta$cov_format %||% 0L) >= 2L) ||
+      !is.null(meta$sandwich_info) ||
+      !is.null(meta$Vsandwich)
+  ) {
+    return(list(
+      model = list(Vp = object$Vp, Vc = object$Vc, Ve = object$Ve),
+      fit_type = meta$sandwich_info$type %||% fit_type,
+      Vsandwich = meta$Vsandwich,
+      Vsandwich_freq = meta$Vsandwich_freq,
+      format = "new"
+    ))
+  }
+
+  # Plain fit: no sandwich applied, Vp/Vc/Ve are model-based.
+  if (identical(fit_type, "none")) {
+    return(list(
+      model = list(Vp = object$Vp, Vc = object$Vc, Ve = object$Ve),
+      fit_type = "none",
+      Vsandwich = NULL,
+      Vsandwich_freq = NULL,
+      format = "new"
+    ))
+  }
+
+  # Format 1 (old): Vp/Vc/Ve overwritten with robust, model-based in model_cov.
+  mc <- meta$model_cov
+  if (!is.null(mc)) {
+    pffr_warn_once(
+      "oldformat_modelcov",
+      paste0(
+        "This pffr fit was created by an older refund version: its $Vp/$Vc/$Ve ",
+        "hold the sandwich-adjusted (robust) covariance and the model-based ",
+        "matrices are stashed in $pffr$model_cov. Reading it in ",
+        "backward-compatible mode. Call pffr_upgrade_fit() to convert it to ",
+        "the current storage format ($Vp model-based, robust in ",
+        "$pffr$Vsandwich)."
+      )
+    )
+    return(list(
+      model = list(Vp = mc$Vp, Vc = mc$Vc, Ve = mc$Ve),
+      fit_type = fit_type,
+      Vsandwich = object$Vp,
+      Vsandwich_freq = object$Ve,
+      format = "old"
+    ))
+  }
+
+  # Ancient: robust matrices, model-based irrecoverably lost.
+  pffr_warn_once(
+    "oldformat_nostash",
+    paste0(
+      "This pffr fit was created with sandwich = \"",
+      fit_type,
+      "\" by a very old refund version and does not carry the model-based ",
+      "covariance matrices. Model-based uncertainty cannot be recovered and ",
+      "any recomputed sandwich would double-apply the correction; refit the ",
+      "model with the current refund version."
+    )
+  )
+  list(
+    model = list(Vp = object$Vp, Vc = object$Vc, Ve = object$Ve),
+    fit_type = fit_type,
+    Vsandwich = object$Vp,
+    Vsandwich_freq = object$Ve,
+    format = "ancient"
+  )
+}
+
+#' Return a fit's underlying gam with model-based covariance matrices
+#'
+#' Strips the `"pffr"` class and guarantees `Vp`/`Vc`/`Ve` are the model-based
+#' matrices, so downstream mgcv machinery and the sandwich estimators use the
+#' penalized bread rather than an already-robustified matrix.
+#'
+#' @param object A fitted pffr model.
+#' @returns The underlying gam object with model-based `Vp`/`Vc`/`Ve`.
+#' @keywords internal
+pffr_model_based_gam <- function(object) {
+  canon <- pffr_canonicalize_cov(object)
+  object$Vp <- canon$model$Vp
+  object$Vc <- canon$model$Vc
+  object$Ve <- canon$model$Ve
+  class(object) <- setdiff(class(object), "pffr")
+  object
+}
+
+#' Back-compat shim: restore model-based covariance on a fit
+#'
+#' Retained for backward compatibility. Sets `Vp`/`Vc`/`Ve` to the model-based
+#' matrices (a no-op for current-format fits, whose `Vp`/`Vc`/`Ve` are already
+#' model-based; a restore-from-stash for old-format fits). See
+#' [pffr_canonicalize_cov()].
 #'
 #' @param object A fitted pffr model (or its stripped gam version with the
 #'   `$pffr` metadata still attached).
 #' @returns The object with model-based `Vp`/`Vc`/`Ve`.
 #' @keywords internal
 restore_model_cov <- function(object) {
-  mc <- object$pffr$model_cov
-  if (!is.null(mc)) {
-    object$Vp <- mc$Vp
-    object$Ve <- mc$Ve
-    object$Vc <- mc$Vc
-    return(object)
-  }
-  ms <- normalize_sandwich_type(object$pffr$sandwich)
-  if (!identical(ms, "none")) {
-    warning(
-      "This fit's covariance matrices were already sandwich-adjusted (fitted ",
-      "with sandwich = \"",
-      ms,
-      "\") and the object does not carry the original model-based matrices ",
-      "(created by an older refund version). Model-based covariances cannot ",
-      "be restored, and any newly requested sandwich correction will be ",
-      "applied ON TOP of the existing one; refit the model to get correct ",
-      "results.",
-      call. = FALSE
-    )
-  }
+  canon <- pffr_canonicalize_cov(object)
+  object$Vp <- canon$model$Vp
+  object$Vc <- canon$model$Vc
+  object$Ve <- canon$model$Ve
   object
 }
 
-#' Apply sandwich correction to model covariance matrices
+#' Compute a robust covariance matrix from a model-based gam
 #'
-#' Applies either observation-level HC sandwich (via [mgcv::vcov.gam()]) or
-#' cluster-robust sandwich (CR1 via [gam_sandwich_cluster()] or CL2 via
-#' [gam_sandwich_cluster_cl2()]) to a fitted pffr model.
+#' Single dispatch point used by both fit-time correction and on-demand
+#' recomputation. `b` must be a (stripped) gam whose `Vp`/`Vc`/`Ve` are the
+#' model-based (penalized) matrices used as the sandwich bread.
+#'
+#' @param b Stripped gam object with model-based covariance matrices.
+#' @param type One of `"cluster"`, `"cl2"`, `"hc"`, `"none"`.
+#' @param cluster_id Integer cluster vector (for `"cluster"`/`"cl2"`), else
+#'   `NULL`.
+#' @param freq If `TRUE`, frequentist sandwich (`B2 = 0`).
+#' @param dof_correction,edf_type CR1 small-sample dof options (`"cluster"`
+#'   only).
+#' @returns A covariance matrix (with CL2 leverage attributes for `type =
+#'   "cl2"`).
+#' @keywords internal
+pffr_compute_sandwich <- function(
+  b,
+  type,
+  cluster_id,
+  freq = FALSE,
+  dof_correction = "none",
+  edf_type = "trace"
+) {
+  switch(
+    type,
+    cluster = gam_sandwich_cluster(
+      b,
+      cluster_id,
+      freq = freq,
+      dof_correction = dof_correction,
+      edf_type = edf_type
+    ),
+    cl2 = gam_sandwich_cluster_cl2(b, cluster_id, freq = freq),
+    hc = mgcv::vcov.gam(b, sandwich = TRUE, freq = freq),
+    none = if (freq) b$Ve else (b$Vc %||% b$Vp),
+    stop("Unknown sandwich type: ", type, call. = FALSE)
+  )
+}
+
+#' Resolve the covariance matrix for a pffr fit (single accessor)
+#'
+#' The one internal accessor through which every refund consumer
+#' (`coef.pffr`, `plot.pffr`, `predict.pffr`, simultaneous bands) obtains a
+#' covariance matrix, so that `$Vp`/`$Vc`/`$Ve` stay model-based and robust
+#' matrices are never double-applied.
+#'
+#' @param object A fitted pffr model.
+#' @param sandwich `NULL` (default) uses the fit-time choice; otherwise one of
+#'   `"none"`/`"cluster"`/`"cl2"`/`"hc"` (or a legacy logical). `"none"` returns
+#'   the genuinely model-based covariance; any other value that differs from the
+#'   fit-time choice (or supplies a custom `cluster`) recomputes from the
+#'   model-based bread.
+#' @param freq If `TRUE`, return the frequentist covariance.
+#' @param cluster Optional per-curve grouping forcing recomputation at a custom
+#'   cluster level.
+#' @param dof_correction,edf_type CR1 dof options; `NULL` inherits the fit's.
+#' @returns A covariance matrix.
+#' @keywords internal
+pffr_vcov <- function(
+  object,
+  sandwich = NULL,
+  freq = FALSE,
+  cluster = NULL,
+  dof_correction = NULL,
+  edf_type = NULL
+) {
+  canon <- pffr_canonicalize_cov(object)
+  requested <- if (is.null(sandwich)) {
+    canon$fit_type
+  } else {
+    normalize_sandwich_type(sandwich)
+  }
+  requested <- match.arg(requested, c("none", "cluster", "cl2", "hc"))
+
+  if (identical(requested, "none")) {
+    mb <- canon$model
+    return(if (freq) mb$Ve else (mb$Vc %||% mb$Vp))
+  }
+
+  dof_correction <- dof_correction %||% (object$pffr$dof_correction %||% "none")
+  edf_type <- edf_type %||% (object$pffr$edf_type %||% "trace")
+
+  # Serve the cached fit-time robust matrix when the request matches it exactly.
+  opts_match <- if (requested == "cluster") {
+    identical(dof_correction, object$pffr$dof_correction %||% "none") &&
+      (dof_correction == "none" ||
+        identical(edf_type, object$pffr$edf_type %||% "trace"))
+  } else {
+    TRUE
+  }
+  if (
+    is.null(cluster) &&
+      identical(requested, canon$fit_type) &&
+      opts_match &&
+      !is.null(canon$Vsandwich)
+  ) {
+    return(
+      if (freq) {
+        canon$Vsandwich_freq %||% canon$Vsandwich
+      } else {
+        canon$Vsandwich
+      }
+    )
+  }
+
+  # Recompute from the model-based bread (safe by construction). Cache the
+  # result in fit$pffr$Vsandwich_cache[[type]] -- an environment, so the cache
+  # actually persists across coef()/predict() calls on the same stored object
+  # (a plain list slot could not, under copy-on-modify). Keys extend the type
+  # with the freq/dof options; custom `cluster` requests are never cached.
+  cache <- object$pffr$Vsandwich_cache
+  key <- if (is.null(cluster)) {
+    if (requested == "cluster" && (freq || dof_correction != "none")) {
+      paste(requested, freq, dof_correction, edf_type, sep = "|")
+    } else if (freq) {
+      paste(requested, "freq", sep = "|")
+    } else {
+      requested
+    }
+  } else {
+    NULL
+  }
+  if (!is.null(cache) && !is.null(key) && !is.null(cache[[key]])) {
+    return(cache[[key]])
+  }
+
+  b <- object
+  b$Vp <- canon$model$Vp
+  b$Vc <- canon$model$Vc
+  b$Ve <- canon$model$Ve
+  class(b) <- setdiff(class(b), "pffr")
+  cluster_id <- if (requested %in% c("cluster", "cl2")) {
+    build_cluster_id(object$pffr, cluster = cluster)
+  } else {
+    NULL
+  }
+  V <- pffr_compute_sandwich(
+    b,
+    requested,
+    cluster_id,
+    freq = freq,
+    dof_correction = dof_correction,
+    edf_type = edf_type
+  )
+  if (!is.null(cache) && !is.null(key)) {
+    cache[[key]] <- V
+  }
+  V
+}
+
+#' Upgrade an old-format pffr fit to the current covariance storage contract
+#'
+#' Older refund versions (storage format 1) overwrote a sandwich-corrected
+#' fit's `$Vp`/`$Vc`/`$Ve` with the robust covariance and stashed the
+#' model-based matrices in `$pffr$model_cov`. This converts such a fit to the
+#' current contract: `$Vp`/`$Vc`/`$Ve` become model-based again and the robust
+#' covariance moves to `$pffr$Vsandwich`. Current-format fits and
+#' `sandwich = "none"` fits are returned unchanged (with a message). Fits that
+#' lack the model-based stash cannot be upgraded (they must be refitted).
+#'
+#' @param object A fitted pffr model.
+#' @returns The fit in the current storage format.
+#' @export
+#' @seealso [pffr()]
+pffr_upgrade_fit <- function(object) {
+  if (!inherits(object, "pffr")) {
+    stop("`object` must be a fitted pffr model.", call. = FALSE)
+  }
+  meta <- object$pffr
+  if (
+    isTRUE((meta$cov_format %||% 0L) >= 2L) ||
+      !is.null(meta$sandwich_info) ||
+      !is.null(meta$Vsandwich)
+  ) {
+    message("pffr fit is already in the current storage format; nothing to do.")
+    return(object)
+  }
+  fit_type <- normalize_sandwich_type(meta$sandwich)
+  if (identical(fit_type, "none")) {
+    message("pffr fit uses sandwich = \"none\"; nothing to upgrade.")
+    return(object)
+  }
+  mc <- meta$model_cov
+  if (is.null(mc)) {
+    warning(
+      "Cannot upgrade: this fit does not carry the model-based covariance ",
+      "(created by a very old refund version). Refit with the current version.",
+      call. = FALSE
+    )
+    return(object)
+  }
+  robust <- object$Vp
+  robust_freq <- object$Ve
+  object$Vp <- mc$Vp
+  object$Vc <- mc$Vc
+  object$Ve <- mc$Ve
+  object$pffr$Vsandwich <- robust
+  object$pffr$Vsandwich_freq <- robust_freq
+  object$pffr$sandwich_info <- list(
+    type = fit_type,
+    cluster_var = NULL,
+    G = NA_integer_,
+    n_capped = meta$cl2_n_capped %||% 0L,
+    max_leverage = NA_real_,
+    dof_correction = meta$dof_correction %||% "none",
+    edf_type = meta$edf_type %||% "trace",
+    version = as.character(utils::packageVersion("refund")),
+    storage_format = PFFR_COV_STORAGE_FORMAT
+  )
+  object$pffr$Vsandwich_cache <- new.env(parent = emptyenv())
+  object$pffr$model_cov <- NULL
+  object$pffr$cov_format <- PFFR_COV_STORAGE_FORMAT
+  message(
+    "Upgraded pffr fit to the current storage format: $Vp/$Vc/$Ve are now ",
+    "model-based; the robust covariance is in $pffr$Vsandwich."
+  )
+  object
+}
+
+#' Store a robust sandwich covariance on a fitted pffr model
+#'
+#' Computes the requested robust covariance (observation-level HC via
+#' [mgcv::vcov.gam()], or cluster-robust CR1 via [gam_sandwich_cluster()] / CL2
+#' via [gam_sandwich_cluster_cl2()]) from the fit's model-based bread and stores
+#' it in `$pffr$Vsandwich` (+ `$pffr$Vsandwich_freq`) together with
+#' `$pffr$sandwich_info`. The model-based `$Vp`/`$Vc`/`$Ve` are left untouched,
+#' so recomputing a sandwich later never double-applies the correction.
 #'
 #' @param m Fitted model.
 #' @param algorithm Algorithm symbol.
@@ -1547,7 +1866,7 @@ restore_model_cov <- function(object) {
 #'   warning) for `"cl2"`, which already corrects per-cluster leverage.
 #' @param edf_type Which EDF the `"edf"` correction uses (`"trace"`/`"edf2"`/
 #'   `"basis"`).
-#' @returns Model with corrected covariance matrices.
+#' @returns Model with the robust covariance stored in `$pffr$Vsandwich`.
 #' @keywords internal
 apply_sandwich_correction <- function(
   m,
@@ -1558,75 +1877,63 @@ apply_sandwich_correction <- function(
 ) {
   gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
 
-  # The sandwich estimators use the fit's Vp/Ve as the (penalized) bread and
-  # this function then overwrites Vp/Vc/Ve with the robust matrices. pffr()
-  # stashes the model-based matrices in $pffr$model_cov before the first
-  # application, so restoring them here makes re-application idempotent
-  # instead of applying the correction on top of itself.
-  # (restore_model_cov() warns for stash-less objects from older versions.)
-  gam_obj <- restore_model_cov(gam_obj)
-  # reset the CL2 leverage-cap diagnostic; only the cl2 branch sets it
-  gam_obj$pffr$cl2_n_capped <- NULL
-
-  gam_obj_stripped <- gam_obj
-  class(gam_obj_stripped) <- setdiff(class(gam_obj_stripped), "pffr")
-
-  if (type %in% c("cluster", "cl2")) {
-    cluster_id <- build_cluster_id(gam_obj$pffr)
-    if (type == "cl2") {
-      if (!identical(dof_correction, "none")) {
-        warning(
-          "dof_correction = \"",
-          dof_correction,
-          "\" is ignored for sandwich = \"cl2\": the CL2 leverage adjustment ",
-          "already targets the same small-sample bias.",
-          call. = FALSE
-        )
-      }
-      V_cl2 <- gam_sandwich_cluster_cl2(
-        gam_obj_stripped,
-        cluster_id,
-        freq = FALSE
-      )
-      # gam_sandwich_cluster_cl2() itself warns when clusters hit the leverage
-      # cap; here we only persist the diagnostic on the fit.
-      gam_obj$pffr$cl2_n_capped <- attr(V_cl2, "n_capped_clusters") %||% 0L
-      gam_obj$Vp <- gam_obj$Vc <- V_cl2
-      gam_obj$Ve <- gam_sandwich_cluster_cl2(
-        gam_obj_stripped,
-        cluster_id,
-        freq = TRUE
-      )
-    } else {
-      gam_obj$Vp <- gam_obj$Vc <- gam_sandwich_cluster(
-        gam_obj_stripped,
-        cluster_id,
-        freq = FALSE,
-        dof_correction = dof_correction,
-        edf_type = edf_type
-      )
-      gam_obj$Ve <- gam_sandwich_cluster(
-        gam_obj_stripped,
-        cluster_id,
-        freq = TRUE,
-        dof_correction = dof_correction,
-        edf_type = edf_type
-      )
-    }
-  } else if (type == "hc") {
-    gam_obj$Vp <- gam_obj$Vc <- mgcv::vcov.gam(
-      gam_obj_stripped,
-      sandwich = TRUE,
-      freq = FALSE
+  if (type == "cl2" && !identical(dof_correction, "none")) {
+    warning(
+      "dof_correction = \"",
+      dof_correction,
+      "\" is ignored for sandwich = \"cl2\": the CL2 leverage adjustment ",
+      "already targets the same small-sample bias.",
+      call. = FALSE
     )
-    gam_obj$Ve <- mgcv::vcov.gam(
-      gam_obj_stripped,
-      sandwich = TRUE,
-      freq = TRUE
-    )
-  } else {
-    stop("Unknown sandwich type: ", type, call. = FALSE)
   }
+
+  # $Vp/$Vc/$Ve stay model-based ALWAYS. The sandwich estimators read them as
+  # the penalized bread; we store the resulting robust matrices separately.
+  bread <- pffr_model_based_gam(gam_obj)
+  cluster_id <- if (type %in% c("cluster", "cl2")) {
+    build_cluster_id(gam_obj$pffr)
+  } else {
+    NULL
+  }
+
+  Vsw <- pffr_compute_sandwich(
+    bread,
+    type,
+    cluster_id,
+    freq = FALSE,
+    dof_correction = dof_correction,
+    edf_type = edf_type
+  )
+  Vsw_freq <- pffr_compute_sandwich(
+    bread,
+    type,
+    cluster_id,
+    freq = TRUE,
+    dof_correction = dof_correction,
+    edf_type = edf_type
+  )
+
+  n_capped <- attr(Vsw, "n_capped_clusters") %||% 0L
+  max_lev <- attr(Vsw, "max_leverage") %||% NA_real_
+
+  gam_obj$pffr$Vsandwich <- Vsw
+  gam_obj$pffr$Vsandwich_freq <- Vsw_freq
+  gam_obj$pffr$sandwich_info <- list(
+    type = type,
+    cluster_var = NULL,
+    G = if (!is.null(cluster_id)) length(unique(cluster_id)) else NA_integer_,
+    n_capped = n_capped,
+    max_leverage = max_lev,
+    dof_correction = if (type == "cluster") dof_correction else "none",
+    edf_type = edf_type,
+    version = as.character(utils::packageVersion("refund")),
+    storage_format = PFFR_COV_STORAGE_FORMAT
+  )
+  # Keep the legacy CL2 leverage-cap diagnostic slot populated.
+  gam_obj$pffr$cl2_n_capped <- if (type == "cl2") n_capped else NULL
+  # Fresh cache for on-demand recomputation of other sandwich types
+  # (fit$pffr$Vsandwich_cache[[type]]).
+  gam_obj$pffr$Vsandwich_cache <- new.env(parent = emptyenv())
 
   if (as.character(algorithm) %in% c("gamm4", "gamm")) {
     m$gam <- gam_obj

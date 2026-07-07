@@ -12,7 +12,8 @@
 \item{...}{arguments handed over to \code{\link[mgcv]{plot.gam}}}
 }
 \value{
-This function only generates plots.
+This function only generates plots (and invisibly returns
+  \code{\link[mgcv]{plot.gam}}'s plot data).
 }
 \description{
 Plot a fitted pffr-object. Simply dispatches to \code{\link[mgcv]{plot.gam}}.
