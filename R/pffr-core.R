@@ -1853,6 +1853,208 @@ pffr_vcov <- function(
   V
 }
 
+#' Satterthwaite degrees of freedom for cluster-robust pointwise intervals
+#'
+#' Working-iid Satterthwaite degrees of freedom for a set of scalar contrasts
+#' (the rows of `Xp`) --- the pointwise half of the Bell--McCaffrey procedure.
+#' For a contrast \eqn{a} with Fisher-whitened per-cluster design
+#' \eqn{\tilde X_g = \sqrt{W_g}\,X_g}, model-based penalized bread \eqn{V_p} and
+#' CL2 leverage adjustment \eqn{A_g = (I - H_{gg})^{-1/2}} (identity for the CR1
+#' path),
+#' \deqn{q_g = A_g\,\tilde X_g\,(V_p a), \qquad
+#'   \nu(a) = \frac{\left(\sum_g \lVert q_g\rVert^2\right)^2}
+#'                 {\sum_g \lVert q_g\rVert^4},
+#'   \qquad \mathrm{crit} = t_{1-\alpha/2,\,\nu}.}
+#' Rationale: the robust variance of \eqn{a^\top\hat\theta} is
+#' \eqn{c\sum_g (q_g^\top z_g)^2}; under the working model the per-cluster terms
+#' are independent \eqn{\lVert q_g\rVert^2\chi^2_1}-type variables, and matching
+#' the first two moments of their sum gives \eqn{\nu}. This working-iid shortcut
+#' drops the same cross-cluster residual terms that the shipped
+#' \eqn{(I-H_{gg})^{-1/2}} CL2 shortcut drops (paper Appendix C); it therefore
+#' returns \eqn{\approx G} for a perfectly balanced design where the *exact*
+#' Bell--McCaffrey df is \eqn{G-1}. The exact-BM df is future work (task X15).
+#'
+#' Vectorized over the rows of `Xp`: \eqn{M = V_p X_p^\top} (`p x n_points`) is
+#' formed once; each cluster contributes \eqn{Q_g = A_g\,\tilde X_g\,M}
+#' (`D_g x n_points`) and the per-column squared norms
+#' \eqn{\lVert q_g\rVert^2 = \mathrm{colSums}(Q_g^2)} accumulate into
+#' \eqn{s_2 = \sum_g \lVert q_g\rVert^2} and
+#' \eqn{s_4 = \sum_g \lVert q_g\rVert^4}; then \eqn{\nu = s_2^2 / s_4}. Cost
+#' \eqn{O(\sum_g D_g\, p\, n_{points})}.
+#'
+#' @param Xw Fisher-whitened per-observation design (`n_work x p`), from
+#'   [build_cl2_working_standard()] / [build_cl2_working_gaulss()].
+#' @param cluster_id Work-level cluster membership (length `n_work`).
+#' @param Vp Model-based penalized bread (`p x p`).
+#' @param Xp Contrast matrix, one row per evaluation point (`n_points x p`, full
+#'   coefficient space).
+#' @param use_cl2 Apply the CL2 leverage adjustment `A_g`? (`FALSE` = CR1 path,
+#'   `A_g = I`.)
+#' @param leverage_cap,tol CL2 leverage cap / eigenvalue floor (match the
+#'   shipped CL2 sandwich in [gam_sandwich_cluster_cl2()]).
+#' @returns A list with `df` (length `n_points`; `NA` at zero-variance
+#'   contrasts, otherwise clamped to `[1, G]` up to rounding) and `G`.
+#' @keywords internal
+satterthwaite_df_kernel <- function(
+  Xw,
+  cluster_id,
+  Vp,
+  Xp,
+  use_cl2,
+  leverage_cap = 0.999,
+  tol = 1e-8
+) {
+  M <- Vp %*% t(Xp) # p x n_points
+  n_pts <- ncol(M)
+  s2 <- numeric(n_pts)
+  s4 <- numeric(n_pts)
+  groups <- unique(cluster_id)
+  for (g in groups) {
+    idx <- which(cluster_id == g)
+    Xwg <- Xw[idx, , drop = FALSE]
+    Qg <- Xwg %*% M # D_g x n_points
+    if (use_cl2) {
+      # Reproduce the shipped CL2 leverage adjustment exactly (same capping as
+      # gam_sandwich_cluster_cl2()): A_g = (I - H_gg)^{-1/2}.
+      Hgg <- Xwg %*% Vp %*% t(Xwg)
+      Hgg <- 0.5 * (Hgg + t(Hgg))
+      ee <- eigen(Hgg, symmetric = TRUE)
+      if (any(ee$values > leverage_cap, na.rm = TRUE)) {
+        ee$values <- pmin(ee$values, leverage_cap)
+      }
+      Mg <- diag(length(idx)) -
+        ee$vectors %*%
+          diag(ee$values, nrow = length(ee$values)) %*%
+          t(ee$vectors)
+      Qg <- sym_inv_sqrt(Mg, tol = tol) %*% Qg
+    }
+    cn2 <- colSums(Qg^2) # ||q_g||^2 per evaluation point
+    s2 <- s2 + cn2
+    s4 <- s4 + cn2^2
+  }
+  G <- length(groups)
+  df <- s2^2 / s4
+  df[!is.finite(df)] <- NA_real_
+  # Bounds: 1 <= df <= G (up to rounding); leave NA (zero-variance) untouched.
+  ok <- is.finite(df)
+  df[ok] <- pmin(pmax(df[ok], 1), G)
+  list(df = df, G = G)
+}
+
+#' Per-cluster whitening context for Satterthwaite degrees of freedom
+#'
+#' Builds --- once per `coef()` call --- the shared pieces the per-point
+#' Satterthwaite df needs, so [satterthwaite_df_kernel()] can be applied to each
+#' term's contrast matrix without rebuilding the whitened design. Uses the same
+#' Fisher-whitened two-block / standard construction as the CL2 sandwich (so the
+#' per-cluster hat trace equals the model EDF).
+#'
+#' @param object A fitted pffr model.
+#' @param sandwich_type Resolved sandwich path; a whitening context is only
+#'   built for `"cluster"` / `"cl2"`.
+#' @param cluster Optional custom per-curve grouping (as in [pffr_vcov()]).
+#' @param leverage_cap,tol CL2 leverage cap / eigenvalue floor.
+#' @returns A list with `ok` (`FALSE` when the sandwich path is not
+#'   cluster/CL2, or the family has no whitened score factorization here), and
+#'   when `ok`: `Xw`, `cluster_id`, `Vp`, `use_cl2`, `G`, `leverage_cap`, `tol`.
+#' @keywords internal
+pffr_df_context <- function(
+  object,
+  sandwich_type,
+  cluster = NULL,
+  leverage_cap = 0.999,
+  tol = 1e-8
+) {
+  type <- normalize_sandwich_type(sandwich_type)
+  if (!type %in% c("cluster", "cl2")) {
+    return(list(ok = FALSE, type = type))
+  }
+  b <- pffr_model_based_gam(object)
+  fam <- tolower(as.character(b$family$family))
+  # Families with a custom family$sandwich other than gaulss have no whitened
+  # score factorization here (same restriction as the CL2 sandwich path).
+  if (fam != "gaulss" && !is.null(b$family$sandwich)) {
+    return(list(ok = FALSE, type = type))
+  }
+  cluster_id_curve <- build_cluster_id(object$pffr, cluster = cluster)
+  work <- if (fam == "gaulss") {
+    build_cl2_working_gaulss(b, cluster_id_curve)
+  } else {
+    build_cl2_working_standard(b, cluster_id_curve)
+  }
+  list(
+    ok = TRUE,
+    type = type,
+    Xw = work$Xw,
+    cluster_id = work$cluster_id,
+    Vp = b$Vp,
+    use_cl2 = identical(type, "cl2"),
+    G = length(unique(work$cluster_id)),
+    leverage_cap = leverage_cap,
+    tol = tol
+  )
+}
+
+#' Per-point Satterthwaite df for a set of contrasts, from a df context
+#'
+#' Thin wrapper around [satterthwaite_df_kernel()] that returns just the df
+#' vector, or all-`NA` when the context carries no whitened design (`ok =
+#' FALSE`), so callers can transparently fall back to the Gaussian reference.
+#'
+#' @param ctx A [pffr_df_context()] result.
+#' @param Xp Contrast matrix (`n_points x p`, full coefficient space).
+#' @returns Numeric vector of per-point df (length `nrow(Xp)`).
+#' @keywords internal
+pffr_df_from_context <- function(ctx, Xp) {
+  if (!isTRUE(ctx$ok)) {
+    return(rep(NA_real_, nrow(Xp)))
+  }
+  satterthwaite_df_kernel(
+    Xw = ctx$Xw,
+    cluster_id = ctx$cluster_id,
+    Vp = ctx$Vp,
+    Xp = Xp,
+    use_cl2 = ctx$use_cl2,
+    leverage_cap = ctx$leverage_cap,
+    tol = ctx$tol
+  )$df
+}
+
+#' Resolve the pointwise critical-value reference for [coef.pffr()]
+#'
+#' Maps the user's `crit` (`"auto"`/`"z"`/`"tG1"`/`"satterthwaite"`) to a
+#' concrete reference. `"auto"` selects the per-point Satterthwaite reference
+#' when the pointwise SEs come from a cluster-robust sandwich
+#' (`"cluster"`/`"cl2"`) and the number of independent curves/clusters is
+#' moderate (`G < 150`), and the Gaussian reference otherwise. An explicit
+#' `"satterthwaite"` on a non-cluster covariance has no cluster leverage
+#' structure to match and degrades to `"z"` with a warning; `"tG1"` (the
+#' \eqn{t_{G-1}} reference, pointwise counterpart of the simultaneous
+#' `ci_ref = "t"`) uses the curve/cluster count regardless of the covariance.
+#'
+#' @param crit One of `"auto"`, `"z"`, `"tG1"`, `"satterthwaite"`.
+#' @param sandwich_type The resolved covariance type used for the SEs.
+#' @param G Number of independent curves / clusters.
+#' @returns One of `"z"`, `"tG1"`, `"satterthwaite"`.
+#' @keywords internal
+resolve_crit_reference <- function(crit, sandwich_type, G) {
+  crit <- match.arg(crit, c("auto", "z", "tG1", "satterthwaite"))
+  type <- normalize_sandwich_type(sandwich_type)
+  is_cluster <- type %in% c("cluster", "cl2")
+  if (crit == "auto") {
+    return(if (is_cluster && is.finite(G) && G < 150) "satterthwaite" else "z")
+  }
+  if (crit == "satterthwaite" && !is_cluster) {
+    warning(
+      "crit = \"satterthwaite\" requires a cluster-robust covariance ",
+      "(sandwich = \"cluster\" or \"cl2\"); using crit = \"z\" instead.",
+      call. = FALSE
+    )
+    return("z")
+  }
+  crit
+}
+
 #' Penalty-direction and B2-magnitude diagnostics for a pffr sandwich
 #'
 #' Fit-level diagnostics that quantify how much of the cluster-robust sandwich

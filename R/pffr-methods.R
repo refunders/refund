@@ -831,7 +831,10 @@ coef_get_predictions <- function(
   ci = "none",
   level = 0.95,
   coef_draws = NULL,
-  t_scale = NULL
+  t_scale = NULL,
+  crit_mode = "z",
+  crit_df_const = NA_real_,
+  df_ctx = NULL
 ) {
   X <- PredictMat(trm, data_grid)
 
@@ -861,7 +864,7 @@ coef_get_predictions <- function(
     P$se <- compute_coef_se(linear_map = linear_map, covmat = covmat)
     P$coef <- cbind(P$coef, se = P$se)
 
-    if (ci != "none") {
+    if (ci == "simultaneous") {
       crit <- compute_ci_critical(
         ci = ci,
         level = level,
@@ -876,6 +879,24 @@ coef_get_predictions <- function(
         P$coef,
         lower = P$value - ci_half,
         upper = P$value + ci_half
+      )
+    } else if (ci == "pointwise") {
+      # Per-point pointwise reference (S3): crit may be a vector when
+      # crit_mode = "satterthwaite" (a per-point Bell-McCaffrey df).
+      pw <- compute_pointwise_ci(
+        crit_mode = crit_mode,
+        level = level,
+        linear_map = linear_map,
+        df_ctx = df_ctx,
+        crit_df_const = crit_df_const
+      )
+      P$crit <- pw$crit
+      ci_half <- pw$crit * P$se
+      P$coef <- cbind(
+        P$coef,
+        lower = P$value - ci_half,
+        upper = P$value + ci_half,
+        df = pw$df
       )
     }
   }
@@ -1076,6 +1097,74 @@ compute_ci_critical <- function(
   ))
 }
 
+#' Expand a term's linear map to full-coefficient-space contrasts
+#'
+#' Returns the `n_points x p` matrix whose rows are the contrast vectors `a`
+#' (one per evaluation point) in the full model coefficient space, as consumed
+#' by the Satterthwaite df kernel. For the `seWithMean` path the linear map is
+#' already full-width; otherwise the term columns are scattered into a zero
+#' matrix at the term's coefficient indices.
+#'
+#' @param linear_map List returned by [build_coef_linear_map()].
+#' @param p Number of model coefficients (full covariance dimension).
+#' @returns An `n_points x p` contrast matrix.
+#' @keywords internal
+pointwise_full_contrasts <- function(linear_map, p) {
+  if (isTRUE(linear_map$use_full)) {
+    return(linear_map$X)
+  }
+  Xp <- matrix(0, nrow = nrow(linear_map$X), ncol = p)
+  Xp[, linear_map$trmind] <- linear_map$X
+  Xp
+}
+
+#' Per-point pointwise critical value and reference df
+#'
+#' Computes the pointwise interval half-width multiplier for one term under the
+#' chosen reference (S3): `"z"` (Gaussian, reported df `Inf`), `"tG1"`
+#' (\eqn{t_{G-1}}, constant df), or `"satterthwaite"` (per-point Bell-McCaffrey
+#' df from `df_ctx`, with a Gaussian fallback at any zero-variance / undefined
+#' point).
+#'
+#' @param crit_mode One of `"z"`, `"tG1"`, `"satterthwaite"`.
+#' @param level Confidence level.
+#' @param linear_map List returned by [build_coef_linear_map()] (only needed for
+#'   `"satterthwaite"`).
+#' @param df_ctx A [pffr_df_context()] result (only needed for
+#'   `"satterthwaite"`).
+#' @param crit_df_const Constant df for `"tG1"` (\eqn{G-1}).
+#' @returns A list with `crit` (scalar or per-point vector) and `df` (per-point
+#'   vector; `Inf` for `"z"`).
+#' @keywords internal
+compute_pointwise_ci <- function(
+  crit_mode,
+  level,
+  linear_map,
+  df_ctx = NULL,
+  crit_df_const = NA_real_
+) {
+  prob <- (1 + level) / 2
+  n <- nrow(linear_map$X)
+  if (crit_mode == "z" || is.null(df_ctx) && crit_mode == "satterthwaite") {
+    return(list(crit = stats::qnorm(prob), df = rep(Inf, n)))
+  }
+  if (crit_mode == "tG1") {
+    return(list(
+      crit = stats::qt(prob, crit_df_const),
+      df = rep(crit_df_const, n)
+    ))
+  }
+  # satterthwaite: per-point df from the full-space contrasts and df context.
+  Xp <- pointwise_full_contrasts(linear_map, p = ncol(df_ctx$Vp))
+  df <- pffr_df_from_context(df_ctx, Xp)
+  crit <- ifelse(
+    is.finite(df),
+    stats::qt(prob, pmax(df, 1)),
+    stats::qnorm(prob)
+  )
+  list(crit = crit, df = df)
+}
+
 
 #' Get estimated coefficients from a pffr fit
 #'
@@ -1141,8 +1230,27 @@ compute_ci_critical <- function(
 #'   independent curves or user-supplied clusters. This widens simultaneous
 #'   bands at small \eqn{G} and converges to the Gaussian multiplier reference
 #'   as \eqn{G} grows. \code{"normal"} restores the previous Gaussian
-#'   multiplier reference. Pointwise intervals are unaffected and continue to
-#'   use a normal quantile.
+#'   multiplier reference. Pointwise intervals are governed instead by
+#'   \code{crit} (below).
+#' @param crit Reference distribution for the \emph{pointwise} critical value
+#'   (\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
+#'   \code{"auto"} (default) uses the per-point Satterthwaite reference when the
+#'   standard errors come from a cluster-robust sandwich
+#'   (\code{sandwich = "cluster"} or \code{"cl2"}) and the number of independent
+#'   curves/clusters is moderate (\eqn{G < 150}), and the Gaussian reference
+#'   otherwise. \code{"z"} always uses the Gaussian quantile (the historical
+#'   behaviour). \code{"tG1"} uses a \eqn{t_{G-1}}{t_(G-1)} reference (constant
+#'   df, the pointwise analogue of \code{ci_ref = "t"}). \code{"satterthwaite"}
+#'   uses the per-point Bell-McCaffrey (Satterthwaite) df, \eqn{\nu(a) =
+#'   (\sum_g \lVert q_g\rVert^2)^2 / \sum_g \lVert q_g\rVert^4} with
+#'   \eqn{q_g = A_g \tilde X_g V_p a}; requested on a non-cluster covariance it
+#'   degrades to \code{"z"} with a warning. This is the missing (df) half of the
+#'   CL2 leverage adjustment. \strong{Honesty note:} the df uses a working-iid
+#'   Satterthwaite shortcut that drops the same cross-cluster residual terms as
+#'   the shipped \eqn{(I-H_{gg})^{-1/2}} CL2 covariance (paper Appendix C); it
+#'   therefore returns \eqn{\approx G} for a perfectly balanced design where the
+#'   exact Bell-McCaffrey df is \eqn{G-1} (the exact-BM df is future work).
+#'   Simultaneous bands are unaffected.
 #' @param level Confidence level for confidence intervals, defaults to
 #'   \code{0.95}.
 #' @param n_sim Number of simulations for simultaneous intervals, defaults to
@@ -1163,8 +1271,13 @@ compute_ci_critical <- function(
 #'          \item \code{main} the label of the smooth term (a short label, same as the one used in \code{summary.pffr})
 #' }}
 #' If \code{ci != "none"}, the returned matrices include columns \code{lower}
-#' and \code{upper}. The returned list also includes \code{ci_meta} with CI
-#' settings.
+#' and \code{upper}. For \code{ci = "pointwise"} they also include a \code{df}
+#' column giving the per-point reference degrees of freedom used for the
+#' critical value (\code{Inf} for \code{crit = "z"}, \eqn{G-1} for
+#' \code{crit = "tG1"}, and the per-point Satterthwaite df for
+#' \code{crit = "satterthwaite"}/\code{"auto"}). The returned list also includes
+#' \code{ci_meta} with CI settings (including \code{crit} and the resolved
+#' \code{crit_used}).
 #' @method coef pffr
 #' @export
 #' @importFrom mgcv PredictMat get.var
@@ -1186,6 +1299,7 @@ coef.pffr <- function(
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
+  crit = c("auto", "z", "tG1", "satterthwaite"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
@@ -1197,6 +1311,7 @@ coef.pffr <- function(
   sandwich <- match.arg(sandwich)
   ci <- match.arg(ci)
   ci_ref <- match.arg(ci_ref)
+  crit <- match.arg(crit)
 
   # dof_correction / edf_type default to inheriting whatever the model was
   # fitted with (so coef() with no override returns the stored covariance);
@@ -1346,7 +1461,10 @@ coef.pffr <- function(
         ci = ci,
         level = level,
         coef_draws = coef_draws,
-        t_scale = t_scale
+        t_scale = t_scale,
+        crit_mode = crit_mode,
+        crit_df_const = crit_df_const,
+        df_ctx = df_ctx
       )
 
       # Add proper labeling
@@ -1396,6 +1514,40 @@ coef.pffr <- function(
       center_scores = center_scores
     )
 
+    # Pointwise critical-value reference (S3). `crit` selects the pointwise
+    # reference distribution (independent of the simultaneous-band `ci_ref`):
+    # "z" (Gaussian), "tG1" (t_{G-1}, the pointwise counterpart of the
+    # simultaneous ci_ref = "t"), "satterthwaite" (per-point Bell-McCaffrey df),
+    # or "auto" (satterthwaite for cluster/cl2 SEs at G < 150, else z). df is a
+    # pointwise concept, so this only engages for ci = "pointwise"; simultaneous
+    # bands keep their existing multiplier machinery.
+    crit_mode <- "z"
+    crit_df_const <- NA_real_
+    df_ctx <- NULL
+    if (ci == "pointwise") {
+      df_G <- length(unique(build_cluster_id(object$pffr, cluster = cluster)))
+      crit_mode <- resolve_crit_reference(crit, sandwich, df_G)
+      if (crit_mode == "tG1") {
+        crit_df_const <- df_G - 1
+        if (!is.finite(crit_df_const) || crit_df_const < 1) {
+          warning(
+            "crit = \"tG1\" requires at least two independent curves or ",
+            "clusters; using crit = \"z\" instead.",
+            call. = FALSE
+          )
+          crit_mode <- "z"
+        }
+      } else if (crit_mode == "satterthwaite") {
+        df_ctx <- pffr_df_context(object, sandwich, cluster = cluster)
+        if (!isTRUE(df_ctx$ok)) {
+          # No whitened score path for this family; degrade to the Gaussian
+          # reference (still an honest pointwise interval from the robust SE).
+          crit_mode <- "z"
+          df_ctx <- NULL
+        }
+      }
+    }
+
     coef_draws <- NULL
     t_scale <- NULL
     ci_ref_n_clusters <- NA_integer_
@@ -1440,17 +1592,42 @@ coef.pffr <- function(
 
     if (se && ci != "none") {
       p_se <- ret$pterms[, "se"]
-      p_crit <- if (
-        ci == "pointwise" ||
-          length(p_se) == 0 ||
+      p_df <- NULL
+      if (ci == "pointwise") {
+        prob <- (1 + level) / 2
+        if (crit_mode == "tG1") {
+          p_crit <- stats::qt(prob, crit_df_const)
+          p_df <- rep(crit_df_const, length(p_se))
+        } else if (crit_mode == "satterthwaite") {
+          # Per-parametric-coefficient df: contrasts are unit vectors e_j at the
+          # non-smooth coefficient indices (same order as ret$pterms rows).
+          pind <- seq_along(object$coefficients)[-smind]
+          if (length(pind) > 0) {
+            Xp_p <- matrix(0, length(pind), length(object$coefficients))
+            Xp_p[cbind(seq_along(pind), pind)] <- 1
+            p_df <- pffr_df_from_context(df_ctx, Xp_p)
+          } else {
+            p_df <- numeric(0)
+          }
+          p_crit <- ifelse(
+            is.finite(p_df),
+            stats::qt(prob, pmax(p_df, 1)),
+            stats::qnorm(prob)
+          )
+        } else {
+          p_crit <- stats::qnorm(prob)
+          p_df <- rep(Inf, length(p_se))
+        }
+      } else if (
+        length(p_se) == 0 ||
           (length(p_se) <= 1 && is.null(t_scale))
       ) {
-        stats::qnorm((1 + level) / 2)
+        p_crit <- stats::qnorm((1 + level) / 2)
       } else {
         eps <- sqrt(.Machine$double.eps)
         valid <- is.finite(p_se) & (p_se > eps)
         if (!any(valid)) {
-          0
+          p_crit <- 0
         } else {
           p_draws <- coef_draws[-smind, , drop = FALSE]
           max_stat <- apply(
@@ -1459,7 +1636,7 @@ coef.pffr <- function(
             max
           )
           if (!is.null(t_scale)) max_stat <- max_stat * t_scale
-          as.numeric(stats::quantile(
+          p_crit <- as.numeric(stats::quantile(
             max_stat,
             probs = level,
             names = FALSE,
@@ -1474,6 +1651,9 @@ coef.pffr <- function(
         lower = ret$pterms[, "value"] - p_half,
         upper = ret$pterms[, "value"] + p_half
       )
+      if (!is.null(p_df)) {
+        ret$pterms <- cbind(ret$pterms, df = p_df)
+      }
     }
 
     shrtlbls <- object$pffr$short_labels
@@ -1490,7 +1670,9 @@ coef.pffr <- function(
       ci_ref = if (ci == "simultaneous") ci_ref else NA_character_,
       ci_ref_used = ci_ref_used,
       ci_ref_n_clusters = ci_ref_n_clusters,
-      ci_ref_df = ci_ref_df
+      ci_ref_df = ci_ref_df,
+      crit = crit,
+      crit_used = if (ci == "pointwise") crit_mode else NA_character_
     )
     return(ret)
   }
@@ -1519,6 +1701,67 @@ coef.pffr <- function(
 vcov.pffr <- function(object, sandwich = FALSE, ...) {
   object <- pffr_model_based_gam(object)
   stats::vcov(object, sandwich = sandwich, ...)
+}
+
+#' Summarize the Satterthwaite pointwise-CI df of a pffr fit
+#'
+#' For a fit whose sandwich type is cluster-robust (`"cluster"`/`"cl2"`) and
+#' whose curve/cluster count is moderate (\eqn{G < 150}, so the `crit = "auto"`
+#' pointwise reference would be Satterthwaite), computes the per-point
+#' Bell-McCaffrey df over a coarse coefficient grid and returns its median and
+#' minimum. Returns `NULL` (so [print.summary.pffr()] prints nothing) for
+#' non-cluster fits, large \eqn{G}, families without a whitened score path, or
+#' any error. Uses a coarse grid to stay cheap.
+#'
+#' @param object A fitted pffr model.
+#' @returns `NULL`, or a list with `type`, `G`, `median`, `min`, `n_points`.
+#' @keywords internal
+pffr_summary_df <- function(object) {
+  type <- normalize_sandwich_type(
+    object$pffr$sandwich_info$type %||% object$pffr$sandwich
+  )
+  if (!type %in% c("cluster", "cl2")) {
+    return(NULL)
+  }
+  G <- tryCatch(
+    length(unique(build_cluster_id(object$pffr))),
+    error = function(e) NA_integer_
+  )
+  if (!is.finite(G) || G >= 150) {
+    return(NULL)
+  }
+  df_vals <- tryCatch(
+    {
+      # Call coef.pffr() directly: summary.pffr() strips the "pffr" class from
+      # `object` before this runs, so the generic would dispatch elsewhere.
+      co <- suppressMessages(suppressWarnings(coef.pffr(
+        object,
+        se = TRUE,
+        ci = "pointwise",
+        crit = "satterthwaite",
+        sandwich = type,
+        n1 = 20,
+        n2 = 12,
+        n3 = 8
+      )))
+      vals <- unlist(lapply(co$smterms, function(tm) tm$coef$df))
+      if (!is.null(co$pterms) && "df" %in% colnames(co$pterms)) {
+        vals <- c(vals, co$pterms[, "df"])
+      }
+      vals[is.finite(vals)]
+    },
+    error = function(e) numeric(0)
+  )
+  if (length(df_vals) == 0) {
+    return(NULL)
+  }
+  list(
+    type = type,
+    G = G,
+    median = stats::median(df_vals),
+    min = min(df_vals),
+    n_points = length(df_vals)
+  )
 }
 
 #' Summary for a pffr fit
@@ -1611,6 +1854,7 @@ summary.pffr <- function(object, ...) {
     ret$n <- paste(ret$n, " (in ", object$pffr$nobs, " curves)", sep = "")
   }
   ret$sandwich <- object$pffr$sandwich
+  ret$satterthwaite_df <- pffr_summary_df(object)
   if (!is.null(ar1rho)) {
     ret$AR1.rho <- ar1rho
   }
@@ -1703,6 +1947,19 @@ print.summary.pffr <- function(
       "\") for robust intervals.\n",
       sep = ""
     )
+  }
+  if (!is.null(x$satterthwaite_df)) {
+    st <- x$satterthwaite_df
+    cat(sprintf(
+      paste0(
+        "Satterthwaite df for %s pointwise CIs (crit = \"auto\"): ",
+        "median %s, min %s (G = %d).\n"
+      ),
+      st$type,
+      formatC(st$median, digits = digits, format = "fg"),
+      formatC(st$min, digits = digits, format = "fg"),
+      st$G
+    ))
   }
   invisible(x)
 }

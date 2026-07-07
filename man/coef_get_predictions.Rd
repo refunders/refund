@@ -16,7 +16,10 @@ coef_get_predictions(
   ci = "none",
   level = 0.95,
   coef_draws = NULL,
-  t_scale = NULL
+  t_scale = NULL,
+  crit_mode = "z",
+  crit_df_const = NA_real_,
+  df_ctx = NULL
 )
 }
 \arguments{

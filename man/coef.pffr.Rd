@@ -19,6 +19,7 @@
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
+  crit = c("auto", "z", "tG1", "satterthwaite"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
@@ -86,8 +87,28 @@ errors. One of \code{"none"} (default), \code{"pointwise"}, or
 independent curves or user-supplied clusters. This widens simultaneous
 bands at small \eqn{G} and converges to the Gaussian multiplier reference
 as \eqn{G} grows. \code{"normal"} restores the previous Gaussian
-multiplier reference. Pointwise intervals are unaffected and continue to
-use a normal quantile.}
+multiplier reference. Pointwise intervals are governed instead by
+\code{crit} (below).}
+
+\item{crit}{Reference distribution for the \emph{pointwise} critical value
+(\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
+\code{"auto"} (default) uses the per-point Satterthwaite reference when the
+standard errors come from a cluster-robust sandwich
+(\code{sandwich = "cluster"} or \code{"cl2"}) and the number of independent
+curves/clusters is moderate (\eqn{G < 150}), and the Gaussian reference
+otherwise. \code{"z"} always uses the Gaussian quantile (the historical
+behaviour). \code{"tG1"} uses a \eqn{t_{G-1}}{t_(G-1)} reference (constant
+df, the pointwise analogue of \code{ci_ref = "t"}). \code{"satterthwaite"}
+uses the per-point Bell-McCaffrey (Satterthwaite) df, \eqn{\nu(a) =
+(\sum_g \lVert q_g\rVert^2)^2 / \sum_g \lVert q_g\rVert^4} with
+\eqn{q_g = A_g \tilde X_g V_p a}; requested on a non-cluster covariance it
+degrades to \code{"z"} with a warning. This is the missing (df) half of the
+CL2 leverage adjustment. \strong{Honesty note:} the df uses a working-iid
+Satterthwaite shortcut that drops the same cross-cluster residual terms as
+the shipped \eqn{(I-H_{gg})^{-1/2}} CL2 covariance (paper Appendix C); it
+therefore returns \eqn{\approx G} for a perfectly balanced design where the
+exact Bell-McCaffrey df is \eqn{G-1} (the exact-BM df is future work).
+Simultaneous bands are unaffected.}
 
 \item{level}{Confidence level for confidence intervals, defaults to
 \code{0.95}.}
@@ -113,8 +134,13 @@ If \code{raw==FALSE}, a list containing \itemize{
          \item \code{main} the label of the smooth term (a short label, same as the one used in \code{summary.pffr})
 }}
 If \code{ci != "none"}, the returned matrices include columns \code{lower}
-and \code{upper}. The returned list also includes \code{ci_meta} with CI
-settings.
+and \code{upper}. For \code{ci = "pointwise"} they also include a \code{df}
+column giving the per-point reference degrees of freedom used for the
+critical value (\code{Inf} for \code{crit = "z"}, \eqn{G-1} for
+\code{crit = "tG1"}, and the per-point Satterthwaite df for
+\code{crit = "satterthwaite"}/\code{"auto"}). The returned list also includes
+\code{ci_meta} with CI settings (including \code{crit} and the resolved
+\code{crit_used}).
 }
 \description{
 Returns estimated coefficient functions/surfaces \eqn{\beta(t), \beta(s,t)}
