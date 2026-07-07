@@ -1227,13 +1227,24 @@ assemble_cluster_sandwich <- function(
   cluster_id,
   Vp,
   B2,
-  dof_factor = 1
+  dof_factor = 1,
+  b2 = TRUE,
+  center_scores = FALSE
 ) {
   G <- n_clusters_checked(cluster_id)
   U <- rowsum(scores, cluster_id)
+  if (isTRUE(center_scores)) {
+    # U_g^c = U_g - (sum_g U_g) / G; sum_g U_g = S theta-hat (the working
+    # log-likelihood penalty gradient). Centering removes the rank-one penalty
+    # direction from the meat (X6). Exact: crossprod(U - Ubar) =
+    # crossprod(U) - (colSums U)(colSums U)' / G.
+    Ubar <- colSums(U) / G
+    U <- sweep(U, 2L, Ubar, "-")
+  }
   meat <- crossprod(U)
   hc1 <- G / (G - 1)
-  dof_factor * hc1 * Vp %*% meat %*% Vp + B2
+  core <- dof_factor * hc1 * Vp %*% meat %*% Vp
+  if (isTRUE(b2)) core + B2 else core
 }
 
 #' Compute the optional CR1 small-sample dof factor
@@ -1318,6 +1329,15 @@ compute_dof_factor <- function(
 #'   corrects per-cluster leverage; see [compute_dof_factor()].
 #' @param edf_type Which effective degrees of freedom the `"edf"` correction
 #'   uses: `"trace"` (default, `sum(b$edf)`), `"edf2"`, or `"basis"`.
+#' @param b2 Internal ablation switch (default `TRUE` = current behavior). When
+#'   `FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
+#'   V_e}, returning \eqn{c\,V_p (\sum_g U_g U_g^\top) V_p} only. Not a
+#'   user-facing option; used by the B2-ablation experiment (X5).
+#' @param center_scores Internal ablation switch (default `FALSE` = current
+#'   behavior). When `TRUE`, center the per-cluster score sums
+#'   \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat (X6). Since
+#'   \eqn{\sum_g U_g = S\hat\theta} (the working-log-likelihood penalty
+#'   gradient), this removes the rank-one penalty direction from the meat.
 #' @returns A p x p covariance matrix.
 #' @keywords internal
 gam_sandwich_cluster <- function(
@@ -1325,7 +1345,9 @@ gam_sandwich_cluster <- function(
   cluster_id,
   freq = FALSE,
   dof_correction = c("none", "edf"),
-  edf_type = c("trace", "edf2", "basis")
+  edf_type = c("trace", "edf2", "basis"),
+  b2 = TRUE,
+  center_scores = FALSE
 ) {
   dof_correction <- match.arg(dof_correction)
   edf_type <- match.arg(edf_type)
@@ -1341,7 +1363,9 @@ gam_sandwich_cluster <- function(
       cluster_id,
       b$Vp,
       B2,
-      dof_factor = dof_factor
+      dof_factor = dof_factor,
+      b2 = b2,
+      center_scores = center_scores
     ))
   }
 
@@ -1372,7 +1396,9 @@ gam_sandwich_cluster <- function(
     cluster_id,
     b$Vp,
     B2,
-    dof_factor = dof_factor
+    dof_factor = dof_factor,
+    b2 = b2,
+    center_scores = center_scores
   )
 }
 
@@ -1388,6 +1414,13 @@ gam_sandwich_cluster <- function(
 #'   If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).
 #' @param tol Eigenvalue floor for numerical stability.
 #' @param leverage_cap Cap for cluster leverage eigenvalues (< 1).
+#' @param b2 Internal ablation switch (default `TRUE` = current behavior). When
+#'   `FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
+#'   V_e} (X5).
+#' @param center_scores Internal ablation switch (default `FALSE` = current
+#'   behavior). When `TRUE`, center the leverage-adjusted per-cluster
+#'   contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
+#'   (X6).
 #' @returns A p x p covariance matrix with attributes `n_capped_clusters` and
 #'   `max_leverage` for the CL2 leverage diagnostic.
 #' @keywords internal
@@ -1396,7 +1429,9 @@ gam_sandwich_cluster_cl2 <- function(
   cluster_id,
   freq = FALSE,
   tol = 1e-8,
-  leverage_cap = 0.999
+  leverage_cap = 0.999,
+  b2 = TRUE,
+  center_scores = FALSE
 ) {
   if (!is.finite(leverage_cap) || leverage_cap <= 0 || leverage_cap >= 1) {
     stop("`leverage_cap` must be in (0, 1).", call. = FALSE)
@@ -1433,6 +1468,7 @@ gam_sandwich_cluster_cl2 <- function(
   B2 <- if (freq) 0 else b$Vp - b$Ve
   p <- ncol(Xw)
   meat <- matrix(0, nrow = p, ncol = p)
+  Usum <- numeric(p)
   n_capped_clusters <- 0L
   max_leverage <- NA_real_
 
@@ -1465,10 +1501,18 @@ gam_sandwich_cluster_cl2 <- function(
     Ag <- sym_inv_sqrt(Mg, tol = tol)
     Ug <- crossprod(Xwg, Ag %*% zg)
     meat <- meat + Ug %*% t(Ug)
+    Usum <- Usum + as.vector(Ug)
+  }
+
+  if (isTRUE(center_scores)) {
+    # Exact centering: sum_g (U_g - Ubar)(U_g - Ubar)' = meat - Usum Usum'/G
+    # with Ubar = Usum / G (X6).
+    meat <- meat - tcrossprod(Usum) / G
   }
 
   hc1 <- G / (G - 1)
-  V <- hc1 * Vp %*% meat %*% Vp + B2
+  V <- hc1 * Vp %*% meat %*% Vp
+  if (isTRUE(b2)) V <- V + B2
   V <- 0.5 * (V + t(V))
   attr(V, "n_capped_clusters") <- n_capped_clusters
   attr(V, "max_leverage") <- max_leverage
@@ -1641,6 +1685,11 @@ restore_model_cov <- function(object) {
 #' @param freq If `TRUE`, frequentist sandwich (`B2 = 0`).
 #' @param dof_correction,edf_type CR1 small-sample dof options (`"cluster"`
 #'   only).
+#' @param b2 Internal ablation switch (default `TRUE`); drop the additive
+#'   \eqn{B_2} term when `FALSE` (X5). Applies to `"cluster"`/`"cl2"` only.
+#' @param center_scores Internal ablation switch (default `FALSE`); center the
+#'   per-cluster score sums before the meat when `TRUE` (X6). Applies to
+#'   `"cluster"`/`"cl2"` only.
 #' @returns A covariance matrix (with CL2 leverage attributes for `type =
 #'   "cl2"`).
 #' @keywords internal
@@ -1650,7 +1699,9 @@ pffr_compute_sandwich <- function(
   cluster_id,
   freq = FALSE,
   dof_correction = "none",
-  edf_type = "trace"
+  edf_type = "trace",
+  b2 = TRUE,
+  center_scores = FALSE
 ) {
   switch(
     type,
@@ -1659,9 +1710,17 @@ pffr_compute_sandwich <- function(
       cluster_id,
       freq = freq,
       dof_correction = dof_correction,
-      edf_type = edf_type
+      edf_type = edf_type,
+      b2 = b2,
+      center_scores = center_scores
     ),
-    cl2 = gam_sandwich_cluster_cl2(b, cluster_id, freq = freq),
+    cl2 = gam_sandwich_cluster_cl2(
+      b,
+      cluster_id,
+      freq = freq,
+      b2 = b2,
+      center_scores = center_scores
+    ),
     hc = mgcv::vcov.gam(b, sandwich = TRUE, freq = freq),
     none = if (freq) b$Ve else (b$Vc %||% b$Vp),
     stop("Unknown sandwich type: ", type, call. = FALSE)
@@ -1685,6 +1744,13 @@ pffr_compute_sandwich <- function(
 #' @param cluster Optional per-curve grouping forcing recomputation at a custom
 #'   cluster level.
 #' @param dof_correction,edf_type CR1 dof options; `NULL` inherits the fit's.
+#' @param b2 Internal ablation switch (default `TRUE` = current behavior). When
+#'   `FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2} from the
+#'   cluster/CL2 sandwich (X5). Non-default values always force a fresh
+#'   recomputation and are never served from or written to the cache.
+#' @param center_scores Internal ablation switch (default `FALSE` = current
+#'   behavior). When `TRUE`, center the per-cluster score sums before forming
+#'   the cluster/CL2 meat (X6). Same cache semantics as `b2`.
 #' @returns A covariance matrix.
 #' @keywords internal
 pffr_vcov <- function(
@@ -1693,8 +1759,13 @@ pffr_vcov <- function(
   freq = FALSE,
   cluster = NULL,
   dof_correction = NULL,
-  edf_type = NULL
+  edf_type = NULL,
+  b2 = TRUE,
+  center_scores = FALSE
 ) {
+  # Ablation variants (X5/X6) bypass the fit-time and recompute caches entirely,
+  # so they never overwrite or shadow the standard cached matrices.
+  ablation <- !isTRUE(b2) || isTRUE(center_scores)
   canon <- pffr_canonicalize_cov(object)
   requested <- if (is.null(sandwich)) {
     canon$fit_type
@@ -1720,7 +1791,8 @@ pffr_vcov <- function(
     TRUE
   }
   if (
-    is.null(cluster) &&
+    !ablation &&
+      is.null(cluster) &&
       identical(requested, canon$fit_type) &&
       opts_match &&
       !is.null(canon$Vsandwich)
@@ -1740,7 +1812,7 @@ pffr_vcov <- function(
   # (a plain list slot could not, under copy-on-modify). Keys extend the type
   # with the freq/dof options; custom `cluster` requests are never cached.
   cache <- object$pffr$Vsandwich_cache
-  key <- if (is.null(cluster)) {
+  key <- if (!ablation && is.null(cluster)) {
     if (requested == "cluster" && (freq || dof_correction != "none")) {
       paste(requested, freq, dof_correction, edf_type, sep = "|")
     } else if (freq) {
@@ -1771,12 +1843,84 @@ pffr_vcov <- function(
     cluster_id,
     freq = freq,
     dof_correction = dof_correction,
-    edf_type = edf_type
+    edf_type = edf_type,
+    b2 = b2,
+    center_scores = center_scores
   )
   if (!is.null(cache) && !is.null(key)) {
     cache[[key]] <- V
   }
   V
+}
+
+#' Penalty-direction and B2-magnitude diagnostics for a pffr sandwich
+#'
+#' Fit-level diagnostics that quantify how much of the cluster-robust sandwich
+#' is driven by the penalty (uncentered-meat) direction and by the additive
+#' \eqn{B_2} smoothing-bias term. Used by the X5/X6 ablation experiment; needs
+#' the raw per-cluster scores, so it lives in the package rather than being
+#' derivable from the covariance accessor alone.
+#'
+#' Definitions (CR1 per-cluster score sums \eqn{U_g}, total score
+#' \eqn{S\hat\theta = \sum_g U_g}, meat \eqn{M = \sum_g U_g U_g^\top}, penalized
+#' bread \eqn{V_p}, \eqn{c = G/(G-1)}, \eqn{B_2 = V_p - V_e}):
+#' \itemize{
+#'   \item `pen_share` \eqn{= \lVert S\hat\theta\rVert^2 / \sum_g \lVert
+#'     U_g\rVert^2} --- the fraction of the total score energy that lies in the
+#'     (rank-one) penalty direction the uncentered meat injects (X6).
+#'   \item `fro_ratio` \eqn{= \lVert B_2\rVert_F / \lVert c\,V_p M V_p\rVert_F}
+#'     --- the Frobenius-norm size of the additive \eqn{B_2} term relative to
+#'     the score-sandwich core (X5), for the CR1 meat.
+#' }
+#' The centered-meat components (`Sbeta`, `meat`, `Vp`, `hc1`, `G`) are returned
+#' so callers can verify the exact rank-one centering identity
+#' \eqn{M_c = M - S\hat\theta\, S\hat\theta^\top / G}.
+#'
+#' @param object A fitted pffr model (any sandwich type; the model-based bread
+#'   is used regardless).
+#' @returns A list with `pen_share`, `fro_ratio`, `G`, `hc1`, `Sbeta` (total
+#'   score), `meat` (CR1 meat \eqn{\sum_g U_g U_g^\top}), `Vp`, and `B2`.
+#' @keywords internal
+pffr_sandwich_shares <- function(object) {
+  b <- pffr_model_based_gam(object)
+  cluster_id <- build_cluster_id(object$pffr)
+  G <- n_clusters_checked(cluster_id)
+  X <- model.matrix(b)
+
+  scores <- if (identical(tolower(as.character(b$family$family)), "gaulss")) {
+    compute_gaulss_scores(b, X)
+  } else {
+    mu <- b$fitted.values
+    pw <- b$prior.weights %||% 1
+    pw *
+      b$family$mu.eta(b$linear.predictors) *
+      (b$y - mu) /
+      (b$sig2 * b$family$variance(mu)) *
+      X
+  }
+
+  U <- rowsum(scores, cluster_id)
+  Sbeta <- colSums(scores)
+  # sum_g ||U_g||^2 = sum of all squared entries of the G x p matrix U
+  pen_share <- sum(Sbeta^2) / sum(U^2)
+
+  Vp <- b$Vp
+  B2 <- Vp - b$Ve
+  hc1 <- G / (G - 1)
+  meat <- crossprod(U)
+  core <- hc1 * Vp %*% meat %*% Vp
+  fro_ratio <- norm(B2, "F") / norm(core, "F")
+
+  list(
+    pen_share = pen_share,
+    fro_ratio = fro_ratio,
+    G = G,
+    hc1 = hc1,
+    Sbeta = Sbeta,
+    meat = meat,
+    Vp = Vp,
+    B2 = B2
+  )
 }
 
 #' Upgrade an old-format pffr fit to the current covariance storage contract

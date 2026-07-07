@@ -1265,6 +1265,13 @@ coef.pffr <- function(
   dots <- list(...)
   eval_grid <- dots$eval_grid %||% NULL
 
+  # Internal, non-user-facing sandwich ablation switches (X5/X6), reachable
+  # through `...` so the public coef() signature is unchanged. `b2 = FALSE`
+  # drops the additive B2 term; `center_scores = TRUE` centers the per-cluster
+  # score sums before the meat. Both default to the shipped behavior.
+  b2 <- dots$b2 %||% TRUE
+  center_scores <- dots$center_scores %||% FALSE
+
   # Warn if deprecated Ktt argument is passed
   if ("Ktt" %in% names(dots)) {
     warning(
@@ -1384,7 +1391,9 @@ coef.pffr <- function(
       freq = freq,
       cluster = cluster,
       dof_correction = dof_correction,
-      edf_type = edf_type
+      edf_type = edf_type,
+      b2 = b2,
+      center_scores = center_scores
     )
 
     coef_draws <- NULL
