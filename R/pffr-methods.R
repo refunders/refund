@@ -1855,6 +1855,11 @@ summary.pffr <- function(object, ...) {
   }
   ret$sandwich <- object$pffr$sandwich
   ret$satterthwaite_df <- pffr_summary_df(object)
+  # Descriptive within-curve dependence flag (S5); never fatal to summary().
+  ret$dependence <- tryCatch(
+    pffr_dependence_check(object),
+    error = function(e) NULL
+  )
   if (!is.null(ar1rho)) {
     ret$AR1.rho <- ar1rho
   }
@@ -1961,7 +1966,212 @@ print.summary.pffr <- function(
       st$G
     ))
   }
+  if (!is.null(x$dependence)) {
+    print_dependence_line(x$dependence, digits = digits)
+  }
   invisible(x)
+}
+
+#' Within-curve dependence diagnostic for a pffr fit
+#'
+#' @description
+#' A quick, DESCRIPTIVE flag for how strongly the working residuals are
+#' correlated \emph{within} each functional response curve. It is \strong{not a
+#' test and not an estimator}: it exists only to tell users which inference
+#' regime they are in, since the model-based vs. robust interval trade-off
+#' hinges on within-curve dependence. When dependence is weak, model-based
+#' intervals are broadly valid and the robust (cluster/CL2) sandwich costs a few
+#' points of coverage; when it is strong, model-based intervals are
+#' anti-conservative and the robust path is needed.
+#'
+#' @details
+#' For each curve the working residuals are ordered by the functional index
+#' \eqn{t} (irregular grids are sorted; the sandwich's own curve alignment is
+#' reused) and their lag-1..\code{max(lags)} sample autocorrelations are
+#' computed. Reported summaries:
+#' \itemize{
+#'   \item \code{rho1_mean}, \code{rho1_iqr}: across-curve mean and IQR of the
+#'     per-curve lag-1 autocorrelation.
+#'   \item \code{Dbar}: mean number of residual points per curve.
+#'   \item \code{DE}: a crude plug-in design effect
+#'     \eqn{DE = 1 + (\bar D - 1)\,\max(\bar{\bar\rho}, 0)}, where
+#'     \eqn{\bar{\bar\rho}} is the across-curve mean of each curve's mean SIGNED
+#'     autocorrelation over \code{lags}. This deviates from the brief's literal
+#'     "mean ABSOLUTE autocorrelation": \eqn{|\rho|} has a positive sampling-noise
+#'     floor \eqn{\sim\sqrt{2/(\pi D)}} per lag that grows with the grid, so the
+#'     absolute version never approaches 1 under independence; averaging the
+#'     signed autocorrelations across curves cancels that mean-zero noise and a
+#'     single clip at 0 handles alternating dependence. It is a deliberately
+#'     crude flag (a working-independence effective-sample-size heuristic), NOT a
+#'     variance estimate.
+#'   \item \code{N_eff}: implied effective sample size \eqn{N / DE}, shown next
+#'     to the number of curves \eqn{G}.
+#' }
+#' The advisory follows a two-regime rule: \code{DE < 1.5} ("dependence looks
+#' weak") vs. \code{DE >= 1.5} ("dependence detected").
+#'
+#' @param fit A fitted \code{\link{pffr}} model.
+#' @param lags Integer lags used for the absolute-autocorrelation average in
+#'   \code{DE} (default \code{1:3}). The lag-1 summaries always use lag 1.
+#' @returns An object of class \code{"pffr_dependence_check"}: a list with
+#'   \code{rho1_mean}, \code{rho1_iqr}, per-curve lag-1 \code{rho1}, per-curve
+#'   over-lag mean \code{rho_avg}, the across-curve mean \code{rhobar_avg},
+#'   \code{Dbar}, \code{DE}, \code{G}, \code{N}, \code{N_eff}, \code{lags},
+#'   \code{regime} (\code{"weak"}/\code{"detected"}), \code{advisory}, and
+#'   \code{n_curves_used}.
+#' @seealso \code{\link{pffr}}, \code{\link{coef.pffr}}
+#' @export
+#' @author Fabian Scheipl
+pffr_dependence_check <- function(fit, lags = 1:3) {
+  if (is.null(fit$pffr)) {
+    stop("`fit` must be a fitted pffr model.", call. = FALSE)
+  }
+  lags <- sort(unique(as.integer(lags)))
+  if (length(lags) < 1L || any(!is.finite(lags)) || any(lags < 1L)) {
+    stop("`lags` must be positive integers.", call. = FALSE)
+  }
+  meta <- fit$pffr
+
+  # Working residuals as a plain vector (bypass residuals.pffr dispatch so this
+  # also works on the class-stripped object summary.pffr passes internally).
+  gamobj <- fit
+  class(gamobj) <- setdiff(class(gamobj), "pffr")
+  wr <- as.numeric(stats::residuals(gamobj, type = "working"))
+
+  # Map each residual to its curve and functional index, reusing the sandwich's
+  # curve alignment (build_cluster_id) so the ordering is guaranteed consistent.
+  cid <- build_cluster_id(meta)
+  if (isTRUE(meta$is_sparse)) {
+    tval <- meta$ydata$.index
+  } else {
+    tval <- rep(meta$yind, times = meta$nobs)
+    if (!is.null(meta$missing_indices)) {
+      tval <- tval[-meta$missing_indices]
+    }
+  }
+  if (length(wr) != length(cid) || length(tval) != length(cid)) {
+    stop(
+      "could not align working residuals to curves (length mismatch); ",
+      "the dependence diagnostic is unavailable for this fit.",
+      call. = FALSE
+    )
+  }
+
+  # per-curve residual series, sorted by t within curve
+  ord <- order(cid, tval)
+  series <- split(wr[ord], cid[ord])
+
+  Lmax <- max(lags)
+  per_curve <- lapply(series, function(x) {
+    x <- x[is.finite(x)]
+    D <- length(x)
+    ac <- rep(NA_real_, Lmax)
+    if (D >= 2L && stats::sd(x) > 0) {
+      k <- min(Lmax, D - 1L)
+      acf_vals <- tryCatch(
+        stats::acf(x, lag.max = k, plot = FALSE, demean = TRUE)$acf[-1L],
+        error = function(e) rep(NA_real_, k)
+      )
+      ac[seq_len(k)] <- acf_vals
+    }
+    list(D = D, acf = ac)
+  })
+
+  D_vec <- vapply(per_curve, function(z) z$D, numeric(1))
+  rho1 <- vapply(per_curve, function(z) z$acf[1L], numeric(1)) # lag-1 (signed)
+  # Per-curve mean SIGNED autocorrelation over `lags`. Deviation from the
+  # brief's literal "mean ABSOLUTE autocorrelation": |rho| has expectation
+  # ~sqrt(2/(pi D)) per lag under independence, a positive noise floor that
+  # grows with the grid so the absolute-value DE never approaches 1 for iid
+  # data (and its pmax(., 0) is vacuous on non-negative values). Averaging the
+  # SIGNED autocorrelations ACROSS curves cancels that mean-zero noise, and a
+  # single pmax(., 0) at the end clips net negative (alternating) dependence to
+  # DE = 1. It is a deliberately crude regime flag, not a variance estimate.
+  rho_avg <- vapply(
+    per_curve,
+    function(z) {
+      a <- z$acf[lags]
+      if (all(is.na(a))) NA_real_ else mean(a, na.rm = TRUE)
+    },
+    numeric(1)
+  )
+
+  Dbar <- mean(D_vec)
+  N <- sum(D_vec)
+  G <- length(series)
+  rhobar_avg <- mean(rho_avg, na.rm = TRUE)
+  if (!is.finite(rhobar_avg)) rhobar_avg <- 0
+  DE <- 1 + (Dbar - 1) * max(rhobar_avg, 0)
+  N_eff <- if (is.finite(DE) && DE > 0) N / DE else NA_real_
+
+  regime <- if (is.finite(DE) && DE >= 1.5) "detected" else "weak"
+  advisory <- if (regime == "detected") {
+    paste0(
+      "within-curve dependence detected; model-based intervals would be ",
+      "anti-conservative (see ?pffr_inference)"
+    )
+  } else {
+    paste0(
+      "within-curve dependence looks weak; model-based and robust intervals ",
+      "should broadly agree (robust costs a few points of coverage here)"
+    )
+  }
+
+  structure(
+    list(
+      rho1_mean = mean(rho1, na.rm = TRUE),
+      rho1_iqr = stats::IQR(rho1, na.rm = TRUE),
+      rho1 = rho1,
+      rho_avg = rho_avg,
+      rhobar_avg = rhobar_avg,
+      Dbar = Dbar,
+      DE = DE,
+      G = G,
+      N = N,
+      N_eff = N_eff,
+      lags = lags,
+      regime = regime,
+      advisory = advisory,
+      n_curves_used = sum(!is.na(rho1))
+    ),
+    class = "pffr_dependence_check"
+  )
+}
+
+# Shared one-line + advisory printer, used by both print.pffr_dependence_check
+# and print.summary.pffr.
+print_dependence_line <- function(x, digits = 3) {
+  fmt <- function(v) formatC(v, digits = digits, format = "fg")
+  cat(sprintf(
+    paste0(
+      "Within-curve dependence (descriptive flag): mean rho1 = %s ",
+      "(IQR %s); design effect DE = %s, implied N_eff = %s vs G = %d.\n"
+    ),
+    fmt(x$rho1_mean),
+    fmt(x$rho1_iqr),
+    fmt(x$DE),
+    formatC(x$N_eff, digits = 0, format = "f"),
+    x$G
+  ))
+  cat("  ", x$advisory, "\n", sep = "")
+  invisible(x)
+}
+
+#' Print method for a pffr within-curve dependence diagnostic
+#'
+#' @param x A \code{"pffr_dependence_check"} object from
+#'   \code{\link{pffr_dependence_check}}.
+#' @param digits Number of significant digits for the printed summaries.
+#' @param ... Not used.
+#' @returns \code{x}, invisibly.
+#' @method print pffr_dependence_check
+#' @export
+print.pffr_dependence_check <- function(
+  x,
+  digits = max(3, getOption("digits") - 3),
+  ...
+) {
+  print_dependence_line(x, digits = digits)
 }
 
 #' QQ plots for pffr model residuals
