@@ -166,25 +166,25 @@
 #'   constraints for functional regression, see Details.
 #' @param sandwich Type of sandwich correction for robust covariance
 #'   estimation.
-#'   \code{"cluster"} (default): cluster-robust sandwich clustering by curve,
-#'   which
+#'   \code{"auto"} (default): resolved at fit time by
+#'   \code{\link{pffr_sandwich_auto_policy}}
+#'   to \code{"cl2"} when the family has an exact/two-block cluster score path,
+#'   the number of curves/clusters is moderate (\eqn{2 \le G \le 150}) and the
+#'   largest
+#'   cluster is not too large (\eqn{\max_g D_g \le 500}), and to \code{"cluster"}
+#'   otherwise; the resolution is reported with a one-line \code{\link{message}}.
+#'   The thresholds are overridable via
+#'   \code{options(refund.pffr.autopolicy=)} (a replacement function or a named
+#'   list of thresholds).
+#'   \code{"cluster"}: cluster-robust sandwich clustering by curve, which
 #'   handles both heteroskedasticity and within-curve autocorrelation — the
-#'   recommended choice for functional data.
+#'   recommended choice for functional data when a fixed estimator is wanted.
 #'   \code{"cl2"}: leverage-adjusted cluster-robust sandwich (Bell-McCaffrey
 #'   style CL2), mainly relevant in smaller samples.
 #'   \code{"hc"}: observation-level HC sandwich via
 #'   \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
 #'   heteroskedasticity but ignores within-curve correlation.
 #'   \code{"none"}: no sandwich correction.
-#'   \code{"auto"}: resolved at fit time by \code{\link{pffr_sandwich_auto_policy}}
-#'   to \code{"cl2"} when the family has an exact/two-block cluster score path,
-#'   the number of curves/clusters is moderate (\eqn{G \le 150}) and the largest
-#'   cluster is not too large (\eqn{\max_g D_g \le 500}), and to \code{"cluster"}
-#'   otherwise; the resolution is reported with a one-line \code{\link{message}}.
-#'   The thresholds are overridable via
-#'   \code{options(refund.pffr.autopolicy=)} (a replacement function or a named
-#'   list of thresholds). Note: \code{"auto"} is NOT the current default (it is
-#'   an opt-in pending a package-level decision).
 #'
 #'   For fitted-mean / response-scale (\eqn{E(Y)}) intervals at small numbers of
 #'   curves (\eqn{G \le 80}), the leave-one-cluster-out jackknife
@@ -312,9 +312,12 @@ pffr <- function(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
-  # S2 PI-DECISION pending: make "auto" the default here (one-line change:
-  # move "auto" to the front of this vector). Default stays "cluster" for now.
-  sandwich = c("cluster", "cl2", "hc", "none", "auto"),
+  # S2 default (PI decision 2026-07-08): "auto" -- resolves at fit time to
+  # CL2 where it is provably safe (exact/two-block score family, G in [2, 150],
+  # max D_g <= 500; see pffr_sandwich_auto_policy()) and to CR1 otherwise.
+  # Evidence: notes/S2-default-decision-memo.md in the pffr-ci repo (CL2 >= CR1
+  # coverage in all 462 committed comparison cells).
+  sandwich = c("auto", "cluster", "cl2", "hc", "none"),
   dof_correction = c("none", "edf"),
   edf_type = c("trace", "edf2", "basis"),
   ...

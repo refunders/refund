@@ -4,8 +4,8 @@
 # pffr_sandwich_auto_policy() / family_has_exact_score(): the family-score
 # dispatch and the (G, max D_g) thresholds that promote a fit to CL2, the
 # options(refund.pffr.autopolicy=) override, and the fit-time resolution +
-# one-line message in pffr(). The factory DEFAULT is unchanged (still
-# "cluster"); "auto" is opt-in pending the PI decision.
+# one-line message in pffr(). "auto" is the factory DEFAULT since the PI
+# decision of 2026-07-08 (see test-pffr.R "pffr default sandwich is auto").
 #--------------------------------------
 
 pol <- function(...) refund:::pffr_sandwich_auto_policy(...)

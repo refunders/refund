@@ -1792,13 +1792,30 @@ test_that("pffr with sandwich='hc' yields observation-level HC sandwich", {
   expect_equal(m_hc$pffr$Vsandwich, expected_Vp)
 })
 
-test_that("pffr default sandwich is cluster", {
+test_that("pffr default sandwich is auto, resolving per the policy", {
   skip_on_cran()
 
+  # S2 default (PI decision 2026-07-08): the factory default is "auto". On
+  # this Gaussian fixture (exact score, small G, small D_g) the policy
+  # promotes to cl2; the resolution is messaged and the auto-default fit is
+  # identical to an explicit sandwich = "cl2" fit.
   dat <- get_xlin_data()
   t <- attr(dat, "yindex")
-  m_default <- pffr(Y ~ xlin, yind = t, data = dat)
-  expect_identical(m_default$pffr$sandwich, "cluster")
+  expect_message(
+    m_default <- pffr(Y ~ xlin, yind = t, data = dat),
+    "sandwich='auto' resolved to"
+  )
+  G <- length(unique(refund:::build_cluster_id(m_default$pffr)))
+  expect_identical(
+    m_default$pffr$sandwich,
+    refund:::pffr_sandwich_auto_policy(
+      G = G,
+      maxDg = max(table(refund:::build_cluster_id(m_default$pffr))),
+      family = m_default$family
+    )
+  )
+  m_cl2 <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
+  expect_equal(m_default$pffr$Vsandwich, m_cl2$pffr$Vsandwich)
 })
 
 test_that("pffr with sandwich='cl2' yields leverage-adjusted covariance", {

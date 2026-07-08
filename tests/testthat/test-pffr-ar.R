@@ -142,6 +142,10 @@ test_that("pffr builds AR.start for sparse responses", {
     yind = tgrid,
     algorithm = "bam",
     rho = 0.4,
+    # explicit: this test is about AR.start, not the sandwich; the "auto"
+    # default would promote this saturated-leverage G=12 fixture to cl2 and
+    # (correctly) emit the leverage-cap warning
+    sandwich = "cluster",
     bs.int = list(bs = "ps", k = length(tgrid), m = c(2, 1))
   )
 
