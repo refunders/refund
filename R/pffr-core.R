@@ -2055,6 +2055,90 @@ resolve_crit_reference <- function(crit, sandwich_type, G) {
   crit
 }
 
+#' Does a family have an exact or two-block cluster score path?
+#'
+#' Decides whether the `sandwich = "auto"` policy may promote a fit to the
+#' leverage-adjusted CL2 sandwich, based on the ACTUAL sandwich dispatch in this
+#' package (`gam_sandwich_cluster_cl2()` / `build_cl2_working_*()`):
+#' \itemize{
+#'   \item `gaulss` --- two-block Fisher-whitened exact score
+#'     ([build_cl2_working_gaulss()]): eligible.
+#'   \item families defining `family$sandwich` other than `gaulss` (e.g.
+#'     `multinom`) --- the CL2 path falls back to the observation-level HC
+#'     sandwich, so there is no cluster score path: not eligible.
+#'   \item standard exponential-dispersion GLM families (class `"family"`:
+#'     `gaussian`, `poisson`, `binomial`, `Gamma`, ...) --- exact per-observation
+#'     score ([build_cl2_working_standard()]): eligible.
+#'   \item extended families (class `"extended.family"`: `scat`, `nb`, `tw`) ---
+#'     reuse the standard score path only as the exponential-family
+#'     working-residual APPROXIMATION (the D1 review item), \emph{not} an exact
+#'     score, so they are NOT auto-promoted here (scat becomes eligible once its
+#'     exact score, task S4, ships).
+#' }
+#'
+#' @param family A fitted model's `family` object.
+#' @returns `TRUE` if the family has an exact or two-block cluster score path.
+#' @keywords internal
+family_has_exact_score <- function(family) {
+  if (is.null(family)) return(FALSE)
+  fam <- tolower(as.character(family$family)[1])
+  if (identical(fam, "gaulss")) return(TRUE)
+  if (!is.null(family$sandwich)) return(FALSE)
+  !inherits(family, "extended.family")
+}
+
+#' Resolve `sandwich = "auto"` to a concrete cluster-robust estimator
+#'
+#' The single place the `sandwich = "auto"` policy lives (task S2). Promotes a
+#' fit to the leverage-adjusted CL2 sandwich when it is both appropriate and
+#' affordable, and falls back to the plain CR1 cluster sandwich otherwise.
+#' Resolves to `"cl2"` iff ALL of:
+#' \enumerate{
+#'   \item the family has an exact or two-block cluster score path
+#'     ([family_has_exact_score()]);
+#'   \item the number of independent curves/clusters is moderate,
+#'     \eqn{G \le} `G_max` (default 150); and
+#'   \item the largest cluster is not too large, \eqn{\max_g D_g \le} `Dg_max`
+#'     (default 500).
+#' }
+#' otherwise `"cluster"`.
+#'
+#' @param G Number of independent curves/clusters.
+#' @param maxDg Largest per-cluster observation count \eqn{\max_g D_g}.
+#' @param family The fitted model's `family` object.
+#' @returns One of `"cl2"` or `"cluster"`.
+#' @section Overriding:
+#' `options(refund.pffr.autopolicy = <value>)` overrides the policy. A
+#' \emph{function} `function(G, maxDg, family)` returning `"cl2"`/`"cluster"`
+#' replaces the whole rule; a \emph{named list} may override the thresholds, e.g.
+#' `options(refund.pffr.autopolicy = list(G_max = 80, Dg_max = 300))`.
+#' @keywords internal
+pffr_sandwich_auto_policy <- function(G, maxDg, family) {
+  opt <- getOption("refund.pffr.autopolicy", NULL)
+  if (is.function(opt)) {
+    out <- opt(G, maxDg, family)
+    return(match.arg(out, c("cluster", "cl2")))
+  }
+
+  G_max <- 150
+  # CL2's per-cluster leverage adjustment (I - H_gg)^{-1/2} is an O(D_g^3)
+  # eigendecomposition; the paper's timing study found CL2 overhead negligible
+  # beside the fit up to n_y = 120, so cap the largest cluster to keep the
+  # promotion affordable on dense grids.
+  Dg_max <- 500
+  if (is.list(opt)) {
+    if (!is.null(opt$G_max)) G_max <- opt$G_max
+    if (!is.null(opt$Dg_max)) Dg_max <- opt$Dg_max
+  }
+
+  eligible <- family_has_exact_score(family) &&
+    is.finite(G) &&
+    G <= G_max &&
+    is.finite(maxDg) &&
+    maxDg <= Dg_max
+  if (eligible) "cl2" else "cluster"
+}
+
 #' Penalty-direction and B2-magnitude diagnostics for a pffr sandwich
 #'
 #' Fit-level diagnostics that quantify how much of the cluster-robust sandwich

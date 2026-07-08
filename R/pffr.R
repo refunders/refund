@@ -176,6 +176,22 @@
 #'   \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
 #'   heteroskedasticity but ignores within-curve correlation.
 #'   \code{"none"}: no sandwich correction.
+#'   \code{"auto"}: resolved at fit time by \code{\link{pffr_sandwich_auto_policy}}
+#'   to \code{"cl2"} when the family has an exact/two-block cluster score path,
+#'   the number of curves/clusters is moderate (\eqn{G \le 150}) and the largest
+#'   cluster is not too large (\eqn{\max_g D_g \le 500}), and to \code{"cluster"}
+#'   otherwise; the resolution is reported with a one-line \code{\link{message}}.
+#'   The thresholds are overridable via
+#'   \code{options(refund.pffr.autopolicy=)} (a replacement function or a named
+#'   list of thresholds). Note: \code{"auto"} is NOT the current default (it is
+#'   an opt-in pending a package-level decision).
+#'
+#'   For fitted-mean / response-scale (\eqn{E(Y)}) intervals at small numbers of
+#'   curves (\eqn{G \le 80}), the leave-one-cluster-out jackknife
+#'   \code{\link{pffr_jackknife_se}} (also via
+#'   \code{predict(\dots, se_method = "jackknife")}) is the recommended path:
+#'   the plug-in cluster/CL2 sandwich under-propagates the aggregated variance
+#'   there. See \code{\link{pffr_jackknife_se}} for its calibration caveat.
 #'
 #'   Storage contract: the fit's model-based (Bayesian posterior) covariance
 #'   matrices \code{$Vp}, \code{$Vc} and \code{$Ve} are \emph{always} left
@@ -296,7 +312,9 @@ pffr <- function(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
-  sandwich = c("cluster", "cl2", "hc", "none"),
+  # S2 PI-DECISION pending: make "auto" the default here (one-line change:
+  # move "auto" to the front of this vector). Default stays "cluster" for now.
+  sandwich = c("cluster", "cl2", "hc", "none", "auto"),
   dof_correction = c("none", "edf"),
   edf_type = c("trace", "edf2", "basis"),
   ...
@@ -309,7 +327,9 @@ pffr <- function(
   sandwich <- match.arg(sandwich)
   dof_correction <- match.arg(dof_correction)
   edf_type <- match.arg(edf_type)
-  if (dof_correction != "none" && sandwich != "cluster") {
+  # "auto" is resolved after fitting (needs G / max D_g); defer the CR1 dof
+  # compatibility check to then, so a legitimate auto -> "cluster" keeps its dof.
+  if (dof_correction != "none" && !(sandwich %in% c("cluster", "auto"))) {
     warning(
       "dof_correction = \"",
       dof_correction,
@@ -367,6 +387,46 @@ pffr <- function(
       call. = FALSE
     )
     sandwich <- "none"
+  }
+
+  # Resolve sandwich = "auto" now that the fit exists: the policy depends on the
+  # cluster structure (G, max D_g) and the fitted family. See
+  # pffr_sandwich_auto_policy(). Only gam/bam reach here with "auto" (gamm/gamm4
+  # were forced to "none" above).
+  if (identical(sandwich, "auto")) {
+    auto_meta <- list(
+      nobs = prep$nobs,
+      nyindex = prep$nyindex,
+      is_sparse = prep$is_sparse,
+      missing_indices = prep$missing_indices,
+      ydata = prep$ydata
+    )
+    auto_cid <- build_cluster_id(auto_meta)
+    auto_G <- length(unique(auto_cid))
+    auto_maxDg <- as.integer(max(table(auto_cid)))
+    auto_family <- m$family
+    sandwich <- pffr_sandwich_auto_policy(auto_G, auto_maxDg, auto_family)
+    message(sprintf(
+      "pffr inference: sandwich='auto' resolved to '%s' (G=%d, max D_g=%d).",
+      sandwich,
+      auto_G,
+      auto_maxDg
+    ))
+    # auto -> "cl2" cannot carry the CR1 (N-1)/(N-EDF) dof factor (CL2 already
+    # corrects per-cluster leverage); drop it with the same notice as an
+    # explicit sandwich = "cl2".
+    if (dof_correction != "none" && sandwich != "cluster") {
+      warning(
+        "dof_correction = \"",
+        dof_correction,
+        "\" only applies to sandwich = \"cluster\" and is ignored for the ",
+        "auto-resolved sandwich = \"",
+        sandwich,
+        "\".",
+        call. = FALSE
+      )
+      dof_correction <- "none"
+    }
   }
 
   # Post-processing
