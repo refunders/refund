@@ -10,8 +10,8 @@
   reformat = TRUE,
   type = "link",
   se.fit = FALSE,
-  se_method = c("normal", "jackknife"),
-  ...
+  ...,
+  se_method = c("normal", "jackknife")
 )
 }
 \arguments{
@@ -34,6 +34,8 @@ Note that \code{type == "lpmatrix"} will force \code{reformat} to FALSE.}
 
 \item{se.fit}{see \code{\link[mgcv]{predict.gam}()}}
 
+\item{...}{additional arguments passed on to \code{\link[mgcv]{predict.gam}()}}
+
 \item{se_method}{how standard errors are computed when \code{se.fit = TRUE}
 and \code{type} is \code{"link"} or \code{"response"}. \code{"normal"}
 (default, unchanged behavior) uses the fit-time (model-based or robust
@@ -43,9 +45,11 @@ replaces the standard errors with the leave-one-cluster-out jackknife SEs of
 fitted-mean/response-scale (\eqn{E(Y)}) intervals at small numbers of curves
 \eqn{G}, where the plug-in cluster/CL2 sandwich under-propagates the
 aggregated variance. The point predictions \code{fit} are unaffected. See
-\code{\link{pffr_jackknife_se}} for its calibration caveat.}
-
-\item{...}{additional arguments passed on to \code{\link[mgcv]{predict.gam}()}}
+\code{\link{pffr_jackknife_se}} for its calibration caveat. This argument
+comes after \code{...} and must be given by name. Custom jackknife
+groupings are not accepted here (the \code{cluster} dot is
+\code{\link[mgcv]{predict.bam}}'s parallel cluster); use
+\code{\link{pffr_jackknife_se}(object, cluster = )} for that.}
 }
 \value{
 If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long format.

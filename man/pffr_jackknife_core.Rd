@@ -16,7 +16,9 @@ pffr_jackknife_core(
 \item{object}{A fitted [pffr()] model (single linear-predictor family).}
 
 \item{newdata}{Optional prediction data (as in [predict.pffr()]); `NULL`
-evaluates at the fitted observation points.}
+evaluates at the fitted observation points. For fits with a model offset
+only `NULL` is supported (the stored linear predictor includes the offset
+exactly there; resolving an offset for `newdata` is not).}
 
 \item{cluster}{Optional per-curve grouping (one entry per curve) forcing a
 coarser leave-one-cluster-out level, as in [pffr_vcov()]. `NULL` clusters

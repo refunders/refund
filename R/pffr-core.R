@@ -2080,11 +2080,25 @@ resolve_crit_reference <- function(crit, sandwich_type, G) {
 #' @returns `TRUE` if the family has an exact or two-block cluster score path.
 #' @keywords internal
 family_has_exact_score <- function(family) {
-  if (is.null(family)) return(FALSE)
+  if (is.null(family)) {
+    return(FALSE)
+  }
   fam <- tolower(as.character(family$family)[1])
-  if (identical(fam, "gaulss")) return(TRUE)
-  if (!is.null(family$sandwich)) return(FALSE)
-  !inherits(family, "extended.family")
+  if (identical(fam, "gaulss")) {
+    return(TRUE)
+  }
+  if (!is.null(family$sandwich)) {
+    return(FALSE)
+  }
+  # Positive branch: a genuine exponential-dispersion GLM family with the
+  # score ingredients build_cl2_working_standard() actually consumes -- not
+  # merely "anything that is not an extended family" (a custom family-like
+  # object without mu.eta/variance has no score path and must not be
+  # auto-promoted).
+  inherits(family, "family") &&
+    !inherits(family, "extended.family") &&
+    is.function(family$mu.eta) &&
+    is.function(family$variance)
 }
 
 #' Resolve `sandwich = "auto"` to a concrete cluster-robust estimator
@@ -2096,8 +2110,10 @@ family_has_exact_score <- function(family) {
 #' \enumerate{
 #'   \item the family has an exact or two-block cluster score path
 #'     ([family_has_exact_score()]);
-#'   \item the number of independent curves/clusters is moderate,
-#'     \eqn{G \le} `G_max` (default 150); and
+#'   \item there are at least two clusters (\eqn{G \ge 2}; the cluster
+#'     sandwich's \eqn{G/(G-1)} factor is undefined at \eqn{G = 1}) and the
+#'     number of independent curves/clusters is moderate, \eqn{G \le} `G_max`
+#'     (default 150); and
 #'   \item the largest cluster is not too large, \eqn{\max_g D_g \le} `Dg_max`
 #'     (default 500).
 #' }
@@ -2112,12 +2128,34 @@ family_has_exact_score <- function(family) {
 #' \emph{function} `function(G, maxDg, family)` returning `"cl2"`/`"cluster"`
 #' replaces the whole rule; a \emph{named list} may override the thresholds, e.g.
 #' `options(refund.pffr.autopolicy = list(G_max = 80, Dg_max = 300))`.
+#' Malformed overrides (any other type, a function returning something other
+#' than `"cluster"`/`"cl2"`, or non-scalar/non-finite thresholds) emit a
+#' warning and fall back to the defaults.
 #' @keywords internal
 pffr_sandwich_auto_policy <- function(G, maxDg, family) {
   opt <- getOption("refund.pffr.autopolicy", NULL)
   if (is.function(opt)) {
     out <- opt(G, maxDg, family)
-    return(match.arg(out, c("cluster", "cl2")))
+    if (
+      is.character(out) && length(out) == 1L && out %in% c("cluster", "cl2")
+    ) {
+      return(out)
+    }
+    warning(
+      "options(refund.pffr.autopolicy=): the override function must return ",
+      "\"cluster\" or \"cl2\"; ignoring the override and using the default ",
+      "policy.",
+      call. = FALSE
+    )
+    opt <- NULL
+  } else if (!is.null(opt) && !is.list(opt)) {
+    warning(
+      "options(refund.pffr.autopolicy=) must be a function(G, maxDg, family) ",
+      "or a named list of thresholds (G_max, Dg_max); ignoring the malformed ",
+      "option and using the default policy.",
+      call. = FALSE
+    )
+    opt <- NULL
   }
 
   G_max <- 150
@@ -2127,12 +2165,42 @@ pffr_sandwich_auto_policy <- function(G, maxDg, family) {
   # promotion affordable on dense grids.
   Dg_max <- 500
   if (is.list(opt)) {
-    if (!is.null(opt$G_max)) G_max <- opt$G_max
-    if (!is.null(opt$Dg_max)) Dg_max <- opt$Dg_max
+    valid_threshold <- function(x) {
+      is.numeric(x) && length(x) == 1L && is.finite(x)
+    }
+    if (!is.null(opt$G_max)) {
+      if (valid_threshold(opt$G_max)) {
+        G_max <- opt$G_max
+      } else {
+        warning(
+          "options(refund.pffr.autopolicy=): G_max must be a single finite ",
+          "numeric value; using the default (",
+          G_max,
+          ").",
+          call. = FALSE
+        )
+      }
+    }
+    if (!is.null(opt$Dg_max)) {
+      if (valid_threshold(opt$Dg_max)) {
+        Dg_max <- opt$Dg_max
+      } else {
+        warning(
+          "options(refund.pffr.autopolicy=): Dg_max must be a single finite ",
+          "numeric value; using the default (",
+          Dg_max,
+          ").",
+          call. = FALSE
+        )
+      }
+    }
   }
 
+  # G >= 2: the cluster sandwich's G/(G-1) small-sample factor (and CL2's
+  # per-cluster machinery) is undefined for a single cluster -- never promote.
   eligible <- family_has_exact_score(family) &&
     is.finite(G) &&
+    G >= 2 &&
     G <= G_max &&
     is.finite(maxDg) &&
     maxDg <= Dg_max
@@ -2241,7 +2309,9 @@ pffr_sandwich_shares <- function(object) {
 #'
 #' @param object A fitted [pffr()] model (single linear-predictor family).
 #' @param newdata Optional prediction data (as in [predict.pffr()]); `NULL`
-#'   evaluates at the fitted observation points.
+#'   evaluates at the fitted observation points. For fits with a model offset
+#'   only `NULL` is supported (the stored linear predictor includes the offset
+#'   exactly there; resolving an offset for `newdata` is not).
 #' @param cluster Optional per-curve grouping (one entry per curve) forcing a
 #'   coarser leave-one-cluster-out level, as in [pffr_vcov()]. `NULL` clusters
 #'   by curve.
@@ -2302,9 +2372,19 @@ pffr_jackknife_core <- function(
   theta <- object$coefficients
 
   # Training design at the FITTED rows (align with residuals + cluster_id).
+  # Under pffr's NA handling, predict(type = "lpmatrix") already EXCLUDES rows
+  # whose response is missing (an NA response gives nrow(X_full) == length(y)
+  # < nobs*nyindex; verified empirically). Only drop missing_indices when the
+  # lpmatrix still covers the full dense grid -- subsetting an already-reduced
+  # matrix would remove fitted rows a second time.
   X_full <- predict(object, type = "lpmatrix", reformat = FALSE)
   mi <- object$pffr$missing_indices
-  X_train <- if (!is.null(mi)) X_full[-mi, , drop = FALSE] else X_full
+  full_grid_rows <- object$pffr$nobs * object$pffr$nyindex
+  X_train <- if (!is.null(mi) && nrow(X_full) == full_grid_rows) {
+    X_full[-mi, , drop = FALSE]
+  } else {
+    X_full
+  }
   y <- as.vector(object$y)
   mu <- as.vector(object$fitted.values)
   eta <- as.vector(object$linear.predictors)
@@ -2337,13 +2417,39 @@ pffr_jackknife_core <- function(
   rt <- sign(mu_eta) * sqrt(pw / var_mu) * (y - mu)
   rt[!is.finite(rt)] <- 0
 
+  # Model offset. The whitening above is offset-correct already (it works off
+  # the fit's linear.predictors / fitted.values), and the LOO shift
+  # X_eval %*% delta_g is offset-free by construction, so the jackknife
+  # VARIANCE never sees the offset. But eta_hat at the EVALUATION points (the
+  # returned fit, and the eta at which the response-scale delta method
+  # evaluates linkinv/mu.eta) must include it. mgcv stores $offset on the fit
+  # (all-zero when none was supplied).
+  has_offset <- !is.null(object$offset) && any(object$offset != 0)
+
   # Evaluation design: fitted points (default) or newdata.
-  X_eval <- if (is.null(newdata)) {
-    X_train
+  if (is.null(newdata)) {
+    X_eval <- X_train
+    # linear.predictors = X_train %*% theta + offset exactly (verified to
+    # ~7e-16), so the fitted evaluation points are offset-exact for free.
+    eta_hat_eval <- eta
   } else {
-    predict(object, newdata = newdata, type = "lpmatrix", reformat = FALSE)
+    if (has_offset) {
+      stop(
+        "This fit uses a model offset: jackknife SEs are only available at ",
+        "the fitted evaluation points (newdata = NULL), where the stored ",
+        "linear predictor includes the offset exactly. Resolving the offset ",
+        "for `newdata` is not supported.",
+        call. = FALSE
+      )
+    }
+    X_eval <- predict(
+      object,
+      newdata = newdata,
+      type = "lpmatrix",
+      reformat = FALSE
+    )
+    eta_hat_eval <- as.vector(X_eval %*% theta)
   }
-  eta_hat_eval <- as.vector(X_eval %*% theta)
   n_eval <- nrow(X_eval)
 
   groups <- unique(cluster_id)
@@ -2437,7 +2543,11 @@ pffr_jackknife_core <- function(
 #'   `scat()`). `gaulss` / multivariate families are not supported.
 #' @param newdata Optional prediction data, in the format supplied to [pffr()]
 #'   (as in [predict.pffr()]). `NULL` (default) evaluates at the fitted
-#'   observation points.
+#'   observation points. Fits with a model offset are supported at the fitted
+#'   points only (there the stored linear predictor includes the offset
+#'   exactly, so `fit` and the response-scale delta method are offset-correct);
+#'   supplying `newdata` for an offset fit errors, because resolving the offset
+#'   for new data is not supported.
 #' @param alpha Significance level for the Wald intervals; default `0.05` for
 #'   95\% intervals.
 #' @param crit Critical-value reference: `"tG1"` (default, the \eqn{t_{G-1}}

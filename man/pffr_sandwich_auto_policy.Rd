@@ -24,8 +24,10 @@ Resolves to `"cl2"` iff ALL of:
 \enumerate{
   \item the family has an exact or two-block cluster score path
     ([family_has_exact_score()]);
-  \item the number of independent curves/clusters is moderate,
-    \eqn{G \le} `G_max` (default 150); and
+  \item there are at least two clusters (\eqn{G \ge 2}; the cluster
+    sandwich's \eqn{G/(G-1)} factor is undefined at \eqn{G = 1}) and the
+    number of independent curves/clusters is moderate, \eqn{G \le} `G_max`
+    (default 150); and
   \item the largest cluster is not too large, \eqn{\max_g D_g \le} `Dg_max`
     (default 500).
 }
@@ -37,6 +39,9 @@ otherwise `"cluster"`.
 \emph{function} `function(G, maxDg, family)` returning `"cl2"`/`"cluster"`
 replaces the whole rule; a \emph{named list} may override the thresholds, e.g.
 `options(refund.pffr.autopolicy = list(G_max = 80, Dg_max = 300))`.
+Malformed overrides (any other type, a function returning something other
+than `"cluster"`/`"cl2"`, or non-scalar/non-finite thresholds) emit a
+warning and fall back to the defaults.
 }
 
 \keyword{internal}

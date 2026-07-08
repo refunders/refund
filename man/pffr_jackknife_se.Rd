@@ -21,7 +21,11 @@ pffr_jackknife_se(
 
 \item{newdata}{Optional prediction data, in the format supplied to [pffr()]
 (as in [predict.pffr()]). `NULL` (default) evaluates at the fitted
-observation points.}
+observation points. Fits with a model offset are supported at the fitted
+points only (there the stored linear predictor includes the offset
+exactly, so `fit` and the response-scale delta method are offset-correct);
+supplying `newdata` for an offset fit errors, because resolving the offset
+for new data is not supported.}
 
 \item{alpha}{Significance level for the Wald intervals; default `0.05` for
 95\% intervals.}

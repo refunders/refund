@@ -47,7 +47,11 @@
 #'  fitted-mean/response-scale (\eqn{E(Y)}) intervals at small numbers of curves
 #'  \eqn{G}, where the plug-in cluster/CL2 sandwich under-propagates the
 #'  aggregated variance. The point predictions \code{fit} are unaffected. See
-#'  \code{\link{pffr_jackknife_se}} for its calibration caveat.
+#'  \code{\link{pffr_jackknife_se}} for its calibration caveat. This argument
+#'  comes after \code{...} and must be given by name. Custom jackknife
+#'  groupings are not accepted here (the \code{cluster} dot is
+#'  \code{\link[mgcv]{predict.bam}}'s parallel cluster); use
+#'  \code{\link{pffr_jackknife_se}(object, cluster = )} for that.
 #' @param ...  additional arguments passed on to \code{\link[mgcv]{predict.gam}()}
 #' @seealso \code{\link[mgcv]{predict.gam}()}, \code{\link{pffr_jackknife_se}}
 #' @return If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long format.
@@ -64,11 +68,13 @@ predict.pffr <- function(
   reformat = TRUE,
   type = "link",
   se.fit = FALSE,
-  se_method = c("normal", "jackknife"),
-  ...
+  ...,
+  se_method = c("normal", "jackknife")
 ) {
   #browser()
 
+  # `se_method` sits AFTER ... so it can only be matched by name -- a value
+  # intended for a predict.gam dot can never bind to it positionally.
   se_method <- match.arg(se_method)
   # `se_method` is a pffr-only argument (not a predict.gam formal); strip it
   # from the reconstructed predict.gam call below.
@@ -105,6 +111,18 @@ predict.pffr <- function(
         paste(notUsed, collapse = ", "),
         "> supplied but not used."
       )
+  }
+  # The `cluster` dot is predict.bam's PARALLEL cluster (a socket cluster), not
+  # a jackknife grouping; forwarding it to the jackknife would be wrong, and
+  # silently ignoring it would mislead. Reject the combination explicitly.
+  if (identical(se_method, "jackknife") && !is.null(dots$cluster)) {
+    stop(
+      "se_method = \"jackknife\" does not accept a `cluster` argument here: ",
+      "`cluster` in predict.pffr()/predict.bam() is a parallel (socket) ",
+      "cluster, not a grouping. For a custom leave-one-cluster-out grouping ",
+      "call pffr_jackknife_se(object, cluster = <grouping>) directly.",
+      call. = FALSE
+    )
   }
 
   if (!missing(newdata)) {

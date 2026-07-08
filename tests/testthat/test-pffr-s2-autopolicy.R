@@ -29,6 +29,17 @@ test_that("family_has_exact_score follows the actual sandwich dispatch", {
   expect_false(fhes(fake))
   # NULL family
   expect_false(fhes(NULL))
+  # family-LIKE objects without a real score path must not be promoted:
+  # correct class but no mu.eta/variance functions
+  hollow <- structure(list(family = "mystery"), class = "family")
+  expect_false(fhes(hollow))
+  # score ingredients present but not a "family"-classed object at all
+  bare <- list(
+    family = "gaussian",
+    mu.eta = function(eta) rep(1, length(eta)),
+    variance = function(mu) rep(1, length(mu))
+  )
+  expect_false(fhes(bare))
 })
 
 test_that("policy resolves each branch as specified", {
@@ -47,6 +58,10 @@ test_that("policy resolves each branch as specified", {
   # non-finite guards -> cluster
   expect_identical(pol(NA_real_, 55, gaussian()), "cluster")
   expect_identical(pol(92, NA_real_, gaussian()), "cluster")
+  # G = 1 must NEVER be promoted: G/(G-1) (and the whole cluster machinery)
+  # is undefined for a single cluster (council review, MUST-FIX 3)
+  expect_identical(pol(1, 5, gaussian()), "cluster")
+  expect_identical(pol(2, 5, gaussian()), "cl2") # boundary: G = 2 is fine
 })
 
 test_that("DTI-shaped case (G=92, max D_g=55) resolves to cl2", {
@@ -72,6 +87,57 @@ test_that("options(refund.pffr.autopolicy=) overrides the policy", {
   withr::with_options(
     list(refund.pffr.autopolicy = function(G, maxDg, family) "cluster"),
     expect_identical(pol(5, 5, gaussian()), "cluster")
+  )
+})
+
+test_that("malformed autopolicy options warn and fall back to defaults", {
+  # wrong type entirely: warn, use the default rule
+  withr::with_options(
+    list(refund.pffr.autopolicy = "cl2"),
+    {
+      expect_warning(res <- pol(92, 55, gaussian()), "must be a function")
+      expect_identical(res, "cl2") # default policy outcome, not the string
+      expect_warning(res2 <- pol(200, 55, gaussian()), "must be a function")
+      expect_identical(res2, "cluster")
+    }
+  )
+  # function override returning garbage: warn, use the default rule
+  withr::with_options(
+    list(refund.pffr.autopolicy = function(G, maxDg, family) "banana"),
+    {
+      expect_warning(res <- pol(92, 55, gaussian()), "must return")
+      expect_identical(res, "cl2")
+    }
+  )
+  # non-scalar / non-finite / non-numeric thresholds: warn, keep the default
+  withr::with_options(
+    list(refund.pffr.autopolicy = list(G_max = NA)),
+    {
+      expect_warning(res <- pol(92, 55, gaussian()), "G_max")
+      expect_identical(res, "cl2") # default G_max = 150 still in force
+    }
+  )
+  withr::with_options(
+    list(refund.pffr.autopolicy = list(G_max = "80")),
+    {
+      expect_warning(res <- pol(92, 55, gaussian()), "G_max")
+      expect_identical(res, "cl2")
+    }
+  )
+  withr::with_options(
+    list(refund.pffr.autopolicy = list(Dg_max = c(10, 20))),
+    {
+      expect_warning(res <- pol(92, 55, gaussian()), "Dg_max")
+      expect_identical(res, "cl2") # default Dg_max = 500 still in force
+    }
+  )
+  # a valid threshold alongside an invalid one: valid applies, invalid warns
+  withr::with_options(
+    list(refund.pffr.autopolicy = list(G_max = 80, Dg_max = Inf)),
+    {
+      expect_warning(res <- pol(92, 55, gaussian()), "Dg_max")
+      expect_identical(res, "cluster") # valid G_max = 80 makes G = 92 fail
+    }
   )
 })
 

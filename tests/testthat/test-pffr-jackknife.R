@@ -213,13 +213,18 @@ test_that("GLM one-step matches a direct fixed-sp deleted-cluster refit", {
         }
         th <- th_new
       }
-      max(abs(theta_onestep - th))
+      # RELATIVE gap: one-step error relative to the deleted-cluster
+      # coefficient scale, so the criterion documents the one-step
+      # approximation error itself rather than an absolute magic constant
+      # vulnerable to RNG/BLAS drift.
+      max(abs(theta_onestep - th)) / max(abs(th))
     },
     numeric(1)
   )
-  # Measured one-step gap on this fit is ~2e-3 (see notes); assert a tolerance
-  # that holds with margin. The gap is the one-step (fixed W, lambda)
-  # approximation error, NOT a bug: it vanishes for Gaussian-identity.
+  # Measured relative one-step gap on this fit is ~2e-3 (0.2% of the
+  # coefficient scale; see notes). Assert 1% relative -- holds with a ~5x
+  # margin. The gap is the one-step (fixed W, lambda) approximation error, NOT
+  # a bug: it vanishes for Gaussian-identity.
   expect_lt(max(gaps), 1e-2)
 })
 
@@ -285,5 +290,195 @@ test_that("unsupported families and missing cluster structure error clearly", {
   expect_error(
     pffr_jackknife_se(fit, cluster = rep(1L, fit$pffr$nobs)),
     "at least two independent"
+  )
+})
+
+test_that("dense fits with missing responses work (no double row removal)", {
+  skip_on_cran()
+  # An NA response makes predict(type = "lpmatrix") return the FITTED
+  # (missing-removed) rows already: nrow == length(fit$y) == 159 here, not the
+  # full 20*8 = 160 grid. Subsetting missing_indices out again removed a fitted
+  # row and made every NA-response fit error (council review, MUST-FIX 1).
+  # (n = 20, not 10: the n = 10 version of this fixture has an ill-conditioned
+  # penalized bread, cond(A_inv) ~ 1e8, which pushes the double-inversion
+  # direct check's roundoff to ~1.5e-10; at n = 20 cond ~ 2e3 and the SMW
+  # check sits at ~2e-14.)
+  set.seed(11)
+  dat <- pffr_simulate(
+    Y ~ ff(X1),
+    n = 20,
+    nxgrid = 12,
+    nygrid = 8,
+    SNR = 5,
+    effects = list(X1 = "random"),
+    intercept = "random"
+  )
+  yind <- attr(dat, "yindex")
+  dat$Y[3, 5] <- NA # missing point 21 in curve-major order: (3-1)*8 + 5
+  fit <- suppressWarnings(suppressMessages(
+    pffr(Y ~ ff(X1), data = dat, yind = yind, sandwich = "cluster")
+  ))
+  expect_identical(fit$pffr$missing_indices, 21L)
+  expect_length(fit$y, 159L)
+
+  # standalone path: one row per FITTED point, SMW still exact
+  jk <- pffr_jackknife_se(fit)
+  expect_equal(nrow(jk), 159L)
+  expect_true(all(is.finite(jk$se)))
+  expect_true(all(jk$se > 0))
+  core <- refund:::pffr_jackknife_core(fit, smw_check = TRUE)
+  expect_lt(core$smw_max_abs_err, 1e-10)
+
+  # predict opt-in: reformatting pads the missing point with NA, and the
+  # non-missing entries match the standalone jackknife SEs
+  p <- predict(fit, se.fit = TRUE, se_method = "jackknife")
+  expect_equal(dim(p$se.fit), c(20L, 8L))
+  expect_true(is.na(p$se.fit[3, 5]))
+  expect_identical(sum(is.na(p$se.fit)), 1L)
+  se_vec <- as.vector(t(p$se.fit))
+  expect_equal(se_vec[-21], jk$se, tolerance = 1e-10)
+})
+
+test_that("offset fits: exact at fitted points, newdata rejected", {
+  skip_on_cran()
+  set.seed(12)
+  dat <- pffr_simulate(
+    Y ~ ff(X1),
+    n = 15,
+    nxgrid = 12,
+    nygrid = 10,
+    SNR = 5,
+    effects = list(X1 = "random"),
+    intercept = "random"
+  )
+  yind <- attr(dat, "yindex")
+  off_mat <- matrix(
+    0.3 * sin(seq(0, 2, length.out = 10)),
+    nrow = 15,
+    ncol = 10,
+    byrow = TRUE
+  )
+  fit_off <- suppressWarnings(suppressMessages(
+    pffr(
+      Y ~ ff(X1),
+      data = dat,
+      yind = yind,
+      sandwich = "cluster",
+      offset = off_mat
+    )
+  ))
+  expect_true(any(fit_off$offset != 0))
+
+  # returned fit is the offset-INCLUSIVE linear predictor (council MUST-FIX 2)
+  jk <- pffr_jackknife_se(fit_off)
+  expect_equal(
+    jk$fit,
+    as.vector(fit_off$linear.predictors),
+    tolerance = 1e-10
+  )
+  # ... which differs from the offset-free X %*% theta by exactly the offset
+  X <- predict(fit_off, type = "lpmatrix", reformat = FALSE)
+  expect_equal(
+    jk$fit - as.vector(X %*% fit_off$coefficients),
+    as.vector(fit_off$offset),
+    tolerance = 1e-10
+  )
+  # response-scale delta method evaluates linkinv/mu.eta at the CORRECT eta
+  jk_resp <- pffr_jackknife_se(fit_off, se_scale = "response")
+  expect_equal(
+    jk_resp$fit,
+    as.numeric(fit_off$family$linkinv(jk$fit)),
+    tolerance = 1e-10
+  )
+  expect_equal(
+    jk_resp$se,
+    jk$se * abs(as.numeric(fit_off$family$mu.eta(jk$fit))),
+    tolerance = 1e-10
+  )
+  # newdata + offset fit: rejected with a clear message (option: reject)
+  expect_error(
+    pffr_jackknife_se(fit_off, newdata = dat[1:2, ]),
+    "model offset"
+  )
+})
+
+test_that("non-unit prior weights: whitening keeps the SMW downdate exact", {
+  skip_on_cran()
+  set.seed(13)
+  dat <- pffr_simulate(
+    Y ~ ff(X1),
+    n = 15,
+    nxgrid = 12,
+    nygrid = 10,
+    SNR = 5,
+    effects = list(X1 = "random"),
+    intercept = "random"
+  )
+  yind <- attr(dat, "yindex")
+  w_curve <- runif(15, 0.5, 2)
+  W <- matrix(w_curve, nrow = 15, ncol = 10) # constant per curve
+  fit_w <- suppressWarnings(suppressMessages(
+    pffr(Y ~ ff(X1), data = dat, yind = yind, sandwich = "cluster", weights = W)
+  ))
+  expect_true(any(fit_w$prior.weights != 1))
+  # Gaussian-identity with fixed prior weights: the weighted SMW downdate is
+  # still EXACT (W does not depend on mu), so 1e-10 must hold
+  core <- refund:::pffr_jackknife_core(fit_w, smw_check = TRUE)
+  expect_lt(core$smw_max_abs_err, 1e-10)
+  jk <- pffr_jackknife_se(fit_w)
+  expect_true(all(is.finite(jk$se)))
+  expect_true(all(jk$se > 0))
+  # weights change the answer relative to the unweighted fit machinery
+  fit_u <- suppressWarnings(suppressMessages(
+    pffr(Y ~ ff(X1), data = dat, yind = yind, sandwich = "cluster")
+  ))
+  expect_false(isTRUE(all.equal(jk$se, pffr_jackknife_se(fit_u)$se)))
+})
+
+test_that("coarser cluster= grouping: variance matches direct LOO solves", {
+  skip_on_cran()
+  fit <- make_jack_fits()$fit_gauss # 25 curves x 15 points, gaussian identity
+  grp <- rep(1:5, each = 5) # 5 superclusters of 5 curves
+
+  jk <- pffr_jackknife_se(fit, cluster = grp, crit = "z")
+  expect_identical(attr(jk, "G"), 5L)
+  expect_identical(attr(jk, "df"), NA_real_)
+
+  # Independent re-derivation: direct deleted-SUPERCLUSTER penalized solves
+  # (Gaussian identity: (A - Xg'Xg) theta_(-g) = A theta - Xg' y_g), then the
+  # mean-centered CV3 variance -- no SMW, no shared code path beyond inputs.
+  Vp <- fit$Vp
+  sig2 <- fit$sig2
+  A <- solve(Vp / sig2)
+  theta <- fit$coefficients
+  X <- predict(fit, type = "lpmatrix", reformat = FALSE)
+  y <- as.vector(fit$y)
+  cid <- refund:::build_cluster_id(fit$pffr, cluster = grp)
+  G <- length(unique(cid))
+  eta_loo <- matrix(NA_real_, nrow = G, ncol = nrow(X))
+  for (g in seq_len(G)) {
+    idx <- which(cid == g)
+    Xg <- X[idx, , drop = FALSE]
+    theta_g <- solve(
+      A - crossprod(Xg),
+      as.vector(A %*% theta) - as.vector(crossprod(Xg, y[idx]))
+    )
+    eta_loo[g, ] <- as.vector(X %*% theta_g)
+  }
+  var_direct <- (G - 1) /
+    G *
+    colSums(sweep(eta_loo, 2L, colMeans(eta_loo))^2)
+  expect_equal(jk$se, sqrt(var_direct), tolerance = 1e-8)
+
+  # the coarser grouping gives genuinely different SEs than by-curve
+  expect_false(isTRUE(all.equal(jk$se, pffr_jackknife_se(fit, crit = "z")$se)))
+})
+
+test_that("predict jackknife rejects the (parallel) cluster dot", {
+  skip_on_cran()
+  fit <- make_jack_fits()$fit_gauss
+  expect_error(
+    predict(fit, se.fit = TRUE, se_method = "jackknife", cluster = 1),
+    "does not accept"
   )
 })
