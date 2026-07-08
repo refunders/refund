@@ -2125,6 +2125,330 @@ pffr_sandwich_shares <- function(object) {
   )
 }
 
+#' Leave-one-cluster-out jackknife of the fitted linear predictor (core)
+#'
+#' Internal engine for [pffr_jackknife_se()]. Computes, per evaluation point,
+#' the exact leave-one-cluster-out (LOCO) jackknife variance of the linear
+#' predictor \eqn{\hat\eta(x) = X_p(x)^\top\hat\theta} via a Sherman--Morrison--
+#' Woodbury (SMW) downdate of the penalized (weighted) normal equations at fixed
+#' smoothing parameters and converged working weights.
+#'
+#' For each cluster \eqn{g} the deleted-cluster coefficient is
+#' \deqn{\hat\theta_{(-g)} = \hat\theta -
+#'   A^{-1} \tilde X_g^\top (I - H_{gg})^{-1} \tilde r_g,\quad
+#'   A^{-1} = V_p/\sigma^2,\; H_{gg} = \tilde X_g A^{-1} \tilde X_g^\top,}
+#' with \eqn{\tilde X_g = \sqrt{W_g}\,X_g} the Fisher-whitened training design of
+#' cluster \eqn{g} (\eqn{W_i = w_i (\mathrm{d}\mu/\mathrm{d}\eta)_i^2 /
+#' \mathrm{Var}(\mu_i)}) and \eqn{\tilde r_g} the whitened working residual
+#' (\eqn{\tilde r_i = \mathrm{sign}(\mathrm{d}\mu/\mathrm{d}\eta_i)
+#' \sqrt{w_i/\mathrm{Var}(\mu_i)}\,(y_i - \mu_i)}). For a Gaussian-identity fit
+#' \eqn{\tilde X_g = X_g}, \eqn{\tilde r_g = y_g - X_g\hat\theta} and the downdate
+#' is the exact deleted-cluster penalized solve; for other families it is the
+#' one-step approximation at the converged \eqn{(W, \lambda)}. `A^{-1}` uses the
+#' MODEL-BASED penalized bread (`pffr_canonicalize_cov()$model$Vp`), never the
+#' robust `$pffr$Vsandwich` slot, so the jackknife bread stays genuinely
+#' model-based even on a sandwich fit.
+#'
+#' The mean-centered CV3 jackknife variance at evaluation point \eqn{j} is
+#' \eqn{V_{jack}(j) = \frac{G-1}{G}\sum_g (\eta_{(-g),j} -
+#' \bar\eta_{\cdot,j})^2}. Eigenvalues of \eqn{I - H_{gg}} are floored at
+#' `eig_floor` before inversion; the number of floored clusters and the maximum
+#' per-cluster leverage are returned for diagnostics.
+#'
+#' @param object A fitted [pffr()] model (single linear-predictor family).
+#' @param newdata Optional prediction data (as in [predict.pffr()]); `NULL`
+#'   evaluates at the fitted observation points.
+#' @param cluster Optional per-curve grouping (one entry per curve) forcing a
+#'   coarser leave-one-cluster-out level, as in [pffr_vcov()]. `NULL` clusters
+#'   by curve.
+#' @param eig_floor Eigenvalue floor for \eqn{(I - H_{gg})^{-1}} (default
+#'   `1e-8`, matching the X3 prototype's `X3_JACK_EIG_FLOOR`).
+#' @param smw_check If `TRUE`, additionally verify the SMW downdate against a
+#'   direct solve of the deleted-cluster (whitened) penalized normal equations
+#'   for the first cluster, returning the max abs coefficient discrepancy in
+#'   `smw_max_abs_err`.
+#' @returns A list with `var_link` (per evaluation point LOCO jackknife variance
+#'   of \eqn{\hat\eta}), `eta_hat` (the fitted linear predictor at the evaluation
+#'   points), `G`, `max_eig_Hgg` (per cluster), `n_floored`, and
+#'   `smw_max_abs_err`.
+#' @keywords internal
+pffr_jackknife_core <- function(
+  object,
+  newdata = NULL,
+  cluster = NULL,
+  eig_floor = 1e-8,
+  smw_check = FALSE
+) {
+  if (!inherits(object, "pffr")) {
+    stop("`object` must be a fitted pffr model.", call. = FALSE)
+  }
+  fam <- object$family
+  if (is.null(fam$mu.eta) || is.null(fam$variance)) {
+    stop(
+      "pffr_jackknife_se() supports single linear-predictor families with a ",
+      "standard variance()/mu.eta() (e.g. gaussian, poisson, binomial, Gamma, ",
+      "scat); family '",
+      as.character(fam$family)[1],
+      "' (e.g. gaulss / multivariate) is not supported.",
+      call. = FALSE
+    )
+  }
+
+  # Cluster ids at the fitted (missing-removed) training rows. Error if there is
+  # no usable cluster structure (need >= 2 independent curves/clusters).
+  cluster_id <- build_cluster_id(object$pffr, cluster = cluster)
+  G <- length(unique(cluster_id))
+  if (!is.finite(G) || G < 2L) {
+    stop(
+      "The leave-one-cluster-out jackknife needs at least two independent ",
+      "curves/clusters; this fit resolves to G = ",
+      G,
+      ". Supply a `cluster` grouping with >= 2 levels.",
+      call. = FALSE
+    )
+  }
+
+  # MODEL-BASED penalized bread (S1: $Vp is inviolate/model-based; use the
+  # canonical accessor so old-format fits are handled too). NEVER the sandwich.
+  canon <- pffr_canonicalize_cov(object)
+  Vp <- canon$model$Vp
+  sig2 <- object$sig2
+  if (is.null(sig2) || !is.finite(sig2) || sig2 <= 0) sig2 <- 1
+  A_inv <- Vp / sig2 # penalized bread (X'WX + S_lambda)^{-1}
+  theta <- object$coefficients
+
+  # Training design at the FITTED rows (align with residuals + cluster_id).
+  X_full <- predict(object, type = "lpmatrix", reformat = FALSE)
+  mi <- object$pffr$missing_indices
+  X_train <- if (!is.null(mi)) X_full[-mi, , drop = FALSE] else X_full
+  y <- as.vector(object$y)
+  mu <- as.vector(object$fitted.values)
+  eta <- as.vector(object$linear.predictors)
+  if (
+    nrow(X_train) != length(y) ||
+      length(cluster_id) != length(y) ||
+      length(mu) != length(y) ||
+      length(eta) != length(y)
+  ) {
+    stop(
+      "pffr_jackknife_core: internal length mismatch between the training ",
+      "design, residuals and cluster ids.",
+      call. = FALSE
+    )
+  }
+
+  # Fisher whitening of the training rows (undispersioned; sigma^2 lives in the
+  # bread A_inv = Vp/sig2). For Gaussian-identity this is the identity map, so
+  # Xt = X_train and rt = y - X_train theta exactly (prototype's unwhitened path).
+  pw <- object$prior.weights
+  if (is.null(pw)) pw <- rep(1, length(y))
+  pw <- as.vector(pw)
+  mu_eta <- as.vector(fam$mu.eta(eta))
+  var_mu <- as.vector(fam$variance(mu))
+  w_star <- pw * mu_eta^2 / var_mu
+  s <- sqrt(w_star)
+  s[!is.finite(s)] <- 0
+  Xt <- X_train * s
+  Xt[!is.finite(Xt)] <- 0
+  rt <- sign(mu_eta) * sqrt(pw / var_mu) * (y - mu)
+  rt[!is.finite(rt)] <- 0
+
+  # Evaluation design: fitted points (default) or newdata.
+  X_eval <- if (is.null(newdata)) {
+    X_train
+  } else {
+    predict(object, newdata = newdata, type = "lpmatrix", reformat = FALSE)
+  }
+  eta_hat_eval <- as.vector(X_eval %*% theta)
+  n_eval <- nrow(X_eval)
+
+  groups <- unique(cluster_id)
+  # D[g, ] = X_eval %*% delta_g (the LOO shift of eta at each evaluation point).
+  Dmat <- matrix(0, nrow = G, ncol = n_eval)
+  max_eig_Hgg <- numeric(G)
+  n_floored <- 0L
+  smw_max_abs_err <- NA_real_
+  A <- if (isTRUE(smw_check)) solve(A_inv) else NULL
+
+  for (gi in seq_along(groups)) {
+    idx <- which(cluster_id == groups[gi])
+    Xtg <- Xt[idx, , drop = FALSE]
+    rtg <- rt[idx]
+    Hgg <- Xtg %*% A_inv %*% t(Xtg)
+    Hgg <- 0.5 * (Hgg + t(Hgg))
+
+    ee <- eigen(diag(length(idx)) - Hgg, symmetric = TRUE)
+    max_eig_Hgg[gi] <- 1 - min(ee$values)
+    vals <- ee$values
+    if (any(vals < eig_floor)) {
+      n_floored <- n_floored + 1L
+      vals <- pmax(vals, eig_floor)
+    }
+    # (I - H_gg)^{-1} rt_g via the (floored) eigendecomposition.
+    u <- ee$vectors %*% (crossprod(ee$vectors, rtg) / vals)
+    delta <- A_inv %*% crossprod(Xtg, u)
+    Dmat[gi, ] <- as.vector(X_eval %*% delta)
+
+    if (isTRUE(smw_check) && gi == 1L) {
+      # Direct solve of the deleted-cluster whitened penalized normal equations:
+      # (A - Xtg'Xtg) theta_(-g) = A theta - Xtg'Xtg theta - Xtg' rt_g, with
+      # A = (Vp/sig2)^{-1} = Xt'Xt + S_lambda. For Gaussian-identity this equals
+      # the prototype's (A - Xg'Xg) theta_(-g) = A theta - Xg' y_g.
+      rhs <- as.vector(A %*% theta) -
+        as.vector(crossprod(Xtg, Xtg %*% theta)) -
+        as.vector(crossprod(Xtg, rtg))
+      theta_direct <- solve(A - crossprod(Xtg), rhs)
+      theta_smw <- theta - as.vector(delta)
+      smw_max_abs_err <- max(abs(theta_direct - theta_smw))
+    }
+  }
+
+  eta_bar <- colMeans(Dmat)
+  dev <- sweep(Dmat, 2L, eta_bar)
+  var_link <- (G - 1) / G * colSums(dev^2)
+
+  list(
+    var_link = var_link,
+    eta_hat = eta_hat_eval,
+    G = G,
+    max_eig_Hgg = max_eig_Hgg,
+    n_floored = n_floored,
+    smw_max_abs_err = smw_max_abs_err
+  )
+}
+
+#' Leave-one-cluster-out jackknife standard errors for the fitted mean
+#'
+#' Per-evaluation-point standard errors (and Wald intervals) for the fitted
+#' linear predictor / response mean of a [pffr()] fit, from an exact
+#' leave-one-cluster-out (LOCO) jackknife of the penalized normal equations. It
+#' is the recommended small-\eqn{G} path for fitted-mean / response-scale
+#' (\eqn{E(Y)}) intervals on cluster-robust fits, where the plug-in
+#' cluster/CL2 sandwich under-propagates the aggregated variance because the
+#' estimated cross-term blocks of the rank-\eqn{\le G} meat inject noise that
+#' shrinks the aggregated \eqn{E(Y)} SE (see \sQuote{References}).
+#'
+#' The jackknife recomputes the deleted-cluster coefficients by an exact
+#' Sherman--Morrison--Woodbury downdate of the penalized (weighted) normal
+#' equations at fixed smoothing parameters \eqn{\lambda} and converged working
+#' weights, using the MODEL-BASED penalized bread \eqn{A^{-1} = V_p/\sigma^2}
+#' (the fit's inviolate `$Vp`, never the robust `$pffr$Vsandwich`). See
+#' [pffr_jackknife_core()] for the algorithm.
+#'
+#' @section Calibration caveat (read this):
+#' This interval reaches only \eqn{\approx 0.86}--\eqn{0.90} pointwise coverage
+#' --- \emph{not} nominal --- at the hardest simulated cells (small \eqn{G},
+#' e.g. \eqn{G = 20}, with strong within-curve AR(1) dependence): there it
+#' over-inflates some replicates and compensates, so it is a workable interval,
+#' not a calibrated pivot. It is \emph{exact} only for Gaussian-identity
+#' responses at fixed smoothing parameters; for other families it is a
+#' \emph{one-step approximation} at the converged working weights and fixed
+#' \eqn{\lambda} (measured max coefficient gap versus a direct fixed-\eqn{sp}
+#' deleted-cluster IRLS refit on the validation Poisson fit: about
+#' \eqn{2\times 10^{-3}}, i.e. \eqn{\approx}0.2\% of the coefficient scale; see
+#' the package tests). The default reference is \eqn{t_{G-1}}.
+#'
+#' @param object A fitted [pffr()] model with a single linear predictor
+#'   (e.g. `family = gaussian()`, `poisson()`, `binomial()`, `Gamma()`,
+#'   `scat()`). `gaulss` / multivariate families are not supported.
+#' @param newdata Optional prediction data, in the format supplied to [pffr()]
+#'   (as in [predict.pffr()]). `NULL` (default) evaluates at the fitted
+#'   observation points.
+#' @param alpha Significance level for the Wald intervals; default `0.05` for
+#'   95\% intervals.
+#' @param crit Critical-value reference: `"tG1"` (default, the \eqn{t_{G-1}}
+#'   reference recommended at small \eqn{G}) or `"z"` (Gaussian).
+#' @param se_scale `"link"` (default) returns the SE of the linear predictor;
+#'   `"response"` applies the delta method via `family$mu.eta()` and returns the
+#'   fitted mean, SE and interval on the response scale.
+#' @param eig_floor Eigenvalue floor for the \eqn{(I - H_{gg})^{-1}} inversion
+#'   in the SMW downdate (default `1e-8`).
+#' @param cluster Optional per-curve grouping (one entry per curve) forcing a
+#'   coarser leave-one-cluster-out level; `NULL` (default) clusters by curve.
+#' @returns A data frame with one row per evaluation point (in `predict`
+#'   lpmatrix order --- curve-major, index-fastest) and columns `fit`, `se`,
+#'   `lower`, `upper`, plus attributes `G`, `n_floored`, `max_eig_Hgg` (per
+#'   cluster), `crit`, `crit_value`, `df` (`G - 1` for `"tG1"`, else `NA`),
+#'   `se_scale` and `alpha`.
+#' @references
+#' The \eqn{E(Y)} under-propagation mechanism (cross-term rank deficit of the
+#' rank-\eqn{\le G} meat) and this jackknife's simulated coverage are documented
+#' in the paper's \eqn{E(Y)} section (\code{sec-eymean}) and in
+#' \code{notes/X3-phase2-findings.md} of the accompanying study repository:
+#' the jackknife reaches 0.856 (\eqn{z}) / 0.864 (\eqn{t_{G-1}}) at AR(1),
+#' \eqn{G = 20} versus 0.231 for the plug-in cluster sandwich.
+#' @seealso [pffr_vcov()], [predict.pffr()] (with `se_method = "jackknife"`),
+#'   [pffr_coefboot()].
+#' @export
+#' @author Fabian Scheipl
+#' @examples
+#' \donttest{
+#' set.seed(1)
+#' d <- pffr_simulate(Y ~ ff(X1), n = 20, nxgrid = 15, nygrid = 15)
+#' m <- pffr(Y ~ ff(X1), yind = attr(d, "yindex"), data = d,
+#'           sandwich = "cluster")
+#' jk <- pffr_jackknife_se(m)
+#' head(jk)
+#' attr(jk, "G")
+#' }
+pffr_jackknife_se <- function(
+  object,
+  newdata = NULL,
+  alpha = 0.05,
+  crit = c("tG1", "z"),
+  se_scale = c("link", "response"),
+  eig_floor = 1e-8,
+  cluster = NULL
+) {
+  crit <- match.arg(crit)
+  se_scale <- match.arg(se_scale)
+  if (!is.numeric(alpha) || length(alpha) != 1L || alpha <= 0 || alpha >= 1) {
+    stop("`alpha` must be a single value in (0, 1).", call. = FALSE)
+  }
+
+  core <- pffr_jackknife_core(
+    object,
+    newdata = newdata,
+    cluster = cluster,
+    eig_floor = eig_floor
+  )
+  G <- core$G
+  se_link <- sqrt(pmax(core$var_link, 0))
+  eta_hat <- core$eta_hat
+
+  crit_df <- if (crit == "tG1") G - 1 else NA_real_
+  crit_value <- if (crit == "tG1") {
+    qt(1 - alpha / 2, df = crit_df)
+  } else {
+    qnorm(1 - alpha / 2)
+  }
+
+  if (se_scale == "response") {
+    mu_eta_eval <- as.vector(object$family$mu.eta(eta_hat))
+    se <- se_link * abs(mu_eta_eval)
+    fit <- as.vector(object$family$linkinv(eta_hat))
+  } else {
+    se <- se_link
+    fit <- eta_hat
+  }
+
+  out <- data.frame(
+    fit = fit,
+    se = se,
+    lower = fit - crit_value * se,
+    upper = fit + crit_value * se
+  )
+  attr(out, "G") <- G
+  attr(out, "n_floored") <- core$n_floored
+  attr(out, "max_eig_Hgg") <- core$max_eig_Hgg
+  attr(out, "crit") <- crit
+  attr(out, "crit_value") <- crit_value
+  attr(out, "df") <- crit_df
+  attr(out, "se_scale") <- se_scale
+  attr(out, "alpha") <- alpha
+  out
+}
+
 #' Upgrade an old-format pffr fit to the current covariance storage contract
 #'
 #' Older refund versions (storage format 1) overwrote a sandwich-corrected

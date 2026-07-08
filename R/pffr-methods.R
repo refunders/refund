@@ -38,8 +38,18 @@
 #' @param type see \code{\link[mgcv]{predict.gam}()} for details.
 #'  Note that \code{type == "lpmatrix"} will force \code{reformat} to FALSE.
 #' @param se.fit see \code{\link[mgcv]{predict.gam}()}
+#' @param se_method how standard errors are computed when \code{se.fit = TRUE}
+#'  and \code{type} is \code{"link"} or \code{"response"}. \code{"normal"}
+#'  (default, unchanged behavior) uses the fit-time (model-based or robust
+#'  sandwich) covariance via \code{\link{pffr_vcov}}. \code{"jackknife"} instead
+#'  replaces the standard errors with the leave-one-cluster-out jackknife SEs of
+#'  \code{\link{pffr_jackknife_se}} --- the recommended path for
+#'  fitted-mean/response-scale (\eqn{E(Y)}) intervals at small numbers of curves
+#'  \eqn{G}, where the plug-in cluster/CL2 sandwich under-propagates the
+#'  aggregated variance. The point predictions \code{fit} are unaffected. See
+#'  \code{\link{pffr_jackknife_se}} for its calibration caveat.
 #' @param ...  additional arguments passed on to \code{\link[mgcv]{predict.gam}()}
-#' @seealso \code{\link[mgcv]{predict.gam}()}
+#' @seealso \code{\link[mgcv]{predict.gam}()}, \code{\link{pffr_jackknife_se}}
 #' @return If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long format.
 #'  If \code{se == TRUE}, a list with entries \code{fit} and \code{se.fit} containing fits and standard errors, respectively.
 #'  If \code{type == "terms"} or \code{"iterms"} each of these lists is a list of matrices of the same dimension as the response for \code{newdata}
@@ -54,11 +64,30 @@ predict.pffr <- function(
   reformat = TRUE,
   type = "link",
   se.fit = FALSE,
+  se_method = c("normal", "jackknife"),
   ...
 ) {
   #browser()
 
+  se_method <- match.arg(se_method)
+  # `se_method` is a pffr-only argument (not a predict.gam formal); strip it
+  # from the reconstructed predict.gam call below.
   call <- match.call()
+  call$se_method <- NULL
+  if (
+    identical(se_method, "jackknife") &&
+      isTRUE(se.fit) &&
+      !(type %in% c("link", "response"))
+  ) {
+    stop(
+      "se_method = \"jackknife\" only supports type = \"link\" or ",
+      "\"response\" (not \"",
+      type,
+      "\").",
+      call. = FALSE
+    )
+  }
+  jk_newdata <- if (missing(newdata)) NULL else newdata
   nyindex <- object$pffr$nyindex
 
   ## warn if any entries in ... are not arguments for predict.gam
@@ -315,6 +344,7 @@ predict.pffr <- function(
   )
   if (
     isTRUE(se.fit) &&
+      identical(se_method, "normal") &&
       !identical(type, "lpmatrix") &&
       !identical(fit_sandwich_type, "none")
   ) {
@@ -329,6 +359,33 @@ predict.pffr <- function(
   } else mgcv::predict.gam
   call$object <- as.name("object")
   ret <- eval(call)
+
+  # Opt-in: replace the model/sandwich SEs with the leave-one-cluster-out
+  # jackknife SEs (recommended small-G path for fitted-mean/response-scale
+  # intervals; see pffr_jackknife_se()). Only the SE is overridden; `$fit` is
+  # exactly predict.gam's. Default se_method = "normal" leaves behavior
+  # unchanged.
+  if (isTRUE(se.fit) && identical(se_method, "jackknife")) {
+    jk_core <- pffr_jackknife_core(object, newdata = jk_newdata)
+    se_link <- sqrt(pmax(jk_core$var_link, 0))
+    jk_se <- if (identical(type, "response")) {
+      se_link * abs(as.vector(object$family$mu.eta(jk_core$eta_hat)))
+    } else {
+      se_link
+    }
+    if (length(jk_se) != length(ret$se.fit)) {
+      stop(
+        "se_method = \"jackknife\": jackknife SE length (",
+        length(jk_se),
+        ") does not match predict.gam's SE length (",
+        length(ret$se.fit),
+        "). This can happen with missing/irregular responses; use ",
+        "pffr_jackknife_se() directly.",
+        call. = FALSE
+      )
+    }
+    ret$se.fit <- jk_se
+  }
 
   if (type == "lpmatrix" && reformat) {
     reformat <- FALSE

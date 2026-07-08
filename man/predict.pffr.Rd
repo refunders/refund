@@ -4,7 +4,15 @@
 \alias{predict.pffr}
 \title{Prediction for penalized function-on-function regression}
 \usage{
-\method{predict}{pffr}(object, newdata, reformat = TRUE, type = "link", se.fit = FALSE, ...)
+\method{predict}{pffr}(
+  object,
+  newdata,
+  reformat = TRUE,
+  type = "link",
+  se.fit = FALSE,
+  se_method = c("normal", "jackknife"),
+  ...
+)
 }
 \arguments{
 \item{object}{a fitted \code{pffr}-object}
@@ -25,6 +33,17 @@ in the long vector shape returned by \code{predict.gam()}?}
 Note that \code{type == "lpmatrix"} will force \code{reformat} to FALSE.}
 
 \item{se.fit}{see \code{\link[mgcv]{predict.gam}()}}
+
+\item{se_method}{how standard errors are computed when \code{se.fit = TRUE}
+and \code{type} is \code{"link"} or \code{"response"}. \code{"normal"}
+(default, unchanged behavior) uses the fit-time (model-based or robust
+sandwich) covariance via \code{\link{pffr_vcov}}. \code{"jackknife"} instead
+replaces the standard errors with the leave-one-cluster-out jackknife SEs of
+\code{\link{pffr_jackknife_se}} --- the recommended path for
+fitted-mean/response-scale (\eqn{E(Y)}) intervals at small numbers of curves
+\eqn{G}, where the plug-in cluster/CL2 sandwich under-propagates the
+aggregated variance. The point predictions \code{fit} are unaffected. See
+\code{\link{pffr_jackknife_se}} for its calibration caveat.}
 
 \item{...}{additional arguments passed on to \code{\link[mgcv]{predict.gam}()}}
 }
@@ -54,7 +73,7 @@ Index variables (i.e., evaluation points) for the functional covariates are reus
  \code{object$pffr$yind}.
 }
 \seealso{
-\code{\link[mgcv]{predict.gam}()}
+\code{\link[mgcv]{predict.gam}()}, \code{\link{pffr_jackknife_se}}
 }
 \author{
 Fabian Scheipl
