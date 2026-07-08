@@ -19,9 +19,17 @@ test_that("family_has_exact_score follows the actual sandwich dispatch", {
   expect_true(fhes(Gamma()))
   # gaulss: two-block Fisher-whitened exact score (special-cased)
   expect_true(fhes(mgcv::gaulss()))
-  # extended families reuse the working-residual APPROXIMATION -> not exact
-  expect_false(fhes(mgcv::scat()))
+  # scat: exact single-block score since S4 (merge-time reconciliation) --
+  # both the unfitted spelling ("scaled t") and a fitted-style label
+  expect_true(fhes(mgcv::scat()))
+  scat_fitted <- mgcv::scat()
+  scat_fitted$family <- "Scaled t(4.13,0.29)"
+  expect_true(fhes(scat_fitted))
+  # remaining extended families reuse the working-residual APPROXIMATION
   expect_false(fhes(mgcv::nb()))
+  expect_false(fhes(mgcv::tw()))
+  # scat + DTI-shaped size promotes to cl2 under the auto policy
+  expect_identical(pol(92, 55, mgcv::scat()), "cl2")
   # a family defining $sandwich (other than gaulss) -> HC fallback, no score path
   fake <- gaussian()
   fake$family <- "multinom"
@@ -53,7 +61,7 @@ test_that("policy resolves each branch as specified", {
   # max D_g above threshold -> cluster
   expect_identical(pol(92, 501, gaussian()), "cluster")
   # family without an exact/two-block score path -> cluster
-  expect_identical(pol(92, 55, mgcv::scat()), "cluster")
+  # (scat moved to the eligible set at the S4 merge; nb/tw stay approx)
   expect_identical(pol(92, 55, mgcv::nb()), "cluster")
   # non-finite guards -> cluster
   expect_identical(pol(NA_real_, 55, gaussian()), "cluster")

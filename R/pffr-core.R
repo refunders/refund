@@ -2274,22 +2274,24 @@ resolve_crit_reference <- function(crit, sandwich_type, G) {
 #' Does a family have an exact or two-block cluster score path?
 #'
 #' Decides whether the `sandwich = "auto"` policy may promote a fit to the
-#' leverage-adjusted CL2 sandwich, based on the ACTUAL sandwich dispatch in this
-#' package (`gam_sandwich_cluster_cl2()` / `build_cl2_working_*()`):
+#' leverage-adjusted CL2 sandwich. The classification is delegated to
+#' [pffr_score_kind()] --- the single source of truth for the ACTUAL sandwich
+#' dispatch (`gam_sandwich_cluster_cl2()` / `build_cl2_working_*()`) --- so the
+#' two cannot drift:
 #' \itemize{
-#'   \item `gaulss` --- two-block Fisher-whitened exact score
+#'   \item `"gaulss"` --- two-block Fisher-whitened exact score
 #'     ([build_cl2_working_gaulss()]): eligible.
-#'   \item families defining `family$sandwich` other than `gaulss` (e.g.
+#'   \item `"scat"` --- exact scaled-t score ([compute_scat_scores()] /
+#'     [build_cl2_working_scat()], task S4): eligible.
+#'   \item `"custom"` (families defining their own `family$sandwich`, e.g.
 #'     `multinom`) --- the CL2 path falls back to the observation-level HC
 #'     sandwich, so there is no cluster score path: not eligible.
-#'   \item standard exponential-dispersion GLM families (class `"family"`:
-#'     `gaussian`, `poisson`, `binomial`, `Gamma`, ...) --- exact per-observation
-#'     score ([build_cl2_working_standard()]): eligible.
-#'   \item extended families (class `"extended.family"`: `scat`, `nb`, `tw`) ---
-#'     reuse the standard score path only as the exponential-family
-#'     working-residual APPROXIMATION (the D1 review item), \emph{not} an exact
-#'     score, so they are NOT auto-promoted here (scat becomes eligible once its
-#'     exact score, task S4, ships).
+#'   \item `"approx"` (remaining extended families: `nb`, `tw`, `betar`, ...)
+#'     --- only the exponential-family working-residual APPROXIMATION (the D1
+#'     review item), not an exact score: not eligible.
+#'   \item `"exact"` (standard exponential-dispersion GLM families) ---
+#'     eligible, provided the object actually carries the score ingredients
+#'     `build_cl2_working_standard()` consumes.
 #' }
 #'
 #' @param family A fitted model's `family` object.
@@ -2299,22 +2301,21 @@ family_has_exact_score <- function(family) {
   if (is.null(family)) {
     return(FALSE)
   }
-  fam <- tolower(as.character(family$family)[1])
-  if (identical(fam, "gaulss")) {
-    return(TRUE)
-  }
-  if (!is.null(family$sandwich)) {
-    return(FALSE)
-  }
-  # Positive branch: a genuine exponential-dispersion GLM family with the
-  # score ingredients build_cl2_working_standard() actually consumes -- not
-  # merely "anything that is not an extended family" (a custom family-like
-  # object without mu.eta/variance has no score path and must not be
-  # auto-promoted).
-  inherits(family, "family") &&
-    !inherits(family, "extended.family") &&
-    is.function(family$mu.eta) &&
-    is.function(family$variance)
+  switch(
+    pffr_score_kind(family),
+    gaulss = TRUE,
+    scat = TRUE,
+    custom = FALSE,
+    approx = FALSE,
+    # "exact" fallthrough: require the score ingredients
+    # build_cl2_working_standard() actually consumes -- not merely "anything
+    # that is not an extended family" (a custom family-like object without
+    # mu.eta/variance has no score path and must not be auto-promoted).
+    inherits(family, "family") &&
+      !inherits(family, "extended.family") &&
+      is.function(family$mu.eta) &&
+      is.function(family$variance)
+  )
 }
 
 #' Resolve `sandwich = "auto"` to a concrete cluster-robust estimator

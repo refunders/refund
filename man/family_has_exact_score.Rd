@@ -14,22 +14,24 @@ family_has_exact_score(family)
 }
 \description{
 Decides whether the `sandwich = "auto"` policy may promote a fit to the
-leverage-adjusted CL2 sandwich, based on the ACTUAL sandwich dispatch in this
-package (`gam_sandwich_cluster_cl2()` / `build_cl2_working_*()`):
+leverage-adjusted CL2 sandwich. The classification is delegated to
+[pffr_score_kind()] --- the single source of truth for the ACTUAL sandwich
+dispatch (`gam_sandwich_cluster_cl2()` / `build_cl2_working_*()`) --- so the
+two cannot drift:
 \itemize{
-  \item `gaulss` --- two-block Fisher-whitened exact score
+  \item `"gaulss"` --- two-block Fisher-whitened exact score
     ([build_cl2_working_gaulss()]): eligible.
-  \item families defining `family$sandwich` other than `gaulss` (e.g.
+  \item `"scat"` --- exact scaled-t score ([compute_scat_scores()] /
+    [build_cl2_working_scat()], task S4): eligible.
+  \item `"custom"` (families defining their own `family$sandwich`, e.g.
     `multinom`) --- the CL2 path falls back to the observation-level HC
     sandwich, so there is no cluster score path: not eligible.
-  \item standard exponential-dispersion GLM families (class `"family"`:
-    `gaussian`, `poisson`, `binomial`, `Gamma`, ...) --- exact per-observation
-    score ([build_cl2_working_standard()]): eligible.
-  \item extended families (class `"extended.family"`: `scat`, `nb`, `tw`) ---
-    reuse the standard score path only as the exponential-family
-    working-residual APPROXIMATION (the D1 review item), \emph{not} an exact
-    score, so they are NOT auto-promoted here (scat becomes eligible once its
-    exact score, task S4, ships).
+  \item `"approx"` (remaining extended families: `nb`, `tw`, `betar`, ...)
+    --- only the exponential-family working-residual APPROXIMATION (the D1
+    review item), not an exact score: not eligible.
+  \item `"exact"` (standard exponential-dispersion GLM families) ---
+    eligible, provided the object actually carries the score ingredients
+    `build_cl2_working_standard()` consumes.
 }
 }
 \keyword{internal}
