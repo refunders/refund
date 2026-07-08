@@ -17,9 +17,9 @@ gls_cs(
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}
 
-\item{data}{an optional data frame, list or environment containing the 
-variables in the model. If not found in data, the variables are taken from 
-environment(formula), typically the environment from which the function is 
+\item{data}{an optional data frame, list or environment containing the
+variables in the model. If not found in data, the variables are taken from
+environment(formula), typically the environment from which the function is
 called.}
 
 \item{Kt}{number of spline basis functions used to estimate coefficient functions}
@@ -45,7 +45,7 @@ A list of class \code{"fosr"} containing estimated coefficient
 }
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.
-This function estimates model parameters using GLS: first, an OLS estimate of 
+This function estimates model parameters using GLS: first, an OLS estimate of
 spline coefficients is estimated; second, the residual covariance is estimated
 using an FPC decomposition of the OLS residual curves; finally, a GLS estimate
 of spline coefficients is estimated. Although this is in the `BayesFoSR` package,
@@ -53,7 +53,7 @@ there is nothing Bayesian about this FoSR.
 }
 \references{
 Goldsmith, J., Kitago, T. (2016).
-Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
+Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 Series C}, 65 215-236.
 }

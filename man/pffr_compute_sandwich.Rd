@@ -10,7 +10,9 @@ pffr_compute_sandwich(
   cluster_id,
   freq = FALSE,
   dof_correction = "none",
-  edf_type = "trace"
+  edf_type = "trace",
+  b2 = TRUE,
+  center_scores = FALSE
 )
 }
 \arguments{
@@ -25,6 +27,13 @@ pffr_compute_sandwich(
 
 \item{dof_correction, edf_type}{CR1 small-sample dof options (`"cluster"`
 only).}
+
+\item{b2}{Internal ablation switch (default `TRUE`); drop the additive
+\eqn{B_2} term when `FALSE` (X5). Applies to `"cluster"`/`"cl2"` only.}
+
+\item{center_scores}{Internal ablation switch (default `FALSE`); center the
+per-cluster score sums before the meat when `TRUE` (X6). Applies to
+`"cluster"`/`"cl2"` only.}
 }
 \value{
 A covariance matrix (with CL2 leverage attributes for `type =

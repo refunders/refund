@@ -9,7 +9,7 @@ re(x, ...)
 \arguments{
 \item{x}{a grouping variable: must be a \code{factor}}
 
-\item{...}{further arguments handed over to \code{\link[mgcv]{s}}, 
+\item{...}{further arguments handed over to \code{\link[mgcv]{s}},
 see \code{\link[mgcv]{random.effects}}}
 }
 \value{
@@ -18,7 +18,7 @@ A list with components \code{call} (a rewritten call to
   list containing the grouping factor).
 }
 \description{
-Sets up a random effect for the levels of \code{x}. 
+Sets up a random effect for the levels of \code{x}.
 Use the \code{by}-argument to request random slopes.
 }
 \details{

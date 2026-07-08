@@ -10,7 +10,9 @@ pffr_vcov(
   freq = FALSE,
   cluster = NULL,
   dof_correction = NULL,
-  edf_type = NULL
+  edf_type = NULL,
+  b2 = TRUE,
+  center_scores = FALSE
 )
 }
 \arguments{
@@ -28,6 +30,15 @@ model-based bread.}
 cluster level.}
 
 \item{dof_correction, edf_type}{CR1 dof options; `NULL` inherits the fit's.}
+
+\item{b2}{Internal ablation switch (default `TRUE` = current behavior). When
+`FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2} from the
+cluster/CL2 sandwich (X5). Non-default values always force a fresh
+recomputation and are never served from or written to the cache.}
+
+\item{center_scores}{Internal ablation switch (default `FALSE` = current
+behavior). When `TRUE`, center the per-cluster score sums before forming
+the cluster/CL2 meat (X6). Same cache semantics as `b2`.}
 }
 \value{
 A covariance matrix.

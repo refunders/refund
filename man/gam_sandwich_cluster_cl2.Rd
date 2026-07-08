@@ -9,7 +9,9 @@ gam_sandwich_cluster_cl2(
   cluster_id,
   freq = FALSE,
   tol = 1e-08,
-  leverage_cap = 0.999
+  leverage_cap = 0.999,
+  b2 = TRUE,
+  center_scores = FALSE
 )
 }
 \arguments{
@@ -24,6 +26,15 @@ If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).}
 \item{tol}{Eigenvalue floor for numerical stability.}
 
 \item{leverage_cap}{Cap for cluster leverage eigenvalues (< 1).}
+
+\item{b2}{Internal ablation switch (default `TRUE` = current behavior). When
+`FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
+V_e} (X5).}
+
+\item{center_scores}{Internal ablation switch (default `FALSE` = current
+behavior). When `TRUE`, center the leverage-adjusted per-cluster
+contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
+(X6).}
 }
 \value{
 A p x p covariance matrix with attributes `n_capped_clusters` and

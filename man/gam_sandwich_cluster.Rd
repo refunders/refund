@@ -9,7 +9,9 @@ gam_sandwich_cluster(
   cluster_id,
   freq = FALSE,
   dof_correction = c("none", "edf"),
-  edf_type = c("trace", "edf2", "basis")
+  edf_type = c("trace", "edf2", "basis"),
+  b2 = TRUE,
+  center_scores = FALSE
 )
 }
 \arguments{
@@ -29,6 +31,17 @@ corrects per-cluster leverage; see [compute_dof_factor()].}
 
 \item{edf_type}{Which effective degrees of freedom the `"edf"` correction
 uses: `"trace"` (default, `sum(b$edf)`), `"edf2"`, or `"basis"`.}
+
+\item{b2}{Internal ablation switch (default `TRUE` = current behavior). When
+`FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
+V_e}, returning \eqn{c\,V_p (\sum_g U_g U_g^\top) V_p} only. Not a
+user-facing option; used by the B2-ablation experiment (X5).}
+
+\item{center_scores}{Internal ablation switch (default `FALSE` = current
+behavior). When `TRUE`, center the per-cluster score sums
+\eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat (X6). Since
+\eqn{\sum_g U_g = S\hat\theta} (the working-log-likelihood penalty
+gradient), this removes the rank-one penalty direction from the meat.}
 }
 \value{
 A p x p covariance matrix.
