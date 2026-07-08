@@ -18,6 +18,10 @@ sandwich builds scores from the exponential-family working residual, which is
 only an approximation to the true log-likelihood score. This helper emits the
 review-mandated disclosure, at most once per session per family (keyed via
 [pffr_warn_once()], so repeated `coef()`/`predict()` recomputations do not
-spam). Tests reset by clearing `refund:::.pffr_state`.
+spam). Fitted extended families embed estimated parameters in the family
+string (e.g. `"Negative Binomial(2.403)"`, `"Tweedie(p=1.17)"`), so the
+warn-once key strips the parenthetical (and case), keeping the semantics
+once-per-family rather than once-per-theta. Tests reset by removing the
+`approx_score_*` keys from `refund:::.pffr_state`.
 }
 \keyword{internal}

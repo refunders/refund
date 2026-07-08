@@ -9,16 +9,17 @@ pffr_dependence_check(fit, lags = 1:3)
 \arguments{
 \item{fit}{A fitted \code{\link{pffr}} model.}
 
-\item{lags}{Integer lags used for the absolute-autocorrelation average in
-\code{DE} (default \code{1:3}). The lag-1 summaries always use lag 1.}
+\item{lags}{Integer lags whose per-curve SIGNED autocorrelations are averaged
+(then averaged across curves and clipped at 0) in \code{DE} (default
+\code{1:3}). The lag-1 summaries always use lag 1.}
 }
 \value{
 An object of class \code{"pffr_dependence_check"}: a list with
   \code{rho1_mean}, \code{rho1_iqr}, per-curve lag-1 \code{rho1}, per-curve
   over-lag mean \code{rho_avg}, the across-curve mean \code{rhobar_avg},
   \code{Dbar}, \code{DE}, \code{G}, \code{N}, \code{N_eff}, \code{lags},
-  \code{regime} (\code{"weak"}/\code{"detected"}), \code{advisory}, and
-  \code{n_curves_used}.
+  \code{regime} (\code{"weak"}/\code{"detected"}/\code{"undetermined"}),
+  \code{advisory}, and \code{n_curves_used}.
 }
 \description{
 A quick, DESCRIPTIVE flag for how strongly the working residuals are
@@ -54,7 +55,12 @@ computed. Reported summaries:
     to the number of curves \eqn{G}.
 }
 The advisory follows a two-regime rule: \code{DE < 1.5} ("dependence looks
-weak") vs. \code{DE >= 1.5} ("dependence detected").
+weak") vs. \code{DE >= 1.5} ("dependence detected"). Caveat: because the
+across-curve average uses SIGNED autocorrelations, opposite-sign per-curve
+autocorrelations can cancel each other in \code{DE} --- consistent with its
+role as a crude descriptive flag, not an estimator. For a single-curve fit
+(\eqn{G < 2}) the design effect is meaningless; \code{DE}/\code{N_eff} are
+\code{NA} and the advisory says so.
 }
 \seealso{
 \code{\link{pffr}}, \code{\link{coef.pffr}}

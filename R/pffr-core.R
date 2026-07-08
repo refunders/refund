@@ -1059,15 +1059,20 @@ pffr_score_kind <- function(family) {
 #' only an approximation to the true log-likelihood score. This helper emits the
 #' review-mandated disclosure, at most once per session per family (keyed via
 #' [pffr_warn_once()], so repeated `coef()`/`predict()` recomputations do not
-#' spam). Tests reset by clearing `refund:::.pffr_state`.
+#' spam). Fitted extended families embed estimated parameters in the family
+#' string (e.g. `"Negative Binomial(2.403)"`, `"Tweedie(p=1.17)"`), so the
+#' warn-once key strips the parenthetical (and case), keeping the semantics
+#' once-per-family rather than once-per-theta. Tests reset by removing the
+#' `approx_score_*` keys from `refund:::.pffr_state`.
 #'
 #' @param family A family object.
 #' @returns Invisibly `NULL`; called for the warning side effect.
 #' @keywords internal
 pffr_warn_approx_score <- function(family) {
   fam <- as.character(family$family)
+  key_fam <- tolower(trimws(sub("\\(.*$", "", fam)))
   pffr_warn_once(
-    paste0("approx_score_", fam),
+    paste0("approx_score_", key_fam),
     paste0(
       "sandwich scores for family '",
       fam,
@@ -1310,15 +1315,20 @@ build_cl2_working_gaulss <- function(b, cluster_id) {
 #' Fisher-whitened design the CL2 leverage adjustment needs. With location
 #' Fisher information (in \eqn{\mu}-space)
 #' \deqn{w = (\nu+1) / ((\nu+3)\,\sigma^2)} (the standard t-location result,
-#' equal to `0.5 * family$Dd()$EDmu2`), the eta-space working weight is
-#' \eqn{W_i = \omega_i\, (\mathrm{d}\mu/\mathrm{d}\eta)_i^2\, w} with prior
-#' weights \eqn{\omega_i}, so that
+#' equal to `0.5 * family$Dd()$EDmu2`), the eta-space whitening weight is
+#' \eqn{W_i = (\mathrm{d}\mu/\mathrm{d}\eta)_i^2\, w} WITHOUT the prior weights
+#' \eqn{\omega_i}: `mgcv::scat`'s `Dd()$EDmu2` deliberately omits `wt`, so the
+#' Fisher weights `gam.fit4` stores (`wf = pmax(0, EDeta2/2)` = `fit$weights`)
+#' and uses for `Vp`/EDF are prior-weight-free (verified empirically:
+#' `fit$weights == mu_eta^2 * w` and `trace(Vp X'diag(fit$weights)X) ==
+#' sum(edf)` to 1e-10 on a weighted fit). The prior weights enter the residual
+#' instead,
 #' \deqn{\tilde x_i = \sqrt{W_i}\, x_i, \qquad z_i = \omega_i\,
-#' (\partial\ell/\partial\mu)_i\, (\mathrm{d}\mu/\mathrm{d}\eta)_i / \sqrt{W_i}.}
-#' Then `Xw^T z` reconstructs the exact score exactly, and because `Xw` carries
-#' the expected Fisher weight the per-cluster hat block
-#' `H_gg = Xw_g Vp Xw_g^T` is the genuine penalized hat (its total trace equals
-#' the model EDF), mirroring [build_cl2_working_gaulss()].
+#' (\partial\ell/\partial\mu)_i\, (\mathrm{d}\mu/\mathrm{d}\eta)_i / \sqrt{W_i},}
+#' so `Xw^T z` still reconstructs the exact (prior-weighted) score, and the
+#' per-cluster hat block `H_gg = Xw_g Vp Xw_g^T` is the genuine penalized hat of
+#' the fit (its total trace equals the model EDF), mirroring
+#' [build_cl2_working_gaulss()].
 #'
 #' @param b Fitted GAM object with `family = scat()`.
 #' @param cluster_id Cluster vector.
@@ -1342,9 +1352,12 @@ build_cl2_working_scat <- function(b, cluster_id) {
   dl_dmu <- (nu + 1) * r / (nu * sig^2 + r^2)
   w_fisher <- (nu + 1) / ((nu + 3) * sig^2) # Fisher info in mu-space (scalar)
 
-  # eta-space expected Fisher working weight (= mgcv IRLS weight): trace of the
-  # whitened hat then equals the model EDF.
-  W <- pw * (mu_eta^2) * w_fisher
+  # eta-space expected Fisher whitening weight, WITHOUT prior weights: mgcv's
+  # scat EDmu2 omits wt, so gam.fit4's stored Fisher weights (fit$weights) and
+  # hence Vp/EDF are prior-weight-free; including pw here would break the
+  # trace(H) = EDF hat identity on weighted fits (measured +21% at pw~U(0.5,2)).
+  # The prior weights enter the residual z below, keeping Xw^T z exact.
+  W <- (mu_eta^2) * w_fisher
   s <- sqrt(W)
   s[!is.finite(s)] <- 0
 
@@ -2172,6 +2185,12 @@ pffr_df_context <- function(
   if (kind == "custom") {
     return(list(ok = FALSE, type = type))
   }
+  # Approximate-score families fall through to the generic working
+  # representation below; disclose that here too (review D1 covers every
+  # consumer of the approximation, not just the sandwich builders).
+  if (kind == "approx") {
+    pffr_warn_approx_score(b$family)
+  }
   cluster_id_curve <- build_cluster_id(object$pffr, cluster = cluster)
   work <- switch(
     kind,
@@ -2286,8 +2305,14 @@ pffr_sandwich_shares <- function(object) {
   G <- n_clusters_checked(cluster_id)
   X <- model.matrix(b)
 
+  score_kind <- pffr_score_kind(b$family)
+  # Disclose the working-residual approximation for approx families here too
+  # (review D1 covers every consumer, not just the sandwich builders).
+  if (score_kind == "approx") {
+    pffr_warn_approx_score(b$family)
+  }
   scores <- switch(
-    pffr_score_kind(b$family),
+    score_kind,
     gaulss = compute_gaulss_scores(b, X),
     scat = compute_scat_scores(b, X),
     {

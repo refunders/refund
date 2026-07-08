@@ -19,14 +19,19 @@ Factorizes the exact scaled-t location score `s_i = z_i * Xw_i` using the
 Fisher-whitened design the CL2 leverage adjustment needs. With location
 Fisher information (in \eqn{\mu}-space)
 \deqn{w = (\nu+1) / ((\nu+3)\,\sigma^2)} (the standard t-location result,
-equal to `0.5 * family$Dd()$EDmu2`), the eta-space working weight is
-\eqn{W_i = \omega_i\, (\mathrm{d}\mu/\mathrm{d}\eta)_i^2\, w} with prior
-weights \eqn{\omega_i}, so that
+equal to `0.5 * family$Dd()$EDmu2`), the eta-space whitening weight is
+\eqn{W_i = (\mathrm{d}\mu/\mathrm{d}\eta)_i^2\, w} WITHOUT the prior weights
+\eqn{\omega_i}: `mgcv::scat`'s `Dd()$EDmu2` deliberately omits `wt`, so the
+Fisher weights `gam.fit4` stores (`wf = pmax(0, EDeta2/2)` = `fit$weights`)
+and uses for `Vp`/EDF are prior-weight-free (verified empirically:
+`fit$weights == mu_eta^2 * w` and `trace(Vp X'diag(fit$weights)X) ==
+sum(edf)` to 1e-10 on a weighted fit). The prior weights enter the residual
+instead,
 \deqn{\tilde x_i = \sqrt{W_i}\, x_i, \qquad z_i = \omega_i\,
-(\partial\ell/\partial\mu)_i\, (\mathrm{d}\mu/\mathrm{d}\eta)_i / \sqrt{W_i}.}
-Then `Xw^T z` reconstructs the exact score exactly, and because `Xw` carries
-the expected Fisher weight the per-cluster hat block
-`H_gg = Xw_g Vp Xw_g^T` is the genuine penalized hat (its total trace equals
-the model EDF), mirroring [build_cl2_working_gaulss()].
+(\partial\ell/\partial\mu)_i\, (\mathrm{d}\mu/\mathrm{d}\eta)_i / \sqrt{W_i},}
+so `Xw^T z` still reconstructs the exact (prior-weighted) score, and the
+per-cluster hat block `H_gg = Xw_g Vp Xw_g^T` is the genuine penalized hat of
+the fit (its total trace equals the model EDF), mirroring
+[build_cl2_working_gaulss()].
 }
 \keyword{internal}

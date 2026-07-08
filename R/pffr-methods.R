@@ -1730,6 +1730,17 @@ pffr_summary_df <- function(object) {
   if (!is.finite(G) || G >= 150) {
     return(NULL)
   }
+  # The suppressWarnings() below would otherwise silently consume the
+  # once-per-session approx-score disclosure (pffr_warn_approx_score, fired via
+  # pffr_df_context) before the user ever saw it: the warn-once key is set even
+  # when the warning is muffled. Snapshot the approx_score_* keys and drop any
+  # that appear during the suppressed call, so a later user-facing computation
+  # still discloses.
+  keys_before <- grep(
+    "^approx_score_",
+    ls(envir = .pffr_state),
+    value = TRUE
+  )
   df_vals <- tryCatch(
     {
       # Call coef.pffr() directly: summary.pffr() strips the "pffr" class from
@@ -1752,6 +1763,13 @@ pffr_summary_df <- function(object) {
     },
     error = function(e) numeric(0)
   )
+  keys_new <- setdiff(
+    grep("^approx_score_", ls(envir = .pffr_state), value = TRUE),
+    keys_before
+  )
+  if (length(keys_new) > 0) {
+    rm(list = keys_new, envir = .pffr_state)
+  }
   if (length(df_vals) == 0) {
     return(NULL)
   }
@@ -2008,17 +2026,23 @@ print.summary.pffr <- function(
 #'     to the number of curves \eqn{G}.
 #' }
 #' The advisory follows a two-regime rule: \code{DE < 1.5} ("dependence looks
-#' weak") vs. \code{DE >= 1.5} ("dependence detected").
+#' weak") vs. \code{DE >= 1.5} ("dependence detected"). Caveat: because the
+#' across-curve average uses SIGNED autocorrelations, opposite-sign per-curve
+#' autocorrelations can cancel each other in \code{DE} --- consistent with its
+#' role as a crude descriptive flag, not an estimator. For a single-curve fit
+#' (\eqn{G < 2}) the design effect is meaningless; \code{DE}/\code{N_eff} are
+#' \code{NA} and the advisory says so.
 #'
 #' @param fit A fitted \code{\link{pffr}} model.
-#' @param lags Integer lags used for the absolute-autocorrelation average in
-#'   \code{DE} (default \code{1:3}). The lag-1 summaries always use lag 1.
+#' @param lags Integer lags whose per-curve SIGNED autocorrelations are averaged
+#'   (then averaged across curves and clipped at 0) in \code{DE} (default
+#'   \code{1:3}). The lag-1 summaries always use lag 1.
 #' @returns An object of class \code{"pffr_dependence_check"}: a list with
 #'   \code{rho1_mean}, \code{rho1_iqr}, per-curve lag-1 \code{rho1}, per-curve
 #'   over-lag mean \code{rho_avg}, the across-curve mean \code{rhobar_avg},
 #'   \code{Dbar}, \code{DE}, \code{G}, \code{N}, \code{N_eff}, \code{lags},
-#'   \code{regime} (\code{"weak"}/\code{"detected"}), \code{advisory}, and
-#'   \code{n_curves_used}.
+#'   \code{regime} (\code{"weak"}/\code{"detected"}/\code{"undetermined"}),
+#'   \code{advisory}, and \code{n_curves_used}.
 #' @seealso \code{\link{pffr}}, \code{\link{coef.pffr}}
 #' @export
 #' @author Fabian Scheipl
@@ -2043,6 +2067,15 @@ pffr_dependence_check <- function(fit, lags = 1:3) {
   cid <- build_cluster_id(meta)
   if (isTRUE(meta$is_sparse)) {
     tval <- meta$ydata$.index
+    # Sparse fits record no missing_indices, but mgcv silently drops rows with
+    # NA response (na.omit) while ydata keeps them; filter those rows so
+    # cid/tval align with the fitted residuals (verified empirically:
+    # fit$y == ydata$.value[!is.na(.value)] on a sparse fit with NA .value).
+    na_y <- is.na(meta$ydata$.value)
+    if (any(na_y)) {
+      cid <- cid[!na_y]
+      tval <- tval[!na_y]
+    }
   } else {
     tval <- rep(meta$yind, times = meta$nobs)
     if (!is.null(meta$missing_indices)) {
@@ -2101,20 +2134,36 @@ pffr_dependence_check <- function(fit, lags = 1:3) {
   G <- length(series)
   rhobar_avg <- mean(rho_avg, na.rm = TRUE)
   if (!is.finite(rhobar_avg)) rhobar_avg <- 0
-  DE <- 1 + (Dbar - 1) * max(rhobar_avg, 0)
-  N_eff <- if (is.finite(DE) && DE > 0) N / DE else NA_real_
 
-  regime <- if (is.finite(DE) && DE >= 1.5) "detected" else "weak"
-  advisory <- if (regime == "detected") {
-    paste0(
-      "within-curve dependence detected; model-based intervals would be ",
-      "anti-conservative (see ?pffr_inference)"
+  if (G < 2) {
+    # Single curve: an across-curve design effect and cluster-robust intervals
+    # are both meaningless here; NA the derived quantities and say so instead
+    # of printing a misleading "dependence looks weak" line.
+    DE <- NA_real_
+    N_eff <- NA_real_
+    regime <- "undetermined"
+    advisory <- paste0(
+      "only one curve: the dependence diagnostic and cluster-robust ",
+      "intervals are not meaningful"
     )
   } else {
-    paste0(
-      "within-curve dependence looks weak; model-based and robust intervals ",
-      "should broadly agree (robust costs a few points of coverage here)"
-    )
+    DE <- 1 + (Dbar - 1) * max(rhobar_avg, 0)
+    N_eff <- if (is.finite(DE) && DE > 0) N / DE else NA_real_
+    regime <- if (is.finite(DE) && DE >= 1.5) "detected" else "weak"
+    advisory <- if (regime == "detected") {
+      paste0(
+        "within-curve dependence detected; model-based intervals would be ",
+        # TODO(S7): point at ?pffr_inference once that help topic/vignette
+        # ships with the release task; it does not exist yet.
+        "anti-conservative (see ?pffr_dependence_check)"
+      )
+    } else {
+      paste0(
+        "within-curve dependence looks weak; model-based and robust ",
+        "intervals should broadly agree (robust costs a few points of ",
+        "coverage here)"
+      )
+    }
   }
 
   structure(
@@ -2141,6 +2190,16 @@ pffr_dependence_check <- function(fit, lags = 1:3) {
 # Shared one-line + advisory printer, used by both print.pffr_dependence_check
 # and print.summary.pffr.
 print_dependence_line <- function(x, digits = 3) {
+  if (!is.finite(x$DE)) {
+    # Single-curve (or otherwise undetermined) case: only the advisory.
+    cat(
+      "Within-curve dependence (descriptive flag): ",
+      x$advisory,
+      ".\n",
+      sep = ""
+    )
+    return(invisible(x))
+  }
   fmt <- function(v) formatC(v, digits = digits, format = "fg")
   cat(sprintf(
     paste0(
