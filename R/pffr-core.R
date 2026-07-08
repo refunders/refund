@@ -1004,6 +1004,78 @@ build_cluster_id <- function(pffr_meta, cluster = NULL) {
   cluster_id
 }
 
+#' Classify a family's sandwich-score path
+#'
+#' Determines how the cluster-robust sandwich builds per-observation scores for
+#' a given family. The returned label drives the dispatch in
+#' [gam_sandwich_cluster()], [gam_sandwich_cluster_cl2()] and
+#' [pffr_df_context()].
+#'
+#' \describe{
+#'   \item{`"gaulss"`}{Gaussian location-scale; exact two-block Fisher-whitened
+#'     score ([compute_gaulss_scores()] / [build_cl2_working_gaulss()]).}
+#'   \item{`"scat"`}{Scaled-t (`mgcv::scat`); exact single-block score
+#'     ([compute_scat_scores()] / [build_cl2_working_scat()]).}
+#'   \item{`"exact"`}{An ordinary exponential-dispersion family (`gaussian`,
+#'     `poisson`, `binomial`, `Gamma`, `inverse.gaussian`, quasi-families).
+#'     Their generic working-residual score
+#'     \eqn{(y-\mu)\,(\mathrm{d}\mu/\mathrm{d}\eta)/(\phi V(\mu))} is the exact
+#'     log-likelihood score, so no approximation is involved.}
+#'   \item{`"approx"`}{An extended family (`nb`, `tw`, `betar`, `ocat`, ...)
+#'     that is neither scaled-t nor location-scale. The generic
+#'     working-residual score is only an exponential-family approximation to the
+#'     true score; the sandwich builders emit [pffr_warn_approx_score()].}
+#'   \item{`"custom"`}{A family defining its own `family$sandwich` (other than
+#'     gaulss, e.g. `multinom`); no cluster score factorization is implemented,
+#'     so the builders fall back to [mgcv::vcov.gam()].}
+#' }
+#'
+#' @param family A family object (ordinary `stats::family` or `mgcv` extended /
+#'   general family).
+#' @returns One of `"gaulss"`, `"scat"`, `"exact"`, `"approx"`, `"custom"`.
+#' @keywords internal
+pffr_score_kind <- function(family) {
+  fam <- tolower(as.character(family$family))
+  if (fam == "gaulss") {
+    return("gaulss")
+  }
+  # scat's family string is "scaled t" (unfitted) or "Scaled t(nu,sig)" (fitted)
+  if (grepl("^scaled t", fam)) {
+    return("scat")
+  }
+  if (!is.null(family$sandwich)) {
+    return("custom")
+  }
+  if (inherits(family, "extended.family")) {
+    return("approx")
+  }
+  "exact"
+}
+
+#' Warn once that a family's sandwich uses the working-residual approximation
+#'
+#' For families classified `"approx"` by [pffr_score_kind()] the cluster
+#' sandwich builds scores from the exponential-family working residual, which is
+#' only an approximation to the true log-likelihood score. This helper emits the
+#' review-mandated disclosure, at most once per session per family (keyed via
+#' [pffr_warn_once()], so repeated `coef()`/`predict()` recomputations do not
+#' spam). Tests reset by clearing `refund:::.pffr_state`.
+#'
+#' @param family A family object.
+#' @returns Invisibly `NULL`; called for the warning side effect.
+#' @keywords internal
+pffr_warn_approx_score <- function(family) {
+  fam <- as.character(family$family)
+  pffr_warn_once(
+    paste0("approx_score_", fam),
+    paste0(
+      "sandwich scores for family '",
+      fam,
+      "' use the exponential-family working-residual approximation"
+    )
+  )
+}
+
 #' Compute per-observation scores for gaulss family
 #'
 #' gaulss uses `tau = 1/sigma` with logb link and defines `family$sandwich`,
@@ -1040,6 +1112,47 @@ compute_gaulss_scores <- function(b, X) {
   S[, lpi[[1]]] <- S[, lpi[[1]]] + w1 * X[, lpi[[1]], drop = FALSE]
   S[, lpi[[2]]] <- S[, lpi[[2]]] + w2 * X[, lpi[[2]], drop = FALSE]
   S
+}
+
+#' Compute per-observation scores for the scaled-t (scat) family
+#'
+#' `mgcv::scat` is a scaled-t location family, NOT an exponential family, so the
+#' generic working-residual score is only an approximation. This computes the
+#' EXACT location score. For \eqn{y \sim \mathrm{scaled\text{-}t}(\nu, \mu,
+#' \sigma)}, \eqn{r = y - \mu},
+#' \deqn{\frac{\partial \ell}{\partial \mu} = \frac{(\nu+1)\,r}{\nu\sigma^2 +
+#' r^2},}
+#' verified against the numerical derivative of the scaled-t log-density and
+#' against `family$Dd()$Dmu = -2\,\partial\ell/\partial\mu`. The per-observation
+#' score in coefficient space is \eqn{(\partial\ell/\partial\eta)\,x =
+#' (\partial\ell/\partial\mu)(\mathrm{d}\mu/\mathrm{d}\eta)\,x}, which handles
+#' the identity (default), log and inverse links uniformly. \eqn{(\nu, \sigma)}
+#' are taken on the natural scale via `family$getTheta(TRUE)`
+#' (\eqn{\nu = \mathtt{min.df} + e^{\theta_1}}, \eqn{\sigma = e^{\theta_2}}).
+#'
+#' @param b Fitted GAM object with `family = scat()`.
+#' @param X Model matrix.
+#' @returns Score matrix (n_obs x p).
+#' @keywords internal
+compute_scat_scores <- function(b, X) {
+  th <- b$family$getTheta(TRUE)
+  nu <- th[1]
+  sig <- th[2]
+
+  mu <- as.vector(b$fitted.values)
+  eta <- as.vector(b$linear.predictors)
+  r <- as.vector(b$y) - mu
+  mu_eta <- as.vector(b$family$mu.eta(eta))
+
+  dl_dmu <- (nu + 1) * r / (nu * sig^2 + r^2)
+  score_eta <- dl_dmu * mu_eta # d l / d eta
+
+  pw <- b$prior.weights
+  if (!is.null(pw) && any(pw != 1)) {
+    score_eta <- as.vector(pw) * score_eta
+  }
+  score_eta[!is.finite(score_eta)] <- 0
+  score_eta * X
 }
 
 #' Symmetric matrix inverse square root with eigenvalue floor
@@ -1189,6 +1302,60 @@ build_cl2_working_gaulss <- function(b, cluster_id) {
     z = c(block1$z, block2$z),
     cluster_id = rep(cluster_id, times = 2L)
   )
+}
+
+#' Build CL2 working representation for the scaled-t (scat) family
+#'
+#' Factorizes the exact scaled-t location score `s_i = z_i * Xw_i` using the
+#' Fisher-whitened design the CL2 leverage adjustment needs. With location
+#' Fisher information (in \eqn{\mu}-space)
+#' \deqn{w = (\nu+1) / ((\nu+3)\,\sigma^2)} (the standard t-location result,
+#' equal to `0.5 * family$Dd()$EDmu2`), the eta-space working weight is
+#' \eqn{W_i = \omega_i\, (\mathrm{d}\mu/\mathrm{d}\eta)_i^2\, w} with prior
+#' weights \eqn{\omega_i}, so that
+#' \deqn{\tilde x_i = \sqrt{W_i}\, x_i, \qquad z_i = \omega_i\,
+#' (\partial\ell/\partial\mu)_i\, (\mathrm{d}\mu/\mathrm{d}\eta)_i / \sqrt{W_i}.}
+#' Then `Xw^T z` reconstructs the exact score exactly, and because `Xw` carries
+#' the expected Fisher weight the per-cluster hat block
+#' `H_gg = Xw_g Vp Xw_g^T` is the genuine penalized hat (its total trace equals
+#' the model EDF), mirroring [build_cl2_working_gaulss()].
+#'
+#' @param b Fitted GAM object with `family = scat()`.
+#' @param cluster_id Cluster vector.
+#' @returns List with `Xw`, `z`, and `cluster_id`.
+#' @keywords internal
+build_cl2_working_scat <- function(b, cluster_id) {
+  X <- model.matrix(b)
+  th <- b$family$getTheta(TRUE)
+  nu <- th[1]
+  sig <- th[2]
+
+  mu <- as.vector(b$fitted.values)
+  eta <- as.vector(b$linear.predictors)
+  r <- as.vector(b$y) - mu
+  mu_eta <- as.vector(b$family$mu.eta(eta))
+
+  pw <- b$prior.weights
+  if (is.null(pw)) pw <- rep(1, length(mu))
+  pw <- as.vector(pw)
+
+  dl_dmu <- (nu + 1) * r / (nu * sig^2 + r^2)
+  w_fisher <- (nu + 1) / ((nu + 3) * sig^2) # Fisher info in mu-space (scalar)
+
+  # eta-space expected Fisher working weight (= mgcv IRLS weight): trace of the
+  # whitened hat then equals the model EDF.
+  W <- pw * (mu_eta^2) * w_fisher
+  s <- sqrt(W)
+  s[!is.finite(s)] <- 0
+
+  score_eta <- pw * dl_dmu * mu_eta # d l / d eta, prior-weighted
+  z <- score_eta / s
+  z[!is.finite(z)] <- 0
+
+  Xw <- X * s
+  Xw[!is.finite(Xw)] <- 0
+
+  list(Xw = Xw, z = z, cluster_id = cluster_id)
 }
 
 #' Assemble cluster-robust sandwich from score matrix
@@ -1356,8 +1523,23 @@ gam_sandwich_cluster <- function(
   B2 <- if (freq) 0 else b$Vp - b$Ve
   X <- model.matrix(b)
 
-  if (b$family$family == "gaulss") {
+  kind <- pffr_score_kind(b$family)
+
+  if (kind == "gaulss") {
     scores <- compute_gaulss_scores(b, X)
+    return(assemble_cluster_sandwich(
+      scores,
+      cluster_id,
+      b$Vp,
+      B2,
+      dof_factor = dof_factor,
+      b2 = b2,
+      center_scores = center_scores
+    ))
+  }
+
+  if (kind == "scat") {
+    scores <- compute_scat_scores(b, X)
     return(assemble_cluster_sandwich(
       scores,
       cluster_id,
@@ -1371,7 +1553,7 @@ gam_sandwich_cluster <- function(
 
   # Families that define family$sandwich (e.g. multinom) use custom
   # score computation — cluster aggregation not yet implemented for these.
-  if (!is.null(b$family$sandwich)) {
+  if (kind == "custom") {
     warning(
       "Cluster-robust sandwich not yet implemented for family '",
       b$family$family,
@@ -1381,9 +1563,16 @@ gam_sandwich_cluster <- function(
     return(mgcv::vcov.gam(b, sandwich = TRUE, freq = freq))
   }
 
+  # Extended families with no exact/two-block score fall through to the generic
+  # working-residual approximation below; disclose that (review D1).
+  if (kind == "approx") {
+    pffr_warn_approx_score(b$family)
+  }
+
   # Standard GLM case: per-observation scores via general score weight
   # w = pw * (d mu/d eta) * (y - mu) / (phi * V(mu)); prior weights enter the
-  # estimating equation (the CL2 and gaulss paths already include them).
+  # estimating equation (the CL2 and gaulss paths already include them). For
+  # ordinary exponential-dispersion families ("exact") this IS the exact score.
   mu <- b$fitted.values
   pw <- b$prior.weights %||% 1
   scores <- pw *
@@ -1437,11 +1626,11 @@ gam_sandwich_cluster_cl2 <- function(
     stop("`leverage_cap` must be in (0, 1).", call. = FALSE)
   }
 
-  fam <- tolower(as.character(b$family$family))
+  kind <- pffr_score_kind(b$family)
 
   # Families with custom family$sandwich (e.g. multinom) use custom
   # score computation — CL2 cluster leverage correction is not implemented yet.
-  if (fam != "gaulss" && !is.null(b$family$sandwich)) {
+  if (kind == "custom") {
     warning(
       "CL2 sandwich not yet implemented for family '",
       b$family$family,
@@ -1451,11 +1640,18 @@ gam_sandwich_cluster_cl2 <- function(
     return(mgcv::vcov.gam(b, sandwich = TRUE, freq = freq))
   }
 
-  work <- if (fam == "gaulss") {
-    build_cl2_working_gaulss(b, cluster_id)
-  } else {
-    build_cl2_working_standard(b, cluster_id)
+  # Extended families without an exact/two-block score use the generic
+  # working-residual approximation; disclose that (review D1).
+  if (kind == "approx") {
+    pffr_warn_approx_score(b$family)
   }
+
+  work <- switch(
+    kind,
+    gaulss = build_cl2_working_gaulss(b, cluster_id),
+    scat = build_cl2_working_scat(b, cluster_id),
+    build_cl2_working_standard(b, cluster_id)
+  )
 
   Xw <- work$Xw
   z <- work$z
@@ -1970,18 +2166,19 @@ pffr_df_context <- function(
     return(list(ok = FALSE, type = type))
   }
   b <- pffr_model_based_gam(object)
-  fam <- tolower(as.character(b$family$family))
-  # Families with a custom family$sandwich other than gaulss have no whitened
+  kind <- pffr_score_kind(b$family)
+  # Families with a custom family$sandwich (other than gaulss) have no whitened
   # score factorization here (same restriction as the CL2 sandwich path).
-  if (fam != "gaulss" && !is.null(b$family$sandwich)) {
+  if (kind == "custom") {
     return(list(ok = FALSE, type = type))
   }
   cluster_id_curve <- build_cluster_id(object$pffr, cluster = cluster)
-  work <- if (fam == "gaulss") {
-    build_cl2_working_gaulss(b, cluster_id_curve)
-  } else {
+  work <- switch(
+    kind,
+    gaulss = build_cl2_working_gaulss(b, cluster_id_curve),
+    scat = build_cl2_working_scat(b, cluster_id_curve),
     build_cl2_working_standard(b, cluster_id_curve)
-  }
+  )
   list(
     ok = TRUE,
     type = type,
@@ -2089,17 +2286,20 @@ pffr_sandwich_shares <- function(object) {
   G <- n_clusters_checked(cluster_id)
   X <- model.matrix(b)
 
-  scores <- if (identical(tolower(as.character(b$family$family)), "gaulss")) {
-    compute_gaulss_scores(b, X)
-  } else {
-    mu <- b$fitted.values
-    pw <- b$prior.weights %||% 1
-    pw *
-      b$family$mu.eta(b$linear.predictors) *
-      (b$y - mu) /
-      (b$sig2 * b$family$variance(mu)) *
-      X
-  }
+  scores <- switch(
+    pffr_score_kind(b$family),
+    gaulss = compute_gaulss_scores(b, X),
+    scat = compute_scat_scores(b, X),
+    {
+      mu <- b$fitted.values
+      pw <- b$prior.weights %||% 1
+      pw *
+        b$family$mu.eta(b$linear.predictors) *
+        (b$y - mu) /
+        (b$sig2 * b$family$variance(mu)) *
+        X
+    }
+  )
 
   U <- rowsum(scores, cluster_id)
   Sbeta <- colSums(scores)
