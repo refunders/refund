@@ -82,3 +82,13 @@ Git returned `Unable to create .../.git/worktrees/refund-wt-s1/index.lock:
 Read-only file system`. The branch `exact-cl2-default` exists and all changes
 remain unstaged in this worktree; no unrelated `tests/testthat/Rplots.pdf`
 change was touched.
+
+## Addendum 2026-07-21 (PI-side review): cost cap raised 5e8 -> 5e9
+
+Timing at the shipped cap showed the exact block's marginal cost over the
+shortcut is ~0.03 s (both paths pay the same per-cluster eigendecomposition;
+the marginal cost is only the extra multiplications), and ~0.7 s total at
+10x the cap. 5e8 could therefore deny a sub-second correctness upgrade in
+the saturated small-G regime where Study EX measured the largest gain
+(+1.3pp at G=20). Cap raised to 5e9; G <= 100 unchanged (EX-validated
+range; gain < 0.15pp beyond).

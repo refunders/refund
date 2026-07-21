@@ -53,7 +53,7 @@
 * CL2 now uses the exact Bell--McCaffrey leverage block by default when the
   finite-sample correction is relevant and the dense-block calculation is
   affordable (at most 100 clusters and cost proxy `G * max(D_g) * p^2 <=
-  5e8`). At larger/prohibitive problems it uses the historical shortcut.
+  5e9`, a measured sub-second marginal cost). At larger/prohibitive problems it uses the historical shortcut.
   `cl2_adjustment = "exact"` or `"shortcut"` on `pffr()` and `coef.pffr()`
   explicitly selects either variant. Exact-CL2 diagnostics include the number
   of eigenvalue-floored blocks (`n_adjusted`).

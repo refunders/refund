@@ -25,11 +25,16 @@ resolve_cl2_adjustment(
 }
 \description{
 Exact CL2 is the default when the finite-sample correction can matter
-(`G <= 100`) and the dense block multiplication is affordable. Its
-conservative cost proxy `G * maxDg * p^2` covers the dominant
-`(Xw_g Vp) (Xw'Xw)` multiplication; 5e8 scalar operations keeps this below
-the cost of a typical pffr fit on the supported auto-CL2 grids. Large-G
-CL2 uses the historical shortcut because the correction tends to zero and
-the exact block has no material finite-sample benefit there.
+(`G <= 100`; Study EX measured the exact-over-shortcut coverage gain
+decaying from ~+1pp at G = 20 to under +0.15pp at G = 100) and the dense
+block multiplication is affordable. The cost proxy `G * maxDg * p^2`
+covers the dominant `(Xw_g Vp) (Xw'Xw)` multiplication. The 5e9 bound is
+calibrated by measurement, not guessed: both adjustments pay the same
+per-cluster eigendecomposition, so the exact block's MARGINAL cost is only
+these multiplications -- timed at ~0.03 s extra at proxy 5e8 and ~0.7 s
+total at 5e9 (single-thread BLAS), i.e. the bound caps the correctness
+upgrade at well under a second and in particular never denies it in the
+saturated small-G regime where its benefit is largest. Large-G CL2 uses
+the historical shortcut because the correction tends to zero there.
 }
 \keyword{internal}

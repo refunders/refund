@@ -54,7 +54,10 @@ test_that("automatic exact CL2 uses the documented relevance and cost rule", {
   resolve <- refund:::resolve_cl2_adjustment
   expect_identical(resolve("auto", G = 100, maxDg = 50, p = 20), "exact")
   expect_identical(resolve("auto", G = 101, maxDg = 50, p = 20), "shortcut")
-  expect_identical(resolve("auto", G = 20, maxDg = 500, p = 300), "shortcut")
+  # 9e8 ops: below the 5e9 cost cap (raised from 5e8, see notes 2026-07-21)
+  expect_identical(resolve("auto", G = 20, maxDg = 500, p = 300), "exact")
+  # 6.4e10 ops: above the cap even at eligible G
+  expect_identical(resolve("auto", G = 100, maxDg = 1000, p = 800), "shortcut")
   expect_identical(resolve("exact", G = 1000, maxDg = 5000, p = 500), "exact")
   expect_identical(resolve("shortcut", G = 2, maxDg = 2, p = 2), "shortcut")
 })
