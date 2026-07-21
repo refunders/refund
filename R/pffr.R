@@ -225,7 +225,8 @@
 #' @param cl2_adjustment Leverage adjustment within \code{sandwich = "cl2"}:
 #'   \code{"auto"} (default) uses exact CL2 when \eqn{G \le 100} and the
 #'   dense-block cost proxy \eqn{G\max_g D_g p^2} is at most \eqn{5\times
-#'   10^8}; it otherwise falls back to the historical shortcut. The exact block
+#'   10^9} (a measured sub-second marginal cost); it otherwise falls back to
+#'   the historical shortcut. The exact block
 #'   is \eqn{B_g = I - 2H_{gg} + (H_t^2)_{gg}}, with eigenvalues floored at
 #'   \eqn{(1 - 0.999)^2}. \code{"exact"} and \code{"shortcut"} force either
 #'   variant. Ignored unless the resolved sandwich is \code{"cl2"}.
@@ -496,7 +497,8 @@ pffr <- function(
     ydata = prep$ydata,
     sandwich = sandwich,
     dof_correction = dof_correction,
-    edf_type = edf_type
+    edf_type = edf_type,
+    cl2_adjustment = cl2_adjustment
   )
 
   m <- pffr_attach_metadata(m, prep$algorithm, ret)

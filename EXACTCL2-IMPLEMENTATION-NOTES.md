@@ -26,7 +26,7 @@ resolved adjustment plus `n_adjusted`, `min_block_eig`, and
 Within the existing CL2 path only, `"auto"` selects exact CL2 when:
 
 * `G <= 100`; and
-* `G * max(D_g) * p^2 <= 5e8`.
+* `G * max(D_g) * p^2 <= 5e9` (raised from 5e8, see Addendum below).
 
 The first bound confines exact CL2 to the small-to-moderate-cluster regime
 where its finite-sample correction is relevant. The second is a conservative
