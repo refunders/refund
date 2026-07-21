@@ -50,6 +50,13 @@
   report CL2 leverage diagnostics: the returned covariance carries
   `max_leverage` and `n_capped_clusters` attributes, and a warning is emitted
   when one or more clusters hit the leverage cap.
+* CL2 now uses the exact Bell--McCaffrey leverage block by default when the
+  finite-sample correction is relevant and the dense-block calculation is
+  affordable (at most 100 clusters and cost proxy `G * max(D_g) * p^2 <=
+  5e8`). At larger/prohibitive problems it uses the historical shortcut.
+  `cl2_adjustment = "exact"` or `"shortcut"` on `pffr()` and `coef.pffr()`
+  explicitly selects either variant. Exact-CL2 diagnostics include the number
+  of eigenvalue-floored blocks (`n_adjusted`).
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.

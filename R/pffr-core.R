@@ -675,7 +675,8 @@ pffr_build_metadata <- function(
   ydata,
   sandwich,
   dof_correction = "none",
-  edf_type = "trace"
+  edf_type = "trace",
+  cl2_adjustment = "auto"
 ) {
   list(
     call = call,
@@ -698,6 +699,7 @@ pffr_build_metadata <- function(
     sandwich = sandwich,
     dof_correction = dof_correction,
     edf_type = edf_type,
+    cl2_adjustment = cl2_adjustment,
     # Covariance storage contract version: format 2 keeps $Vp/$Vc/$Ve
     # model-based ALWAYS; the robust covariance lives in $pffr$Vsandwich.
     cov_format = PFFR_COV_STORAGE_FORMAT,
@@ -1616,6 +1618,10 @@ gam_sandwich_cluster <- function(
 #'   If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).
 #' @param tol Eigenvalue floor for numerical stability.
 #' @param leverage_cap Cap for cluster leverage eigenvalues (< 1).
+#' @param cl2_adjustment CL2 leverage adjustment: `"auto"` (default) selects
+#'   the exact Bell--McCaffrey block where it is relevant and affordable,
+#'   `"exact"` forces that block, and `"shortcut"` uses the historical
+#'   per-cluster shortcut `(I - H_gg)^(-1/2)`.
 #' @param b2 Internal ablation switch (default `TRUE` = current behavior). When
 #'   `FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
 #'   V_e} (X5).
@@ -1623,8 +1629,10 @@ gam_sandwich_cluster <- function(
 #'   behavior). When `TRUE`, center the leverage-adjusted per-cluster
 #'   contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
 #'   (X6).
-#' @returns A p x p covariance matrix with attributes `n_capped_clusters` and
-#'   `max_leverage` for the CL2 leverage diagnostic.
+#' @returns A p x p covariance matrix with leverage diagnostics. Exact CL2
+#'   returns `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`),
+#'   `min_block_eig`, and `max_block_kappa`; the shortcut returns the legacy
+#'   `n_capped_clusters` and `max_leverage` attributes.
 #' @keywords internal
 gam_sandwich_cluster_cl2 <- function(
   b,
@@ -1632,6 +1640,7 @@ gam_sandwich_cluster_cl2 <- function(
   freq = FALSE,
   tol = 1e-8,
   leverage_cap = 0.999,
+  cl2_adjustment = c("auto", "exact", "shortcut"),
   b2 = TRUE,
   center_scores = FALSE
 ) {
@@ -1673,41 +1682,78 @@ gam_sandwich_cluster_cl2 <- function(
   G <- n_clusters_checked(cluster_id_work)
   groups <- unique(cluster_id_work)
 
-  Vp <- b$Vp
-  B2 <- if (freq) 0 else b$Vp - b$Ve
+  Vp_raw <- b$Vp
+  Vp <- 0.5 * (Vp_raw + t(Vp_raw))
   p <- ncol(Xw)
+  cl2_adjustment <- resolve_cl2_adjustment(
+    cl2_adjustment,
+    G = G,
+    maxDg = max(table(cluster_id_work)),
+    p = p
+  )
+  B2 <- if (freq) {
+    0
+  } else if (cl2_adjustment == "exact") {
+    Vp - b$Ve
+  } else {
+    Vp_raw - b$Ve
+  }
+  Cmat <- if (cl2_adjustment == "exact") crossprod(Xw) else NULL
   meat <- matrix(0, nrow = p, ncol = p)
   Usum <- numeric(p)
   n_capped_clusters <- 0L
   max_leverage <- NA_real_
+  n_adjusted <- 0L
+  min_block_eig <- Inf
+  max_block_kappa <- 0
 
   for (g in groups) {
     idx <- which(cluster_id_work == g)
     Xwg <- Xw[idx, , drop = FALSE]
     zg <- z[idx]
 
-    Hgg <- Xwg %*% Vp %*% t(Xwg)
+    Tg <- Xwg %*% Vp
+    Hgg <- Tg %*% t(Xwg)
     Hgg <- 0.5 * (Hgg + t(Hgg))
 
-    ee_H <- eigen(Hgg, symmetric = TRUE)
-    cluster_max_leverage <- max(ee_H$values, na.rm = TRUE)
-    if (is.finite(cluster_max_leverage)) {
-      max_leverage <- if (is.na(max_leverage)) {
-        cluster_max_leverage
-      } else {
-        max(max_leverage, cluster_max_leverage)
+    if (cl2_adjustment == "shortcut") {
+      ee_H <- eigen(Hgg, symmetric = TRUE)
+      cluster_max_leverage <- max(ee_H$values, na.rm = TRUE)
+      if (is.finite(cluster_max_leverage)) {
+        max_leverage <- if (is.na(max_leverage)) {
+          cluster_max_leverage
+        } else {
+          max(max_leverage, cluster_max_leverage)
+        }
       }
+      if (any(ee_H$values > leverage_cap, na.rm = TRUE)) {
+        n_capped_clusters <- n_capped_clusters + 1L
+        ee_H$values <- pmin(ee_H$values, leverage_cap)
+        Hgg <- ee_H$vectors %*%
+          diag(ee_H$values, nrow = length(ee_H$values)) %*%
+          t(ee_H$vectors)
+      }
+      Ag <- sym_inv_sqrt(diag(length(idx)) - Hgg, tol = tol)
+    } else {
+      # The exact Bell--McCaffrey block is B_g = I - 2 H_gg +
+      # (H_t^2)_gg, with (H_t^2)_gg = (Xw_g Vp) (Xw' Xw)
+      # (Xw_g Vp)'. This is a squared operator, so the gain-matched analogue
+      # of capping H_gg at `leverage_cap` floors B_g at (1 - cap)^2.
+      Bg <- diag(length(idx)) - 2 * Hgg + Tg %*% Cmat %*% t(Tg)
+      ee_B <- eigen(0.5 * (Bg + t(Bg)), symmetric = TRUE)
+      block_min <- min(ee_B$values)
+      min_block_eig <- min(min_block_eig, block_min)
+      max_block_kappa <- max(
+        max_block_kappa,
+        abs(max(ee_B$values)) / max(abs(block_min), 1e-300)
+      )
+      floor_val <- (1 - leverage_cap)^2
+      if (block_min < floor_val) n_adjusted <- n_adjusted + 1L
+      ee_B$values <- pmax(ee_B$values, floor_val)
+      Ag <- ee_B$vectors %*%
+        diag(1 / sqrt(ee_B$values), nrow = length(ee_B$values)) %*%
+        t(ee_B$vectors)
     }
-    if (any(ee_H$values > leverage_cap, na.rm = TRUE)) {
-      n_capped_clusters <- n_capped_clusters + 1L
-      ee_H$values <- pmin(ee_H$values, leverage_cap)
-      Hgg <- ee_H$vectors %*%
-        diag(ee_H$values, nrow = length(ee_H$values)) %*%
-        t(ee_H$vectors)
-    }
-
-    Mg <- diag(length(idx)) - Hgg
-    Ag <- sym_inv_sqrt(Mg, tol = tol)
     Ug <- crossprod(Xwg, Ag %*% zg)
     meat <- meat + Ug %*% t(Ug)
     Usum <- Usum + as.vector(Ug)
@@ -1723,9 +1769,14 @@ gam_sandwich_cluster_cl2 <- function(
   V <- hc1 * Vp %*% meat %*% Vp
   if (isTRUE(b2)) V <- V + B2
   V <- 0.5 * (V + t(V))
+  attr(V, "cl2_adjustment") <- cl2_adjustment
   attr(V, "n_capped_clusters") <- n_capped_clusters
   attr(V, "max_leverage") <- max_leverage
-  if (n_capped_clusters > 0) {
+  attr(V, "n_adjusted") <- n_adjusted
+  attr(V, "min_block_eig") <- if (is.finite(min_block_eig)) min_block_eig else
+    NA_real_
+  attr(V, "max_block_kappa") <- max_block_kappa
+  if (cl2_adjustment == "shortcut" && n_capped_clusters > 0) {
     max_leverage_label <- if (is.finite(max_leverage)) {
       sprintf("%.3f", max_leverage)
     } else {
@@ -1748,6 +1799,41 @@ gam_sandwich_cluster_cl2 <- function(
     )
   }
   V
+}
+
+#' Resolve the CL2 leverage adjustment
+#'
+#' Exact CL2 is the default when the finite-sample correction can matter
+#' (`G <= 100`) and the dense block multiplication is affordable. Its
+#' conservative cost proxy `G * maxDg * p^2` covers the dominant
+#' `(Xw_g Vp) (Xw'Xw)` multiplication; 5e8 scalar operations keeps this below
+#' the cost of a typical pffr fit on the supported auto-CL2 grids. Large-G
+#' CL2 uses the historical shortcut because the correction tends to zero and
+#' the exact block has no material finite-sample benefit there.
+#'
+#' @param cl2_adjustment One of `"auto"`, `"exact"`, or `"shortcut"`.
+#' @param G Number of clusters.
+#' @param maxDg Largest cluster size.
+#' @param p Coefficient-space dimension.
+#' @returns `"exact"` or `"shortcut"`.
+#' @keywords internal
+resolve_cl2_adjustment <- function(
+  cl2_adjustment = c("auto", "exact", "shortcut"),
+  G,
+  maxDg,
+  p
+) {
+  cl2_adjustment <- match.arg(cl2_adjustment)
+  if (cl2_adjustment != "auto") return(cl2_adjustment)
+
+  cost <- G * maxDg * p^2
+  if (
+    is.finite(G) && is.finite(maxDg) && is.finite(p) && G <= 100 && cost <= 5e8
+  ) {
+    "exact"
+  } else {
+    "shortcut"
+  }
 }
 
 #' Resolve a pffr fit's covariance matrices to a canonical representation
@@ -1899,6 +1985,8 @@ restore_model_cov <- function(object) {
 #' @param center_scores Internal ablation switch (default `FALSE`); center the
 #'   per-cluster score sums before the meat when `TRUE` (X6). Applies to
 #'   `"cluster"`/`"cl2"` only.
+#' @param cl2_adjustment CL2 leverage adjustment (`"auto"`, `"exact"`, or
+#'   `"shortcut"`), used only for `type = "cl2"`.
 #' @returns A covariance matrix (with CL2 leverage attributes for `type =
 #'   "cl2"`).
 #' @keywords internal
@@ -1910,7 +1998,8 @@ pffr_compute_sandwich <- function(
   dof_correction = "none",
   edf_type = "trace",
   b2 = TRUE,
-  center_scores = FALSE
+  center_scores = FALSE,
+  cl2_adjustment = "auto"
 ) {
   switch(
     type,
@@ -1928,7 +2017,8 @@ pffr_compute_sandwich <- function(
       cluster_id,
       freq = freq,
       b2 = b2,
-      center_scores = center_scores
+      center_scores = center_scores,
+      cl2_adjustment = cl2_adjustment
     ),
     hc = mgcv::vcov.gam(b, sandwich = TRUE, freq = freq),
     none = if (freq) b$Ve else (b$Vc %||% b$Vp),
@@ -1960,6 +2050,8 @@ pffr_compute_sandwich <- function(
 #' @param center_scores Internal ablation switch (default `FALSE` = current
 #'   behavior). When `TRUE`, center the per-cluster score sums before forming
 #'   the cluster/CL2 meat (X6). Same cache semantics as `b2`.
+#' @param cl2_adjustment CL2 leverage adjustment. `NULL` (default) inherits
+#'   the fitted choice; otherwise one of `"auto"`, `"exact"`, or `"shortcut"`.
 #' @returns A covariance matrix.
 #' @keywords internal
 pffr_vcov <- function(
@@ -1970,7 +2062,8 @@ pffr_vcov <- function(
   dof_correction = NULL,
   edf_type = NULL,
   b2 = TRUE,
-  center_scores = FALSE
+  center_scores = FALSE,
+  cl2_adjustment = NULL
 ) {
   # Ablation variants (X5/X6) bypass the fit-time and recompute caches entirely,
   # so they never overwrite or shadow the standard cached matrices.
@@ -1990,6 +2083,13 @@ pffr_vcov <- function(
 
   dof_correction <- dof_correction %||% (object$pffr$dof_correction %||% "none")
   edf_type <- edf_type %||% (object$pffr$edf_type %||% "trace")
+  cl2_adjustment_explicit <- !is.null(cl2_adjustment)
+  cl2_adjustment <- cl2_adjustment %||%
+    (object$pffr$cl2_adjustment %||% "auto")
+  cl2_adjustment <- match.arg(
+    cl2_adjustment,
+    c("auto", "exact", "shortcut")
+  )
 
   # Serve the cached fit-time robust matrix when the request matches it exactly.
   opts_match <- if (requested == "cluster") {
@@ -1999,11 +2099,20 @@ pffr_vcov <- function(
   } else {
     TRUE
   }
+  adjustment_match <- requested != "cl2" ||
+    !cl2_adjustment_explicit ||
+    identical(
+      cl2_adjustment,
+      object$pffr$sandwich_info$cl2_adjustment %||%
+        object$pffr$cl2_adjustment %||%
+        "shortcut"
+    )
   if (
     !ablation &&
       is.null(cluster) &&
       identical(requested, canon$fit_type) &&
       opts_match &&
+      adjustment_match &&
       !is.null(canon$Vsandwich)
   ) {
     return(
@@ -2024,6 +2133,17 @@ pffr_vcov <- function(
   key <- if (!ablation && is.null(cluster)) {
     if (requested == "cluster" && (freq || dof_correction != "none")) {
       paste(requested, freq, dof_correction, edf_type, sep = "|")
+    } else if (requested == "cl2") {
+      if (cl2_adjustment == "auto") {
+        if (freq) paste(requested, "freq", sep = "|") else requested
+      } else {
+        paste(
+          requested,
+          cl2_adjustment,
+          if (freq) "freq" else "bayes",
+          sep = "|"
+        )
+      }
     } else if (freq) {
       paste(requested, "freq", sep = "|")
     } else {
@@ -2054,7 +2174,8 @@ pffr_vcov <- function(
     dof_correction = dof_correction,
     edf_type = edf_type,
     b2 = b2,
-    center_scores = center_scores
+    center_scores = center_scores,
+    cl2_adjustment = cl2_adjustment
   )
   if (!is.null(cache) && !is.null(key)) {
     cache[[key]] <- V
@@ -2956,6 +3077,8 @@ pffr_upgrade_fit <- function(object) {
 #'   warning) for `"cl2"`, which already corrects per-cluster leverage.
 #' @param edf_type Which EDF the `"edf"` correction uses (`"trace"`/`"edf2"`/
 #'   `"basis"`).
+#' @param cl2_adjustment CL2 leverage adjustment (`"auto"` (default),
+#'   `"exact"`, or `"shortcut"`), used only for `type = "cl2"`.
 #' @returns Model with the robust covariance stored in `$pffr$Vsandwich`.
 #' @keywords internal
 apply_sandwich_correction <- function(
@@ -2963,7 +3086,8 @@ apply_sandwich_correction <- function(
   algorithm,
   type = "cluster",
   dof_correction = "none",
-  edf_type = "trace"
+  edf_type = "trace",
+  cl2_adjustment = "auto"
 ) {
   gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
 
@@ -2992,7 +3116,8 @@ apply_sandwich_correction <- function(
     cluster_id,
     freq = FALSE,
     dof_correction = dof_correction,
-    edf_type = edf_type
+    edf_type = edf_type,
+    cl2_adjustment = cl2_adjustment
   )
   Vsw_freq <- pffr_compute_sandwich(
     bread,
@@ -3000,11 +3125,14 @@ apply_sandwich_correction <- function(
     cluster_id,
     freq = TRUE,
     dof_correction = dof_correction,
-    edf_type = edf_type
+    edf_type = edf_type,
+    cl2_adjustment = cl2_adjustment
   )
 
   n_capped <- attr(Vsw, "n_capped_clusters") %||% 0L
   max_lev <- attr(Vsw, "max_leverage") %||% NA_real_
+  n_adjusted <- attr(Vsw, "n_adjusted") %||% 0L
+  resolved_adjustment <- attr(Vsw, "cl2_adjustment") %||% NA_character_
 
   gam_obj$pffr$Vsandwich <- Vsw
   gam_obj$pffr$Vsandwich_freq <- Vsw_freq
@@ -3014,6 +3142,10 @@ apply_sandwich_correction <- function(
     G = if (!is.null(cluster_id)) length(unique(cluster_id)) else NA_integer_,
     n_capped = n_capped,
     max_leverage = max_lev,
+    cl2_adjustment = resolved_adjustment,
+    n_adjusted = n_adjusted,
+    min_block_eig = attr(Vsw, "min_block_eig") %||% NA_real_,
+    max_block_kappa = attr(Vsw, "max_block_kappa") %||% NA_real_,
     dof_correction = if (type == "cluster") dof_correction else "none",
     edf_type = edf_type,
     version = as.character(utils::packageVersion("refund")),
@@ -3021,6 +3153,8 @@ apply_sandwich_correction <- function(
   )
   # Keep the legacy CL2 leverage-cap diagnostic slot populated.
   gam_obj$pffr$cl2_n_capped <- if (type == "cl2") n_capped else NULL
+  gam_obj$pffr$cl2_adjustment <- if (type == "cl2") resolved_adjustment else
+    NULL
   # Fresh cache for on-demand recomputation of other sandwich types
   # (fit$pffr$Vsandwich_cache[[type]]).
   gam_obj$pffr$Vsandwich_cache <- new.env(parent = emptyenv())

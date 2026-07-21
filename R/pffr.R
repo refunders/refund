@@ -180,7 +180,9 @@
 #'   handles both heteroskedasticity and within-curve autocorrelation — the
 #'   recommended choice for functional data when a fixed estimator is wanted.
 #'   \code{"cl2"}: leverage-adjusted cluster-robust sandwich (Bell-McCaffrey
-#'   style CL2), mainly relevant in smaller samples.
+#'   style CL2), mainly relevant in smaller samples. Within CL2, the exact
+#'   block calculation is used by default where feasible; see
+#'   \code{cl2_adjustment} below.
 #'   \code{"hc"}: observation-level HC sandwich via
 #'   \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
 #'   heteroskedasticity but ignores within-curve correlation.
@@ -220,6 +222,13 @@
 #'   the penalized hat), \code{"edf2"} (mgcv's bias-corrected EDF), or
 #'   \code{"basis"} (the basis dimension). Only relevant when
 #'   \code{dof_correction = "edf"}.
+#' @param cl2_adjustment Leverage adjustment within \code{sandwich = "cl2"}:
+#'   \code{"auto"} (default) uses exact CL2 when \eqn{G \le 100} and the
+#'   dense-block cost proxy \eqn{G\max_g D_g p^2} is at most \eqn{5\times
+#'   10^8}; it otherwise falls back to the historical shortcut. The exact block
+#'   is \eqn{B_g = I - 2H_{gg} + (H_t^2)_{gg}}, with eigenvalues floored at
+#'   \eqn{(1 - 0.999)^2}. \code{"exact"} and \code{"shortcut"} force either
+#'   variant. Ignored unless the resolved sandwich is \code{"cl2"}.
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}},
 #'   \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
 #'   \code{'\link[mgcv]{jagam}'}. \code{subset} is not implemented.
@@ -320,6 +329,7 @@ pffr <- function(
   sandwich = c("auto", "cluster", "cl2", "hc", "none"),
   dof_correction = c("none", "edf"),
   edf_type = c("trace", "edf2", "basis"),
+  cl2_adjustment = c("auto", "exact", "shortcut"),
   ...
 ) {
   call <- match.call()
@@ -330,6 +340,7 @@ pffr <- function(
   sandwich <- match.arg(sandwich)
   dof_correction <- match.arg(dof_correction)
   edf_type <- match.arg(edf_type)
+  cl2_adjustment <- match.arg(cl2_adjustment)
   # "auto" is resolved after fitting (needs G / max D_g); defer the CR1 dof
   # compatibility check to then, so a legitimate auto -> "cluster" keeps its dof.
   if (dof_correction != "none" && !(sandwich %in% c("cluster", "auto"))) {
@@ -503,6 +514,7 @@ pffr <- function(
     prep$algorithm,
     type = sandwich,
     dof_correction = dof_correction,
-    edf_type = edf_type
+    edf_type = edf_type,
+    cl2_adjustment = cl2_adjustment
   )
 }

@@ -1855,17 +1855,18 @@ test_that("CL2 reports leverage diagnostics and warns when the cap is hit", {
     V_benign <- gam_sandwich_cluster_cl2(b, cluster_id, freq = FALSE),
     NA
   )
-  expect_identical(attr(V_benign, "n_capped_clusters"), 0L)
-  expect_true(is.finite(attr(V_benign, "max_leverage")))
-  expect_gt(attr(V_benign, "max_leverage"), 0)
-  expect_lt(attr(V_benign, "max_leverage"), 0.999)
+  expect_identical(attr(V_benign, "cl2_adjustment"), "exact")
+  expect_identical(attr(V_benign, "n_adjusted"), 0L)
+  expect_true(is.finite(attr(V_benign, "min_block_eig")))
+  expect_gt(attr(V_benign, "min_block_eig"), 0)
 
   expect_warning(
     V_capped <- gam_sandwich_cluster_cl2(
       b,
       cluster_id,
       freq = FALSE,
-      leverage_cap = 0.001
+      leverage_cap = 0.001,
+      cl2_adjustment = "shortcut"
     ),
     "CL2 leverage adjustment hit the leverage cap"
   )
@@ -1876,7 +1877,8 @@ test_that("CL2 reports leverage diagnostics and warns when the cap is hit", {
     b,
     cluster_id,
     freq = FALSE,
-    leverage_cap = 0.001
+    leverage_cap = 0.001,
+    cl2_adjustment = "shortcut"
   ))
   expect_equal(
     as.matrix(V_capped),
