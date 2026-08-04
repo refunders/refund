@@ -36,6 +36,10 @@ e.g., \code{function(s, t) s < t}.}
 \description{
 Internal function preserving the original pffr_simulate behavior for backward
 compatibility. This is called when the deprecated \code{scenario} argument
-is used.
+is used. One deliberate departure from the original: the basis dimension
+used to draw the functional covariate was raised from 7 to 12, doubling its
+effective rank from 5 to 10, so that the simulated covariate is not itself
+weakly identified against ff()'s default basis (see \code{\link{ff}}).
+Simulated data from this path therefore differ from pre-0.1-40 draws.
 }
 \keyword{internal}

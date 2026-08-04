@@ -59,10 +59,15 @@
   interval coverage alike, without any fitting failure -- passed silently.
   The hard `rank < k_s` case is now reported as part of the same warning.
   See the "Effective rank and weak identifiability" section of `?ff` and the
-  `ff-identifiability` vignette. Note that the functional covariate produced
-  by `pffr_simulate()` has effective rank 5 and therefore trips the new
-  warning at `ff()`'s default `k = c(5, 5)`; that is a property of the
-  simulated covariate, not a false positive.
+  `ff-identifiability` vignette.
+* The functional covariate simulated by `pffr_simulate()`'s legacy
+  `scenario =` path is now drawn from a 12- rather than 7-dimensional spline
+  basis, **doubling its effective rank from 5 to 10**. At the old rank the
+  package's own simulated covariate was weakly identified against `ff()`'s
+  default `k = 5` (which wants at least 7.5) and tripped the new warning
+  above. The formula interface was already well clear of the threshold
+  (effective rank 13-22, depending on `nxgrid`) and is unchanged. Simulated
+  data from the `scenario =` path therefore differ from earlier versions.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.
