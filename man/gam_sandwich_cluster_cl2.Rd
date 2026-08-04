@@ -10,6 +10,7 @@ gam_sandwich_cluster_cl2(
   freq = FALSE,
   tol = 1e-08,
   leverage_cap = 0.999,
+  cl2_adjustment = c("auto", "exact", "shortcut"),
   b2 = TRUE,
   center_scores = FALSE
 )
@@ -27,6 +28,11 @@ If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).}
 
 \item{leverage_cap}{Cap for cluster leverage eigenvalues (< 1).}
 
+\item{cl2_adjustment}{CL2 leverage adjustment: `"auto"` (default) selects
+the exact Bell--McCaffrey block where it is relevant and affordable,
+`"exact"` forces that block, and `"shortcut"` uses the historical
+per-cluster shortcut `(I - H_gg)^(-1/2)`.}
+
 \item{b2}{Internal ablation switch (default `TRUE` = current behavior). When
 `FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
 V_e} (X5).}
@@ -37,8 +43,13 @@ contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
 (X6).}
 }
 \value{
-A p x p covariance matrix with attributes `n_capped_clusters` and
-  `max_leverage` for the CL2 leverage diagnostic.
+A p x p covariance matrix with leverage diagnostics. Exact CL2
+  returns `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`),
+  `min_block_eig`, `max_block_kappa` and `min_block_eig_rel`; the shortcut
+  returns the legacy `n_capped_clusters` and `max_leverage` attributes. Both
+  return `max_obs_leverage` and `hat_invariant_violation` (`NULL` when the
+  penalized hat respects its bounds, otherwise a description of the
+  violation; see [pffr_hat_invariant_violation()]).
 }
 \description{
 Computes a cluster-robust covariance matrix with a Bell-McCaffrey style

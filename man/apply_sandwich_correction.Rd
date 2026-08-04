@@ -9,7 +9,8 @@ apply_sandwich_correction(
   algorithm,
   type = "cluster",
   dof_correction = "none",
-  edf_type = "trace"
+  edf_type = "trace",
+  cl2_adjustment = "auto"
 )
 }
 \arguments{
@@ -26,6 +27,9 @@ warning) for `"cl2"`, which already corrects per-cluster leverage.}
 
 \item{edf_type}{Which EDF the `"edf"` correction uses (`"trace"`/`"edf2"`/
 `"basis"`).}
+
+\item{cl2_adjustment}{CL2 leverage adjustment (`"auto"` (default),
+`"exact"`, or `"shortcut"`), used only for `type = "cl2"`.}
 }
 \value{
 Model with the robust covariance stored in `$pffr$Vsandwich`.

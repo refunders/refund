@@ -24,7 +24,8 @@ pffr_build_metadata(
   ydata,
   sandwich,
   dof_correction = "none",
-  edf_type = "trace"
+  edf_type = "trace",
+  cl2_adjustment = "auto"
 )
 }
 \description{

@@ -13,6 +13,7 @@
   cluster = NULL,
   dof_correction = NULL,
   edf_type = NULL,
+  cl2_adjustment = NULL,
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
@@ -67,6 +68,12 @@ Ignored (with a warning) for \code{sandwich} other than \code{"cluster"}.}
 \item{edf_type}{Which EDF the \code{"edf"} correction uses
 (\code{"trace"}/\code{"edf2"}/\code{"basis"}; see \code{\link{pffr}}).
 Defaults to \code{NULL} (inherit from the fit).}
+
+\item{cl2_adjustment}{Leverage adjustment within \code{sandwich = "cl2"}.
+\code{NULL} (default) inherits the fit-time choice; \code{"auto"}
+applies the documented feasibility rule, while \code{"exact"} and
+\code{"shortcut"} force either CL2 variant. Supplying a value forces a
+covariance recomputation.}
 
 \item{seWithMean}{logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?}
 

@@ -12,7 +12,8 @@ pffr_compute_sandwich(
   dof_correction = "none",
   edf_type = "trace",
   b2 = TRUE,
-  center_scores = FALSE
+  center_scores = FALSE,
+  cl2_adjustment = "auto"
 )
 }
 \arguments{
@@ -34,6 +35,9 @@ only).}
 \item{center_scores}{Internal ablation switch (default `FALSE`); center the
 per-cluster score sums before the meat when `TRUE` (X6). Applies to
 `"cluster"`/`"cl2"` only.}
+
+\item{cl2_adjustment}{CL2 leverage adjustment (`"auto"`, `"exact"`, or
+`"shortcut"`), used only for `type = "cl2"`.}
 }
 \value{
 A covariance matrix (with CL2 leverage attributes for `type =
