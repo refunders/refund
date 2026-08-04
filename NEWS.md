@@ -50,6 +50,19 @@
   report CL2 leverage diagnostics: the returned covariance carries
   `max_leverage` and `n_capped_clusters` attributes, and a warning is emitted
   when one or more clusters hit the leverage cap.
+* `ff(..., check.ident = TRUE)` (the default) now also warns when the
+  effective rank of the functional covariate's covariance is below
+  `1.5 * k_s`, where `k_s` is the marginal basis dimension along `s`. The
+  previous check only fired at the much weaker `rank < k_s`, so designs in
+  which a sizeable part of the coefficient surface lies outside the span of
+  the observed curves -- a bias floor that affects point estimates and
+  interval coverage alike, without any fitting failure -- passed silently.
+  The hard `rank < k_s` case is now reported as part of the same warning.
+  See the "Effective rank and weak identifiability" section of `?ff` and the
+  `ff-identifiability` vignette. Note that the functional covariate produced
+  by `pffr_simulate()` has effective rank 5 and therefore trips the new
+  warning at `ff()`'s default `k = c(5, 5)`; that is a property of the
+  simulated covariate, not a false positive.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.

@@ -27,6 +27,38 @@
 #' \eqn{X_i(s)}) is lower than 4. If \eqn{X_i(s)} is of very low rank,
 #' \code{\link{ffpc}}-term may be preferable.
 #'
+#' @section Effective rank and weak identifiability:
+#'
+#' \code{check.ident} also compares the effective rank of Cov\eqn{(X(s))}
+#' against the marginal basis dimension \eqn{k_s} used for \eqn{\beta(t,s)}
+#' along \eqn{s} (i.e. \code{splinepars$k[1]}), and warns whenever the
+#' effective rank is below \eqn{1.5 k_s}. The hard case \eqn{\mathrm{rank} <
+#' k_s} (the surface is identified through the penalty alone) is a special case
+#' of this warning and is flagged explicitly in its message.
+#'
+#' The reason for the margin is that identifiability is not a yes/no property
+#' here: the data only inform \eqn{\beta(t,s)} in directions that the observed
+#' curves span. Once \eqn{k_s} approaches the effective rank, an appreciable
+#' part of a rough true surface lies outside that span, and this component is
+#' returned by the penalty rather than estimated. It is a shared bias floor: it
+#' affects every estimator and every kind of standard error, so both point
+#' estimates and interval coverage for the \code{ff} term become hard to
+#' interpret, and it does not show up as a fitting failure. A factor of about
+#' 1.5 was the smallest margin at which this contamination was negligible in
+#' the simulation studies behind the cluster-robust \code{\link{pffr}}
+#' intervals.
+#'
+#' The effective rank can never exceed \code{min(nrow(X), ncol(X))}, so with
+#' few curves the warning may be impossible to satisfy at the requested
+#' \eqn{k_s}. Remedies, in order of preference: lower \eqn{k_s} (via
+#' \code{splinepars = list(k = c(k_s, k_t))}); use more or more varied curves;
+#' switch to \code{\link{ffpc}}, which parameterizes the effect in the leading
+#' functional principal components of \eqn{X} and is designed for the low-rank
+#' case. If none of these is possible, the fit is still usable, but conclusions
+#' about \eqn{\beta(t,s)} -- including the width and coverage of its confidence
+#' bands -- should be drawn with that caveat in mind. The check can be switched
+#' off with \code{check.ident = FALSE}.
+#'
 #' @param X an n by \code{ncol(xind)} matrix of function evaluations
 #'   \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
 #' @param yind \emph{DEPRECATED} used to supply matrix (or vector) of indices of
@@ -182,7 +214,12 @@ ff <- function(
     ## check whether (number of basis functions) < (number of relevant eigenfunctions of X)
     evX <- svd(X, nu = 0, nv = 0)$d^2
     maxK <- max(1, min(which((cumsum(evX) / sum(evX)) >= .995)))
-    bsdim <- eval(call)$margin[[1]]$bs.dim
+    term_spec <- eval(call)
+    bsdim <- if (!is.null(term_spec$margin)) {
+      term_spec$margin[[1]]$bs.dim
+    } else {
+      term_spec$bs.dim
+    }
     if (maxK <= 4)
       warning(
         "Very low effective rank of <",
@@ -192,12 +229,43 @@ ff <- function(
         " largest eigenvalues of its covariance alone account for >99.5% of ",
         "variability. <ffpc> might be a better choice here."
       )
-    if (maxK < bsdim) {
-      warning(
-        "<k> larger than effective rank of <",
-        deparse(match.call()$X),
-        ">. Model identifiable only through penalty."
-      )
+    ## Weak-identifiability guard. The effective rank of Cov(X(s)) has to
+    ## exceed the marginal basis dimension along s comfortably, not merely
+    ## match it: maxK < bsdim is the hard case (the surface is pinned down by
+    ## the penalty alone), while maxK < 1.5 * bsdim is the practical margin
+    ## below which part of beta(t, s) lies outside the span of the observed
+    ## curves and is therefore not estimable from the data.
+    if (length(bsdim) == 1 && is.finite(bsdim) && bsdim > 0) {
+      if (maxK < 1.5 * bsdim) {
+        warning(
+          "Effective rank of <",
+          deparse(match.call()$X),
+          "> is ",
+          maxK,
+          ", below 1.5 * k = ",
+          format(1.5 * bsdim),
+          " for the k = ",
+          bsdim,
+          " basis functions along <s>",
+          if (maxK < bsdim) {
+            paste0(
+              "; <k> is larger than the effective rank, so the model is ",
+              "identifiable only through the penalty"
+            )
+          } else {
+            ""
+          },
+          ". The coefficient surface is only weakly identified: components of ",
+          "beta(t, s) in directions the observed curves do not span are ",
+          "determined by the penalty alone, so estimates can be biased and ",
+          "interval coverage unreliable in those directions. Reduce k along ",
+          "<s>, or use more / richer curves -- the effective rank cannot ",
+          "exceed min(nrow(X), ncol(X)) = ",
+          min(n, nxgrid),
+          ". See ?ff (Details) and Scheipl & Greven (2016).",
+          call. = FALSE
+        )
+      }
     }
     if (basistype != "s") {
       # check whether span(Null(X)), span(L * B_s%*%Null(penalty)) are disjunct:
