@@ -45,8 +45,11 @@ contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
 \value{
 A p x p covariance matrix with leverage diagnostics. Exact CL2
   returns `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`),
-  `min_block_eig`, and `max_block_kappa`; the shortcut returns the legacy
-  `n_capped_clusters` and `max_leverage` attributes.
+  `min_block_eig`, `max_block_kappa` and `min_block_eig_rel`; the shortcut
+  returns the legacy `n_capped_clusters` and `max_leverage` attributes. Both
+  return `max_obs_leverage` and `hat_invariant_violation` (`NULL` when the
+  penalized hat respects its bounds, otherwise a description of the
+  violation; see [pffr_hat_invariant_violation()]).
 }
 \description{
 Computes a cluster-robust covariance matrix with a Bell-McCaffrey style

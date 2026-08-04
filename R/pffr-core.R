@@ -1631,8 +1631,11 @@ gam_sandwich_cluster <- function(
 #'   (X6).
 #' @returns A p x p covariance matrix with leverage diagnostics. Exact CL2
 #'   returns `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`),
-#'   `min_block_eig`, and `max_block_kappa`; the shortcut returns the legacy
-#'   `n_capped_clusters` and `max_leverage` attributes.
+#'   `min_block_eig`, `max_block_kappa` and `min_block_eig_rel`; the shortcut
+#'   returns the legacy `n_capped_clusters` and `max_leverage` attributes. Both
+#'   return `max_obs_leverage` and `hat_invariant_violation` (`NULL` when the
+#'   penalized hat respects its bounds, otherwise a description of the
+#'   violation; see [pffr_hat_invariant_violation()]).
 #' @keywords internal
 gam_sandwich_cluster_cl2 <- function(
   b,
@@ -1706,6 +1709,10 @@ gam_sandwich_cluster_cl2 <- function(
   n_adjusted <- 0L
   min_block_eig <- Inf
   max_block_kappa <- 0
+  # Hat-invariant monitors (see pffr_hat_invariant_violation()). Both are free:
+  # h_ii is a by-product of T_g, and the block eigenvalues are computed anyway.
+  max_obs_leverage <- NA_real_
+  min_block_eig_rel <- 0
 
   for (g in groups) {
     idx <- which(cluster_id_work == g)
@@ -1715,6 +1722,14 @@ gam_sandwich_cluster_cl2 <- function(
     Tg <- Xwg %*% Vp
     Hgg <- Tg %*% t(Xwg)
     Hgg <- 0.5 * (Hgg + t(Hgg))
+
+    # Per-observation leverage h_ii = diag(H)_ii, mathematically in [0, 1] for
+    # the penalized hat. Tracked in both branches; a value above 1 means the
+    # bread and the weighted design are numerically inconsistent.
+    h_ii <- rowSums(Tg * Xwg)
+    if (any(is.finite(h_ii))) {
+      max_obs_leverage <- max(max_obs_leverage, h_ii, na.rm = TRUE)
+    }
 
     if (cl2_adjustment == "shortcut") {
       ee_H <- eigen(Hgg, symmetric = TRUE)
@@ -1743,6 +1758,14 @@ gam_sandwich_cluster_cl2 <- function(
       ee_B <- eigen(0.5 * (Bg + t(Bg)), symmetric = TRUE)
       block_min <- min(ee_B$values)
       min_block_eig <- min(min_block_eig, block_min)
+      # B_g = ((I - H)^2)_gg is a principal block of a squared symmetric
+      # matrix and is therefore positive semi-definite in exact arithmetic.
+      # A materially negative eigenvalue, measured relative to the block's own
+      # scale, is an invariant violation rather than round-off.
+      min_block_eig_rel <- min(
+        min_block_eig_rel,
+        block_min / max(abs(max(ee_B$values)), 1e-300)
+      )
       max_block_kappa <- max(
         max_block_kappa,
         abs(max(ee_B$values)) / max(abs(block_min), 1e-300)
@@ -1776,6 +1799,30 @@ gam_sandwich_cluster_cl2 <- function(
   attr(V, "min_block_eig") <- if (is.finite(min_block_eig)) min_block_eig else
     NA_real_
   attr(V, "max_block_kappa") <- max_block_kappa
+  attr(V, "max_obs_leverage") <- max_obs_leverage
+  attr(V, "min_block_eig_rel") <- min_block_eig_rel
+
+  hat_violation <- pffr_hat_invariant_violation(
+    max_obs_leverage = max_obs_leverage,
+    max_leverage = if (cl2_adjustment == "shortcut") max_leverage else NA_real_,
+    min_block_eig_rel = if (cl2_adjustment == "exact") min_block_eig_rel else 0
+  )
+  attr(V, "hat_invariant_violation") <- hat_violation
+  if (!is.null(hat_violation)) {
+    warning(
+      "Cluster-robust covariance is NOT trustworthy for this fit: ",
+      hat_violation,
+      " The penalized hat matrix satisfies 0 <= h_ii <= 1 and ",
+      "0 <= eigen(H_gg) <= 1 exactly, so this indicates that the model-based ",
+      "bread and the weighted design have become numerically inconsistent -- ",
+      "typically an ill-conditioned or barely converged fit (extreme fitted ",
+      "values, a near-singular penalized Hessian, or a basis far too rich for ",
+      "the data). Both the CL2 and the CR1 cluster-robust covariances inherit ",
+      "the problem, so switching sandwich type does not repair it: inspect and ",
+      "refit the model instead.",
+      call. = FALSE
+    )
+  }
   if (cl2_adjustment == "shortcut" && n_capped_clusters > 0) {
     max_leverage_label <- if (is.finite(max_leverage)) {
       sprintf("%.3f", max_leverage)
@@ -1799,6 +1846,81 @@ gam_sandwich_cluster_cl2 <- function(
     )
   }
   V
+}
+
+#' Numerical-sanity check on the per-cluster hat blocks
+#'
+#' The penalized hat \eqn{H = X_w V_p X_w'} obeys \eqn{0 \le h_{ii} \le 1} and,
+#' since any principal block of a symmetric matrix has its eigenvalues inside
+#' the parent's range, \eqn{0 \le \mathrm{eigen}(H_{gg}) \le 1}. The exact
+#' Bell--McCaffrey block \eqn{B_g = ((I - H)^2)_{gg}} is positive semi-definite
+#' for the same reason. When a fit is numerically degenerate --- an
+#' ill-conditioned or barely converged fit, e.g. a Poisson fit whose fitted
+#' means span many orders of magnitude --- the bread \eqn{V_p} stops being the
+#' inverse of the same weighted cross-product, and these invariants break by
+#' orders of magnitude rather than by round-off. This was the mechanism behind
+#' the numerically exploded interval widths observed on hard Poisson
+#' replicates in the locked benchmark (study LB, claim P-LB5).
+#'
+#' Detection is deliberately separate from the leverage cap. Capping
+#' \eqn{H_{gg}} at `leverage_cap` silently converts an impossible leverage into
+#' the *largest legitimate* one, so the shortcut adjustment responds to garbage
+#' with its maximal variance inflation; the exact block, being a squared
+#' operator, instead deflates. Both are bounded, neither is meaningful, and
+#' only a diagnostic can tell the user which situation they are in. We
+#' therefore warn and keep going rather than substituting a differently wrong
+#' number: the CR1 covariance is built from the same bread and is no more
+#' trustworthy here.
+#'
+#' @param max_obs_leverage Largest per-observation leverage \eqn{h_{ii}} seen,
+#'   or `NA`.
+#' @param max_leverage Largest eigenvalue of any \eqn{H_{gg}} (shortcut path
+#'   only; `NA` otherwise).
+#' @param min_block_eig_rel Smallest eigenvalue of any \eqn{B_g} relative to
+#'   that block's largest eigenvalue (exact path only; `0` otherwise).
+#' @param tol Relative slack allowed before an invariant counts as violated.
+#' @returns `NULL` when every invariant holds, otherwise a one-sentence
+#'   character description of the violation.
+#' @keywords internal
+pffr_hat_invariant_violation <- function(
+  max_obs_leverage = NA_real_,
+  max_leverage = NA_real_,
+  min_block_eig_rel = 0,
+  tol = 1e-6
+) {
+  msgs <- character(0)
+  if (isTRUE(is.finite(max_obs_leverage) && max_obs_leverage > 1 + tol)) {
+    msgs <- c(
+      msgs,
+      sprintf(
+        "the largest per-observation leverage is %.3g, above the bound 1;",
+        max_obs_leverage
+      )
+    )
+  }
+  if (isTRUE(is.finite(max_leverage) && max_leverage > 1 + tol)) {
+    msgs <- c(
+      msgs,
+      sprintf(
+        "the largest per-cluster hat eigenvalue is %.3g, above the bound 1;",
+        max_leverage
+      )
+    )
+  }
+  if (isTRUE(is.finite(min_block_eig_rel) && min_block_eig_rel < -tol)) {
+    msgs <- c(
+      msgs,
+      sprintf(
+        paste0(
+          "the exact Bell-McCaffrey block has a relative eigenvalue of %.3g, ",
+          "but it is positive semi-definite by construction;"
+        ),
+        min_block_eig_rel
+      )
+    )
+  }
+  if (length(msgs) == 0) return(NULL)
+  paste(msgs, collapse = " ")
 }
 
 #' Resolve the CL2 leverage adjustment

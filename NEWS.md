@@ -57,6 +57,20 @@
   `cl2_adjustment = "exact"` or `"shortcut"` on `pffr()` and `coef.pffr()`
   explicitly selects either variant. Exact-CL2 diagnostics include the number
   of eigenvalue-floored blocks (`n_adjusted`).
+* The CL2 sandwich now checks the penalized hat matrix against its own bounds
+  (`0 <= h_ii <= 1`, `0 <= eigen(H_gg) <= 1`, and positive semi-definiteness of
+  the exact Bell--McCaffrey block) and **warns** when they are violated by more
+  than round-off. Such a violation means the model-based bread and the weighted
+  design have become numerically inconsistent -- a barely converged or
+  extremely ill-conditioned fit -- so the cluster-robust covariance is
+  meaningless however plausible it looks. Previously this produced silently
+  exploded standard errors (interval widths up to 1e133 were observed on
+  degenerate Poisson fits, with nothing to distinguish them from a legitimately
+  wide interval). The covariance is still returned, now carrying
+  `max_obs_leverage` and `hat_invariant_violation` attributes. The CR1
+  (`sandwich = "cluster"`) covariance is built from the same bread and is
+  equally affected, so switching sandwich type is not a remedy: inspect and
+  refit the model.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.
