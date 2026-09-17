@@ -43,10 +43,9 @@
 #'  (default, unchanged behavior) uses the fit-time (model-based or robust
 #'  sandwich) covariance via \code{\link{pffr_vcov}}. \code{"jackknife"} instead
 #'  replaces the standard errors with the leave-one-cluster-out jackknife SEs of
-#'  \code{\link{pffr_jackknife_se}} --- the recommended path for
-#'  fitted-mean/response-scale (\eqn{E(Y)}) intervals at small numbers of curves
-#'  \eqn{G}, where the plug-in cluster/CL2 sandwich under-propagates the
-#'  aggregated variance. The point predictions \code{fit} are unaffected. See
+#'  \code{\link{pffr_jackknife_se}}, an experimental alternative for
+#'  fitted-mean/response-scale (\eqn{E(Y)}) intervals. Calibration and
+#'  interval-width stability require separate validation. The point predictions \code{fit} are unaffected. See
 #'  \code{\link{pffr_jackknife_se}} for its calibration caveat. This argument
 #'  comes after \code{...} and must be given by name. Custom jackknife
 #'  groupings are not accepted here (the \code{cluster} dot is
@@ -1198,8 +1197,8 @@ pointwise_full_contrasts <- function(linear_map, p) {
 #' Computes the pointwise interval half-width multiplier for one term under the
 #' chosen reference (S3): `"z"` (Gaussian, reported df `Inf`), `"tG1"`
 #' (\eqn{t_{G-1}}, constant df), or `"satterthwaite"` (per-point Bell-McCaffrey
-#' df from `df_ctx`, with a Gaussian fallback at any zero-variance / undefined
-#' point).
+#' working-model moment df from `df_ctx`; undefined df yields missing limits
+#' with a warning).
 #'
 #' @param crit_mode One of `"z"`, `"tG1"`, `"satterthwaite"`.
 #' @param level Confidence level.
@@ -1235,8 +1234,13 @@ compute_pointwise_ci <- function(
   crit <- ifelse(
     is.finite(df),
     stats::qt(prob, pmax(df, 1)),
-    stats::qnorm(prob)
+    NA_real_
   )
+  if (any(!is.finite(df)))
+    warning(
+      "Undefined working-model moment df; corresponding interval limits are missing.",
+      call. = FALSE
+    )
   list(crit = crit, df = df)
 }
 
@@ -1266,8 +1270,8 @@ compute_pointwise_ci <- function(
 #'   parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
 #'   covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.
 #' @param sandwich Type of sandwich-corrected covariance for standard errors.
-#'   \code{"cluster"} (default): cluster-robust sandwich (clustering by
-#'   curve).
+#'   \code{NULL} (default) inherits the fit-time covariance choice.
+#'   \code{"cluster"}: cluster-robust sandwich.
 #'   \code{"cl2"}: leverage-adjusted cluster-robust sandwich (clustering by
 #'   curve).
 #'   \code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
@@ -1277,7 +1281,8 @@ compute_pointwise_ci <- function(
 #' @param cluster optional grouping for the cluster-robust sandwich
 #'   (\code{sandwich = "cluster"} or \code{"cl2"}): a vector with one entry per
 #'   curve (functional observation) mapping each curve to its independent unit.
-#'   Defaults to \code{NULL}, i.e. each curve is its own cluster. Supply this for
+#'   Defaults to \code{NULL}, inheriting the fit-time grouping (by curve
+#'   if none was supplied). Supply this for
 #'   nested / repeated-measures designs where several curves share a higher-level
 #'   unit (e.g. a subject id with multiple visits), so the sandwich clusters at
 #'   the correct level. Only supported for densely-observed responses. When
@@ -1314,23 +1319,19 @@ compute_pointwise_ci <- function(
 #'   \code{crit} (below).
 #' @param crit Reference distribution for the \emph{pointwise} critical value
 #'   (\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
-#'   \code{"auto"} (default) uses the per-point Satterthwaite reference when the
-#'   standard errors come from a cluster-robust sandwich
-#'   (\code{sandwich = "cluster"} or \code{"cl2"}) and the number of independent
-#'   curves/clusters is moderate (\eqn{G < 150}), and the Gaussian reference
-#'   otherwise. \code{"z"} always uses the Gaussian quantile (the historical
-#'   behaviour). \code{"tG1"} uses a \eqn{t_{G-1}}{t_(G-1)} reference (constant
-#'   df, the pointwise analogue of \code{ci_ref = "t"}). \code{"satterthwaite"}
-#'   uses the per-point Bell-McCaffrey (Satterthwaite) df, \eqn{\nu(a) =
-#'   (\sum_g \lVert q_g\rVert^2)^2 / \sum_g \lVert q_g\rVert^4} with
-#'   \eqn{q_g = A_g \tilde X_g V_p a}; requested on a non-cluster covariance it
-#'   degrades to \code{"z"} with a warning. This is the missing (df) half of the
-#'   CL2 leverage adjustment. \strong{Honesty note:} the df uses a working-iid
-#'   Satterthwaite shortcut that drops the same cross-cluster residual terms as
-#'   the shipped \eqn{(I-H_{gg})^{-1/2}} CL2 covariance (paper Appendix C); it
-#'   therefore returns \eqn{\approx G} for a perfectly balanced design where the
-#'   exact Bell-McCaffrey df is \eqn{G-1} (the exact-BM df is future work).
-#'   Simultaneous bands are unaffected.
+#'   \code{"z"} (default) uses the Gaussian quantile. \code{"tG1"} uses
+#'   \eqn{t_{G-1}}. Opt-in \code{"auto"} selects \code{"satterthwaite"} for
+#'   cluster/CL2 covariance with \eqn{G<150}, and \code{"z"} otherwise.
+#'   \code{"satterthwaite"} matches the first two moments of the sampling
+#'   quadratic form using the full cross-cluster residualization Gram:
+#'   \eqn{\nu(a)=\{\mathrm{tr}(\Gamma)\}^2/\mathrm{tr}(\Gamma^2)}.
+#'   Covariance and df use the same resolved CL2 adjustment and grouping.
+#'   This central Gaussian working-independence calculation fixes smoothing
+#'   parameters and weights. It establishes neither an exact t pivot nor
+#'   calibration for B2, smoothing bias, correlated errors or smoothing
+#'   selection. Undefined df gives missing limits with a warning; requests
+#'   on non-cluster covariance fall back to z with a warning. Simultaneous
+#'   bands are unaffected.
 #' @param level Confidence level for confidence intervals, defaults to
 #'   \code{0.95}.
 #' @param n_sim Number of simulations for simultaneous intervals, defaults to
@@ -1369,7 +1370,7 @@ coef.pffr <- function(
   raw = FALSE,
   se = TRUE,
   freq = FALSE,
-  sandwich = c("cluster", "cl2", "hc", "none"),
+  sandwich = NULL,
   cluster = NULL,
   dof_correction = NULL,
   edf_type = NULL,
@@ -1380,7 +1381,7 @@ coef.pffr <- function(
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
-  crit = c("auto", "z", "tG1", "satterthwaite"),
+  crit = c("z", "auto", "tG1", "satterthwaite"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
@@ -1389,7 +1390,8 @@ coef.pffr <- function(
   sandwich_missing <- missing(sandwich)
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
-  sandwich <- match.arg(sandwich)
+  if (is.null(sandwich)) sandwich <- pffr_canonicalize_cov(object)$fit_type
+  sandwich <- match.arg(sandwich, c("cluster", "cl2", "hc", "none"))
   ci <- match.arg(ci)
   ci_ref <- match.arg(ci_ref)
   crit <- match.arg(crit)
@@ -1626,7 +1628,12 @@ coef.pffr <- function(
           crit_mode <- "z"
         }
       } else if (crit_mode == "satterthwaite") {
-        df_ctx <- pffr_df_context(object, sandwich, cluster = cluster)
+        df_ctx <- pffr_df_context(
+          object,
+          sandwich,
+          cluster = cluster,
+          cl2_adjustment = attr(covmat, "cl2_adjustment") %||% cl2_adjustment
+        )
         if (!isTRUE(df_ctx$ok)) {
           # No whitened score path for this family; degrade to the Gaussian
           # reference (still an honest pointwise interval from the robust SE).
@@ -2063,7 +2070,7 @@ print.summary.pffr <- function(
     st <- x$satterthwaite_df
     cat(sprintf(
       paste0(
-        "Satterthwaite df for %s pointwise CIs (crit = \"auto\"): ",
+        "Working-model Satterthwaite df for %s pointwise CIs (opt-in): ",
         "median %s, min %s (G = %d).\n"
       ),
       st$type,

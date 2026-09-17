@@ -71,6 +71,15 @@
   (`sandwich = "cluster"`) covariance is built from the same bread and is
   equally affected, so switching sandwich type is not a remedy: inspect and
   refit the model.
+* Fixed-fit inference core (research patch `fixed-fit-core-2026-09-09`):
+  exact and shortcut CL2 and the working-model moment df now share one
+  compressed per-cluster influence object (`pffr_influence()`); `pffr()`
+  accepts a fit-time `cluster =` grouping that the covariance accessors
+  inherit, `coef.pffr(sandwich = NULL)` inherits the fit's covariance,
+  pointwise critical values default to `crit = "z"`, and families without a
+  cluster-robust score now error instead of silently returning an
+  observation-level HC covariance. The hat-invariant check above is computed
+  inside the shared core, so it also covers the compressed exact path.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.

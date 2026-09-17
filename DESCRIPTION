@@ -106,6 +106,7 @@ Collate:
     'pffr-sff.R'
     'pffr-formula.R'
     'pffr-core.R'
+    'pffr-influence.R'
     'pffr-utilities.R'
     'pffr-simulate.R'
     'pffr.R'
@@ -164,4 +165,6 @@ Collate:
     'predict.fbps.R'
     'select_knots.R'
 Encoding: UTF-8
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0
+PffrInferenceCore: fixed-fit-core-2026-09-09
+PffrBaseCommit: f8a8fa6f391b5ded7bfbf2b15d34d3a6f5d14867

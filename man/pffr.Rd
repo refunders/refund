@@ -18,6 +18,7 @@ pffr(
   dof_correction = c("none", "edf"),
   edf_type = c("trace", "edf2", "basis"),
   cl2_adjustment = c("auto", "exact", "shortcut"),
+  cluster = NULL,
   ...
 )
 }
@@ -90,12 +91,9 @@ penalty.}
   heteroskedasticity but ignores within-curve correlation.
   \code{"none"}: no sandwich correction.
 
-  For fitted-mean / response-scale (\eqn{E(Y)}) intervals at small numbers of
-  curves (\eqn{G \le 80}), the leave-one-cluster-out jackknife
-  \code{\link{pffr_jackknife_se}} (also via
-  \code{predict(\dots, se_method = "jackknife")}) is the recommended path:
-  the plug-in cluster/CL2 sandwich under-propagates the aggregated variance
-  there. See \code{\link{pffr_jackknife_se}} for its calibration caveat.
+  The leave-one-cluster-out \code{\link{pffr_jackknife_se}} is an
+  experimental fitted-mean alternative. Its calibration and interval-width
+  stability require separate validation, particularly at small G.
 
   Storage contract: the fit's model-based (Bayesian posterior) covariance
   matrices \code{$Vp}, \code{$Vc} and \code{$Ve} are \emph{always} left
@@ -135,6 +133,10 @@ the historical shortcut. The exact block
 is \eqn{B_g = I - 2H_{gg} + (H_t^2)_{gg}}, with eigenvalues floored at
 \eqn{(1 - 0.999)^2}. \code{"exact"} and \code{"shortcut"} force either
 variant. Ignored unless the resolved sandwich is \code{"cl2"}.}
+
+\item{cluster}{Optional grouping with one nonmissing entry per curve.
+Evaluated in data; stored and inherited by covariance accessors. Use
+subject identifiers for repeated curves. Currently supports dense data.}
 
 \item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}},
 \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or

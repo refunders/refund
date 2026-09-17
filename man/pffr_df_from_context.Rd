@@ -17,6 +17,6 @@ Numeric vector of per-point df (length `nrow(Xp)`).
 \description{
 Thin wrapper around [satterthwaite_df_kernel()] that returns just the df
 vector, or all-`NA` when the context carries no whitened design (`ok =
-FALSE`), so callers can transparently fall back to the Gaussian reference.
+FALSE`). Undefined df does not justify a Gaussian reference.
 }
 \keyword{internal}

@@ -9,7 +9,7 @@
   raw = FALSE,
   se = TRUE,
   freq = FALSE,
-  sandwich = c("cluster", "cl2", "hc", "none"),
+  sandwich = NULL,
   cluster = NULL,
   dof_correction = NULL,
   edf_type = NULL,
@@ -20,7 +20,7 @@
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
-  crit = c("auto", "z", "tG1", "satterthwaite"),
+  crit = c("z", "auto", "tG1", "satterthwaite"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
@@ -40,8 +40,8 @@ parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
 covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.}
 
 \item{sandwich}{Type of sandwich-corrected covariance for standard errors.
-\code{"cluster"} (default): cluster-robust sandwich (clustering by
-curve).
+\code{NULL} (default) inherits the fit-time covariance choice.
+\code{"cluster"}: cluster-robust sandwich.
 \code{"cl2"}: leverage-adjusted cluster-robust sandwich (clustering by
 curve).
 \code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
@@ -52,7 +52,8 @@ covariance matrices are used directly.}
 \item{cluster}{optional grouping for the cluster-robust sandwich
 (\code{sandwich = "cluster"} or \code{"cl2"}): a vector with one entry per
 curve (functional observation) mapping each curve to its independent unit.
-Defaults to \code{NULL}, i.e. each curve is its own cluster. Supply this for
+Defaults to \code{NULL}, inheriting the fit-time grouping (by curve
+if none was supplied). Supply this for
 nested / repeated-measures designs where several curves share a higher-level
 unit (e.g. a subject id with multiple visits), so the sandwich clusters at
 the correct level. Only supported for densely-observed responses. When
@@ -99,23 +100,19 @@ multiplier reference. Pointwise intervals are governed instead by
 
 \item{crit}{Reference distribution for the \emph{pointwise} critical value
 (\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
-\code{"auto"} (default) uses the per-point Satterthwaite reference when the
-standard errors come from a cluster-robust sandwich
-(\code{sandwich = "cluster"} or \code{"cl2"}) and the number of independent
-curves/clusters is moderate (\eqn{G < 150}), and the Gaussian reference
-otherwise. \code{"z"} always uses the Gaussian quantile (the historical
-behaviour). \code{"tG1"} uses a \eqn{t_{G-1}}{t_(G-1)} reference (constant
-df, the pointwise analogue of \code{ci_ref = "t"}). \code{"satterthwaite"}
-uses the per-point Bell-McCaffrey (Satterthwaite) df, \eqn{\nu(a) =
-(\sum_g \lVert q_g\rVert^2)^2 / \sum_g \lVert q_g\rVert^4} with
-\eqn{q_g = A_g \tilde X_g V_p a}; requested on a non-cluster covariance it
-degrades to \code{"z"} with a warning. This is the missing (df) half of the
-CL2 leverage adjustment. \strong{Honesty note:} the df uses a working-iid
-Satterthwaite shortcut that drops the same cross-cluster residual terms as
-the shipped \eqn{(I-H_{gg})^{-1/2}} CL2 covariance (paper Appendix C); it
-therefore returns \eqn{\approx G} for a perfectly balanced design where the
-exact Bell-McCaffrey df is \eqn{G-1} (the exact-BM df is future work).
-Simultaneous bands are unaffected.}
+\code{"z"} (default) uses the Gaussian quantile. \code{"tG1"} uses
+\eqn{t_{G-1}}. Opt-in \code{"auto"} selects \code{"satterthwaite"} for
+cluster/CL2 covariance with \eqn{G<150}, and \code{"z"} otherwise.
+\code{"satterthwaite"} matches the first two moments of the sampling
+quadratic form using the full cross-cluster residualization Gram:
+\eqn{\nu(a)=\{\mathrm{tr}(\Gamma)\}^2/\mathrm{tr}(\Gamma^2)}.
+Covariance and df use the same resolved CL2 adjustment and grouping.
+This central Gaussian working-independence calculation fixes smoothing
+parameters and weights. It establishes neither an exact t pivot nor
+calibration for B2, smoothing bias, correlated errors or smoothing
+selection. Undefined df gives missing limits with a warning; requests
+on non-cluster covariance fall back to z with a warning. Simultaneous
+bands are unaffected.}
 
 \item{level}{Confidence level for confidence intervals, defaults to
 \code{0.95}.}

@@ -33,7 +33,7 @@ A list with `crit` (scalar or per-point vector) and `df` (per-point
 Computes the pointwise interval half-width multiplier for one term under the
 chosen reference (S3): `"z"` (Gaussian, reported df `Inf`), `"tG1"`
 (\eqn{t_{G-1}}, constant df), or `"satterthwaite"` (per-point Bell-McCaffrey
-df from `df_ctx`, with a Gaussian fallback at any zero-variance / undefined
-point).
+working-model moment df from `df_ctx`; undefined df yields missing limits
+with a warning).
 }
 \keyword{internal}

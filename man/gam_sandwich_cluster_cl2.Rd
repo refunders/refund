@@ -12,7 +12,8 @@ gam_sandwich_cluster_cl2(
   leverage_cap = 0.999,
   cl2_adjustment = c("auto", "exact", "shortcut"),
   b2 = TRUE,
-  center_scores = FALSE
+  center_scores = FALSE,
+  influence = NULL
 )
 }
 \arguments{
@@ -41,6 +42,8 @@ V_e} (X5).}
 behavior). When `TRUE`, center the leverage-adjusted per-cluster
 contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
 (X6).}
+
+\item{influence}{Optional precomputed fixed-fit influence object.}
 }
 \value{
 A p x p covariance matrix with leverage diagnostics. Exact CL2

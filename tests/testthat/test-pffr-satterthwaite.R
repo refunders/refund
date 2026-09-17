@@ -8,10 +8,8 @@
 
 test_that("balanced unpenalized OLS with identical clusters gives df ~ G-1", {
   # Identical intercept-only clusters, unpenalized OLS bread (Vp = (X'X)^{-1}).
-  # The working-iid shortcut returns exactly G for perfectly identical clusters
-  # (vs. the exact Bell-McCaffrey G-1, which needs the dropped cross-cluster
-  # residual terms); at large G, G is within 1% of G-1.
-  G <- 200
+  # Full residualization recovers G-1 even at small G.
+  G <- 7
   Xw <- matrix(1, nrow = G, ncol = 1)
   cid <- seq_len(G)
   Vp <- solve(crossprod(Xw))
@@ -22,13 +20,10 @@ test_that("balanced unpenalized OLS with identical clusters gives df ~ G-1", {
 
   expect_equal(k_cr1$G, G)
   # within 1% of G-1 (the classic balanced-design target)
-  expect_equal(k_cr1$df, G - 1, tolerance = 0.01)
-  expect_equal(k_cl2$df, G - 1, tolerance = 0.01)
-  # honesty: the shortcut is exactly G for identical clusters
-  expect_equal(k_cr1$df, G, tolerance = 1e-8)
-  expect_equal(k_cl2$df, G, tolerance = 1e-8)
+  expect_equal(k_cr1$df, G - 1, tolerance = 1e-10)
+  expect_equal(k_cl2$df, G - 1, tolerance = 1e-10)
 
-  # identical multi-observation blocks (D=5, p=3) also give exactly G
+  # identical multi-observation blocks (D=5, p=3) also give exactly G-1
   set.seed(11)
   Gb <- 40
   Z <- matrix(rnorm(5 * 3), 5, 3)
@@ -37,7 +32,7 @@ test_that("balanced unpenalized OLS with identical clusters gives df ~ G-1", {
   Vpb <- solve(crossprod(Xwb))
   Xpb <- matrix(rnorm(4 * 3), 4, 3)
   kb <- satterthwaite_df_kernel(Xwb, cidb, Vpb, Xpb, use_cl2 = TRUE)
-  expect_equal(kb$df, rep(Gb, 4), tolerance = 1e-8)
+  expect_equal(kb$df, rep(Gb - 1, 4), tolerance = 1e-8)
 })
 
 test_that("df decreases monotonically as one cluster's leverage is inflated", {
@@ -137,7 +132,7 @@ test_that("crit = 'auto' resolves per sandwich path and G", {
   m <- get_basic_pffr_model()
 
   # cl2 fit, G ~ 30 < 150  ->  satterthwaite
-  co_auto <- coef(m, ci = "pointwise", sandwich = "cl2", n1 = 30)
+  co_auto <- coef(m, ci = "pointwise", sandwich = "cl2", crit = "auto", n1 = 30)
   co_sat <- coef(
     m,
     ci = "pointwise",
@@ -173,10 +168,10 @@ test_that("crit = 'satterthwaite' on a non-cluster covariance degrades to z", {
   expect_true(all(is.infinite(co$smterms[[1]]$coef$df)))
 })
 
-test_that("CL2 df is never above the CR1 df (leverage adjustment shrinks df)", {
+test_that("CL2 df does not exceed CR1 df in this fixture", {
   skip_on_cran()
   # A_g = (I - H_gg)^{-1/2} inflates ||q_g|| for high-leverage clusters, which
-  # can only lower (or leave equal) the Satterthwaite df relative to A_g = I.
+  # lowers df in this fixture; no universal monotonicity theorem is claimed.
   m <- get_basic_pffr_model()
   co_cr1 <- suppressMessages(coef(
     m,

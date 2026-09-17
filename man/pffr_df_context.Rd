@@ -2,36 +2,32 @@
 % Please edit documentation in R/pffr-core.R
 \name{pffr_df_context}
 \alias{pffr_df_context}
-\title{Per-cluster whitening context for Satterthwaite degrees of freedom}
+\title{Cached residualization context for central Gaussian moment df}
 \usage{
 pffr_df_context(
   object,
   sandwich_type,
   cluster = NULL,
   leverage_cap = 0.999,
-  tol = 1e-08
+  tol = 1e-08,
+  cl2_adjustment = NULL
 )
 }
 \arguments{
-\item{object}{A fitted pffr model.}
+\item{object}{Fitted pffr model.}
 
-\item{sandwich_type}{Resolved sandwich path; a whitening context is only
-built for `"cluster"` / `"cl2"`.}
+\item{sandwich_type}{Resolved cluster or cl2 covariance choice.}
 
-\item{cluster}{Optional custom per-curve grouping (as in [pffr_vcov()]).}
+\item{cluster}{Optional per-curve grouping override.}
 
-\item{leverage_cap, tol}{CL2 leverage cap / eigenvalue floor.}
+\item{leverage_cap, tol}{Numerical floor settings.}
+
+\item{cl2_adjustment}{NULL inherits the fit; otherwise auto, exact or shortcut.}
 }
 \value{
-A list with `ok` (`FALSE` when the sandwich path is not
-  cluster/CL2, or the family has no whitened score factorization here), and
-  when `ok`: `Xw`, `cluster_id`, `Vp`, `use_cl2`, `G`, `leverage_cap`, `tol`.
+List with ok, type, cached core, Vp, G and adjustment settings.
 }
 \description{
-Builds --- once per `coef()` call --- the shared pieces the per-point
-Satterthwaite df needs, so [satterthwaite_df_kernel()] can be applied to each
-term's contrast matrix without rebuilding the whitened design. Uses the same
-Fisher-whitened two-block / standard construction as the CL2 sandwich (so the
-per-cluster hat trace equals the model EDF).
+Cached residualization context for central Gaussian moment df
 }
 \keyword{internal}

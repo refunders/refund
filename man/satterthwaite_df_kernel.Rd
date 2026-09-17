@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr-core.R
 \name{satterthwaite_df_kernel}
 \alias{satterthwaite_df_kernel}
-\title{Satterthwaite degrees of freedom for cluster-robust pointwise intervals}
+\title{Central Gaussian working-model sampling-variance moment df}
 \usage{
 satterthwaite_df_kernel(
   Xw,
@@ -11,57 +11,29 @@ satterthwaite_df_kernel(
   Xp,
   use_cl2,
   leverage_cap = 0.999,
-  tol = 1e-08
+  tol = 1e-08,
+  cl2_adjustment = "exact"
 )
 }
 \arguments{
-\item{Xw}{Fisher-whitened per-observation design (`n_work x p`), from
-[build_cl2_working_standard()] / [build_cl2_working_gaulss()].}
+\item{Xw}{Working-likelihood-scaled design.}
 
-\item{cluster_id}{Work-level cluster membership (length `n_work`).}
+\item{cluster_id}{Grouping per working row.}
 
-\item{Vp}{Model-based penalized bread (`p x p`).}
+\item{Vp}{Penalized model-based bread.}
 
-\item{Xp}{Contrast matrix, one row per evaluation point (`n_points x p`, full
-coefficient space).}
+\item{Xp}{Full coefficient-space contrasts, one per row.}
 
-\item{use_cl2}{Apply the CL2 leverage adjustment `A_g`? (`FALSE` = CR1 path,
-`A_g = I`.)}
+\item{use_cl2}{Apply leverage adjustment?}
 
-\item{leverage_cap, tol}{CL2 leverage cap / eigenvalue floor (match the
-shipped CL2 sandwich in [gam_sandwich_cluster_cl2()]).}
+\item{leverage_cap, tol}{Numerical floor settings.}
+
+\item{cl2_adjustment}{Exact (default) or shortcut leverage block.}
 }
 \value{
-A list with `df` (length `n_points`; `NA` at zero-variance
-  contrasts, otherwise clamped to `[1, G]` up to rounding) and `G`.
+List with df, G and expected sampling variance. Undefined df is NA.
 }
 \description{
-Working-iid Satterthwaite degrees of freedom for a set of scalar contrasts
-(the rows of `Xp`) --- the pointwise half of the Bell--McCaffrey procedure.
-For a contrast \eqn{a} with Fisher-whitened per-cluster design
-\eqn{\tilde X_g = \sqrt{W_g}\,X_g}, model-based penalized bread \eqn{V_p} and
-CL2 leverage adjustment \eqn{A_g = (I - H_{gg})^{-1/2}} (identity for the CR1
-path),
-\deqn{q_g = A_g\,\tilde X_g\,(V_p a), \qquad
-  \nu(a) = \frac{\left(\sum_g \lVert q_g\rVert^2\right)^2}
-                {\sum_g \lVert q_g\rVert^4},
-  \qquad \mathrm{crit} = t_{1-\alpha/2,\,\nu}.}
-Rationale: the robust variance of \eqn{a^\top\hat\theta} is
-\eqn{c\sum_g (q_g^\top z_g)^2}; under the working model the per-cluster terms
-are independent \eqn{\lVert q_g\rVert^2\chi^2_1}-type variables, and matching
-the first two moments of their sum gives \eqn{\nu}. This working-iid shortcut
-drops the same cross-cluster residual terms that the shipped
-\eqn{(I-H_{gg})^{-1/2}} CL2 shortcut drops (paper Appendix C); it therefore
-returns \eqn{\approx G} for a perfectly balanced design where the *exact*
-Bell--McCaffrey df is \eqn{G-1}. The exact-BM df is future work (task X15).
-}
-\details{
-Vectorized over the rows of `Xp`: \eqn{M = V_p X_p^\top} (`p x n_points`) is
-formed once; each cluster contributes \eqn{Q_g = A_g\,\tilde X_g\,M}
-(`D_g x n_points`) and the per-column squared norms
-\eqn{\lVert q_g\rVert^2 = \mathrm{colSums}(Q_g^2)} accumulate into
-\eqn{s_2 = \sum_g \lVert q_g\rVert^2} and
-\eqn{s_4 = \sum_g \lVert q_g\rVert^4}; then \eqn{\nu = s_2^2 / s_4}. Cost
-\eqn{O(\sum_g D_g\, p\, n_{points})}.
+Central Gaussian working-model sampling-variance moment df
 }
 \keyword{internal}
