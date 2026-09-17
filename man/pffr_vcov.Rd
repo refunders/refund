@@ -12,7 +12,8 @@ pffr_vcov(
   dof_correction = NULL,
   edf_type = NULL,
   b2 = TRUE,
-  center_scores = FALSE
+  center_scores = FALSE,
+  cl2_adjustment = NULL
 )
 }
 \arguments{
@@ -39,6 +40,9 @@ recomputation and are never served from or written to the cache.}
 \item{center_scores}{Internal ablation switch (default `FALSE` = current
 behavior). When `TRUE`, center the per-cluster score sums before forming
 the cluster/CL2 meat (X6). Same cache semantics as `b2`.}
+
+\item{cl2_adjustment}{CL2 leverage adjustment. `NULL` (default) inherits
+the fitted choice; otherwise one of `"auto"`, `"exact"`, or `"shortcut"`.}
 }
 \value{
 A covariance matrix.

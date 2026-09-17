@@ -1291,6 +1291,11 @@ compute_pointwise_ci <- function(
 #' @param edf_type Which EDF the \code{"edf"} correction uses
 #'   (\code{"trace"}/\code{"edf2"}/\code{"basis"}; see \code{\link{pffr}}).
 #'   Defaults to \code{NULL} (inherit from the fit).
+#' @param cl2_adjustment Leverage adjustment within \code{sandwich = "cl2"}.
+#'   \code{NULL} (default) inherits the fit-time choice; \code{"auto"}
+#'   applies the documented feasibility rule, while \code{"exact"} and
+#'   \code{"shortcut"} force either CL2 variant. Supplying a value forces a
+#'   covariance recomputation.
 #' @param seWithMean logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?
 #' @param n1 see below
 #' @param n2 see below
@@ -1368,6 +1373,7 @@ coef.pffr <- function(
   cluster = NULL,
   dof_correction = NULL,
   edf_type = NULL,
+  cl2_adjustment = NULL,
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
@@ -1398,6 +1404,12 @@ coef.pffr <- function(
   if (is.null(edf_type)) edf_type <- model_edf_type
   dof_correction <- match.arg(dof_correction, c("none", "edf"))
   edf_type <- match.arg(edf_type, c("trace", "edf2", "basis"))
+  if (!is.null(cl2_adjustment)) {
+    cl2_adjustment <- match.arg(
+      cl2_adjustment,
+      c("auto", "exact", "shortcut")
+    )
+  }
   # Only warn when the user *explicitly* asked for a dof correction on a
   # non-cluster sandwich; an inherited "edf" (from the fit) stays silent.
   if (dof_explicitly_set && dof_correction != "none" && sandwich != "cluster") {
@@ -1586,7 +1598,8 @@ coef.pffr <- function(
       dof_correction = dof_correction,
       edf_type = edf_type,
       b2 = b2,
-      center_scores = center_scores
+      center_scores = center_scores,
+      cl2_adjustment = cl2_adjustment
     )
 
     # Pointwise critical-value reference (S3). `crit` selects the pointwise
