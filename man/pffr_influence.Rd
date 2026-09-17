@@ -28,7 +28,9 @@ pffr_influence(
 
 \item{dof_correction, edf_type}{CR1 small-sample correction for
 `sandwich = "cluster"`; `NULL` inherits the fit. Both enter the cache key
-because they scale the cached `correction`.}
+for `sandwich = "cluster"`, because there they scale the cached
+`correction`; for `sandwich = "cl2"` they are never applied and are keyed
+as `"none"` so the same object is reused whatever they are set to.}
 }
 \value{
 A `pffr_influence` object: the symmetrized penalized bread `B`, the

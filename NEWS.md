@@ -67,10 +67,11 @@
   exploded standard errors (interval widths up to 1e133 were observed on
   degenerate Poisson fits, with nothing to distinguish them from a legitimately
   wide interval). The covariance is still returned, now carrying
-  `max_obs_leverage` and `hat_invariant_violation` attributes. The CR1
-  (`sandwich = "cluster"`) covariance is built from the same bread and is
-  equally affected, so switching sandwich type is not a remedy: inspect and
-  refit the model.
+  `max_obs_leverage` and `hat_invariant_violation` attributes. The check runs
+  on the CL2 path only: `sandwich = "cluster"` (CR1) forms no per-cluster
+  leverage geometry, so it has nothing to monitor and stays silent. It is
+  built from the same bread, though, so switching to it is not a remedy --
+  it only removes the diagnostic. Inspect and refit the model.
 * `ff(..., check.ident = TRUE)` (the default) now also warns when the
   effective rank of the functional covariate's covariance is below
   `1.5 * k_s`, where `k_s` is the marginal basis dimension along `s`. The
@@ -120,11 +121,14 @@
     `max_leverage` is populated on the exact path and `min_block_eig` /
     `max_block_kappa` on the shortcut path, alongside the hat-invariant
     monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
-    `min_block_eig_rel`.
+    `min_block_eig_rel`. These are CL2-only: a `sandwich = "cluster"` fit
+    builds no leverage geometry and leaves them `NA`.
   - The hat-invariant check now also covers the *lower* bounds
     (`h_ii >= 0` and `eigen(H_gg) >= 0`): an indefinite penalized bread is
     detected instead of passing the upper-bound monitors unnoticed.
-  - At most one warning is emitted per cluster-robust covariance call. Only the
+  - At most one leverage-related warning is emitted per CL2 covariance call
+    (option-validation warnings, such as an ignored `dof_correction`, are
+    separate). Only the
     shortcut path warns about the leverage cap (the exact path's
     `(1 - leverage_cap)^2` residual-eigenvalue floor is a routine numerical
     safeguard and stays silent, as before); when a hat invariant is violated,

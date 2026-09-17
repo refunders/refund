@@ -344,7 +344,9 @@ pffr_influence_df <- function(
 #' @param leverage_cap,tol Numerical adjustment settings.
 #' @param dof_correction,edf_type CR1 small-sample correction for
 #'   `sandwich = "cluster"`; `NULL` inherits the fit. Both enter the cache key
-#'   because they scale the cached `correction`.
+#'   for `sandwich = "cluster"`, because there they scale the cached
+#'   `correction`; for `sandwich = "cl2"` they are never applied and are keyed
+#'   as `"none"` so the same object is reused whatever they are set to.
 #' @returns A `pffr_influence` object: the symmetrized penalized bread `B`, the
 #'   residualization matrix `C`, the per-cluster residual influence columns `K`,
 #'   the compressed per-cluster geometry `blocks` (`T` and the leverage weight
@@ -390,15 +392,20 @@ pffr_influence <- function(
   # dof_correction / edf_type scale $correction (and hence every
   # expected_sampling_variance read off this object), so they must be part of
   # the cache key: otherwise an explicit override would silently reuse the
-  # entry built for the fit's own setting.
+  # entry built for the fit's own setting. They only ever apply on the CR1
+  # path (see the type == "cluster" guard below), so cl2 keys them as "none":
+  # otherwise an edf-fitted object queried as cl2 would cache a second,
+  # byte-identical entry for every (dof_correction, edf_type) combination.
+  key_dof <- if (type == "cluster") dof_correction else "none"
+  key_edf <- if (type == "cluster") edf_type else "none"
   key <- paste(
     "influence",
     type,
     adjustment,
     leverage_cap,
     tol,
-    dof_correction,
-    edf_type,
+    key_dof,
+    key_edf,
     sep = "|"
   )
   cache <- object$pffr$Vsandwich_cache

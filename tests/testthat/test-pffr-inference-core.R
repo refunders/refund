@@ -389,9 +389,11 @@ testthat::test_that("hat-invariant lower bounds are reported and tolerant", {
 })
 
 testthat::test_that("max_block_kappa uses |max eig| / |min eig|", {
-  # Upstream's definition. It differs from max|v| / min|v| exactly when a
-  # negative eigenvalue is present, i.e. in the P-LB5 case the monitor exists
-  # for: there the ratio must come out NEGATIVE, not be silently absolutized.
+  # Upstream's definition: the ratio is built from the residual block's
+  # largest and smallest eigenvalues BY VALUE, each taken in absolute value,
+  # so max_block_kappa itself is always non-negative -- including on the
+  # indefinite block below, where it is |1.5| / |-0.5| = 3. What records the
+  # indefiniteness is the signed min_block_eig (-0.5), asserted alongside it.
   G <- 4L
   Z <- do.call(rbind, rep(list(diag(2)), G))
   cid <- rep(seq_len(G), each = 2L)

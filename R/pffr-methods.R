@@ -1236,12 +1236,77 @@ compute_pointwise_ci <- function(
     stats::qt(prob, pmax(df, 1)),
     NA_real_
   )
-  if (any(!is.finite(df)))
-    warning(
-      "Undefined working-model moment df; corresponding interval limits are missing.",
-      call. = FALSE
-    )
+  if (any(!is.finite(df))) pffr_warn_undefined_df()
   list(crit = crit, df = df)
+}
+
+
+# Undefined working-model moment df is detected in two independent places per
+# coef.pffr() call -- once per smooth term inside compute_pointwise_ci(), and
+# once for the parametric coefficients -- so warning at each site produced one
+# warning per affected block. pffr_begin_undefined_df() opens a collection
+# window for the duration of one coef() call; inside it the sites only record
+# the fact and pffr_end_undefined_df() emits a single warning on exit. Outside
+# a window (direct internal calls) the warning fires immediately, as before.
+pffr_df_warn_state <- new.env(parent = emptyenv())
+pffr_df_warn_state$active <- FALSE
+pffr_df_warn_state$seen <- FALSE
+
+PFFR_UNDEFINED_DF_MSG <- paste0(
+  "Undefined working-model moment df; corresponding interval limits are ",
+  "missing."
+)
+
+#' Warn (or record) that a working-model moment df was undefined
+#'
+#' Inside a [pffr_begin_undefined_df()] window the call is recorded and the
+#' warning deferred, so one `coef()` call warns at most once however many
+#' blocks are affected. Outside a window it warns immediately.
+#'
+#' @returns `NULL`, invisibly. Called for the side effect.
+#' @keywords internal
+pffr_warn_undefined_df <- function() {
+  if (isTRUE(pffr_df_warn_state$active)) {
+    pffr_df_warn_state$seen <- TRUE
+    return(invisible(NULL))
+  }
+  warning(PFFR_UNDEFINED_DF_MSG, call. = FALSE)
+  invisible(NULL)
+}
+
+#' Open an undefined-df collection window
+#'
+#' Pair with [pffr_end_undefined_df()] via `on.exit()` so every return path of
+#' the calling function closes the window. Nested windows keep the outermost
+#' one in charge: an inner [pffr_begin_undefined_df()] is a no-op and reports
+#' `FALSE`, so its `on.exit()` handler leaves the outer window alone.
+#'
+#' @returns `TRUE` if this call opened the window, `FALSE` if one was already
+#'   open.
+#' @keywords internal
+pffr_begin_undefined_df <- function() {
+  if (isTRUE(pffr_df_warn_state$active)) {
+    return(FALSE)
+  }
+  pffr_df_warn_state$active <- TRUE
+  pffr_df_warn_state$seen <- FALSE
+  TRUE
+}
+
+#' Close an undefined-df collection window, warning at most once
+#'
+#' @param opened The value returned by the matching [pffr_begin_undefined_df()].
+#' @returns `NULL`, invisibly. Called for the side effect.
+#' @keywords internal
+pffr_end_undefined_df <- function(opened) {
+  if (!isTRUE(opened)) {
+    return(invisible(NULL))
+  }
+  seen <- isTRUE(pffr_df_warn_state$seen)
+  pffr_df_warn_state$active <- FALSE
+  pffr_df_warn_state$seen <- FALSE
+  if (seen) warning(PFFR_UNDEFINED_DF_MSG, call. = FALSE)
+  invisible(NULL)
 }
 
 
@@ -1405,6 +1470,11 @@ coef.pffr <- function(
   sim_seed = NULL,
   ...
 ) {
+  # One coef() call warns at most once about undefined moment df, however many
+  # smooth terms and parametric coefficients are affected (review round 2).
+  df_warn_window <- pffr_begin_undefined_df()
+  on.exit(pffr_end_undefined_df(df_warn_window), add = TRUE)
+
   sandwich_missing <- missing(sandwich)
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
@@ -1733,12 +1803,7 @@ coef.pffr <- function(
             stats::qt(prob, pmax(p_df, 1)),
             NA_real_
           )
-          if (any(!is.finite(p_df)))
-            warning(
-              "Undefined working-model moment df; corresponding interval ",
-              "limits are missing.",
-              call. = FALSE
-            )
+          if (any(!is.finite(p_df))) pffr_warn_undefined_df()
         } else {
           p_crit <- stats::qnorm(prob)
           p_df <- rep(Inf, length(p_se))

@@ -56,9 +56,10 @@ A p x p covariance matrix with leverage diagnostics. Exact CL2
   monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
   `hat_invariant_violation` (`NULL` when the penalized hat respects its
   bounds, otherwise a description of the violation; see
-  [pffr_hat_invariant_violation()]). At most one warning is emitted per
-  call: the invariant warning when an invariant is broken, otherwise the
-  shortcut leverage-cap warning.
+  [pffr_hat_invariant_violation()]). At most one leverage-related warning is
+  emitted per call: the invariant warning when an invariant is broken,
+  otherwise the shortcut leverage-cap warning. Option-validation warnings
+  (an ignored `dof_correction`, say) are separate and unaffected.
 }
 \description{
 Computes a cluster-robust covariance matrix with a Bell-McCaffrey style

@@ -351,3 +351,140 @@ testthat::test_that("unsupported families cannot silently substitute HC", {
     "No cluster-robust"
   )
 })
+
+#--------------------------------------
+# Round-2 review: the leverage/invariant diagnostics through the public API
+#--------------------------------------
+#
+# The monitors were previously asserted only through refund:::pffr_vcov() and
+# refund:::gam_sandwich_cluster_cl2(). These exercise the same behaviour the
+# way a user meets it: pffr(sandwich = "cl2") at fit time and coef() after.
+
+testthat::test_that("the shortcut cap warns once at fit time, the exact path not at all", {
+  testthat::skip_on_cran()
+  # The "influential" design saturates one cluster's leverage (one covariate
+  # value is three orders of magnitude off), so the shortcut's H_gg hits the
+  # cap while the exact path only floors residual-block eigenvalues.
+  fixture <- make_exactcl2_fixture("poisson", 4L, "influential")
+  fit_cl2 <- function(adjustment) {
+    suppressMessages(refund::pffr(
+      Y ~ xlin,
+      data = fixture$data,
+      yind = fixture$yind,
+      family = fixture$family,
+      bs.yindex = list(bs = "ps", k = fixture$k, m = c(2, 1)),
+      sandwich = "cl2",
+      cl2_adjustment = adjustment,
+      cluster = fixture$cluster
+    ))
+  }
+  # Count only cap warnings: the Poisson fit itself may warn about other
+  # things, and this assertion is about the cap warning not repeating.
+  w_short <- testthat::capture_warnings(fit_short <- fit_cl2("shortcut"))
+  testthat::expect_length(grep("hit the leverage cap", w_short), 1L)
+  testthat::expect_gt(fit_short$pffr$sandwich_info$n_capped, 0)
+
+  w_exact <- testthat::capture_warnings(fit_exact <- fit_cl2("exact"))
+  testthat::expect_length(grep("hit the leverage cap", w_exact), 0L)
+  testthat::expect_null(fit_exact$pffr$sandwich_info$hat_invariant_violation)
+
+  # The covariance is computed once, at fit time; reading it back through
+  # coef() must not re-run the adjustment and warn a second time.
+  testthat::expect_no_warning(
+    coef(fit_short, ci = "pointwise", crit = "satterthwaite", n1 = 12)
+  )
+  testthat::expect_no_warning(
+    coef(fit_exact, ci = "pointwise", crit = "satterthwaite", n1 = 12)
+  )
+})
+
+testthat::test_that("sandwich_info of a benign cl2 fit carries the hat monitors", {
+  testthat::skip_on_cran()
+  fixture <- make_lb5_fixture(amp = 1, n_grid = 20L, k = 8L, 21L)
+  fit <- suppressWarnings(suppressMessages(refund::pffr(
+    Y ~ xlin,
+    data = fixture$data,
+    yind = fixture$yind,
+    family = stats::poisson(),
+    bs.yindex = list(bs = "ps", k = fixture$k, m = c(2, 1)),
+    sandwich = "cl2"
+  )))
+  info <- fit$pffr$sandwich_info
+  testthat::expect_identical(info$type, "cl2")
+  for (slot in c("max_obs_leverage", "min_obs_leverage", "min_hat_eig")) {
+    testthat::expect_true(
+      is.finite(info[[slot]]),
+      info = paste("sandwich_info slot", slot)
+    )
+  }
+  # A benign fit respects the bounds, so nothing is flagged.
+  testthat::expect_lte(info$max_obs_leverage, 1)
+  testthat::expect_null(info$hat_invariant_violation)
+})
+
+testthat::test_that("a degenerate fit surfaces one invariant warning through pffr and coef", {
+  testthat::skip_on_cran()
+  fixture <- make_lb5_fixture(amp = 10, n_grid = 30L, k = 12L, 21L)
+  w <- testthat::capture_warnings(
+    fit <- suppressMessages(refund::pffr(
+      Y ~ xlin,
+      data = fixture$data,
+      yind = fixture$yind,
+      family = stats::poisson(),
+      bs.yindex = list(bs = "ps", k = fixture$k, m = c(2, 1)),
+      sandwich = "cl2"
+    ))
+  )
+  testthat::expect_length(grep("NOT trustworthy", w), 1L)
+  testthat::expect_type(
+    fit$pffr$sandwich_info$hat_invariant_violation,
+    "character"
+  )
+  testthat::expect_gt(fit$pffr$sandwich_info$max_obs_leverage, 1)
+  # Reading the stored covariance back does not re-raise it.
+  testthat::expect_length(
+    grep(
+      "NOT trustworthy",
+      testthat::capture_warnings(coef(fit, ci = "none", n1 = 12))
+    ),
+    0L
+  )
+})
+
+testthat::test_that("one coef() call warns at most once about undefined df", {
+  # Both the smooth-term block (compute_pointwise_ci) and the parametric
+  # block detect an undefined moment df independently; before round 2 each
+  # warned on its own. Mock the df kernel so BOTH blocks see a non-finite df.
+  set.seed(84105)
+  G <- 10L
+  D <- 8L
+  tt <- seq(0, 1, length.out = D)
+  dat <- list(Y = matrix(rnorm(G * D), G, D), x = rnorm(G))
+  dat$Y <- dat$Y + outer(dat$x, sin(2 * pi * tt))
+  fit <- suppressMessages(refund::pffr(
+    Y ~ x,
+    yind = tt,
+    data = dat,
+    bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+    bs.int = list(bs = "ps", k = 5, m = c(2, 1)),
+    sandwich = "cl2"
+  ))
+  testthat::local_mocked_bindings(
+    # One undefined contrast per block, the rest finite, so each block takes
+    # the NA branch and every other interval limit stays usable.
+    pffr_df_from_context = function(ctx, Xp, df_gram = NULL) {
+      n <- nrow(Xp)
+      c(NA_real_, rep(8, max(n - 1L, 0L)))[seq_len(n)]
+    }
+  )
+  w <- testthat::capture_warnings(
+    cf <- coef(fit, ci = "pointwise", crit = "satterthwaite", n1 = 12)
+  )
+  testthat::expect_length(grep("Undefined working-model moment df", w), 1L)
+
+  # ... and both blocks really did produce missing limits.
+  smooth_lims <- cf$smterms[[1]]$coef
+  testthat::expect_true(any(is.na(smooth_lims[, "lower"])))
+  testthat::expect_true(any(is.finite(smooth_lims[, "lower"])))
+  testthat::expect_true(any(is.na(cf$pterms[, "lower"])))
+})

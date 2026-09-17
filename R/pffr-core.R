@@ -1649,9 +1649,10 @@ gam_sandwich_cluster <- function(
 #'   monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
 #'   `hat_invariant_violation` (`NULL` when the penalized hat respects its
 #'   bounds, otherwise a description of the violation; see
-#'   [pffr_hat_invariant_violation()]). At most one warning is emitted per
-#'   call: the invariant warning when an invariant is broken, otherwise the
-#'   shortcut leverage-cap warning.
+#'   [pffr_hat_invariant_violation()]). At most one leverage-related warning is
+#'   emitted per call: the invariant warning when an invariant is broken,
+#'   otherwise the shortcut leverage-cap warning. Option-validation warnings
+#'   (an ignored `dof_correction`, say) are separate and unaffected.
 #' @keywords internal
 gam_sandwich_cluster_cl2 <- function(
   b,
@@ -3163,8 +3164,10 @@ apply_sandwich_correction <- function(
     n_adjusted = n_adjusted,
     min_block_eig = attr(Vsw, "min_block_eig") %||% NA_real_,
     max_block_kappa = attr(Vsw, "max_block_kappa") %||% NA_real_,
-    # Hat-invariant monitors (study LB, claim P-LB5), populated on every
-    # cluster-robust path so a degenerate fit is visible from the fit object.
+    # Hat-invariant monitors (study LB, claim P-LB5). CL2 only: the CR1 path
+    # (gam_sandwich_cluster()) forms no per-cluster leverage geometry, so
+    # these stay NA there. On a cl2 fit they make a degenerate fit visible
+    # from the fit object.
     max_obs_leverage = attr(Vsw, "max_obs_leverage") %||% NA_real_,
     min_obs_leverage = attr(Vsw, "min_obs_leverage") %||% NA_real_,
     min_hat_eig = attr(Vsw, "min_hat_eig") %||% NA_real_,
