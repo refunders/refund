@@ -48,6 +48,7 @@ Imports:
     methods
 Suggests:
     RColorBrewer,
+    clubSandwich,
     reshape2,
     sandwich,
     testthat
