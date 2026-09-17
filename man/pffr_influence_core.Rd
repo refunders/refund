@@ -34,6 +34,10 @@ pffr_influence_core(
 }
 \value{
 Influence object with separate sampling columns, B2 and geometry.
+  Its `diagnostics` data frame carries the per-cluster hat-invariant monitors
+  `max_leverage`/`min_hat_eig` (extreme eigenvalues of \eqn{H_{gg}}),
+  `max_obs_leverage`/`min_obs_leverage` (extreme \eqn{h_{ii}}) and
+  `min_block_eig_rel`.
 }
 \description{
 Uses Z_g = Q_g T_g and R_g = I - Z_g C Z_g', C = 2B - B Z'Z B.

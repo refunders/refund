@@ -14,6 +14,10 @@
 #' @param tol Positive shortcut eigenvalue floor.
 #' @param rank_tol Relative SVD tolerance; NULL uses dimension times machine epsilon.
 #' @returns Influence object with separate sampling columns, B2 and geometry.
+#'   Its `diagnostics` data frame carries the per-cluster hat-invariant monitors
+#'   `max_leverage`/`min_hat_eig` (extreme eigenvalues of \eqn{H_{gg}}),
+#'   `max_obs_leverage`/`min_obs_leverage` (extreme \eqn{h_{ii}}) and
+#'   `min_block_eig_rel`.
 #' @keywords internal
 pffr_influence_core <- function(
   Xw,
@@ -88,10 +92,13 @@ pffr_influence_core <- function(
   K <- if (is.null(z)) NULL else matrix(0, p, G)
   rank <- size <- n_floored <- integer(G)
   min_eig <- max_kappa <- max_hat <- discarded <- numeric(G)
-  # Hat-invariant monitors (study LB, claim P-LB5): largest per-observation
-  # leverage and the smallest residual-block eigenvalue relative to that
-  # block's own scale. Both are by-products of geometry computed anyway.
-  max_obs <- min_eig_rel <- numeric(G)
+  # Hat-invariant monitors (study LB, claim P-LB5): largest and smallest
+  # per-observation leverage, the extreme eigenvalues of H_gg, and the smallest
+  # residual-block eigenvalue relative to that block's own scale. All are
+  # by-products of geometry computed anyway. The lower bounds matter because a
+  # numerically inconsistent bread can make the penalized hat *indefinite*
+  # (h_ii < 0 or eigen(H_gg) < 0), which the upper-bound monitors never see.
+  max_obs <- min_obs <- min_hat <- min_eig_rel <- numeric(G)
   for (g in seq_len(G)) {
     idx <- which(cluster_id == groups[g])
     Zg <- Xw[idx, , drop = FALSE]
@@ -104,19 +111,23 @@ pffr_influence_core <- function(
     dropped <- setdiff(seq_along(dec$d), keep)
     discarded[g] <- if (length(dropped)) max(dec$d[dropped]) else 0
     if (!length(keep)) {
+      # A rank-0 cluster contributes nothing: H_gg = 0 and the residual block is
+      # the identity, so every monitor takes its unproblematic value.
       blocks[[g]] <- list(T = matrix(0, 0L, p), A = matrix(0, 0L, 0L))
-      min_eig[g] <- max_kappa[g] <- 1
+      min_eig[g] <- max_kappa[g] <- min_eig_rel[g] <- 1
       next
     }
     T <- dec$d[keep] * t(dec$v[, keep, drop = FALSE])
     Hsmall <- T %*% B %*% t(T)
     Hsmall <- (Hsmall + t(Hsmall)) / 2
-    max_hat[g] <- max(
-      eigen(Hsmall, symmetric = TRUE, only.values = TRUE)$values
-    )
+    hat_eig <- eigen(Hsmall, symmetric = TRUE, only.values = TRUE)$values
+    max_hat[g] <- max(hat_eig)
+    min_hat[g] <- min(hat_eig)
     # H_gg = U Hsmall U' with orthonormal U, so h_ii needs no dense hat block.
     Ug <- dec$u[, keep, drop = FALSE]
-    max_obs[g] <- max(rowSums((Ug %*% Hsmall) * Ug))
+    h_ii <- rowSums((Ug %*% Hsmall) * Ug)
+    max_obs[g] <- max(h_ii)
+    min_obs[g] <- min(h_ii)
     if (adjustment == "none") {
       A <- diag(length(keep))
       min_eig[g] <- max_kappa[g] <- 1
@@ -126,7 +137,10 @@ pffr_influence_core <- function(
       ee <- eigen((small + t(small)) / 2, symmetric = TRUE)
       values <- if (length(keep) < length(idx)) c(ee$values, 1) else ee$values
       min_eig[g] <- min(values)
-      max_kappa[g] <- max(abs(values)) / max(min(abs(values)), 1e-300)
+      # Upstream's definition |max v| / |min v| (NOT max|v| / min|v|): the two
+      # differ exactly when a negative eigenvalue is present, i.e. in the
+      # P-LB5 indefinite-bread case this monitor exists to expose.
+      max_kappa[g] <- abs(max(values)) / max(abs(min(values)), 1e-300)
       min_eig_rel[g] <- min(values) / max(abs(max(values)), 1e-300)
       floor <- if (adjustment == "exact") (1 - leverage_cap)^2 else
         max(1 - leverage_cap, tol)
@@ -160,7 +174,9 @@ pffr_influence_core <- function(
         min_block_eig = min_eig,
         max_block_kappa = max_kappa,
         max_leverage = max_hat,
+        min_hat_eig = min_hat,
         max_obs_leverage = max_obs,
+        min_obs_leverage = min_obs,
         min_block_eig_rel = min_eig_rel,
         max_discarded_singular_value = discarded
       ),
@@ -204,17 +220,23 @@ pffr_influence_vcov <- function(
   attr(V, "max_block_kappa") <- max(d$max_block_kappa)
   attr(V, "cluster_rank") <- d$rank
   attr(V, "inference_core_version") <- core$version
-  # Study-LB P-LB5 hat-invariant monitors. The block-eigenvalue invariant is
-  # only meaningful for the exact residual block, the per-cluster hat
-  # eigenvalue only for the shortcut; h_ii is checked on every path.
+  # Study-LB P-LB5 hat-invariant monitors. The upper bound on the residual
+  # block is only meaningful for the exact block and the upper bound on
+  # eigen(H_gg) only for the shortcut, but the lower bounds (h_ii >= 0,
+  # eigen(H_gg) >= 0) and the h_ii upper bound hold on every path, so those are
+  # checked regardless of the adjustment.
   attr(V, "max_obs_leverage") <- max(d$max_obs_leverage)
+  attr(V, "min_obs_leverage") <- min(d$min_obs_leverage)
+  attr(V, "min_hat_eig") <- min(d$min_hat_eig)
   attr(V, "min_block_eig_rel") <- min(d$min_block_eig_rel)
   attr(V, "hat_invariant_violation") <- pffr_hat_invariant_violation(
     max_obs_leverage = max(d$max_obs_leverage),
     max_leverage = if (core$adjustment == "shortcut") max(d$max_leverage) else
       NA_real_,
     min_block_eig_rel = if (core$adjustment == "exact")
-      min(d$min_block_eig_rel) else 0
+      min(d$min_block_eig_rel) else 0,
+    min_obs_leverage = min(d$min_obs_leverage),
+    min_hat_eig = min(d$min_hat_eig)
   )
   V
 }
@@ -225,11 +247,20 @@ pffr_influence_vcov <- function(
 #' This is conditional on weights and smoothing parameters, and is not an
 #' exact t law. Noncentral means, B2 and smoothing selection are not covered.
 #'
-#' `df_gram = "diagonal"` drops the off-diagonal residualization and reproduces
-#' the historical working-iid shortcut
-#' `(sum_g ||q_g||^2)^2 / sum_g ||q_g||^4` from the same `q_g`. It is retained
-#' only for re-scoring comparisons against historical Satterthwaite results; it
-#' returns about `G` where the residualized moment df returns `G - 1`.
+#' `df_gram = "diagonal"` drops the off-diagonal residualization and evaluates
+#' the working-iid shortcut `(sum_g ||q_g||^2)^2 / sum_g ||q_g||^4` from **the
+#' same `q_g` as the covariance**, i.e. with the resolved `adjustment` of this
+#' influence object. It is retained only for re-scoring comparisons against
+#' historical Satterthwaite results; it returns about `G` where the residualized
+#' moment df returns `G - 1`.
+#'
+#' The historical (pre-2026-09) df additionally *always* used the shortcut
+#' leverage weight \eqn{A_g = (I - H_{gg})^{-1/2}}, whatever covariance was
+#' requested. `"diagonal"` therefore reproduces the historical df **exactly only
+#' in combination with `cl2_adjustment = "shortcut"`**; on an exact-CL2 fit it
+#' is the diagonal moment df of the exact geometry and differs from the
+#' historical number (2e-5 to 2e-2 relative on the package fixtures; there is no
+#' bound on the difference in general).
 #' @param core Fixed-fit influence object.
 #' @param Xp Finite full-coefficient contrasts, one per row.
 #' @param chunk_size Positive number of contrasts per batch.
@@ -311,7 +342,19 @@ pffr_influence_df <- function(
 #' @param cluster Optional per-curve grouping override.
 #' @param cl2_adjustment NULL inherits the fit; otherwise auto, exact or shortcut.
 #' @param leverage_cap,tol Numerical adjustment settings.
-#' @returns Internal research prototype; smoothing-selection uncertainty is absent.
+#' @param dof_correction,edf_type CR1 small-sample correction for
+#'   `sandwich = "cluster"`; `NULL` inherits the fit. Both enter the cache key
+#'   because they scale the cached `correction`.
+#' @returns A `pffr_influence` object: the symmetrized penalized bread `B`, the
+#'   residualization matrix `C`, the per-cluster residual influence columns `K`,
+#'   the compressed per-cluster geometry `blocks` (`T` and the leverage weight
+#'   `A`), the cluster count `G` and labels `groups`, the resolved `adjustment`,
+#'   the finite-sample `correction` (`G/(G-1)` times any CR1 dof factor), the
+#'   Bayesian smoothing-bias term `B2`, the per-cluster `diagnostics` (see
+#'   [pffr_influence_core()]) and the numerical settings. Cached on the fit
+#'   unless a `cluster` override is supplied. Internal research prototype:
+#'   smoothing-selection uncertainty is absent and the object is conditional on
+#'   the fitted smoothing parameters and weights.
 #' @keywords internal
 pffr_influence <- function(
   object,
@@ -319,7 +362,9 @@ pffr_influence <- function(
   cluster = NULL,
   cl2_adjustment = NULL,
   leverage_cap = .999,
-  tol = 1e-8
+  tol = 1e-8,
+  dof_correction = NULL,
+  edf_type = NULL
 ) {
   type <- sandwich %||% pffr_canonicalize_cov(object)$fit_type
   if (!type %in% c("cluster", "cl2"))
@@ -340,7 +385,22 @@ pffr_influence <- function(
       maxDg = max(table(cid)) * if (kind == "gaulss") 2 else 1,
       p = ncol(b$Vp)
     )
-  key <- paste("influence", type, adjustment, leverage_cap, tol, sep = "|")
+  dof_correction <- dof_correction %||% object$pffr$dof_correction %||% "none"
+  edf_type <- edf_type %||% object$pffr$edf_type %||% "trace"
+  # dof_correction / edf_type scale $correction (and hence every
+  # expected_sampling_variance read off this object), so they must be part of
+  # the cache key: otherwise an explicit override would silently reuse the
+  # entry built for the fit's own setting.
+  key <- paste(
+    "influence",
+    type,
+    adjustment,
+    leverage_cap,
+    tol,
+    dof_correction,
+    edf_type,
+    sep = "|"
+  )
   cache <- object$pffr$Vsandwich_cache
   if (is.null(cluster) && is.environment(cache) && !is.null(cache[[key]]))
     return(cache[[key]])
@@ -364,12 +424,7 @@ pffr_influence <- function(
   core$conditional_on_smoothing <- TRUE
   if (type == "cluster")
     core$correction <- core$correction *
-      compute_dof_factor(
-        b,
-        cid,
-        object$pffr$dof_correction %||% "none",
-        object$pffr$edf_type %||% "trace"
-      )
+      compute_dof_factor(b, cid, dof_correction, edf_type)
   if (is.null(cluster) && is.environment(cache)) cache[[key]] <- core
   core
 }

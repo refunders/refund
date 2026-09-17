@@ -10,7 +10,9 @@ pffr_influence(
   cluster = NULL,
   cl2_adjustment = NULL,
   leverage_cap = 0.999,
-  tol = 1e-08
+  tol = 1e-08,
+  dof_correction = NULL,
+  edf_type = NULL
 )
 }
 \arguments{
@@ -23,9 +25,22 @@ pffr_influence(
 \item{cl2_adjustment}{NULL inherits the fit; otherwise auto, exact or shortcut.}
 
 \item{leverage_cap, tol}{Numerical adjustment settings.}
+
+\item{dof_correction, edf_type}{CR1 small-sample correction for
+`sandwich = "cluster"`; `NULL` inherits the fit. Both enter the cache key
+because they scale the cached `correction`.}
 }
 \value{
-Internal research prototype; smoothing-selection uncertainty is absent.
+A `pffr_influence` object: the symmetrized penalized bread `B`, the
+  residualization matrix `C`, the per-cluster residual influence columns `K`,
+  the compressed per-cluster geometry `blocks` (`T` and the leverage weight
+  `A`), the cluster count `G` and labels `groups`, the resolved `adjustment`,
+  the finite-sample `correction` (`G/(G-1)` times any CR1 dof factor), the
+  Bayesian smoothing-bias term `B2`, the per-cluster `diagnostics` (see
+  [pffr_influence_core()]) and the numerical settings. Cached on the fit
+  unless a `cluster` override is supplied. Internal research prototype:
+  smoothing-selection uncertainty is absent and the object is conditional on
+  the fitted smoothing parameters and weights.
 }
 \description{
 Cached fixed-fit influence object for a pffr model

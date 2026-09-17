@@ -11,7 +11,9 @@ pffr_df_context(
   leverage_cap = 0.999,
   tol = 1e-08,
   cl2_adjustment = NULL,
-  df_gram = c("full", "diagonal")
+  df_gram = c("full", "diagonal"),
+  dof_correction = NULL,
+  edf_type = NULL
 )
 }
 \arguments{
@@ -25,11 +27,19 @@ pffr_df_context(
 
 \item{cl2_adjustment}{NULL inherits the fit; otherwise auto, exact or shortcut.}
 
-\item{df_gram}{Residualized Gram (default) or the historical diagonal
-shortcut; see [pffr_influence_df()].}
+\item{df_gram}{Gram matrix for the moment df: the residualized default
+(`"full"`) or the diagonal shortcut. `"diagonal"` drops the off-diagonal
+residualization and uses **the same `q_g` as the covariance**, so it
+reproduces the historical (pre-2026-09) df exactly only together with
+`cl2_adjustment = "shortcut"`; see [pffr_influence_df()].}
+
+\item{dof_correction, edf_type}{CR1 small-sample correction for
+`sandwich_type = "cluster"`; `NULL` inherits the fit. They scale the
+context's `expected_sampling_variance` (not the df itself).}
 }
 \value{
-List with ok, type, cached core, Vp, G and adjustment settings.
+List with ok, type, cached core, Vp, G, the `df_gram` choice and the
+  adjustment settings.
 }
 \description{
 Cached residualization context for central Gaussian moment df

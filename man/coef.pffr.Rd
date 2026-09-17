@@ -58,7 +58,11 @@ if none was supplied). Supply this for
 nested / repeated-measures designs where several curves share a higher-level
 unit (e.g. a subject id with multiple visits), so the sandwich clusters at
 the correct level. Only supported for densely-observed responses. When
-supplied, the pre-computed-covariance shortcut is bypassed.}
+supplied, the pre-computed-covariance shortcut is bypassed.
+A fit-time \code{cluster} grouping cannot be switched back off with
+\code{cluster = NULL} (that inherits the fit); to force by-curve clustering
+on a fit that was given a coarser grouping, pass the explicit identity
+grouping \code{cluster = seq_len(<number of curves>)}.}
 
 \item{dof_correction}{Optional CR1 small-sample dof correction for
 \code{sandwich = "cluster"}: \code{"none"} or \code{"edf"} (see
@@ -118,10 +122,16 @@ bands are unaffected.}
 \item{df_gram}{Gram matrix used by \code{crit = "satterthwaite"}:
 \code{"full"} (default) is the residualized
 \eqn{\Gamma_{gh}=1\{g=h\}\lVert q_g\rVert^2-t_g^\top C t_h}.
-\code{"diagonal"} is the historical working-iid shortcut
-\eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4}, retained only
-for re-scoring comparisons with historical Satterthwaite results: it
-returns about \eqn{G} where the residualized df returns \eqn{G-1}.}
+\code{"diagonal"} drops the off-diagonal residualization and evaluates the
+working-iid shortcut
+\eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4} from
+\emph{the same} \eqn{q_g} \emph{as the covariance}, i.e. with the resolved
+\code{cl2_adjustment}. It is retained only for re-scoring comparisons with
+historical Satterthwaite results: it returns about \eqn{G} where the
+residualized df returns \eqn{G-1}. The historical (pre-2026-09) df always
+used the shortcut leverage weight \eqn{A_g=(I-H_{gg})^{-1/2}}, so
+\code{df_gram = "diagonal"} reproduces it exactly only together with
+\code{cl2_adjustment = "shortcut"}; on an exact-CL2 fit it differs.}
 
 \item{level}{Confidence level for confidence intervals, defaults to
 \code{0.95}.}

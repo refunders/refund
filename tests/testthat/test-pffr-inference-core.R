@@ -181,9 +181,12 @@ testthat::test_that("sampling, B2, finite factor and centering stay separate", {
   )
 })
 
-# Historical working-iid diagonal df: the deleted satterthwaite_df_kernel()
-# formula, kept available through df_gram = "diagonal" for re-scoring
-# comparisons only. Re-implemented here directly from that formula.
+# The diagonal moment df of THIS influence object's geometry: same formula as
+# the historical shortcut, but evaluated with whatever leverage weight the
+# covariance resolved to. Used to check the df_gram = "diagonal" branch against
+# an independent dense implementation for every adjustment; for backwards
+# compatibility with the pre-2026-09 numbers see historical_satterthwaite_df()
+# (helper-historical-df.R), which always uses the shortcut weight.
 diagonal_df_reference <- function(
   Z,
   B,
@@ -219,7 +222,7 @@ diagonal_df_reference <- function(
   df
 }
 
-testthat::test_that("df_gram = 'diagonal' reproduces the historical shortcut", {
+testthat::test_that("df_gram = 'diagonal' matches the same-adjustment diagonal df", {
   set.seed(84001)
   G <- 7L
   p <- 12L
@@ -292,4 +295,153 @@ testthat::test_that("diagonal and residualized df differ by the dropped cross te
       pffr_influence_df(core, matrix(0), df_gram = "diagonal")$df
     ))
   }
+})
+
+testthat::test_that("df_gram = 'diagonal' is historical only with the shortcut weight", {
+  set.seed(84003)
+  G <- 9L
+  p <- 8L
+  D <- 11L
+  r <- 5L
+  Z <- do.call(
+    rbind,
+    lapply(
+      seq_len(G),
+      function(g) matrix(rnorm(D * r), D) %*% matrix(rnorm(r * p), r)
+    )
+  )
+  cid <- rep(seq_len(G), each = D)
+  B <- solve(crossprod(Z) + diag(seq_len(p)) / 10)
+  Xp <- matrix(rnorm(6 * p), 6)
+  historical <- historical_satterthwaite_df(Z, cid, B, Xp, use_cl2 = TRUE)$df
+  short <- pffr_influence_core(Z, B, cid, adjustment = "shortcut")
+  testthat::expect_equal(
+    pffr_influence_df(short, Xp, df_gram = "diagonal")$df,
+    historical,
+    tolerance = 1e-10
+  )
+  # The exact block is a different leverage weight, so its diagonal df is NOT
+  # the historical number (the documented caveat on df_gram = "diagonal").
+  exact <- pffr_influence_core(Z, B, cid, adjustment = "exact")
+  testthat::expect_false(isTRUE(all.equal(
+    pffr_influence_df(exact, Xp, df_gram = "diagonal")$df,
+    historical
+  )))
+  # The CR1 path (no adjustment) matches the historical use_cl2 = FALSE kernel.
+  testthat::expect_equal(
+    pffr_influence_df(
+      pffr_influence_core(Z, B, cid, adjustment = "none"),
+      Xp,
+      df_gram = "diagonal"
+    )$df,
+    historical_satterthwaite_df(Z, cid, B, Xp, use_cl2 = FALSE)$df,
+    tolerance = 1e-10
+  )
+})
+
+testthat::test_that("an indefinite bread trips the hat lower-bound monitors", {
+  # Study-LB P-LB5 lower bounds: a Vp with a negative eigenvalue makes the
+  # penalized hat indefinite. The upper-bound monitors (max h_ii, max
+  # eigen(H_gg)) never see it, so only min_obs_leverage / min_hat_eig can.
+  G <- 4L
+  Z <- do.call(rbind, rep(list(diag(2)), G))
+  cid <- rep(seq_len(G), each = 2L)
+  B <- diag(c(0.4, -0.5))
+  z <- as.numeric(seq_len(nrow(Z)))
+  for (adjustment in c("exact", "shortcut", "none")) {
+    core <- pffr_influence_core(Z, B, cid, z, adjustment)
+    V <- pffr_influence_vcov(core)
+    testthat::expect_equal(attr(V, "min_hat_eig"), -0.5)
+    testthat::expect_equal(attr(V, "min_obs_leverage"), -0.5)
+    testthat::expect_lte(attr(V, "max_obs_leverage"), 1)
+    violation <- attr(V, "hat_invariant_violation")
+    testthat::expect_type(violation, "character")
+    testthat::expect_match(violation, "below the bound 0")
+    testthat::expect_match(violation, "positive semi-definite by construction")
+    # The covariance builder turns it into exactly one warning.
+    w <- testthat::capture_warnings(
+      gam_sandwich_cluster_cl2(NULL, NULL, influence = core)
+    )
+    testthat::expect_length(w, 1L)
+    testthat::expect_match(w, "NOT trustworthy")
+  }
+  # A well-behaved bread leaves every monitor inside its bounds.
+  ok <- pffr_influence_core(Z, diag(c(0.4, 0.5)), cid, z, "exact")
+  testthat::expect_null(attr(
+    pffr_influence_vcov(ok),
+    "hat_invariant_violation"
+  ))
+})
+
+testthat::test_that("hat-invariant lower bounds are reported and tolerant", {
+  viol <- pffr_hat_invariant_violation
+  testthat::expect_null(viol(min_obs_leverage = 0, min_hat_eig = 0))
+  testthat::expect_null(viol(min_obs_leverage = -1e-9, min_hat_eig = -1e-9))
+  testthat::expect_null(viol(min_obs_leverage = NA_real_, min_hat_eig = NaN))
+  testthat::expect_match(
+    viol(min_obs_leverage = -0.25),
+    "smallest per-observation leverage is -0.25"
+  )
+  testthat::expect_match(
+    viol(min_hat_eig = -3.5),
+    "smallest per-cluster hat eigenvalue is -3.5"
+  )
+})
+
+testthat::test_that("max_block_kappa uses |max eig| / |min eig|", {
+  # Upstream's definition. It differs from max|v| / min|v| exactly when a
+  # negative eigenvalue is present, i.e. in the P-LB5 case the monitor exists
+  # for: there the ratio must come out NEGATIVE, not be silently absolutized.
+  G <- 4L
+  Z <- do.call(rbind, rep(list(diag(2)), G))
+  cid <- rep(seq_len(G), each = 2L)
+  core <- pffr_influence_core(
+    Z,
+    diag(c(0.4, -0.5)),
+    cid,
+    adjustment = "shortcut"
+  )
+  d <- core$diagnostics
+  # residual block I - H_gg = diag(0.6, 1.5): both positive, kappa = 1.5/0.6
+  testthat::expect_equal(unique(d$max_block_kappa), 1.5 / 0.6)
+  # An indefinite residual block: I - H_gg = diag(-0.5, 1.5) from h = (1.5, -0.5)
+  core2 <- pffr_influence_core(
+    Z,
+    diag(c(1.5, -0.5)),
+    cid,
+    adjustment = "shortcut"
+  )
+  testthat::expect_equal(unique(core2$diagnostics$max_block_kappa), 1.5 / 0.5)
+  testthat::expect_equal(unique(core2$diagnostics$min_block_eig), -0.5)
+})
+
+testthat::test_that("undefined moment df yields missing limits with one warning", {
+  # A zero contrast has zero sampling variance, so the moment df is undefined.
+  # compute_pointwise_ci() must report NA limits, not silently substitute the
+  # Gaussian quantile.
+  set.seed(84004)
+  G <- 6L
+  Z <- matrix(rnorm(G * 3L * 4L), G * 3L)
+  cid <- rep(seq_len(G), each = 3L)
+  B <- solve(crossprod(Z) + diag(4) / 10)
+  ctx <- list(
+    ok = TRUE,
+    type = "cl2",
+    core = pffr_influence_core(Z, B, cid, rnorm(nrow(Z)), "exact"),
+    Vp = B,
+    G = G,
+    df_gram = "full"
+  )
+  linear_map <- list(X = matrix(0, 3L, 4L), trmind = seq_len(4L))
+  w <- testthat::capture_warnings(
+    pw <- compute_pointwise_ci("satterthwaite", 0.95, linear_map, ctx)
+  )
+  testthat::expect_length(w, 1L)
+  testthat::expect_match(w, "Undefined working-model moment df")
+  testthat::expect_true(all(is.na(pw$crit)))
+  testthat::expect_true(all(is.na(pw$df)))
+  # A nonzero contrast is unaffected.
+  linear_map$X <- matrix(1, 3L, 4L)
+  pw_ok <- compute_pointwise_ci("satterthwaite", 0.95, linear_map, ctx)
+  testthat::expect_true(all(is.finite(pw_ok$crit)))
 })

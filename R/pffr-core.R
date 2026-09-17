@@ -1642,10 +1642,16 @@ gam_sandwich_cluster <- function(
 #' @returns A p x p covariance matrix with leverage diagnostics. Exact CL2
 #'   returns `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`),
 #'   `min_block_eig`, `max_block_kappa` and `min_block_eig_rel`; the shortcut
-#'   returns the legacy `n_capped_clusters` and `max_leverage` attributes. Both
-#'   return `max_obs_leverage` and `hat_invariant_violation` (`NULL` when the
-#'   penalized hat respects its bounds, otherwise a description of the
-#'   violation; see [pffr_hat_invariant_violation()]).
+#'   returns the legacy `n_capped_clusters` and `max_leverage` attributes.
+#'   Since the shared influence core computes the same geometry on both paths,
+#'   `max_leverage` is now also populated on the exact path and `min_block_eig`
+#'   / `max_block_kappa` on the shortcut path. Both return the hat-invariant
+#'   monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
+#'   `hat_invariant_violation` (`NULL` when the penalized hat respects its
+#'   bounds, otherwise a description of the violation; see
+#'   [pffr_hat_invariant_violation()]). At most one warning is emitted per
+#'   call: the invariant warning when an invariant is broken, otherwise the
+#'   shortcut leverage-cap warning.
 #' @keywords internal
 gam_sandwich_cluster_cl2 <- function(
   b,
@@ -1689,19 +1695,18 @@ gam_sandwich_cluster_cl2 <- function(
     )
     influence$B2 <- (b$Vp + t(b$Vp)) / 2 - b$Ve
   }
-  if (any(influence$diagnostics$n_floored > 0L))
-    warning(
-      "CL2 leverage adjustment hit the leverage cap / residual eigenvalue floor in ",
-      sum(influence$diagnostics$n_floored > 0L),
-      " clusters. Inspect raw eigenvalues and contrast support; finite intervals do not establish reliable inference.",
-      call. = FALSE
-    )
   V <- pffr_influence_vcov(influence, freq, b2, center_scores)
-  # Study-LB P-LB5: a penalized hat that has broken its own bounds means the
-  # bread and the weighted design are numerically inconsistent. The monitors
-  # are computed inside the influence core; warn here so one covariance call
-  # warns once (see pffr_hat_invariant_violation()).
+  # Exactly one warning per covariance call. Study-LB P-LB5 first: a penalized
+  # hat that has broken its own bounds means the bread and the weighted design
+  # are numerically inconsistent, which subsumes (and explains) any capping the
+  # adjustment then had to do. Absent an invariant violation, only the shortcut
+  # path warns: capping H_gg at `leverage_cap` substitutes the largest
+  # legitimate variance inflation for an unidentified one, whereas the exact
+  # path's (1 - cap)^2 floor on the residual-block eigenvalues is a routine
+  # numerical safeguard (upstream left it silent).
   hat_violation <- attr(V, "hat_invariant_violation")
+  n_capped_clusters <- attr(V, "n_capped_clusters") %||% 0L
+  max_leverage <- attr(V, "max_leverage") %||% NA_real_
   if (!is.null(hat_violation)) {
     warning(
       "Cluster-robust covariance is NOT trustworthy for this fit: ",
@@ -1714,6 +1719,29 @@ gam_sandwich_cluster_cl2 <- function(
       "the data). Both the CL2 and the CR1 cluster-robust covariances inherit ",
       "the problem, so switching sandwich type does not repair it: inspect and ",
       "refit the model instead.",
+      call. = FALSE
+    )
+  } else if (
+    identical(influence$adjustment, "shortcut") && n_capped_clusters > 0
+  ) {
+    max_leverage_label <- if (is.finite(max_leverage)) {
+      sprintf("%.3f", max_leverage)
+    } else {
+      "NA"
+    }
+    warning(
+      sprintf(
+        paste0(
+          "CL2 leverage adjustment hit the leverage cap %.3f in %d of %d ",
+          "clusters (max pre-cap eigenvalue %s). CL2 can be unreliable ",
+          "with small G or saturated per-cluster leverage; consider ",
+          "sandwich = \"cluster\" as the safer choice."
+        ),
+        influence$leverage_cap,
+        n_capped_clusters,
+        influence$G,
+        max_leverage_label
+      ),
       call. = FALSE
     )
   }
@@ -1750,6 +1778,11 @@ gam_sandwich_cluster_cl2 <- function(
 #'   only; `NA` otherwise).
 #' @param min_block_eig_rel Smallest eigenvalue of any \eqn{B_g} relative to
 #'   that block's largest eigenvalue (exact path only; `0` otherwise).
+#' @param min_obs_leverage Smallest per-observation leverage \eqn{h_{ii}} seen,
+#'   or `NA`. A negative value means the penalized hat is indefinite.
+#' @param min_hat_eig Smallest eigenvalue of any \eqn{H_{gg}}, or `NA`. Checked
+#'   on every adjustment: the lower bound \eqn{0 \le \mathrm{eigen}(H_{gg})}
+#'   holds whatever leverage weight is used.
 #' @param tol Relative slack allowed before an invariant counts as violated.
 #' @returns `NULL` when every invariant holds, otherwise a one-sentence
 #'   character description of the violation.
@@ -1758,6 +1791,8 @@ pffr_hat_invariant_violation <- function(
   max_obs_leverage = NA_real_,
   max_leverage = NA_real_,
   min_block_eig_rel = 0,
+  min_obs_leverage = NA_real_,
+  min_hat_eig = NA_real_,
   tol = 1e-6
 ) {
   msgs <- character(0)
@@ -1776,6 +1811,27 @@ pffr_hat_invariant_violation <- function(
       sprintf(
         "the largest per-cluster hat eigenvalue is %.3g, above the bound 1;",
         max_leverage
+      )
+    )
+  }
+  if (isTRUE(is.finite(min_obs_leverage) && min_obs_leverage < -tol)) {
+    msgs <- c(
+      msgs,
+      sprintf(
+        "the smallest per-observation leverage is %.3g, below the bound 0;",
+        min_obs_leverage
+      )
+    )
+  }
+  if (isTRUE(is.finite(min_hat_eig) && min_hat_eig < -tol)) {
+    msgs <- c(
+      msgs,
+      sprintf(
+        paste0(
+          "the smallest per-cluster hat eigenvalue is %.3g, but H_gg is ",
+          "positive semi-definite by construction;"
+        ),
+        min_hat_eig
       )
     )
   }
@@ -2188,6 +2244,25 @@ pffr_vcov <- function(
 }
 
 #' Central Gaussian working-model sampling-variance moment df
+#'
+#' For a contrast \eqn{a} with Fisher-whitened per-cluster design
+#' \eqn{\tilde X_g = \sqrt{W_g}\,X_g}, model-based penalized bread \eqn{V_p} and
+#' leverage adjustment \eqn{A_g} (exact Bell--McCaffrey block, the historical
+#' shortcut \eqn{(I - H_{gg})^{-1/2}}, or the identity on the CR1 path), write
+#' \eqn{q_g = A_g\,\tilde X_g\,(V_p a)} and \eqn{t_g = \tilde X_g' q_g}. The
+#' residualized moment Gram is
+#' \deqn{\Gamma_{gh} = 1\{g = h\}\lVert q_g\rVert^2 - t_g^\top C\,t_h,
+#'   \qquad C = 2 V_p - V_p \tilde X^\top \tilde X V_p,}
+#' and matching the first two moments of the sampling quadratic form gives
+#' \deqn{\nu(a) = \frac{\{\mathrm{tr}(\Gamma)\}^2}{\mathrm{tr}(\Gamma^2)},
+#'   \qquad \mathrm{crit} = t_{1 - \alpha/2,\,\nu}.}
+#' Dropping the off-diagonal terms recovers the historical working-iid shortcut
+#' \eqn{(\sum_g \lVert q_g\rVert^2)^2 / \sum_g \lVert q_g\rVert^4}, which
+#' returns \eqn{\approx G} for a balanced design where the residualized df
+#' returns \eqn{G - 1} (see [pffr_influence_df()]'s `df_gram`). This is
+#' conditional on the fitted weights and smoothing parameters and is not an
+#' exact t law.
+#'
 #' @param Xw Working-likelihood-scaled design.
 #' @param cluster_id Grouping per working row.
 #' @param Vp Penalized model-based bread.
@@ -2224,9 +2299,16 @@ satterthwaite_df_kernel <- function(
 #' @param cluster Optional per-curve grouping override.
 #' @param leverage_cap,tol Numerical floor settings.
 #' @param cl2_adjustment NULL inherits the fit; otherwise auto, exact or shortcut.
-#' @param df_gram Residualized Gram (default) or the historical diagonal
-#'   shortcut; see [pffr_influence_df()].
-#' @returns List with ok, type, cached core, Vp, G and adjustment settings.
+#' @param df_gram Gram matrix for the moment df: the residualized default
+#'   (`"full"`) or the diagonal shortcut. `"diagonal"` drops the off-diagonal
+#'   residualization and uses **the same `q_g` as the covariance**, so it
+#'   reproduces the historical (pre-2026-09) df exactly only together with
+#'   `cl2_adjustment = "shortcut"`; see [pffr_influence_df()].
+#' @param dof_correction,edf_type CR1 small-sample correction for
+#'   `sandwich_type = "cluster"`; `NULL` inherits the fit. They scale the
+#'   context's `expected_sampling_variance` (not the df itself).
+#' @returns List with ok, type, cached core, Vp, G, the `df_gram` choice and the
+#'   adjustment settings.
 #' @keywords internal
 pffr_df_context <- function(
   object,
@@ -2235,7 +2317,9 @@ pffr_df_context <- function(
   leverage_cap = 0.999,
   tol = 1e-8,
   cl2_adjustment = NULL,
-  df_gram = c("full", "diagonal")
+  df_gram = c("full", "diagonal"),
+  dof_correction = NULL,
+  edf_type = NULL
 ) {
   df_gram <- match.arg(df_gram)
   type <- normalize_sandwich_type(sandwich_type)
@@ -2246,7 +2330,9 @@ pffr_df_context <- function(
     cluster,
     cl2_adjustment,
     leverage_cap,
-    tol
+    tol,
+    dof_correction,
+    edf_type
   )
   list(
     ok = TRUE,
@@ -3077,6 +3163,13 @@ apply_sandwich_correction <- function(
     n_adjusted = n_adjusted,
     min_block_eig = attr(Vsw, "min_block_eig") %||% NA_real_,
     max_block_kappa = attr(Vsw, "max_block_kappa") %||% NA_real_,
+    # Hat-invariant monitors (study LB, claim P-LB5), populated on every
+    # cluster-robust path so a degenerate fit is visible from the fit object.
+    max_obs_leverage = attr(Vsw, "max_obs_leverage") %||% NA_real_,
+    min_obs_leverage = attr(Vsw, "min_obs_leverage") %||% NA_real_,
+    min_hat_eig = attr(Vsw, "min_hat_eig") %||% NA_real_,
+    min_block_eig_rel = attr(Vsw, "min_block_eig_rel") %||% NA_real_,
+    hat_invariant_violation = attr(Vsw, "hat_invariant_violation"),
     dof_correction = if (type == "cluster") dof_correction else "none",
     edf_type = edf_type,
     version = as.character(utils::packageVersion("refund")),

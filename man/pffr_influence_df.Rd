@@ -25,10 +25,19 @@ This is conditional on weights and smoothing parameters, and is not an
 exact t law. Noncentral means, B2 and smoothing selection are not covered.
 }
 \details{
-`df_gram = "diagonal"` drops the off-diagonal residualization and reproduces
-the historical working-iid shortcut
-`(sum_g ||q_g||^2)^2 / sum_g ||q_g||^4` from the same `q_g`. It is retained
-only for re-scoring comparisons against historical Satterthwaite results; it
-returns about `G` where the residualized moment df returns `G - 1`.
+`df_gram = "diagonal"` drops the off-diagonal residualization and evaluates
+the working-iid shortcut `(sum_g ||q_g||^2)^2 / sum_g ||q_g||^4` from **the
+same `q_g` as the covariance**, i.e. with the resolved `adjustment` of this
+influence object. It is retained only for re-scoring comparisons against
+historical Satterthwaite results; it returns about `G` where the residualized
+moment df returns `G - 1`.
+
+The historical (pre-2026-09) df additionally *always* used the shortcut
+leverage weight \eqn{A_g = (I - H_{gg})^{-1/2}}, whatever covariance was
+requested. `"diagonal"` therefore reproduces the historical df **exactly only
+in combination with `cl2_adjustment = "shortcut"`**; on an exact-CL2 fit it
+is the diagonal moment df of the exact geometry and differs from the
+historical number (2e-5 to 2e-2 relative on the package fixtures; there is no
+bound on the difference in general).
 }
 \keyword{internal}

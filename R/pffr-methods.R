@@ -1287,6 +1287,10 @@ compute_pointwise_ci <- function(
 #'   unit (e.g. a subject id with multiple visits), so the sandwich clusters at
 #'   the correct level. Only supported for densely-observed responses. When
 #'   supplied, the pre-computed-covariance shortcut is bypassed.
+#'   A fit-time \code{cluster} grouping cannot be switched back off with
+#'   \code{cluster = NULL} (that inherits the fit); to force by-curve clustering
+#'   on a fit that was given a coarser grouping, pass the explicit identity
+#'   grouping \code{cluster = seq_len(<number of curves>)}.
 #' @param dof_correction Optional CR1 small-sample dof correction for
 #'   \code{sandwich = "cluster"}: \code{"none"} or \code{"edf"} (see
 #'   \code{\link{pffr}}). Defaults to \code{NULL}, i.e. inherit whatever the
@@ -1335,10 +1339,16 @@ compute_pointwise_ci <- function(
 #' @param df_gram Gram matrix used by \code{crit = "satterthwaite"}:
 #'   \code{"full"} (default) is the residualized
 #'   \eqn{\Gamma_{gh}=1\{g=h\}\lVert q_g\rVert^2-t_g^\top C t_h}.
-#'   \code{"diagonal"} is the historical working-iid shortcut
-#'   \eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4}, retained only
-#'   for re-scoring comparisons with historical Satterthwaite results: it
-#'   returns about \eqn{G} where the residualized df returns \eqn{G-1}.
+#'   \code{"diagonal"} drops the off-diagonal residualization and evaluates the
+#'   working-iid shortcut
+#'   \eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4} from
+#'   \emph{the same} \eqn{q_g} \emph{as the covariance}, i.e. with the resolved
+#'   \code{cl2_adjustment}. It is retained only for re-scoring comparisons with
+#'   historical Satterthwaite results: it returns about \eqn{G} where the
+#'   residualized df returns \eqn{G-1}. The historical (pre-2026-09) df always
+#'   used the shortcut leverage weight \eqn{A_g=(I-H_{gg})^{-1/2}}, so
+#'   \code{df_gram = "diagonal"} reproduces it exactly only together with
+#'   \code{cl2_adjustment = "shortcut"}; on an exact-CL2 fit it differs.
 #' @param level Confidence level for confidence intervals, defaults to
 #'   \code{0.95}.
 #' @param n_sim Number of simulations for simultaneous intervals, defaults to
@@ -1642,7 +1652,9 @@ coef.pffr <- function(
           sandwich,
           cluster = cluster,
           cl2_adjustment = attr(covmat, "cl2_adjustment") %||% cl2_adjustment,
-          df_gram = df_gram
+          df_gram = df_gram,
+          dof_correction = dof_correction,
+          edf_type = edf_type
         )
         if (!isTRUE(df_ctx$ok)) {
           # No whitened score path for this family; degrade to the Gaussian
@@ -1714,11 +1726,19 @@ coef.pffr <- function(
           } else {
             p_df <- numeric(0)
           }
+          # Same rule as compute_pointwise_ci(): an undefined moment df gives
+          # missing limits, not a silent Gaussian substitute.
           p_crit <- ifelse(
             is.finite(p_df),
             stats::qt(prob, pmax(p_df, 1)),
-            stats::qnorm(prob)
+            NA_real_
           )
+          if (any(!is.finite(p_df)))
+            warning(
+              "Undefined working-model moment df; corresponding interval ",
+              "limits are missing.",
+              call. = FALSE
+            )
         } else {
           p_crit <- stats::qnorm(prob)
           p_df <- rep(Inf, length(p_se))

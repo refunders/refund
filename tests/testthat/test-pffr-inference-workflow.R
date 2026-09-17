@@ -100,6 +100,226 @@ testthat::test_that("subject clustering and covariance survive coef predict plot
     )
     testthat::expect_true(all(is.finite(co$smterms[[1]]$coef$df)))
   }
+  # --- df_gram end to end (coef.pffr -> pffr_df_context -> pffr_df_from_context)
+  co_full <- coef(fit, ci = "pointwise", crit = "satterthwaite", n1 = 12)
+  co_diag <- coef(
+    fit,
+    ci = "pointwise",
+    crit = "satterthwaite",
+    df_gram = "diagonal",
+    n1 = 12
+  )
+  # "full" is the default.
+  testthat::expect_equal(
+    coef(
+      fit,
+      ci = "pointwise",
+      crit = "satterthwaite",
+      df_gram = "full",
+      n1 = 12
+    )$smterms[[1]]$coef$df,
+    co_full$smterms[[1]]$coef$df
+  )
+  width <- function(co) {
+    with(co$smterms[[1]]$coef, upper - lower)
+  }
+  for (tm in seq_along(co_full$smterms)) {
+    testthat::expect_false(isTRUE(all.equal(
+      co_full$smterms[[tm]]$coef$df,
+      co_diag$smterms[[tm]]$coef$df
+    )))
+  }
+  # The diagonal df is the larger one (it drops the residualization), so its
+  # t quantile - and therefore every interval - is strictly narrower.
+  testthat::expect_true(all(
+    co_diag$smterms[[1]]$coef$df > co_full$smterms[[1]]$coef$df
+  ))
+  testthat::expect_true(all(width(co_diag) < width(co_full)))
+  testthat::expect_false(isTRUE(all.equal(
+    co_full$pterms[, "df"],
+    co_diag$pterms[, "df"]
+  )))
+  # df_gram must survive the whole call chain, not be swallowed on the way:
+  # the parametric contrasts are unit vectors, so they can be rebuilt exactly.
+  smind <- unlist(lapply(
+    fit$smooth,
+    function(s) seq(s$first.para, s$last.para)
+  ))
+  pind <- seq_along(fit$coefficients)[-smind]
+  Xp_p <- matrix(0, length(pind), length(fit$coefficients))
+  Xp_p[cbind(seq_along(pind), pind)] <- 1
+  ctx_default <- pffr_df_context(fit, "cl2")
+  testthat::expect_identical(ctx_default$df_gram, "full")
+  testthat::expect_equal(
+    unname(co_diag$pterms[, "df"]),
+    pffr_df_from_context(ctx_default, Xp_p, df_gram = "diagonal"),
+    tolerance = 1e-10
+  )
+  testthat::expect_equal(
+    unname(co_full$pterms[, "df"]),
+    pffr_df_from_context(ctx_default, Xp_p),
+    tolerance = 1e-10
+  )
+  # --- df_gram = "diagonal" is backwards compatible only with the shortcut
+  b <- pffr_model_based_gam(fit)
+  Xw <- model.matrix(b) * sqrt(1 / fit$sig2)
+  cid <- build_cluster_id(fit$pffr)
+  historical <- historical_satterthwaite_df(
+    Xw,
+    cid,
+    b$Vp,
+    Xp_p,
+    use_cl2 = TRUE
+  )$df
+  co_hist <- coef(
+    fit,
+    sandwich = "cl2",
+    cl2_adjustment = "shortcut",
+    crit = "satterthwaite",
+    df_gram = "diagonal",
+    ci = "pointwise",
+    n1 = 12
+  )
+  testthat::expect_equal(
+    unname(co_hist$pterms[, "df"]),
+    historical,
+    tolerance = 1e-10
+  )
+  co_exact <- coef(
+    fit,
+    sandwich = "cl2",
+    cl2_adjustment = "exact",
+    crit = "satterthwaite",
+    df_gram = "diagonal",
+    ci = "pointwise",
+    n1 = 12
+  )
+  # ... but the exact geometry gives a different diagonal df. (The intercept
+  # contrasts happen to agree to ~1e-10 here, so assert on the x(yindex)
+  # coefficient surface and on a random contrast set, where it is ~5e-3 / 2e-2.)
+  testthat::expect_false(isTRUE(all.equal(
+    co_hist$smterms[["x(yindex)"]]$coef$df,
+    co_exact$smterms[["x(yindex)"]]$coef$df
+  )))
+  set.seed(84105)
+  Xp_r <- matrix(rnorm(8 * ncol(b$Vp)), 8)
+  testthat::expect_equal(
+    pffr_df_from_context(
+      pffr_df_context(
+        fit,
+        "cl2",
+        cl2_adjustment = "shortcut",
+        df_gram = "diagonal"
+      ),
+      Xp_r
+    ),
+    historical_satterthwaite_df(Xw, cid, b$Vp, Xp_r, use_cl2 = TRUE)$df,
+    tolerance = 1e-10
+  )
+  testthat::expect_false(isTRUE(all.equal(
+    pffr_df_from_context(
+      pffr_df_context(
+        fit,
+        "cl2",
+        cl2_adjustment = "exact",
+        df_gram = "diagonal"
+      ),
+      Xp_r
+    ),
+    historical_satterthwaite_df(Xw, cid, b$Vp, Xp_r, use_cl2 = TRUE)$df
+  )))
+})
+
+testthat::test_that("an explicit dof_correction override is not served from cache", {
+  set.seed(84103)
+  G <- 12L
+  D <- 10L
+  tt <- seq(0, 1, length.out = D)
+  dat <- list(Y = matrix(rnorm(G * D), G, D), x = rnorm(G))
+  dat$Y <- dat$Y + outer(dat$x, sin(2 * pi * tt))
+  fit <- suppressMessages(refund::pffr(
+    Y ~ x,
+    yind = tt,
+    data = dat,
+    bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+    bs.int = list(bs = "ps", k = 5, m = c(2, 1)),
+    sandwich = "cluster"
+  ))
+  Xp <- diag(length(fit$coefficients))
+  none <- pffr_influence(fit, "cluster", dof_correction = "none")
+  edf <- pffr_influence(fit, "cluster", dof_correction = "edf")
+  testthat::expect_gt(edf$correction, none$correction)
+  testthat::expect_false(isTRUE(all.equal(
+    pffr_influence_df(none, Xp)$expected_sampling_variance,
+    pffr_influence_df(edf, Xp)$expected_sampling_variance
+  )))
+  # The df itself is scale free, so only the expected sampling variance moves.
+  testthat::expect_equal(
+    pffr_influence_df(none, Xp)$df,
+    pffr_influence_df(edf, Xp)$df
+  )
+  # Both live in the cache under distinct keys, and re-reading returns the
+  # matching object rather than whichever was computed first.
+  keys <- ls(fit$pffr$Vsandwich_cache)
+  testthat::expect_true(any(grepl("\\|none\\|", keys)))
+  testthat::expect_true(any(grepl("\\|edf\\|", keys)))
+  testthat::expect_equal(
+    pffr_influence(fit, "cluster", dof_correction = "none")$correction,
+    none$correction
+  )
+  testthat::expect_equal(
+    pffr_influence(fit, "cluster", dof_correction = "edf")$correction,
+    edf$correction
+  )
+})
+
+testthat::test_that("missing interval limits do not break plot or summary", {
+  set.seed(84104)
+  G <- 10L
+  D <- 8L
+  tt <- seq(0, 1, length.out = D)
+  dat <- list(Y = matrix(rnorm(G * D), G, D), x = rnorm(G))
+  dat$Y <- dat$Y + outer(dat$x, sin(2 * pi * tt))
+  fit <- suppressMessages(refund::pffr(
+    Y ~ x,
+    yind = tt,
+    data = dat,
+    bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+    bs.int = list(bs = "ps", k = 5, m = c(2, 1)),
+    sandwich = "cl2"
+  ))
+  ctx <- pffr_df_context(fit, "cl2")
+  # No fitted-model contrast in coef() is exactly zero, so the undefined-df
+  # branch is reached through compute_pointwise_ci() with a zero contrast.
+  linear_map <- list(
+    X = matrix(0, 4L, ncol(ctx$Vp)),
+    trmind = seq_len(ncol(ctx$Vp))
+  )
+  w <- testthat::capture_warnings(
+    pw <- compute_pointwise_ci("satterthwaite", 0.95, linear_map, ctx)
+  )
+  testthat::expect_length(w, 1L)
+  testthat::expect_match(w, "interval limits are missing")
+  testthat::expect_true(all(is.na(pw$crit * 1) & is.na(pw$df)))
+  # plot.pffr() draws standard-error bands and never consumes coef()'s
+  # interval limits; summary() drops non-finite df. Both must stay clean.
+  pdf_file <- tempfile(fileext = ".pdf")
+  grDevices::pdf(pdf_file)
+  on.exit(
+    {
+      grDevices::dev.off()
+      unlink(pdf_file)
+    },
+    add = TRUE
+  )
+  testthat::expect_no_error(plot(fit, pages = 1))
+  testthat::expect_no_error(print(summary(fit)))
+  testthat::expect_null(pffr_summary_df(
+    structure(
+      list(pffr = list(sandwich_info = list(type = "none"))),
+      class = "pffr"
+    )
+  ))
 })
 
 testthat::test_that("missing-response bookkeeping preserves group alignment", {

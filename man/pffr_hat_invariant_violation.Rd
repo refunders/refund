@@ -8,6 +8,8 @@ pffr_hat_invariant_violation(
   max_obs_leverage = NA_real_,
   max_leverage = NA_real_,
   min_block_eig_rel = 0,
+  min_obs_leverage = NA_real_,
+  min_hat_eig = NA_real_,
   tol = 1e-06
 )
 }
@@ -20,6 +22,13 @@ only; `NA` otherwise).}
 
 \item{min_block_eig_rel}{Smallest eigenvalue of any \eqn{B_g} relative to
 that block's largest eigenvalue (exact path only; `0` otherwise).}
+
+\item{min_obs_leverage}{Smallest per-observation leverage \eqn{h_{ii}} seen,
+or `NA`. A negative value means the penalized hat is indefinite.}
+
+\item{min_hat_eig}{Smallest eigenvalue of any \eqn{H_{gg}}, or `NA`. Checked
+on every adjustment: the lower bound \eqn{0 \le \mathrm{eigen}(H_{gg})}
+holds whatever leverage weight is used.}
 
 \item{tol}{Relative slack allowed before an invariant counts as violated.}
 }

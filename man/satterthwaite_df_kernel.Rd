@@ -34,6 +34,22 @@ satterthwaite_df_kernel(
 List with df, G and expected sampling variance. Undefined df is NA.
 }
 \description{
-Central Gaussian working-model sampling-variance moment df
+For a contrast \eqn{a} with Fisher-whitened per-cluster design
+\eqn{\tilde X_g = \sqrt{W_g}\,X_g}, model-based penalized bread \eqn{V_p} and
+leverage adjustment \eqn{A_g} (exact Bell--McCaffrey block, the historical
+shortcut \eqn{(I - H_{gg})^{-1/2}}, or the identity on the CR1 path), write
+\eqn{q_g = A_g\,\tilde X_g\,(V_p a)} and \eqn{t_g = \tilde X_g' q_g}. The
+residualized moment Gram is
+\deqn{\Gamma_{gh} = 1\{g = h\}\lVert q_g\rVert^2 - t_g^\top C\,t_h,
+  \qquad C = 2 V_p - V_p \tilde X^\top \tilde X V_p,}
+and matching the first two moments of the sampling quadratic form gives
+\deqn{\nu(a) = \frac{\{\mathrm{tr}(\Gamma)\}^2}{\mathrm{tr}(\Gamma^2)},
+  \qquad \mathrm{crit} = t_{1 - \alpha/2,\,\nu}.}
+Dropping the off-diagonal terms recovers the historical working-iid shortcut
+\eqn{(\sum_g \lVert q_g\rVert^2)^2 / \sum_g \lVert q_g\rVert^4}, which
+returns \eqn{\approx G} for a balanced design where the residualized df
+returns \eqn{G - 1} (see [pffr_influence_df()]'s `df_gram`). This is
+conditional on the fitted weights and smoothing parameters and is not an
+exact t law.
 }
 \keyword{internal}
