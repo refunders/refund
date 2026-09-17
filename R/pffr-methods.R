@@ -1332,6 +1332,13 @@ compute_pointwise_ci <- function(
 #'   selection. Undefined df gives missing limits with a warning; requests
 #'   on non-cluster covariance fall back to z with a warning. Simultaneous
 #'   bands are unaffected.
+#' @param df_gram Gram matrix used by \code{crit = "satterthwaite"}:
+#'   \code{"full"} (default) is the residualized
+#'   \eqn{\Gamma_{gh}=1\{g=h\}\lVert q_g\rVert^2-t_g^\top C t_h}.
+#'   \code{"diagonal"} is the historical working-iid shortcut
+#'   \eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4}, retained only
+#'   for re-scoring comparisons with historical Satterthwaite results: it
+#'   returns about \eqn{G} where the residualized df returns \eqn{G-1}.
 #' @param level Confidence level for confidence intervals, defaults to
 #'   \code{0.95}.
 #' @param n_sim Number of simulations for simultaneous intervals, defaults to
@@ -1382,6 +1389,7 @@ coef.pffr <- function(
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
   crit = c("z", "auto", "tG1", "satterthwaite"),
+  df_gram = c("full", "diagonal"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
@@ -1395,6 +1403,7 @@ coef.pffr <- function(
   ci <- match.arg(ci)
   ci_ref <- match.arg(ci_ref)
   crit <- match.arg(crit)
+  df_gram <- match.arg(df_gram)
 
   # dof_correction / edf_type default to inheriting whatever the model was
   # fitted with (so coef() with no override returns the stored covariance);
@@ -1632,7 +1641,8 @@ coef.pffr <- function(
           object,
           sandwich,
           cluster = cluster,
-          cl2_adjustment = attr(covmat, "cl2_adjustment") %||% cl2_adjustment
+          cl2_adjustment = attr(covmat, "cl2_adjustment") %||% cl2_adjustment,
+          df_gram = df_gram
         )
         if (!isTRUE(df_ctx$ok)) {
           # No whitened score path for this family; degrade to the Gaussian

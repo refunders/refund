@@ -2224,6 +2224,8 @@ satterthwaite_df_kernel <- function(
 #' @param cluster Optional per-curve grouping override.
 #' @param leverage_cap,tol Numerical floor settings.
 #' @param cl2_adjustment NULL inherits the fit; otherwise auto, exact or shortcut.
+#' @param df_gram Residualized Gram (default) or the historical diagonal
+#'   shortcut; see [pffr_influence_df()].
 #' @returns List with ok, type, cached core, Vp, G and adjustment settings.
 #' @keywords internal
 pffr_df_context <- function(
@@ -2232,8 +2234,10 @@ pffr_df_context <- function(
   cluster = NULL,
   leverage_cap = 0.999,
   tol = 1e-8,
-  cl2_adjustment = NULL
+  cl2_adjustment = NULL,
+  df_gram = c("full", "diagonal")
 ) {
+  df_gram <- match.arg(df_gram)
   type <- normalize_sandwich_type(sandwich_type)
   if (!type %in% c("cluster", "cl2")) return(list(ok = FALSE, type = type))
   core <- pffr_influence(
@@ -2252,7 +2256,8 @@ pffr_df_context <- function(
     G = core$G,
     use_cl2 = type == "cl2",
     leverage_cap = leverage_cap,
-    tol = tol
+    tol = tol,
+    df_gram = df_gram
   )
 }
 
@@ -2264,11 +2269,16 @@ pffr_df_context <- function(
 #'
 #' @param ctx A [pffr_df_context()] result.
 #' @param Xp Contrast matrix (`n_points x p`, full coefficient space).
+#' @param df_gram Optional override of the context's Gram choice.
 #' @returns Numeric vector of per-point df (length `nrow(Xp)`).
 #' @keywords internal
-pffr_df_from_context <- function(ctx, Xp) {
+pffr_df_from_context <- function(ctx, Xp, df_gram = NULL) {
   if (!isTRUE(ctx$ok)) return(rep(NA_real_, nrow(Xp)))
-  pffr_influence_df(ctx$core, Xp)$df
+  pffr_influence_df(
+    ctx$core,
+    Xp,
+    df_gram = df_gram %||% ctx$df_gram %||% "full"
+  )$df
 }
 
 #' Resolve the pointwise critical-value reference for [coef.pffr()]

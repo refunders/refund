@@ -21,6 +21,7 @@
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
   crit = c("z", "auto", "tG1", "satterthwaite"),
+  df_gram = c("full", "diagonal"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
@@ -113,6 +114,14 @@ calibration for B2, smoothing bias, correlated errors or smoothing
 selection. Undefined df gives missing limits with a warning; requests
 on non-cluster covariance fall back to z with a warning. Simultaneous
 bands are unaffected.}
+
+\item{df_gram}{Gram matrix used by \code{crit = "satterthwaite"}:
+\code{"full"} (default) is the residualized
+\eqn{\Gamma_{gh}=1\{g=h\}\lVert q_g\rVert^2-t_g^\top C t_h}.
+\code{"diagonal"} is the historical working-iid shortcut
+\eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4}, retained only
+for re-scoring comparisons with historical Satterthwaite results: it
+returns about \eqn{G} where the residualized df returns \eqn{G-1}.}
 
 \item{level}{Confidence level for confidence intervals, defaults to
 \code{0.95}.}

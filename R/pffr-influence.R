@@ -224,12 +224,26 @@ pffr_influence_vcov <- function(
 #' Gamma_gh = 1(g=h)||q_g||^2 - t_g' C t_h retains fit residualization.
 #' This is conditional on weights and smoothing parameters, and is not an
 #' exact t law. Noncentral means, B2 and smoothing selection are not covered.
+#'
+#' `df_gram = "diagonal"` drops the off-diagonal residualization and reproduces
+#' the historical working-iid shortcut
+#' `(sum_g ||q_g||^2)^2 / sum_g ||q_g||^4` from the same `q_g`. It is retained
+#' only for re-scoring comparisons against historical Satterthwaite results; it
+#' returns about `G` where the residualized moment df returns `G - 1`.
 #' @param core Fixed-fit influence object.
 #' @param Xp Finite full-coefficient contrasts, one per row.
 #' @param chunk_size Positive number of contrasts per batch.
+#' @param df_gram Full residualized Gram (default) or the historical diagonal
+#'   shortcut.
 #' @returns df (NA if undefined), G, and expected sampling variance.
 #' @keywords internal
-pffr_influence_df <- function(core, Xp, chunk_size = 32L) {
+pffr_influence_df <- function(
+  core,
+  Xp,
+  chunk_size = 32L,
+  df_gram = c("full", "diagonal")
+) {
+  df_gram <- match.arg(df_gram)
   Xp <- as.matrix(Xp)
   if (!is.numeric(Xp) || ncol(Xp) != ncol(core$B) || any(!is.finite(Xp)))
     stop(
@@ -259,12 +273,18 @@ pffr_influence_df <- function(core, Xp, chunk_size = 32L) {
       block <- core$blocks[[g]]
       q <- block$A %*% (block$T %*% M)
       q2[g, ] <<- colSums(q^2)
-      crossprod(block$T, q)
+      if (df_gram == "full") crossprod(block$T, q) else NULL
     })
     for (j in seq_along(jj)) {
-      T <- do.call(cbind, lapply(ts, function(x) x[, j]))
-      Gamma <- diag(q2[, j], nrow = core$G) - crossprod(T, core$C %*% T)
-      Gamma <- (Gamma + t(Gamma)) / 2
+      if (df_gram == "full") {
+        T <- do.call(cbind, lapply(ts, function(x) x[, j]))
+        Gamma <- diag(q2[, j], nrow = core$G) - crossprod(T, core$C %*% T)
+        Gamma <- (Gamma + t(Gamma)) / 2
+      } else {
+        # Historical diagonal shortcut: Gamma = diag(||q_g||^2), so
+        # tr^2 / tr(Gamma^2) = (sum_g ||q_g||^2)^2 / sum_g ||q_g||^4.
+        Gamma <- diag(q2[, j], nrow = core$G)
+      }
       tr <- sum(diag(Gamma))
       tr2 <- sum(Gamma^2)
       expected[jj[j]] <- core$correction * tr

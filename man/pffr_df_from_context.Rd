@@ -4,12 +4,14 @@
 \alias{pffr_df_from_context}
 \title{Per-point Satterthwaite df for a set of contrasts, from a df context}
 \usage{
-pffr_df_from_context(ctx, Xp)
+pffr_df_from_context(ctx, Xp, df_gram = NULL)
 }
 \arguments{
 \item{ctx}{A [pffr_df_context()] result.}
 
 \item{Xp}{Contrast matrix (`n_points x p`, full coefficient space).}
+
+\item{df_gram}{Optional override of the context's Gram choice.}
 }
 \value{
 Numeric vector of per-point df (length `nrow(Xp)`).

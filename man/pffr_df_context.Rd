@@ -10,7 +10,8 @@ pffr_df_context(
   cluster = NULL,
   leverage_cap = 0.999,
   tol = 1e-08,
-  cl2_adjustment = NULL
+  cl2_adjustment = NULL,
+  df_gram = c("full", "diagonal")
 )
 }
 \arguments{
@@ -23,6 +24,9 @@ pffr_df_context(
 \item{leverage_cap, tol}{Numerical floor settings.}
 
 \item{cl2_adjustment}{NULL inherits the fit; otherwise auto, exact or shortcut.}
+
+\item{df_gram}{Residualized Gram (default) or the historical diagonal
+shortcut; see [pffr_influence_df()].}
 }
 \value{
 List with ok, type, cached core, Vp, G and adjustment settings.

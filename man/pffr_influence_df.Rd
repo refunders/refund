@@ -4,7 +4,7 @@
 \alias{pffr_influence_df}
 \title{Central Gaussian sampling-variance moment degrees of freedom}
 \usage{
-pffr_influence_df(core, Xp, chunk_size = 32L)
+pffr_influence_df(core, Xp, chunk_size = 32L, df_gram = c("full", "diagonal"))
 }
 \arguments{
 \item{core}{Fixed-fit influence object.}
@@ -12,6 +12,9 @@ pffr_influence_df(core, Xp, chunk_size = 32L)
 \item{Xp}{Finite full-coefficient contrasts, one per row.}
 
 \item{chunk_size}{Positive number of contrasts per batch.}
+
+\item{df_gram}{Full residualized Gram (default) or the historical diagonal
+shortcut.}
 }
 \value{
 df (NA if undefined), G, and expected sampling variance.
@@ -20,5 +23,12 @@ df (NA if undefined), G, and expected sampling variance.
 Gamma_gh = 1(g=h)||q_g||^2 - t_g' C t_h retains fit residualization.
 This is conditional on weights and smoothing parameters, and is not an
 exact t law. Noncentral means, B2 and smoothing selection are not covered.
+}
+\details{
+`df_gram = "diagonal"` drops the off-diagonal residualization and reproduces
+the historical working-iid shortcut
+`(sum_g ||q_g||^2)^2 / sum_g ||q_g||^4` from the same `q_g`. It is retained
+only for re-scoring comparisons against historical Satterthwaite results; it
+returns about `G` where the residualized moment df returns `G - 1`.
 }
 \keyword{internal}
