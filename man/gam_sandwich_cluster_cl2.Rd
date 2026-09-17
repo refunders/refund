@@ -12,7 +12,8 @@ gam_sandwich_cluster_cl2(
   leverage_cap = 0.999,
   cl2_adjustment = c("auto", "exact", "shortcut"),
   b2 = TRUE,
-  center_scores = FALSE
+  center_scores = FALSE,
+  influence = NULL
 )
 }
 \arguments{
@@ -41,15 +42,24 @@ V_e} (X5).}
 behavior). When `TRUE`, center the leverage-adjusted per-cluster
 contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
 (X6).}
+
+\item{influence}{Optional precomputed fixed-fit influence object.}
 }
 \value{
 A p x p covariance matrix with leverage diagnostics. Exact CL2
   returns `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`),
   `min_block_eig`, `max_block_kappa` and `min_block_eig_rel`; the shortcut
-  returns the legacy `n_capped_clusters` and `max_leverage` attributes. Both
-  return `max_obs_leverage` and `hat_invariant_violation` (`NULL` when the
-  penalized hat respects its bounds, otherwise a description of the
-  violation; see [pffr_hat_invariant_violation()]).
+  returns the legacy `n_capped_clusters` and `max_leverage` attributes.
+  Since the shared influence core computes the same geometry on both paths,
+  `max_leverage` is now also populated on the exact path and `min_block_eig`
+  / `max_block_kappa` on the shortcut path. Both return the hat-invariant
+  monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
+  `hat_invariant_violation` (`NULL` when the penalized hat respects its
+  bounds, otherwise a description of the violation; see
+  [pffr_hat_invariant_violation()]). At most one leverage-related warning is
+  emitted per call: the invariant warning when an invariant is broken,
+  otherwise the shortcut leverage-cap warning. Option-validation warnings
+  (an ignored `dof_correction`, say) are separate and unaffected.
 }
 \description{
 Computes a cluster-robust covariance matrix with a Bell-McCaffrey style

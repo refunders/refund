@@ -41,10 +41,9 @@ and \code{type} is \code{"link"} or \code{"response"}. \code{"normal"}
 (default, unchanged behavior) uses the fit-time (model-based or robust
 sandwich) covariance via \code{\link{pffr_vcov}}. \code{"jackknife"} instead
 replaces the standard errors with the leave-one-cluster-out jackknife SEs of
-\code{\link{pffr_jackknife_se}} --- the recommended path for
-fitted-mean/response-scale (\eqn{E(Y)}) intervals at small numbers of curves
-\eqn{G}, where the plug-in cluster/CL2 sandwich under-propagates the
-aggregated variance. The point predictions \code{fit} are unaffected. See
+\code{\link{pffr_jackknife_se}}, an experimental alternative for
+fitted-mean/response-scale (\eqn{E(Y)}) intervals. Calibration and
+interval-width stability require separate validation. The point predictions \code{fit} are unaffected. See
 \code{\link{pffr_jackknife_se}} for its calibration caveat. This argument
 comes after \code{...} and must be given by name. Custom jackknife
 groupings are not accepted here (the \code{cluster} dot is

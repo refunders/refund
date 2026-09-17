@@ -4,12 +4,14 @@
 \alias{pffr_df_from_context}
 \title{Per-point Satterthwaite df for a set of contrasts, from a df context}
 \usage{
-pffr_df_from_context(ctx, Xp)
+pffr_df_from_context(ctx, Xp, df_gram = NULL)
 }
 \arguments{
 \item{ctx}{A [pffr_df_context()] result.}
 
 \item{Xp}{Contrast matrix (`n_points x p`, full coefficient space).}
+
+\item{df_gram}{Optional override of the context's Gram choice.}
 }
 \value{
 Numeric vector of per-point df (length `nrow(Xp)`).
@@ -17,6 +19,6 @@ Numeric vector of per-point df (length `nrow(Xp)`).
 \description{
 Thin wrapper around [satterthwaite_df_kernel()] that returns just the df
 vector, or all-`NA` when the context carries no whitened design (`ok =
-FALSE`), so callers can transparently fall back to the Gaussian reference.
+FALSE`). Undefined df does not justify a Gaussian reference.
 }
 \keyword{internal}

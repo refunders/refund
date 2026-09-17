@@ -87,6 +87,75 @@ test_that("pffr_hat_invariant_violation() flags only impossible hat values", {
   expect_null(viol(max_obs_leverage = Inf, max_leverage = NaN))
 })
 
+test_that("only the shortcut leverage cap warns, and never twice", {
+  skip_on_cran()
+  # The "influential" design saturates one cluster's leverage: the shortcut
+  # caps H_gg (a real loss of identification -> warn), while the exact path
+  # merely floors the residual-block eigenvalues at (1 - cap)^2, which is a
+  # routine numerical safeguard and stayed silent upstream.
+  fixture <- make_exactcl2_fixture("poisson", 4L, "influential")
+  fit <- suppressWarnings(suppressMessages(pffr(
+    Y ~ xlin,
+    data = fixture$data,
+    yind = fixture$yind,
+    family = fixture$family,
+    bs.yindex = list(bs = "ps", k = fixture$k, m = c(2, 1)),
+    sandwich = "none"
+  )))
+  b <- refund:::pffr_model_based_gam(fit)
+  cid <- refund:::build_cluster_id(fit$pffr, cluster = fixture$cluster)
+
+  V_exact <- expect_no_warning(
+    refund:::gam_sandwich_cluster_cl2(b, cid, cl2_adjustment = "exact")
+  )
+  # The exact floor really did engage on this fixture, silently.
+  expect_gt(attr(V_exact, "n_adjusted"), 0)
+  expect_null(attr(V_exact, "hat_invariant_violation"))
+
+  w_short <- capture_warnings(
+    V_short <- refund:::gam_sandwich_cluster_cl2(
+      b,
+      cid,
+      cl2_adjustment = "shortcut"
+    )
+  )
+  expect_length(w_short, 1L)
+  expect_match(w_short, "hit the leverage cap")
+  expect_match(w_short, "sandwich = \"cluster\"")
+  expect_gt(attr(V_short, "n_capped_clusters"), 0)
+
+  # Neither path warns when nothing is capped or floored.
+  benign <- make_exactcl2_fixture("gaussian", 4L, "unbalanced")
+  fit_ok <- suppressWarnings(suppressMessages(pffr(
+    Y ~ xlin,
+    data = benign$data,
+    yind = benign$yind,
+    family = benign$family,
+    bs.yindex = list(bs = "ps", k = benign$k, m = c(2, 1)),
+    sandwich = "none"
+  )))
+  b_ok <- refund:::pffr_model_based_gam(fit_ok)
+  cid_ok <- refund:::build_cluster_id(fit_ok$pffr, cluster = benign$cluster)
+  for (a in c("exact", "shortcut")) {
+    expect_no_warning(
+      refund:::gam_sandwich_cluster_cl2(b_ok, cid_ok, cl2_adjustment = a)
+    )
+  }
+})
+
+test_that("an invariant violation replaces the cap warning, not doubles it", {
+  skip_on_cran()
+  fit <- fit_lb5_fixture(make_lb5_fixture(amp = 10, n_grid = 30L, k = 12L, 21L))
+  for (a in c("exact", "shortcut")) {
+    w <- capture_warnings(
+      V <- refund:::pffr_vcov(fit, sandwich = "cl2", cl2_adjustment = a)
+    )
+    expect_length(w, 1L)
+    expect_match(w, "NOT trustworthy")
+    expect_type(attr(V, "hat_invariant_violation"), "character")
+  }
+})
+
 test_that("a benign Poisson CL2 fit reports leverages inside the bounds", {
   skip_on_cran()
   fit <- fit_lb5_fixture(make_lb5_fixture(amp = 1, n_grid = 20L, k = 8L, 21L))

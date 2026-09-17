@@ -67,10 +67,11 @@
   exploded standard errors (interval widths up to 1e133 were observed on
   degenerate Poisson fits, with nothing to distinguish them from a legitimately
   wide interval). The covariance is still returned, now carrying
-  `max_obs_leverage` and `hat_invariant_violation` attributes. The CR1
-  (`sandwich = "cluster"`) covariance is built from the same bread and is
-  equally affected, so switching sandwich type is not a remedy: inspect and
-  refit the model.
+  `max_obs_leverage` and `hat_invariant_violation` attributes. The check runs
+  on the CL2 path only: `sandwich = "cluster"` (CR1) forms no per-cluster
+  leverage geometry, so it has nothing to monitor and stays silent. It is
+  built from the same bread, though, so switching to it is not a remedy --
+  it only removes the diagnostic. Inspect and refit the model.
 * `ff(..., check.ident = TRUE)` (the default) now also warns when the
   effective rank of the functional covariate's covariance is below
   `1.5 * k_s`, where `k_s` is the marginal basis dimension along `s`. The
@@ -89,6 +90,55 @@
   above. The formula interface was already well clear of the threshold
   (effective rank 13-22, depending on `nxgrid`) and is unchanged. Simulated
   data from the `scenario =` path therefore differ from earlier versions.
+* Fixed-fit inference core (research patch `fixed-fit-core-2026-09-09`):
+  exact and shortcut CL2 and the working-model moment df now share one
+  compressed per-cluster influence object (`pffr_influence()`); `pffr()`
+  accepts a fit-time `cluster =` grouping that the covariance accessors
+  inherit, `coef.pffr(sandwich = NULL)` inherits the fit's covariance,
+  pointwise critical values default to `crit = "z"`, and families without a
+  cluster-robust score now error instead of silently returning an
+  observation-level HC covariance. The hat-invariant check above is computed
+  inside the shared core, so it also covers the compressed exact path.
+  In detail, for users of the previous development versions:
+  - `coef.pffr()`'s pointwise critical value now defaults to `crit = "z"`
+    (previously `crit = "auto"`, which switched to the Satterthwaite reference
+    at `G < 150`). Pass `crit = "auto"` or `crit = "satterthwaite"` to opt in.
+  - When the working-model moment df is undefined for a contrast (a
+    zero-variance contrast), `coef(ci = "pointwise", crit = "satterthwaite")`
+    now returns `NA` interval limits with a warning instead of silently
+    substituting the Gaussian quantile. `summary()`/`print.summary.pffr()`
+    ignore non-finite df, and `plot.pffr()` shows standard-error bands and is
+    unaffected.
+  - Families with a custom `family$sandwich` (other than `gaulss`) now error at
+    fit time under `sandwich = "auto"` as well as in the accessors, instead of
+    silently falling back to an observation-level HC covariance.
+  - A fit-time `cluster =` grouping is inherited by the accessors and cannot be
+    switched back to by-curve clustering with `cluster = NULL` (which means
+    "inherit"). Pass the explicit identity grouping
+    `cluster = seq_len(<number of curves>)` to force by-curve clusters.
+  - Because both CL2 variants now share one geometry, `sandwich_info` and the
+    covariance attributes carry slots that used to be path-specific:
+    `max_leverage` is populated on the exact path and `min_block_eig` /
+    `max_block_kappa` on the shortcut path, alongside the hat-invariant
+    monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
+    `min_block_eig_rel`. These are CL2-only: a `sandwich = "cluster"` fit
+    builds no leverage geometry and leaves them `NA`.
+  - The hat-invariant check now also covers the *lower* bounds
+    (`h_ii >= 0` and `eigen(H_gg) >= 0`): an indefinite penalized bread is
+    detected instead of passing the upper-bound monitors unnoticed.
+  - At most one leverage-related warning is emitted per CL2 covariance call
+    (option-validation warnings, such as an ignored `dof_correction`, are
+    separate). Only the
+    shortcut path warns about the leverage cap (the exact path's
+    `(1 - leverage_cap)^2` residual-eigenvalue floor is a routine numerical
+    safeguard and stays silent, as before); when a hat invariant is violated,
+    only the invariant warning is raised.
+  - `coef.pffr(crit = "satterthwaite", df_gram = "diagonal")` drops the
+    off-diagonal residualization but uses the *same* `q_g` as the requested
+    covariance. The historical (pre-2026-09) Satterthwaite df always used the
+    shortcut leverage weight `(I - H_gg)^{-1/2}`, so `"diagonal"` reproduces
+    those historical numbers exactly only in combination with
+    `cl2_adjustment = "shortcut"`.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.

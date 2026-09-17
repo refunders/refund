@@ -13,7 +13,8 @@ build_cluster_id(pffr_meta, cluster = NULL)
 mapping each curve to its independent unit (e.g. a subject id for repeated
 measures). Expanded to one entry per vectorized observation so the
 cluster-robust sandwich clusters at that level instead of by curve.
-`NULL` (default) clusters by curve. Only supported for dense responses.}
+`NULL` inherits the fit-time grouping, otherwise clusters by curve.
+Custom grouping is supported only for dense responses.}
 }
 \value{
 Integer vector of length equal to the number of fitted rows.

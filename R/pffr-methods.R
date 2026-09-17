@@ -43,10 +43,9 @@
 #'  (default, unchanged behavior) uses the fit-time (model-based or robust
 #'  sandwich) covariance via \code{\link{pffr_vcov}}. \code{"jackknife"} instead
 #'  replaces the standard errors with the leave-one-cluster-out jackknife SEs of
-#'  \code{\link{pffr_jackknife_se}} --- the recommended path for
-#'  fitted-mean/response-scale (\eqn{E(Y)}) intervals at small numbers of curves
-#'  \eqn{G}, where the plug-in cluster/CL2 sandwich under-propagates the
-#'  aggregated variance. The point predictions \code{fit} are unaffected. See
+#'  \code{\link{pffr_jackknife_se}}, an experimental alternative for
+#'  fitted-mean/response-scale (\eqn{E(Y)}) intervals. Calibration and
+#'  interval-width stability require separate validation. The point predictions \code{fit} are unaffected. See
 #'  \code{\link{pffr_jackknife_se}} for its calibration caveat. This argument
 #'  comes after \code{...} and must be given by name. Custom jackknife
 #'  groupings are not accepted here (the \code{cluster} dot is
@@ -1198,8 +1197,8 @@ pointwise_full_contrasts <- function(linear_map, p) {
 #' Computes the pointwise interval half-width multiplier for one term under the
 #' chosen reference (S3): `"z"` (Gaussian, reported df `Inf`), `"tG1"`
 #' (\eqn{t_{G-1}}, constant df), or `"satterthwaite"` (per-point Bell-McCaffrey
-#' df from `df_ctx`, with a Gaussian fallback at any zero-variance / undefined
-#' point).
+#' working-model moment df from `df_ctx`; undefined df yields missing limits
+#' with a warning).
 #'
 #' @param crit_mode One of `"z"`, `"tG1"`, `"satterthwaite"`.
 #' @param level Confidence level.
@@ -1235,9 +1234,79 @@ compute_pointwise_ci <- function(
   crit <- ifelse(
     is.finite(df),
     stats::qt(prob, pmax(df, 1)),
-    stats::qnorm(prob)
+    NA_real_
   )
+  if (any(!is.finite(df))) pffr_warn_undefined_df()
   list(crit = crit, df = df)
+}
+
+
+# Undefined working-model moment df is detected in two independent places per
+# coef.pffr() call -- once per smooth term inside compute_pointwise_ci(), and
+# once for the parametric coefficients -- so warning at each site produced one
+# warning per affected block. pffr_begin_undefined_df() opens a collection
+# window for the duration of one coef() call; inside it the sites only record
+# the fact and pffr_end_undefined_df() emits a single warning on exit. Outside
+# a window (direct internal calls) the warning fires immediately, as before.
+pffr_df_warn_state <- new.env(parent = emptyenv())
+pffr_df_warn_state$active <- FALSE
+pffr_df_warn_state$seen <- FALSE
+
+PFFR_UNDEFINED_DF_MSG <- paste0(
+  "Undefined working-model moment df; corresponding interval limits are ",
+  "missing."
+)
+
+#' Warn (or record) that a working-model moment df was undefined
+#'
+#' Inside a [pffr_begin_undefined_df()] window the call is recorded and the
+#' warning deferred, so one `coef()` call warns at most once however many
+#' blocks are affected. Outside a window it warns immediately.
+#'
+#' @returns `NULL`, invisibly. Called for the side effect.
+#' @keywords internal
+pffr_warn_undefined_df <- function() {
+  if (isTRUE(pffr_df_warn_state$active)) {
+    pffr_df_warn_state$seen <- TRUE
+    return(invisible(NULL))
+  }
+  warning(PFFR_UNDEFINED_DF_MSG, call. = FALSE)
+  invisible(NULL)
+}
+
+#' Open an undefined-df collection window
+#'
+#' Pair with [pffr_end_undefined_df()] via `on.exit()` so every return path of
+#' the calling function closes the window. Nested windows keep the outermost
+#' one in charge: an inner [pffr_begin_undefined_df()] is a no-op and reports
+#' `FALSE`, so its `on.exit()` handler leaves the outer window alone.
+#'
+#' @returns `TRUE` if this call opened the window, `FALSE` if one was already
+#'   open.
+#' @keywords internal
+pffr_begin_undefined_df <- function() {
+  if (isTRUE(pffr_df_warn_state$active)) {
+    return(FALSE)
+  }
+  pffr_df_warn_state$active <- TRUE
+  pffr_df_warn_state$seen <- FALSE
+  TRUE
+}
+
+#' Close an undefined-df collection window, warning at most once
+#'
+#' @param opened The value returned by the matching [pffr_begin_undefined_df()].
+#' @returns `NULL`, invisibly. Called for the side effect.
+#' @keywords internal
+pffr_end_undefined_df <- function(opened) {
+  if (!isTRUE(opened)) {
+    return(invisible(NULL))
+  }
+  seen <- isTRUE(pffr_df_warn_state$seen)
+  pffr_df_warn_state$active <- FALSE
+  pffr_df_warn_state$seen <- FALSE
+  if (seen) warning(PFFR_UNDEFINED_DF_MSG, call. = FALSE)
+  invisible(NULL)
 }
 
 
@@ -1266,8 +1335,8 @@ compute_pointwise_ci <- function(
 #'   parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
 #'   covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.
 #' @param sandwich Type of sandwich-corrected covariance for standard errors.
-#'   \code{"cluster"} (default): cluster-robust sandwich (clustering by
-#'   curve).
+#'   \code{NULL} (default) inherits the fit-time covariance choice.
+#'   \code{"cluster"}: cluster-robust sandwich.
 #'   \code{"cl2"}: leverage-adjusted cluster-robust sandwich (clustering by
 #'   curve).
 #'   \code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
@@ -1277,11 +1346,16 @@ compute_pointwise_ci <- function(
 #' @param cluster optional grouping for the cluster-robust sandwich
 #'   (\code{sandwich = "cluster"} or \code{"cl2"}): a vector with one entry per
 #'   curve (functional observation) mapping each curve to its independent unit.
-#'   Defaults to \code{NULL}, i.e. each curve is its own cluster. Supply this for
+#'   Defaults to \code{NULL}, inheriting the fit-time grouping (by curve
+#'   if none was supplied). Supply this for
 #'   nested / repeated-measures designs where several curves share a higher-level
 #'   unit (e.g. a subject id with multiple visits), so the sandwich clusters at
 #'   the correct level. Only supported for densely-observed responses. When
 #'   supplied, the pre-computed-covariance shortcut is bypassed.
+#'   A fit-time \code{cluster} grouping cannot be switched back off with
+#'   \code{cluster = NULL} (that inherits the fit); to force by-curve clustering
+#'   on a fit that was given a coarser grouping, pass the explicit identity
+#'   grouping \code{cluster = seq_len(<number of curves>)}.
 #' @param dof_correction Optional CR1 small-sample dof correction for
 #'   \code{sandwich = "cluster"}: \code{"none"} or \code{"edf"} (see
 #'   \code{\link{pffr}}). Defaults to \code{NULL}, i.e. inherit whatever the
@@ -1314,23 +1388,32 @@ compute_pointwise_ci <- function(
 #'   \code{crit} (below).
 #' @param crit Reference distribution for the \emph{pointwise} critical value
 #'   (\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
-#'   \code{"auto"} (default) uses the per-point Satterthwaite reference when the
-#'   standard errors come from a cluster-robust sandwich
-#'   (\code{sandwich = "cluster"} or \code{"cl2"}) and the number of independent
-#'   curves/clusters is moderate (\eqn{G < 150}), and the Gaussian reference
-#'   otherwise. \code{"z"} always uses the Gaussian quantile (the historical
-#'   behaviour). \code{"tG1"} uses a \eqn{t_{G-1}}{t_(G-1)} reference (constant
-#'   df, the pointwise analogue of \code{ci_ref = "t"}). \code{"satterthwaite"}
-#'   uses the per-point Bell-McCaffrey (Satterthwaite) df, \eqn{\nu(a) =
-#'   (\sum_g \lVert q_g\rVert^2)^2 / \sum_g \lVert q_g\rVert^4} with
-#'   \eqn{q_g = A_g \tilde X_g V_p a}; requested on a non-cluster covariance it
-#'   degrades to \code{"z"} with a warning. This is the missing (df) half of the
-#'   CL2 leverage adjustment. \strong{Honesty note:} the df uses a working-iid
-#'   Satterthwaite shortcut that drops the same cross-cluster residual terms as
-#'   the shipped \eqn{(I-H_{gg})^{-1/2}} CL2 covariance (paper Appendix C); it
-#'   therefore returns \eqn{\approx G} for a perfectly balanced design where the
-#'   exact Bell-McCaffrey df is \eqn{G-1} (the exact-BM df is future work).
-#'   Simultaneous bands are unaffected.
+#'   \code{"z"} (default) uses the Gaussian quantile. \code{"tG1"} uses
+#'   \eqn{t_{G-1}}. Opt-in \code{"auto"} selects \code{"satterthwaite"} for
+#'   cluster/CL2 covariance with \eqn{G<150}, and \code{"z"} otherwise.
+#'   \code{"satterthwaite"} matches the first two moments of the sampling
+#'   quadratic form using the full cross-cluster residualization Gram:
+#'   \eqn{\nu(a)=\{\mathrm{tr}(\Gamma)\}^2/\mathrm{tr}(\Gamma^2)}.
+#'   Covariance and df use the same resolved CL2 adjustment and grouping.
+#'   This central Gaussian working-independence calculation fixes smoothing
+#'   parameters and weights. It establishes neither an exact t pivot nor
+#'   calibration for B2, smoothing bias, correlated errors or smoothing
+#'   selection. Undefined df gives missing limits with a warning; requests
+#'   on non-cluster covariance fall back to z with a warning. Simultaneous
+#'   bands are unaffected.
+#' @param df_gram Gram matrix used by \code{crit = "satterthwaite"}:
+#'   \code{"full"} (default) is the residualized
+#'   \eqn{\Gamma_{gh}=1\{g=h\}\lVert q_g\rVert^2-t_g^\top C t_h}.
+#'   \code{"diagonal"} drops the off-diagonal residualization and evaluates the
+#'   working-iid shortcut
+#'   \eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4} from
+#'   \emph{the same} \eqn{q_g} \emph{as the covariance}, i.e. with the resolved
+#'   \code{cl2_adjustment}. It is retained only for re-scoring comparisons with
+#'   historical Satterthwaite results: it returns about \eqn{G} where the
+#'   residualized df returns \eqn{G-1}. The historical (pre-2026-09) df always
+#'   used the shortcut leverage weight \eqn{A_g=(I-H_{gg})^{-1/2}}, so
+#'   \code{df_gram = "diagonal"} reproduces it exactly only together with
+#'   \code{cl2_adjustment = "shortcut"}; on an exact-CL2 fit it differs.
 #' @param level Confidence level for confidence intervals, defaults to
 #'   \code{0.95}.
 #' @param n_sim Number of simulations for simultaneous intervals, defaults to
@@ -1369,7 +1452,7 @@ coef.pffr <- function(
   raw = FALSE,
   se = TRUE,
   freq = FALSE,
-  sandwich = c("cluster", "cl2", "hc", "none"),
+  sandwich = NULL,
   cluster = NULL,
   dof_correction = NULL,
   edf_type = NULL,
@@ -1380,19 +1463,27 @@ coef.pffr <- function(
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
-  crit = c("auto", "z", "tG1", "satterthwaite"),
+  crit = c("z", "auto", "tG1", "satterthwaite"),
+  df_gram = c("full", "diagonal"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
   ...
 ) {
+  # One coef() call warns at most once about undefined moment df, however many
+  # smooth terms and parametric coefficients are affected (review round 2).
+  df_warn_window <- pffr_begin_undefined_df()
+  on.exit(pffr_end_undefined_df(df_warn_window), add = TRUE)
+
   sandwich_missing <- missing(sandwich)
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
-  sandwich <- match.arg(sandwich)
+  if (is.null(sandwich)) sandwich <- pffr_canonicalize_cov(object)$fit_type
+  sandwich <- match.arg(sandwich, c("cluster", "cl2", "hc", "none"))
   ci <- match.arg(ci)
   ci_ref <- match.arg(ci_ref)
   crit <- match.arg(crit)
+  df_gram <- match.arg(df_gram)
 
   # dof_correction / edf_type default to inheriting whatever the model was
   # fitted with (so coef() with no override returns the stored covariance);
@@ -1626,7 +1717,15 @@ coef.pffr <- function(
           crit_mode <- "z"
         }
       } else if (crit_mode == "satterthwaite") {
-        df_ctx <- pffr_df_context(object, sandwich, cluster = cluster)
+        df_ctx <- pffr_df_context(
+          object,
+          sandwich,
+          cluster = cluster,
+          cl2_adjustment = attr(covmat, "cl2_adjustment") %||% cl2_adjustment,
+          df_gram = df_gram,
+          dof_correction = dof_correction,
+          edf_type = edf_type
+        )
         if (!isTRUE(df_ctx$ok)) {
           # No whitened score path for this family; degrade to the Gaussian
           # reference (still an honest pointwise interval from the robust SE).
@@ -1697,11 +1796,14 @@ coef.pffr <- function(
           } else {
             p_df <- numeric(0)
           }
+          # Same rule as compute_pointwise_ci(): an undefined moment df gives
+          # missing limits, not a silent Gaussian substitute.
           p_crit <- ifelse(
             is.finite(p_df),
             stats::qt(prob, pmax(p_df, 1)),
-            stats::qnorm(prob)
+            NA_real_
           )
+          if (any(!is.finite(p_df))) pffr_warn_undefined_df()
         } else {
           p_crit <- stats::qnorm(prob)
           p_df <- rep(Inf, length(p_se))
@@ -2063,7 +2165,7 @@ print.summary.pffr <- function(
     st <- x$satterthwaite_df
     cat(sprintf(
       paste0(
-        "Satterthwaite df for %s pointwise CIs (crit = \"auto\"): ",
+        "Working-model Satterthwaite df for %s pointwise CIs (opt-in): ",
         "median %s, min %s (G = %d).\n"
       ),
       st$type,

@@ -188,12 +188,9 @@
 #'   heteroskedasticity but ignores within-curve correlation.
 #'   \code{"none"}: no sandwich correction.
 #'
-#'   For fitted-mean / response-scale (\eqn{E(Y)}) intervals at small numbers of
-#'   curves (\eqn{G \le 80}), the leave-one-cluster-out jackknife
-#'   \code{\link{pffr_jackknife_se}} (also via
-#'   \code{predict(\dots, se_method = "jackknife")}) is the recommended path:
-#'   the plug-in cluster/CL2 sandwich under-propagates the aggregated variance
-#'   there. See \code{\link{pffr_jackknife_se}} for its calibration caveat.
+#'   The leave-one-cluster-out \code{\link{pffr_jackknife_se}} is an
+#'   experimental fitted-mean alternative. Its calibration and interval-width
+#'   stability require separate validation, particularly at small G.
 #'
 #'   Storage contract: the fit's model-based (Bayesian posterior) covariance
 #'   matrices \code{$Vp}, \code{$Vc} and \code{$Ve} are \emph{always} left
@@ -222,6 +219,9 @@
 #'   the penalized hat), \code{"edf2"} (mgcv's bias-corrected EDF), or
 #'   \code{"basis"} (the basis dimension). Only relevant when
 #'   \code{dof_correction = "edf"}.
+#' @param cluster Optional grouping with one nonmissing entry per curve.
+#'   Evaluated in data; stored and inherited by covariance accessors. Use
+#'   subject identifiers for repeated curves. Currently supports dense data.
 #' @param cl2_adjustment Leverage adjustment within \code{sandwich = "cl2"}:
 #'   \code{"auto"} (default) uses exact CL2 when \eqn{G \le 100} and the
 #'   dense-block cost proxy \eqn{G\max_g D_g p^2} is at most \eqn{5\times
@@ -323,7 +323,7 @@ pffr <- function(
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
   # S2 default (PI decision 2026-07-08): "auto" -- resolves at fit time to
-  # CL2 where it is provably safe (exact/two-block score family, G in [2, 150],
+  # CL2 on the previously evaluated grids (exact/two-block score family, G in [2, 150],
   # max D_g <= 500; see pffr_sandwich_auto_policy()) and to CR1 otherwise.
   # Evidence: notes/S2-default-decision-memo.md in the pffr-ci repo (CL2 >= CR1
   # coverage in all 462 committed comparison cells).
@@ -331,9 +331,16 @@ pffr <- function(
   dof_correction = c("none", "edf"),
   edf_type = c("trace", "edf2", "basis"),
   cl2_adjustment = c("auto", "exact", "shortcut"),
+  cluster = NULL,
   ...
 ) {
   call <- match.call()
+  cluster_value <- if (missing(cluster)) NULL else
+    eval(
+      substitute(cluster),
+      envir = data %||% parent.frame(),
+      enclos = parent.frame()
+    )
   tensortype <- as.symbol(match.arg(tensortype))
   sandwich_missing <- missing(sandwich)
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
@@ -358,7 +365,7 @@ pffr <- function(
   }
   if (sandwich_missing) {
     message(
-      "Note: pffr() now defaults to sandwich = \"cluster\" ",
+      "Note: pffr() now defaults to sandwich = \"auto\" ",
       "(cluster-robust covariance). ",
       "Set sandwich = \"none\" for the previous default behavior. ",
       "See ?pffr for details."
@@ -383,6 +390,16 @@ pffr <- function(
     dots = list(...)
   )
   algorithm_chr <- as.character(prep$algorithm)
+
+  if (!is.null(cluster_value))
+    build_cluster_id(
+      list(
+        nobs = prep$nobs,
+        nyindex = prep$nyindex,
+        is_sparse = prep$is_sparse
+      ),
+      cluster_value
+    )
 
   # Fit the model
   m <- eval(prep$new_call)
@@ -416,7 +433,7 @@ pffr <- function(
       missing_indices = prep$missing_indices,
       ydata = prep$ydata
     )
-    auto_cid <- build_cluster_id(auto_meta)
+    auto_cid <- build_cluster_id(auto_meta, cluster_value)
     auto_G <- length(unique(auto_cid))
     auto_maxDg <- as.integer(max(table(auto_cid)))
     auto_family <- m$family
@@ -501,6 +518,9 @@ pffr <- function(
     cl2_adjustment = cl2_adjustment
   )
 
+  # pffr_build_metadata() above already stores `cl2_adjustment` and the fresh
+  # sandwich cache, so only the fit-time grouping is added here.
+  ret$cluster <- cluster_value
   m <- pffr_attach_metadata(m, prep$algorithm, ret)
 
   if (sandwich == "none") {

@@ -2,36 +2,46 @@
 % Please edit documentation in R/pffr-core.R
 \name{pffr_df_context}
 \alias{pffr_df_context}
-\title{Per-cluster whitening context for Satterthwaite degrees of freedom}
+\title{Cached residualization context for central Gaussian moment df}
 \usage{
 pffr_df_context(
   object,
   sandwich_type,
   cluster = NULL,
   leverage_cap = 0.999,
-  tol = 1e-08
+  tol = 1e-08,
+  cl2_adjustment = NULL,
+  df_gram = c("full", "diagonal"),
+  dof_correction = NULL,
+  edf_type = NULL
 )
 }
 \arguments{
-\item{object}{A fitted pffr model.}
+\item{object}{Fitted pffr model.}
 
-\item{sandwich_type}{Resolved sandwich path; a whitening context is only
-built for `"cluster"` / `"cl2"`.}
+\item{sandwich_type}{Resolved cluster or cl2 covariance choice.}
 
-\item{cluster}{Optional custom per-curve grouping (as in [pffr_vcov()]).}
+\item{cluster}{Optional per-curve grouping override.}
 
-\item{leverage_cap, tol}{CL2 leverage cap / eigenvalue floor.}
+\item{leverage_cap, tol}{Numerical floor settings.}
+
+\item{cl2_adjustment}{NULL inherits the fit; otherwise auto, exact or shortcut.}
+
+\item{df_gram}{Gram matrix for the moment df: the residualized default
+(`"full"`) or the diagonal shortcut. `"diagonal"` drops the off-diagonal
+residualization and uses **the same `q_g` as the covariance**, so it
+reproduces the historical (pre-2026-09) df exactly only together with
+`cl2_adjustment = "shortcut"`; see [pffr_influence_df()].}
+
+\item{dof_correction, edf_type}{CR1 small-sample correction for
+`sandwich_type = "cluster"`; `NULL` inherits the fit. They scale the
+context's `expected_sampling_variance` (not the df itself).}
 }
 \value{
-A list with `ok` (`FALSE` when the sandwich path is not
-  cluster/CL2, or the family has no whitened score factorization here), and
-  when `ok`: `Xw`, `cluster_id`, `Vp`, `use_cl2`, `G`, `leverage_cap`, `tol`.
+List with ok, type, cached core, Vp, G, the `df_gram` choice and the
+  adjustment settings.
 }
 \description{
-Builds --- once per `coef()` call --- the shared pieces the per-point
-Satterthwaite df needs, so [satterthwaite_df_kernel()] can be applied to each
-term's contrast matrix without rebuilding the whitened design. Uses the same
-Fisher-whitened two-block / standard construction as the CL2 sandwich (so the
-per-cluster hat trace equals the model EDF).
+Cached residualization context for central Gaussian moment df
 }
 \keyword{internal}
