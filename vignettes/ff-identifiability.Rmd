@@ -1,0 +1,71 @@
+---
+title: "Effective rank and weak identifiability in ff() terms"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Effective rank and weak identifiability in ff() terms}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+A function-on-function term `ff(X, xind = s)` estimates a coefficient surface
+$\beta(t,s)$, but the data only inform $\beta$ in directions along $s$ that the
+observed curves $X_i(s)$ actually span. `ff()` measures that span by the
+*effective rank* of $\mathrm{Cov}(X(s))$: the number of eigenvalues needed to
+account for 99.5% of the variance in `X`. With `check.ident = TRUE` (the
+default) `ff()` warns when this effective rank falls below `1.5 * k_s`, where
+`k_s` is the marginal basis dimension along `s`.
+
+```{r, message = FALSE}
+library(refund)
+set.seed(1)
+s <- seq(0, 1, length.out = 40)
+# 30 curves built from only 5 Fourier components: effective rank ~ 5
+scores <- matrix(rnorm(30 * 5), 30, 5)
+basis <- sapply(1:5, function(j) sin(j * pi * s))
+X <- scores %*% t(basis)
+
+term <- try(ff(X, xind = s, splinepars = list(bs = "ps", k = c(8, 5))))
+```
+
+## Why 1.5, and what the warning means
+
+Identifiability here is not a yes/no property. The stricter of the two
+classical conditions, effective rank $< k_s$, means the surface is pinned down
+by the penalty alone. But the problem starts well before that point: as $k_s$
+approaches the effective rank, a growing part of a rough true surface lies
+outside the span of the observed curves, and the fit returns the penalty's
+answer for that component instead of an estimate.
+
+This is a *shared bias floor*. It is not specific to one estimator or one kind
+of standard error, so it degrades point estimates and interval coverage
+together, and — the reason for the warning — it produces no fitting failure and
+no visible symptom. In the simulation studies behind `pffr()`'s cluster-robust
+intervals, a margin of about a factor 1.5 was the smallest at which this
+contamination was negligible; below it, several percent of the true surface's
+energy was unreachable by any method.
+
+## What to do about it
+
+* **Lower `k_s`**, via `splinepars = list(bs = "ps", k = c(k_s, k_t))`. This is
+  usually the right response: a basis the curves cannot support is not buying
+  flexibility, only penalty-driven fill-in.
+* **Use more, or more varied, curves.** The effective rank can never exceed
+  `min(nrow(X), ncol(X))`, so with few curves the warning may be impossible to
+  satisfy at the requested `k_s` — the design, not the code, is the binding
+  constraint.
+* **Switch to `ffpc()`**, which parameterizes the effect in the leading
+  functional principal components of `X` and is built for the genuinely
+  low-rank case.
+* If none of these is available, the fit remains usable — but conclusions about
+  $\beta(t,s)$, including the width and coverage of its confidence bands,
+  inherit the caveat. Report it.
+
+The check can be switched off with `check.ident = FALSE`.
+
+See `?ff` and Scheipl, F., Greven, S. (2016). Identifiability in penalized
+function-on-function regression models. *Electronic Journal of Statistics*
+**10**(1), 495–526.

@@ -97,6 +97,40 @@ of eigenvalues accounting for at least 0.995 of the total variance in
 \eqn{X_i(s)}) is lower than 4. If \eqn{X_i(s)} is of very low rank,
 \code{\link{ffpc}}-term may be preferable.
 }
+\section{Effective rank and weak identifiability}{
+
+
+\code{check.ident} also compares the effective rank of Cov\eqn{(X(s))}
+against the marginal basis dimension \eqn{k_s} used for \eqn{\beta(t,s)}
+along \eqn{s} (i.e. \code{splinepars$k[1]}), and warns whenever the
+effective rank is below \eqn{1.5 k_s}. The hard case \eqn{\mathrm{rank} <
+k_s} (the surface is identified through the penalty alone) is a special case
+of this warning and is flagged explicitly in its message.
+
+The reason for the margin is that identifiability is not a yes/no property
+here: the data only inform \eqn{\beta(t,s)} in directions that the observed
+curves span. Once \eqn{k_s} approaches the effective rank, an appreciable
+part of a rough true surface lies outside that span, and this component is
+returned by the penalty rather than estimated. It is a shared bias floor: it
+affects every estimator and every kind of standard error, so both point
+estimates and interval coverage for the \code{ff} term become hard to
+interpret, and it does not show up as a fitting failure. A factor of about
+1.5 was the smallest margin at which this contamination was negligible in
+the simulation studies behind the cluster-robust \code{\link{pffr}}
+intervals.
+
+The effective rank can never exceed \code{min(nrow(X), ncol(X))}, so with
+few curves the warning may be impossible to satisfy at the requested
+\eqn{k_s}. Remedies, in order of preference: lower \eqn{k_s} (via
+\code{splinepars = list(k = c(k_s, k_t))}); use more or more varied curves;
+switch to \code{\link{ffpc}}, which parameterizes the effect in the leading
+functional principal components of \eqn{X} and is designed for the low-rank
+case. If none of these is possible, the fit is still usable, but conclusions
+about \eqn{\beta(t,s)} -- including the width and coverage of its confidence
+bands -- should be drawn with that caveat in mind. The check can be switched
+off with \code{check.ident = FALSE}.
+}
+
 \references{
 For background on \code{check.ident}:\cr Scheipl, F., Greven,
   S. (2016). Identifiability in penalized function-on-function regression
