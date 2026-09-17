@@ -71,6 +71,24 @@
   (`sandwich = "cluster"`) covariance is built from the same bread and is
   equally affected, so switching sandwich type is not a remedy: inspect and
   refit the model.
+* `ff(..., check.ident = TRUE)` (the default) now also warns when the
+  effective rank of the functional covariate's covariance is below
+  `1.5 * k_s`, where `k_s` is the marginal basis dimension along `s`. The
+  previous check only fired at the much weaker `rank < k_s`, so designs in
+  which a sizeable part of the coefficient surface lies outside the span of
+  the observed curves -- a bias floor that affects point estimates and
+  interval coverage alike, without any fitting failure -- passed silently.
+  The hard `rank < k_s` case is now reported as part of the same warning.
+  See the "Effective rank and weak identifiability" section of `?ff` and the
+  `ff-identifiability` vignette.
+* The functional covariate simulated by `pffr_simulate()`'s legacy
+  `scenario =` path is now drawn from a 12- rather than 7-dimensional spline
+  basis, **doubling its effective rank from 5 to 10**. At the old rank the
+  package's own simulated covariate was weakly identified against `ff()`'s
+  default `k = 5` (which wants at least 7.5) and tripped the new warning
+  above. The formula interface was already well clear of the threshold
+  (effective rank 13-22, depending on `nxgrid`) and is unchanged. Simulated
+  data from the `scenario =` path therefore differ from earlier versions.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.

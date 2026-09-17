@@ -263,7 +263,11 @@ pffrSim <- function(
 #'
 #' Internal function preserving the original pffr_simulate behavior for backward
 #' compatibility. This is called when the deprecated \code{scenario} argument
-#' is used.
+#' is used. One deliberate departure from the original: the basis dimension
+#' used to draw the functional covariate was raised from 7 to 12, doubling its
+#' effective rank from 5 to 10, so that the simulated covariate is not itself
+#' weakly identified against ff()'s default basis (see \code{\link{ff}}).
+#' Simulated data from this path therefore differ from pre-0.1-40 draws.
 #'
 #' @inheritParams pffr_simulate
 #' @keywords internal
@@ -279,7 +283,12 @@ pffrSim_legacy <- function(
   mc <- match.call()
 
   ## generates random functions...
-  rf <- function(x = seq(0, 1, length = 100), bs.dim = 7, center = FALSE) {
+  ## bs.dim was 7, which gave the simulated X1 an effective rank of only 5 --
+  ## below 1.5 * k even for ff()'s default k = 5, so the package's own
+  ## simulated covariate tripped the weak-identifiability warning in ?ff.
+  ## bs.dim = 12 doubles the effective rank to 10 (stable across draws at the
+  ## default n = 100, nxgrid = 40).
+  rf <- function(x = seq(0, 1, length = 100), bs.dim = 12, center = FALSE) {
     nk <- bs.dim - 2
     xu <- max(x)
     xl <- min(x)
