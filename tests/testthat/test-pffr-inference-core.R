@@ -447,3 +447,68 @@ testthat::test_that("undefined moment df yields missing limits with one warning"
   pw_ok <- compute_pointwise_ci("satterthwaite", 0.95, linear_map, ctx)
   testthat::expect_true(all(is.finite(pw_ok$crit)))
 })
+
+testthat::test_that("moment df with many unequal-rank clusters matches the dense reference", {
+  # Covers the two cases the other fixtures do not: G above the default chunk
+  # size (so the df is assembled from several chunks) and unequal per-cluster
+  # ranks, including a rank-deficient cluster. Both are what the cached
+  # per-cluster residualization blocks R T_g' have to get right.
+  set.seed(84005)
+  G <- 45L
+  p <- 9L
+  sizes <- rep(c(3L, 5L, 8L, 11L, 6L), length.out = G)
+  cid <- rep(seq_len(G), times = sizes)
+  Z <- matrix(rnorm(length(cid) * p), ncol = p)
+  # one exactly rank-deficient cluster: every row repeated (row-wise; a plain
+  # block assignment would recycle the source row column-major instead)
+  dup <- which(cid == 4L)
+  Z[dup, ] <- matrix(Z[dup[1L], ], length(dup), p, byrow = TRUE)
+  B <- solve(crossprod(Z) + diag(seq_len(p)) / 10)
+  z <- rnorm(nrow(Z))
+  Xp <- matrix(rnorm(37L * p), 37L)
+  for (adjustment in c("exact", "shortcut", "none")) {
+    core <- pffr_influence_core(Z, B, cid, z, adjustment)
+    testthat::expect_true(core$df_precompute)
+    testthat::expect_gt(diff(range(core$diagnostics$rank)), 0)
+    testthat::expect_equal(core$diagnostics$rank[4L], 1L)
+    ref <- dense_reference(Z, B, cid, z, Xp, adjustment)
+    testthat::expect_equal(
+      pffr_influence_df(core, Xp)$df,
+      ref$df,
+      tolerance = 1e-10
+    )
+    # chunking stays order invariant across and beyond the chunk boundary
+    for (chunk in c(1L, 7L, 32L, 10000L))
+      testthat::expect_equal(
+        pffr_influence_df(core, Xp, chunk)$df,
+        ref$df,
+        tolerance = 1e-10
+      )
+    # the fallback path (no cached blocks) returns the same numbers
+    plain <- pffr_influence_core(
+      Z,
+      B,
+      cid,
+      z,
+      adjustment,
+      df_precompute_bytes = 0
+    )
+    testthat::expect_false(plain$df_precompute)
+    testthat::expect_null(plain$blocks[[1L]]$RT)
+    testthat::expect_equal(
+      pffr_influence_df(plain, Xp)$df,
+      pffr_influence_df(core, Xp)$df,
+      tolerance = 1e-10
+    )
+    testthat::expect_equal(
+      pffr_influence_df(plain, Xp, df_gram = "diagonal")$df,
+      pffr_influence_df(core, Xp, df_gram = "diagonal")$df
+    )
+  }
+  # A bread that makes C indefinite has no usable Cholesky factor: the
+  # precompute switches itself off instead of erroring, and the df still comes
+  # out of the general path.
+  bad <- pffr_influence_core(Z, -B, cid, z, "none")
+  testthat::expect_false(bad$df_precompute)
+  testthat::expect_length(pffr_influence_df(bad, Xp)$df, nrow(Xp))
+})

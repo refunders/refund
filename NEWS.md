@@ -167,6 +167,22 @@
     shortcut leverage weight `(I - H_gg)^{-1/2}`, so `"diagonal"` reproduces
     those historical numbers exactly only in combination with
     `cl2_adjustment = "shortcut"`.
+  - The per-point moment df is about **twice as fast**, with results unchanged
+    (agreement to 6e-16 relative against the previous implementation, same
+    `NA` pattern, same chunk invariance). `C = 2 V_p - V_p X'X V_p` equals
+    `V_p + V_p S V_p` and is therefore positive definite for a genuine
+    penalized bread, so the influence object now caches `R T_g'` per cluster
+    with `C = R'R` and evaluates the residualized Gram as a symmetric rank-k
+    update instead of a general triple product. Measured on a Gaussian
+    `ff(X1) + xlin` fit (p = 176, n_y = 60, `bs.yindex` k = 12,
+    single-threaded): the coefficient grids (1801 contrasts) go from 6.4 s to
+    3.2 s at G = 100 and from 10.3 s to 4.8 s at G = 200; a full E(Y) grid goes
+    from 20.8 s to 12.3 s (6000 contrasts, G = 100) and from 76.2 s to 36.2 s
+    (12000 contrasts, G = 200). The cached blocks cost
+    `8 * p * sum_g rank_g` bytes (7.9 MB at G = 200) and are bounded by
+    `pffr_influence_core(df_precompute_bytes =)`; above that budget, or when
+    `C` is not usably positive definite, the df falls back to the previous
+    general path. See `inst/benchmarks/df-timing.R`.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.
