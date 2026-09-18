@@ -29,7 +29,7 @@ make_storage_fits <- local({
           yind = yind,
           sandwich = "none"
         ),
-        fit_cluster = pffr(
+        fit_cluster = quiet_pffr(
           Y ~ ff(X1),
           data = dat,
           yind = yind,

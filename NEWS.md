@@ -12,6 +12,24 @@
   GLS-based covariance correction produced poorly calibrated inference.
   Use `pffr()` with `sandwich = "cluster"` (default) or `sandwich = "cl2"`
   instead.
+* **The Simpson integration weights used by `ff()` and `sff()` are fixed.**
+  The `integration = "simpson"` weights were scaled by
+  `(b - a) / (3 * nxgrid)` instead of `(b - a) / (3 * (nxgrid - 1))`, and for
+  even `nxgrid` the `[1, 4, 2, ..., 4, 1]` alternation ended in `2` before the
+  closing `1`, which composite Simpson does not allow. The weights therefore
+  summed to less than the length of the integration domain: a constant on
+  `[0, 1]` integrated to 0.956 at `nxgrid = 30`, 0.968 at `nxgrid = 31`, 0.978
+  at `nxgrid = 60`, 0.984 at `nxgrid = 61` and 0.989 at `nxgrid = 93` (the DTI
+  CCA grid) instead of 1. Estimated `ff()` coefficient surfaces were rescaled
+  by the reciprocal of that factor, i.e. inflated by up to ~4.5% on typical
+  grids. Simulation studies in which the same weights generated *and* fitted
+  the data are unaffected; real-data fits are. The weights now implement
+  composite Simpson's rule with `h = (b - a) / (nxgrid - 1)`, using Simpson's
+  3/8 rule on the last three intervals when `nxgrid` is even, so that a
+  constant integrates to exactly `b - a` and cubics are integrated exactly for
+  every `nxgrid >= 3`. The old behaviour is still reachable as
+  `integration = "simpson_legacy"` for reproducing results from earlier
+  versions; it is deprecated and should not be used for new analyses.
 
 ## Function renames (old names deprecated)
 
@@ -72,6 +90,16 @@
   leverage geometry, so it has nothing to monitor and stays silent. It is
   built from the same bread, though, so switching to it is not a remedy --
   it only removes the diagnostic. Inspect and refit the model.
+* `pffr()` now warns once, at fit time, when `sandwich` resolves to
+  `"cluster"` or `"cl2"` and the number of clusters `G` is below 40: "Only
+  G = <n> clusters: cluster-robust intervals undercover at this size (paper
+  benchmark: CL2 ~0.77-0.79 at G = 20 under dependence). Consider the
+  refitting curve bootstrap `pffr_coefboot()` or wider nominal levels." The
+  warning has class `"pffr_small_G_warning"` (via `warningCondition()`) so it
+  can be muffled with `withCallingHandlers()`/`suppressWarnings(classes =
+  "pffr_small_G_warning")`; it is not repeated by `coef.pffr()`,
+  `plot.pffr()`, or `predict.pffr()`, and never fires for `sandwich =
+  "none"`/`"hc"`.
 * `ff(..., check.ident = TRUE)` (the default) now also warns when the
   effective rank of the functional covariate's covariance is below
   `1.5 * k_s`, where `k_s` is the marginal basis dimension along `s`. The
@@ -139,6 +167,22 @@
     shortcut leverage weight `(I - H_gg)^{-1/2}`, so `"diagonal"` reproduces
     those historical numbers exactly only in combination with
     `cl2_adjustment = "shortcut"`.
+  - The per-point moment df is about **twice as fast**, with results unchanged
+    (agreement to 6e-16 relative against the previous implementation, same
+    `NA` pattern, same chunk invariance). `C = 2 V_p - V_p X'X V_p` equals
+    `V_p + V_p S V_p` and is therefore positive definite for a genuine
+    penalized bread, so the influence object now caches `R T_g'` per cluster
+    with `C = R'R` and evaluates the residualized Gram as a symmetric rank-k
+    update instead of a general triple product. Measured on a Gaussian
+    `ff(X1) + xlin` fit (p = 176, n_y = 60, `bs.yindex` k = 12,
+    single-threaded): the coefficient grids (1801 contrasts) go from 6.4 s to
+    3.2 s at G = 100 and from 10.3 s to 4.8 s at G = 200; a full E(Y) grid goes
+    from 20.8 s to 12.3 s (6000 contrasts, G = 100) and from 76.2 s to 36.2 s
+    (12000 contrasts, G = 200). The cached blocks cost
+    `8 * p * sum_g rank_g` bytes (7.9 MB at G = 200) and are bounded by
+    `pffr_influence_core(df_precompute_bytes =)`; above that budget, or when
+    `C` is not usably positive definite, the df falls back to the previous
+    general path. See `inst/benchmarks/df-timing.R`.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.

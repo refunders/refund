@@ -150,7 +150,7 @@ test_that("ff limits arg works", {
   set.seed(2121)
   data <- pffr_simulate(
     scenario = "ff",
-    n = 20,
+    n = 40,
     SNR = 100,
     limits = function(s, t) s < t
   )
@@ -198,7 +198,7 @@ test_that("weights and offset args work", {
   skip_on_cran()
   set.seed(112)
 
-  n <- 20
+  n <- 40
   nygrid <- 50
   data <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 100)
   t <- attr(data, "yindex")
@@ -254,7 +254,7 @@ test_that("sff terms are working", {
   skip_on_cran()
   set.seed(2121)
 
-  data <- pffr_simulate(scenario = "ff", n = 20, SNR = 100)
+  data <- pffr_simulate(scenario = "ff", n = 40, SNR = 100)
   t <- attr(data, "yindex")
   s <- attr(data, "xindex")
 
@@ -432,7 +432,7 @@ test_that("sff() term works with new simulation", {
   skip_on_cran()
   set.seed(48)
 
-  n <- 30
+  n <- 40
   nxgrid <- 25
   nygrid <- 35
 
@@ -675,7 +675,7 @@ test_that("predict(type='terms') works for intercept-free models", {
   skip_on_cran()
   set.seed(58)
 
-  n <- 35
+  n <- 40
   nygrid <- 30
 
   dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
@@ -894,7 +894,7 @@ test_that("unwrapped te/ti/t2 terms work without explicit effects", {
   skip_on_cran()
   set.seed(80)
 
-  n <- 30
+  n <- 40
   nygrid <- 25
 
   # Bug fix test: te without c() should use smooth preset (sine), not gaussian_2d
@@ -945,7 +945,7 @@ test_that("pffrSim respects custom response name from formula", {
   skip_on_cran()
   set.seed(83)
 
-  n <- 30
+  n <- 40
   nygrid <- 25
 
   # Use custom response name
@@ -1175,8 +1175,10 @@ test_that("small n (n=10) still fits without error", {
   dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 100)
   t <- attr(dat, "yindex")
 
-  # Should fit without error with small sample
-  m <- pffr(Y ~ xlin, yind = t, data = dat)
+  # Should fit without error with small sample (the point of this test is the
+  # small n itself, so the S-C small-G guard is expected and muffled here
+  # rather than raised away).
+  m <- quiet_pffr(Y ~ xlin, yind = t, data = dat)
 
   expect_s3_class(m, "pffr")
   expect_equal(dim(fitted(m)), c(n, nygrid))
@@ -1186,7 +1188,7 @@ test_that("model with single smooth term works correctly", {
   skip_on_cran()
   set.seed(111)
 
-  n <- 30
+  n <- 40
   nygrid <- 25
 
   dat <- pffr_simulate(
@@ -1217,7 +1219,7 @@ test_that("predict.pffr with ff limits works on new data", {
   skip_on_cran()
   set.seed(113)
 
-  n <- 30
+  n <- 40
   nxgrid <- 25
   nygrid <- 30
 
@@ -1261,7 +1263,7 @@ test_that("coef.pffr works with pcre terms with 3 FPCs", {
   skip_on_cran()
   set.seed(115)
 
-  n <- 30
+  n <- 40
   n_groups <- 5
   ny <- 40
   t <- seq(0, 1, length = ny)
@@ -1692,7 +1694,7 @@ test_that("pffr with sandwich='cluster' yields cluster-robust covariance", {
   t <- attr(dat, "yindex")
   m_std <- get_xlin_model()
 
-  m_cl <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
+  m_cl <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
 
   # Sandwich type stored as character
   expect_identical(m_std$pffr$sandwich, "none")
@@ -1802,7 +1804,7 @@ test_that("pffr default sandwich is auto, resolving per the policy", {
   dat <- get_xlin_data()
   t <- attr(dat, "yindex")
   expect_message(
-    m_default <- pffr(Y ~ xlin, yind = t, data = dat),
+    m_default <- quiet_pffr(Y ~ xlin, yind = t, data = dat),
     "sandwich='auto' resolved to"
   )
   G <- length(unique(refund:::build_cluster_id(m_default$pffr)))
@@ -1814,7 +1816,7 @@ test_that("pffr default sandwich is auto, resolving per the policy", {
       family = m_default$family
     )
   )
-  m_cl2 <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
+  m_cl2 <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
   expect_equal(m_default$pffr$Vsandwich, m_cl2$pffr$Vsandwich)
 })
 
@@ -1825,8 +1827,8 @@ test_that("pffr with sandwich='cl2' yields leverage-adjusted covariance", {
   t <- attr(dat, "yindex")
   m_std <- get_xlin_model()
 
-  m_cl <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
-  m_cl2 <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
+  m_cl <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
+  m_cl2 <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
 
   expect_identical(m_cl2$pffr$sandwich, "cl2")
   expect_equal(coef(m_std, raw = TRUE), coef(m_cl2, raw = TRUE))
@@ -1893,7 +1895,7 @@ test_that("gam_sandwich_cluster_cl2 works for poisson and binomial", {
   families <- list(poisson(), binomial())
   for (fam in families) {
     set.seed(if (fam$family == "poisson") 1001 else 1002)
-    dat <- sim_xlin_data(n = 30, nygrid = 25, SNR = 10, family = fam)
+    dat <- sim_xlin_data(n = 40, nygrid = 25, SNR = 10, family = fam)
     t <- attr(dat, "yindex")
 
     m <- pffr(Y ~ xlin, yind = t, data = dat, family = fam)
@@ -1925,7 +1927,7 @@ test_that("sandwich backward compat: TRUE/FALSE still work", {
   t <- attr(dat, "yindex")
 
   # TRUE -> "cluster"
-  m_true <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
+  m_true <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
   expect_identical(m_true$pffr$sandwich, "cluster")
 
   # FALSE -> "none"
@@ -1961,7 +1963,7 @@ test_that("coef.pffr recomputes when sandwich type differs from fit", {
   expect_true(all(is.finite(coef_cl_from_none$pterms[, "se"])))
 
   # Fit with CL2, request cluster and HC to force recomputation paths.
-  m_cl2 <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
+  m_cl2 <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
   coef_cl2_stored <- coef(m_cl2, sandwich = "cl2")
   coef_cl_from_cl2 <- coef(m_cl2, sandwich = "cluster")
   coef_hc_from_cl2 <- coef(m_cl2, sandwich = "hc")
@@ -2034,7 +2036,7 @@ test_that("gam_sandwich_cluster_cl2 works for gaulss family", {
 
   dat <- get_xlin_data()
   t <- attr(dat, "yindex")
-  m_fit_cl2 <- pffr(
+  m_fit_cl2 <- quiet_pffr(
     Y ~ xlin,
     yind = t,
     data = dat,
@@ -2215,7 +2217,7 @@ test_that("dof_correction is stored and invalidates the coef.pffr cache", {
   # the public surface: storage, cache reuse, and cache invalidation.
 
   # (a) Default fit stores dof_correction = "none".
-  m0 <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
+  m0 <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
   expect_identical(m0$pffr$dof_correction, "none")
   expect_identical(m0$pffr$edf_type, "trace")
 
@@ -2229,7 +2231,7 @@ test_that("dof_correction is stored and invalidates the coef.pffr cache", {
   expect_false(isTRUE(all.equal(unname(se_none), unname(se_edf))))
 
   # (b) Fit with dof = "edf": stored as metadata.
-  m1 <- pffr(
+  m1 <- quiet_pffr(
     Y ~ xlin,
     yind = t,
     data = dat,
@@ -2324,7 +2326,7 @@ test_that("gaulss CL2 whitening preserves the score under prior weights", {
 test_that("CL2 errors for unsupported custom family$sandwich", {
   skip_on_cran()
 
-  dat <- sim_xlin_data(n = 25, nygrid = 25, SNR = 10, family = mgcv::gaulss())
+  dat <- sim_xlin_data(n = 40, nygrid = 25, SNR = 10, family = mgcv::gaulss())
   t <- attr(dat, "yindex")
   m <- pffr(Y ~ xlin, yind = t, data = dat, family = mgcv::gaulss())
 

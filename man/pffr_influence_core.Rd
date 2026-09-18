@@ -12,7 +12,8 @@ pffr_influence_core(
   adjustment = c("exact", "shortcut", "none"),
   leverage_cap = 0.999,
   tol = 1e-08,
-  rank_tol = NULL
+  rank_tol = NULL,
+  df_precompute_bytes = 2^28
 )
 }
 \arguments{
@@ -31,6 +32,13 @@ pffr_influence_core(
 \item{tol}{Positive shortcut eigenvalue floor.}
 
 \item{rank_tol}{Relative SVD tolerance; NULL uses dimension times machine epsilon.}
+
+\item{df_precompute_bytes}{Memory budget for the per-cluster residualization
+blocks \eqn{R T_g^\top} used by [pffr_influence_df()], where \eqn{C = R^\top R}.
+They cost `8 * p * sum(rank_g)` bytes and let the df evaluate its Gram as a
+symmetric rank-k update without any \eqn{p \times p} product. Above the
+budget, or when `C` is not usably positive definite, the blocks are not
+stored and the df falls back to the general product.}
 }
 \value{
 Influence object with separate sampling columns, B2 and geometry.

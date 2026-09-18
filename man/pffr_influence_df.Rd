@@ -39,5 +39,12 @@ in combination with `cl2_adjustment = "shortcut"`**; on an exact-CL2 fit it
 is the diagonal moment df of the exact geometry and differs from the
 historical number (2e-5 to 2e-2 relative on the package fixtures; there is no
 bound on the difference in general).
+
+Per contrast the residualized Gram \eqn{T^\top C\,T} dominates the cost. When
+the core carries the cached blocks \eqn{R T_g^\top} with \eqn{C = R^\top R}
+(see [pffr_influence_core()]'s `df_precompute_bytes`) it is evaluated as
+`crossprod(R T)`, a symmetric rank-k update at half the flops and without the
+\eqn{O(p^2 G)} product `C %*% T`. Cores without the cached blocks use the
+general path and return the same numbers.
 }
 \keyword{internal}

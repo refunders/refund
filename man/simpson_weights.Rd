@@ -4,17 +4,24 @@
 \alias{simpson_weights}
 \title{Compute Simpson integration weights}
 \usage{
-simpson_weights(xind)
+simpson_weights(xind, integration = c("simpson", "simpson_legacy"))
 }
 \arguments{
 \item{xind}{Numeric vector of evaluation points.}
+
+\item{integration}{Character: "simpson" (default) or "simpson_legacy".}
 }
 \value{
 Numeric vector of Simpson weights.
 }
 \description{
-Computes Simpson's rule weights for numerical integration on an equidistant
-grid. This matches pffr's default integration method in ff() terms.
-Note: pffr uses (b-a)/n/3 (divides by grid length n), not (b-a)/(n-1)/3.
+Computes composite Simpson's rule weights for numerical integration on an
+equidistant grid. This matches the default integration method used by
+[ff()] and [sff()] terms, i.e. the weights sum to `xind[n] - xind[1]`.
+}
+\details{
+`integration = "simpson_legacy"` returns the deprecated weights used by
+refund <= 0.1-40, which were scaled by `(b - a) / (3 * n)` rather than
+`(b - a) / (3 * (n - 1))`; see [compute_integration_weights()].
 }
 \keyword{internal}

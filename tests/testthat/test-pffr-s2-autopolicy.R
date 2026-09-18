@@ -174,7 +174,12 @@ test_that("sandwich='auto' resolves at fit time and messages once", {
   skip_on_cran()
   d <- make_auto_data()
   expect_message(
-    fit <- pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "auto"),
+    fit <- quiet_pffr(
+      Y ~ ff(X1),
+      data = d$dat,
+      yind = d$yind,
+      sandwich = "auto"
+    ),
     "sandwich='auto' resolved to 'cl2' \\(G=25, max D_g=20\\)"
   )
   # the resolved type is stored and served
@@ -186,10 +191,10 @@ test_that("auto-resolved cl2 equals an explicit cl2 fit; explicit values intact"
   skip_on_cran()
   d <- make_auto_data()
   fit_auto <- suppressMessages(
-    pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "auto")
+    quiet_pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "auto")
   )
   fit_cl2 <- suppressMessages(
-    pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "cl2")
+    quiet_pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "cl2")
   )
   expect_equal(
     fit_auto$pffr$Vsandwich,
@@ -198,7 +203,7 @@ test_that("auto-resolved cl2 equals an explicit cl2 fit; explicit values intact"
   )
   # explicit choices still work and are stored verbatim
   fit_cluster <- suppressMessages(
-    pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "cluster")
+    quiet_pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "cluster")
   )
   expect_identical(fit_cluster$pffr$sandwich_info$type, "cluster")
   fit_none <- suppressMessages(
@@ -216,7 +221,7 @@ test_that("an autopolicy that forces cluster is honored at fit time", {
     list(refund.pffr.autopolicy = list(G_max = 10)),
     {
       fit <- suppressMessages(
-        pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "auto")
+        quiet_pffr(Y ~ ff(X1), data = d$dat, yind = d$yind, sandwich = "auto")
       )
       expect_identical(fit$pffr$sandwich_info$type, "cluster")
     }

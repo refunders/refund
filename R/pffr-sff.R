@@ -25,7 +25,10 @@
 #'   \code{\link[mgcv]{t2}}).
 #' @param integration method used for numerical integration. Defaults to
 #'   \code{"simpson"}'s rule. Alternatively and for non-equidistant grids,
-#'   \code{"trapezoidal"}.
+#'   \code{"trapezoidal"}. \code{"simpson_legacy"} reproduces the mis-scaled
+#'   Simpson weights used up to refund 0.1-40 (see
+#'   \code{\link{compute_integration_weights}}) and is deprecated; it exists
+#'   only to reproduce results from older versions.
 #' @param L optional: an n by \code{ncol(xind)} giving the weights for the
 #'   numerical integration over \eqn{s}.
 #' @param limits defaults to NULL for integration across the entire range of
@@ -59,7 +62,7 @@ sff <- function(
   yind = NULL,
   xind = seq(0, 1, length.out = ncol(X)),
   basistype = c("te", "t2", "s"),
-  integration = c("simpson", "trapezoidal"),
+  integration = c("simpson", "trapezoidal", "simpson_legacy"),
   L = NULL,
   limits = NULL,
   splinepars = list(bs = "ps", m = c(2, 2, 2))
@@ -96,7 +99,7 @@ sff <- function(
   if (
     is.null(L) &&
       any(apply(diff_xind, 1, \(x) length(unique(x))) != 1) &&
-      integration == "simpson"
+      integration %in% c("simpson", "simpson_legacy")
   ) {
     warning(
       "Non-equidistant grid detected for ",

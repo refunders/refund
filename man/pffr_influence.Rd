@@ -35,8 +35,10 @@ as `"none"` so the same object is reused whatever they are set to.}
 \value{
 A `pffr_influence` object: the symmetrized penalized bread `B`, the
   residualization matrix `C`, the per-cluster residual influence columns `K`,
-  the compressed per-cluster geometry `blocks` (`T` and the leverage weight
-  `A`), the cluster count `G` and labels `groups`, the resolved `adjustment`,
+  the compressed per-cluster geometry `blocks` (`T`, the leverage weight `A`
+  and, when the df precompute applies, the residualization block `RT` =
+  \eqn{R T_g^\top}), the cluster count `G` and labels `groups`,
+  the resolved `adjustment`,
   the finite-sample `correction` (`G/(G-1)` times any CR1 dof factor), the
   Bayesian smoothing-bias term `B2`, the per-cluster `diagnostics` (see
   [pffr_influence_core()]) and the numerical settings. Cached on the fit
