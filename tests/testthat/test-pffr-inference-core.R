@@ -512,3 +512,53 @@ testthat::test_that("moment df with many unequal-rank clusters matches the dense
   testthat::expect_false(bad$df_precompute)
   testthat::expect_length(pffr_influence_df(bad, Xp)$df, nrow(Xp))
 })
+
+testthat::test_that("a zero df cache budget skips chol(C) entirely (Copilot review of #126)", {
+  # The budget test `8 * p * sum(rank) <= df_precompute_bytes` must run before
+  # C is factored, not after: with df_precompute_bytes = 0 the fallback is
+  # unreachable-by-budget, so chol(C) must never be attempted (it would be a
+  # wasted O(p^3) cost on a large fit, and defeats the documented opt-out).
+  set.seed(84006)
+  G <- 6L
+  p <- 8L
+  D <- 5L
+  r <- 3L
+  Z <- do.call(
+    rbind,
+    lapply(
+      seq_len(G),
+      function(g) matrix(rnorm(D * r), D) %*% matrix(rnorm(r * p), r)
+    )
+  )
+  cid <- rep(seq_len(G), each = D)
+  B <- solve(crossprod(Z) + diag(seq_len(p)))
+  z <- rnorm(nrow(Z))
+  Xp <- matrix(rnorm(5 * p), 5)
+
+  default_budget <- pffr_influence_core(Z, B, cid, z, "exact")
+  testthat::expect_true(default_budget$df_precompute)
+
+  testthat::local_mocked_bindings(
+    chol = function(...) stop("chol must not be called"),
+    .package = "base"
+  )
+  zero_budget <- pffr_influence_core(
+    Z,
+    B,
+    cid,
+    z,
+    "exact",
+    df_precompute_bytes = 0
+  )
+  testthat::expect_false(zero_budget$df_precompute)
+  testthat::expect_null(zero_budget$blocks[[1L]]$RT)
+
+  df_default <- pffr_influence_df(default_budget, Xp)
+  df_zero <- pffr_influence_df(zero_budget, Xp)
+  testthat::expect_equal(df_zero$df, df_default$df, tolerance = 1e-12)
+  testthat::expect_equal(
+    df_zero$expected_sampling_variance,
+    df_default$expected_sampling_variance,
+    tolerance = 1e-12
+  )
+})

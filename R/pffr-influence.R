@@ -185,10 +185,12 @@ pffr_influence_core <- function(
   # numerically inconsistent bread can make C indefinite, or so ill conditioned
   # that R'R no longer reproduces it, and the df then falls back to the general
   # product. The byte budget bounds the cached blocks (8 * p * sum_g r_g).
-  Rchol <- tryCatch(chol(C), error = function(e) NULL)
+  within_budget <- 8 * p * sum(rank) <= df_precompute_bytes
+  Rchol <- if (within_budget) tryCatch(chol(C), error = function(e) NULL) else
+    NULL
   if (!is.null(Rchol) && max(abs(crossprod(Rchol) - C)) > 1e-10 * max(abs(C)))
     Rchol <- NULL
-  df_precompute <- !is.null(Rchol) && 8 * p * sum(rank) <= df_precompute_bytes
+  df_precompute <- !is.null(Rchol)
   if (df_precompute)
     for (g in seq_len(G)) blocks[[g]]$RT <- Rchol %*% t(blocks[[g]]$T)
   structure(
