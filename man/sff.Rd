@@ -9,7 +9,7 @@ sff(
   yind = NULL,
   xind = seq(0, 1, length.out = ncol(X)),
   basistype = c("te", "t2", "s"),
-  integration = c("simpson", "trapezoidal"),
+  integration = c("simpson", "trapezoidal", "simpson_legacy"),
   L = NULL,
   limits = NULL,
   splinepars = list(bs = "ps", m = c(2, 2, 2))
@@ -34,7 +34,10 @@ alternative parameterization of tensor product splines (see
 
 \item{integration}{method used for numerical integration. Defaults to
 \code{"simpson"}'s rule. Alternatively and for non-equidistant grids,
-\code{"trapezoidal"}.}
+\code{"trapezoidal"}. \code{"simpson_legacy"} reproduces the mis-scaled
+Simpson weights used up to refund 0.1-40 (see
+\code{\link{compute_integration_weights}}) and is deprecated; it exists
+only to reproduce results from older versions.}
 
 \item{L}{optional: an n by \code{ncol(xind)} giving the weights for the
 numerical integration over \eqn{s}.}

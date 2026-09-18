@@ -12,6 +12,24 @@
   GLS-based covariance correction produced poorly calibrated inference.
   Use `pffr()` with `sandwich = "cluster"` (default) or `sandwich = "cl2"`
   instead.
+* **The Simpson integration weights used by `ff()` and `sff()` are fixed.**
+  The `integration = "simpson"` weights were scaled by
+  `(b - a) / (3 * nxgrid)` instead of `(b - a) / (3 * (nxgrid - 1))`, and for
+  even `nxgrid` the `[1, 4, 2, ..., 4, 1]` alternation ended in `2` before the
+  closing `1`, which composite Simpson does not allow. The weights therefore
+  summed to less than the length of the integration domain: a constant on
+  `[0, 1]` integrated to 0.956 at `nxgrid = 30`, 0.968 at `nxgrid = 31`, 0.978
+  at `nxgrid = 60`, 0.984 at `nxgrid = 61` and 0.989 at `nxgrid = 93` (the DTI
+  CCA grid) instead of 1. Estimated `ff()` coefficient surfaces were rescaled
+  by the reciprocal of that factor, i.e. inflated by up to ~4.5% on typical
+  grids. Simulation studies in which the same weights generated *and* fitted
+  the data are unaffected; real-data fits are. The weights now implement
+  composite Simpson's rule with `h = (b - a) / (nxgrid - 1)`, using Simpson's
+  3/8 rule on the last three intervals when `nxgrid` is even, so that a
+  constant integrates to exactly `b - a` and cubics are integrated exactly for
+  every `nxgrid >= 3`. The old behaviour is still reachable as
+  `integration = "simpson_legacy"` for reproducing results from earlier
+  versions; it is deprecated and should not be used for new analyses.
 
 ## Function renames (old names deprecated)
 

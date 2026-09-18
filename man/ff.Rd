@@ -9,7 +9,7 @@ ff(
   yind = NULL,
   xind = seq(0, 1, l = ncol(X)),
   basistype = c("te", "t2", "ti", "s", "tes"),
-  integration = c("simpson", "trapezoidal", "riemann"),
+  integration = c("simpson", "trapezoidal", "riemann", "simpson_legacy"),
   L = NULL,
   limits = NULL,
   splinepars = if (basistype != "s") {
@@ -40,7 +40,10 @@ bivariate basis functions (see \code{mgcv}'s \code{\link[mgcv]{s}}) or
 \item{integration}{method used for numerical integration. Defaults to
 \code{"simpson"}'s rule for calculating entries in \code{L}. Alternatively
 and for non-equidistant grids, \code{"trapezoidal"} or \code{"riemann"}.
-\code{"riemann"} integration is always used if \code{limits} is specified}
+\code{"riemann"} integration is always used if \code{limits} is specified.
+\code{"simpson_legacy"} reproduces the mis-scaled Simpson weights used up
+to refund 0.1-40 (see \code{\link{compute_integration_weights}}) and is
+deprecated; it exists only to reproduce results from older versions.}
 
 \item{L}{optional: an n by \code{ncol(xind)} matrix giving the weights for
 the numerical integration over \eqn{s}.}
