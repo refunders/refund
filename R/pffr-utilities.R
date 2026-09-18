@@ -167,15 +167,82 @@ expand_windows_to_maxwidth <- function(windows, max_col) {
 # Shared Utilities for ff/sff Terms
 #--------------------------------------
 
+#' Simpson weight pattern for an equidistant grid of `nxgrid` points
+#'
+#' Returns the dimensionless composite-Simpson weight pattern for `nxgrid`
+#' equidistant points, in units of the step size `h`. The pattern sums to
+#' `nxgrid - 1`, so that multiplying it by `h = (b - a) / (nxgrid - 1)` yields
+#' weights summing to `b - a`.
+#'
+#' Cases:
+#' * odd `nxgrid >= 3`: classical composite Simpson, `[1, 4, 2, ..., 4, 1] / 3`.
+#' * even `nxgrid >= 4`: composite Simpson on the first `nxgrid - 3` points
+#'   plus Simpson's 3/8 rule on the last three intervals. This keeps the rule
+#'   exact for cubic polynomials for every `nxgrid >= 3` (a trapezoidal
+#'   closing interval would degrade the even-`nxgrid` rule to second order).
+#' * `nxgrid == 2`: trapezoidal rule.
+#' * `nxgrid == 1`: degenerate, weight 1 (no integration possible).
+#'
+#' @param nxgrid Integer number of grid points.
+#' @returns Numeric vector of length `nxgrid` summing to `max(nxgrid - 1, 1)`.
+#' @keywords internal
+simpson_pattern <- function(nxgrid) {
+  if (nxgrid < 2) {
+    return(1)
+  }
+  if (nxgrid == 2) {
+    return(c(0.5, 0.5))
+  }
+  if (nxgrid %% 2 == 1) {
+    return(c(1, rep(c(4, 2), length.out = nxgrid - 2), 1) / 3)
+  }
+  # even nxgrid: Simpson on points 1..(nxgrid - 3), 3/8 on the last 3 intervals
+  pattern <- numeric(nxgrid)
+  n_simpson <- nxgrid - 3
+  if (n_simpson >= 3) {
+    pattern[seq_len(n_simpson)] <-
+      c(1, rep(c(4, 2), length.out = n_simpson - 2), 1) / 3
+  }
+  tail_idx <- (nxgrid - 3):nxgrid
+  pattern[tail_idx] <- pattern[tail_idx] + c(1, 3, 3, 1) * 3 / 8
+  pattern
+}
+
 #' Compute integration weights for ff/sff terms
 #'
 #' Computes numerical integration weights using Simpson's rule, trapezoidal
 #' rule, or Riemann sums. Used by [ff()] and [sff()] for constructing
 #' functional regression terms.
 #'
+#' @details
+#' `integration = "simpson"` implements *composite* Simpson's rule on an
+#' equidistant grid with step `h = (b - a) / (nxgrid - 1)`; see
+#' [simpson_pattern()] for the exact pattern used for odd and even `nxgrid`.
+#' The weights sum to `b - a`, so a constant function integrates exactly.
+#'
+#' `integration = "simpson_legacy"` reproduces the (incorrect) weights used by
+#' `ff()`/`sff()` up to refund 0.1-40: the pattern `[1, 4, 2, ..., 4, 1]` was
+#' scaled by `(b - a) / (3 * nxgrid)` instead of `(b - a) / (3 * (nxgrid - 1))`,
+#' and for even `nxgrid` the alternation ended in `2` before the closing `1`,
+#' which composite Simpson does not allow. The resulting weights sum to less
+#' than `b - a` (e.g. a constant on `[0, 1]` integrates to 0.956 at
+#' `nxgrid = 30` and to 0.989 at `nxgrid = 93`), so estimated `ff()` surfaces
+#' are rescaled by the reciprocal of that factor. This option is retained
+#' **only** for reproducing results computed with older versions and is
+#' deprecated; do not use it for new analyses.
+#'
+#' `integration = "trapezoidal"` is exact for constants (its weights sum to
+#' `b - a`) and is the recommended rule for non-equidistant grids.
+#' `integration = "riemann"` (used whenever `limits` is specified) attaches a
+#' rectangle to every grid point including the left endpoint, so its weights
+#' sum to `b - a` plus one mean grid spacing; this is inherent to a first-order
+#' rule that gives all `nxgrid` points positive weight and is left unchanged
+#' because the truncated-domain (`limits`) behaviour depends on it.
+#'
 #' @param xind Matrix of x-index values (n x nxgrid). Each row contains the
 #'   evaluation points for one observation.
-#' @param integration Character: "simpson", "trapezoidal", or "riemann".
+#' @param integration Character: "simpson", "simpson_legacy", "trapezoidal",
+#'   or "riemann".
 #' @returns Matrix of integration weights (n x nxgrid).
 #' @keywords internal
 compute_integration_weights <- function(xind, integration = "simpson") {
@@ -185,7 +252,17 @@ compute_integration_weights <- function(xind, integration = "simpson") {
   switch(
     integration,
     simpson = {
-      # Simpson's rule: int^b_a f(t) dt ≈ (b-a)/(3n) * [f(a) + 4f(t_1) + 2f(t_2) + ...]
+      # composite Simpson: weights sum to (b - a)
+      pattern <- simpson_pattern(nxgrid)
+      h <- if (nxgrid > 1) {
+        (xind[, nxgrid] - xind[, 1]) / (nxgrid - 1)
+      } else {
+        rep(1, n)
+      }
+      matrix(outer(h, pattern), nrow = n, ncol = nxgrid)
+    },
+    simpson_legacy = {
+      # deprecated: refund <= 0.1-40 weights, scaled by (b-a)/(3*nxgrid)
       ((xind[, nxgrid] - xind[, 1]) / nxgrid) /
         3 *
         matrix(
@@ -209,7 +286,13 @@ compute_integration_weights <- function(xind, integration = "simpson") {
       # Simple Riemann sums
       diffs <- t(apply(xind, 1, diff))
       cbind(rep(mean(diffs), n), diffs)
-    }
+    },
+    stop(
+      "Unknown `integration` method: ",
+      sQuote(integration),
+      ". Use one of \"simpson\", \"simpson_legacy\", \"trapezoidal\", ",
+      "\"riemann\"."
+    )
   )
 }
 
@@ -1208,18 +1291,26 @@ center_functional_covariate <- function(X) {
 
 #' Compute Simpson integration weights
 #'
-#' Computes Simpson's rule weights for numerical integration on an equidistant
-#' grid. This matches pffr's default integration method in ff() terms.
-#' Note: pffr uses (b-a)/n/3 (divides by grid length n), not (b-a)/(n-1)/3.
+#' Computes composite Simpson's rule weights for numerical integration on an
+#' equidistant grid. This matches the default integration method used by
+#' [ff()] and [sff()] terms, i.e. the weights sum to `xind[n] - xind[1]`.
+#'
+#' `integration = "simpson_legacy"` returns the deprecated weights used by
+#' refund <= 0.1-40, which were scaled by `(b - a) / (3 * n)` rather than
+#' `(b - a) / (3 * (n - 1))`; see [compute_integration_weights()].
 #'
 #' @param xind Numeric vector of evaluation points.
+#' @param integration Character: "simpson" (default) or "simpson_legacy".
 #' @returns Numeric vector of Simpson weights.
 #' @keywords internal
-simpson_weights <- function(xind) {
+simpson_weights <- function(
+  xind,
+  integration = c("simpson", "simpson_legacy")
+) {
+  integration <- match.arg(integration)
   n <- length(xind)
   if (n < 2) return(1)
-  # pffr's formula: ((xind[n] - xind[1]) / n) / 3 * [1, 4, 2, ..., 1]
-  ((xind[n] - xind[1]) / n / 3) * c(1, rep(c(4, 2), length.out = n - 2), 1)
+  drop(compute_integration_weights(matrix(xind, nrow = 1), integration))
 }
 
 #' Center beta(s,t) surface for ff identifiability

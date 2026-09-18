@@ -10,7 +10,8 @@ compute_integration_weights(xind, integration = "simpson")
 \item{xind}{Matrix of x-index values (n x nxgrid). Each row contains the
 evaluation points for one observation.}
 
-\item{integration}{Character: "simpson", "trapezoidal", or "riemann".}
+\item{integration}{Character: "simpson", "simpson_legacy", "trapezoidal",
+or "riemann".}
 }
 \value{
 Matrix of integration weights (n x nxgrid).
@@ -19,5 +20,30 @@ Matrix of integration weights (n x nxgrid).
 Computes numerical integration weights using Simpson's rule, trapezoidal
 rule, or Riemann sums. Used by [ff()] and [sff()] for constructing
 functional regression terms.
+}
+\details{
+`integration = "simpson"` implements *composite* Simpson's rule on an
+equidistant grid with step `h = (b - a) / (nxgrid - 1)`; see
+[simpson_pattern()] for the exact pattern used for odd and even `nxgrid`.
+The weights sum to `b - a`, so a constant function integrates exactly.
+
+`integration = "simpson_legacy"` reproduces the (incorrect) weights used by
+`ff()`/`sff()` up to refund 0.1-40: the pattern `[1, 4, 2, ..., 4, 1]` was
+scaled by `(b - a) / (3 * nxgrid)` instead of `(b - a) / (3 * (nxgrid - 1))`,
+and for even `nxgrid` the alternation ended in `2` before the closing `1`,
+which composite Simpson does not allow. The resulting weights sum to less
+than `b - a` (e.g. a constant on `[0, 1]` integrates to 0.956 at
+`nxgrid = 30` and to 0.989 at `nxgrid = 93`), so estimated `ff()` surfaces
+are rescaled by the reciprocal of that factor. This option is retained
+**only** for reproducing results computed with older versions and is
+deprecated; do not use it for new analyses.
+
+`integration = "trapezoidal"` is exact for constants (its weights sum to
+`b - a`) and is the recommended rule for non-equidistant grids.
+`integration = "riemann"` (used whenever `limits` is specified) attaches a
+rectangle to every grid point including the left endpoint, so its weights
+sum to `b - a` plus one mean grid spacing; this is inherent to a first-order
+rule that gives all `nxgrid` points positive weight and is left unchanged
+because the truncated-domain (`limits`) behaviour depends on it.
 }
 \keyword{internal}
