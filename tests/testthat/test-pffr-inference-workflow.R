@@ -7,7 +7,7 @@ testthat::test_that("subject clustering and covariance survive coef predict plot
   tt <- seq(0, 1, length.out = D)
   dat <- list(Y = matrix(rnorm(n * D), n, D), x = rnorm(n), subject = subject)
   dat$Y <- dat$Y + outer(dat$x, sin(2 * pi * tt))
-  fit <- suppressMessages(refund::pffr(
+  fit <- suppressMessages(quiet_pffr(
     Y ~ x,
     yind = tt,
     data = dat,
@@ -237,7 +237,7 @@ testthat::test_that("an explicit dof_correction override is not served from cach
   tt <- seq(0, 1, length.out = D)
   dat <- list(Y = matrix(rnorm(G * D), G, D), x = rnorm(G))
   dat$Y <- dat$Y + outer(dat$x, sin(2 * pi * tt))
-  fit <- suppressMessages(refund::pffr(
+  fit <- suppressMessages(quiet_pffr(
     Y ~ x,
     yind = tt,
     data = dat,
@@ -280,7 +280,7 @@ testthat::test_that("missing interval limits do not break plot or summary", {
   tt <- seq(0, 1, length.out = D)
   dat <- list(Y = matrix(rnorm(G * D), G, D), x = rnorm(G))
   dat$Y <- dat$Y + outer(dat$x, sin(2 * pi * tt))
-  fit <- suppressMessages(refund::pffr(
+  fit <- suppressMessages(quiet_pffr(
     Y ~ x,
     yind = tt,
     data = dat,
@@ -461,7 +461,7 @@ testthat::test_that("one coef() call warns at most once about undefined df", {
   tt <- seq(0, 1, length.out = D)
   dat <- list(Y = matrix(rnorm(G * D), G, D), x = rnorm(G))
   dat$Y <- dat$Y + outer(dat$x, sin(2 * pi * tt))
-  fit <- suppressMessages(refund::pffr(
+  fit <- suppressMessages(quiet_pffr(
     Y ~ x,
     yind = tt,
     data = dat,

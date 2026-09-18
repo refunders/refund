@@ -24,7 +24,12 @@ test_that("sandwich recomputation on a corrected fit uses model-based bread", {
   yind <- attr(dat, "yindex")
 
   fit_none <- pffr(Y ~ ff(X1), data = dat, yind = yind, sandwich = "none")
-  fit_cluster <- pffr(Y ~ ff(X1), data = dat, yind = yind, sandwich = "cluster")
+  fit_cluster <- quiet_pffr(
+    Y ~ ff(X1),
+    data = dat,
+    yind = yind,
+    sandwich = "cluster"
+  )
 
   # $Vp/$Vc/$Ve are the model-based matrices on BOTH fits; the robust
   # covariance is stored separately with its metadata.
@@ -82,10 +87,13 @@ test_that("sandwich recomputation on a corrected fit uses model-based bread", {
 
   # re-applying apply_sandwich_correction is idempotent: $Vp untouched,
   # identical robust matrices
-  twice <- refund:::apply_sandwich_correction(
-    fit_cluster,
-    "gam",
-    type = "cluster"
+  twice <- withCallingHandlers(
+    refund:::apply_sandwich_correction(
+      fit_cluster,
+      "gam",
+      type = "cluster"
+    ),
+    pffr_small_G_warning = function(w) invokeRestart("muffleWarning")
   )
   expect_identical(twice$Vp, fit_cluster$Vp)
   expect_identical(twice$Ve, fit_cluster$Ve)

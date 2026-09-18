@@ -90,6 +90,16 @@
   leverage geometry, so it has nothing to monitor and stays silent. It is
   built from the same bread, though, so switching to it is not a remedy --
   it only removes the diagnostic. Inspect and refit the model.
+* `pffr()` now warns once, at fit time, when `sandwich` resolves to
+  `"cluster"` or `"cl2"` and the number of clusters `G` is below 40: "Only
+  G = <n> clusters: cluster-robust intervals undercover at this size (paper
+  benchmark: CL2 ~0.77-0.79 at G = 20 under dependence). Consider the
+  refitting curve bootstrap `pffr_coefboot()` or wider nominal levels." The
+  warning has class `"pffr_small_G_warning"` (via `warningCondition()`) so it
+  can be muffled with `withCallingHandlers()`/`suppressWarnings(classes =
+  "pffr_small_G_warning")`; it is not repeated by `coef.pffr()`,
+  `plot.pffr()`, or `predict.pffr()`, and never fires for `sandwich =
+  "none"`/`"hc"`.
 * `ff(..., check.ident = TRUE)` (the default) now also warns when the
   effective rank of the functional covariate's covariance is below
   `1.5 * k_s`, where `k_s` is the marginal basis dimension along `s`. The

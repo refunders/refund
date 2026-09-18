@@ -22,7 +22,7 @@ make_ablation_fit <- local({
       yind <- attr(dat, "yindex")
       cache <<- list(
         fit_none = pffr(Y ~ ff(X1), data = dat, yind = yind, sandwich = "none"),
-        fit_cluster = pffr(
+        fit_cluster = quiet_pffr(
           Y ~ ff(X1),
           data = dat,
           yind = yind,

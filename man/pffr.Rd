@@ -95,6 +95,16 @@ penalty.}
   experimental fitted-mean alternative. Its calibration and interval-width
   stability require separate validation, particularly at small G.
 
+  Small-\eqn{G} warning: when \code{sandwich} resolves to \code{"cluster"}
+  or \code{"cl2"} and the number of clusters \eqn{G} is below 40 (the
+  threshold below which the paper benchmark recommends the refitting curve
+  bootstrap instead of a plug-in Wald interval), \code{pffr()} emits a
+  single \code{\link{warning}} of class \code{"pffr_small_G_warning"}. It
+  fires once, at fit time; \code{\link{coef.pffr}}, \code{\link{plot.pffr}}
+  and \code{\link{predict.pffr}} do not repeat it. Muffle it explicitly
+  with \code{withCallingHandlers()}/\code{suppressWarnings(classes =
+  "pffr_small_G_warning")} if warranted.
+
   Storage contract: the fit's model-based (Bayesian posterior) covariance
   matrices \code{$Vp}, \code{$Vc} and \code{$Ve} are \emph{always} left
   exactly as \code{\link[mgcv]{gam}} produced them; the robust covariance is
