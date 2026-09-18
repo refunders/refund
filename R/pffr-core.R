@@ -1034,7 +1034,14 @@ build_cluster_id <- function(pffr_meta, cluster = NULL) {
 #'     `poisson`, `binomial`, `Gamma`, `inverse.gaussian`, quasi-families).
 #'     Their generic working-residual score
 #'     \eqn{(y-\mu)\,(\mathrm{d}\mu/\mathrm{d}\eta)/(\phi V(\mu))} is the exact
-#'     log-likelihood score, so no approximation is involved.}
+#'     log-likelihood score, so no approximation is involved. For the
+#'     quasi-families the estimated \eqn{\hat\phi} (`fit$sig2`) enters this
+#'     score once and the bread \eqn{V_p = \hat\phi (X'WX + S)^{-1}} once, so it
+#'     cancels from the sampling core \eqn{V_p M V_p} (which is therefore
+#'     identical to the fixed-dispersion fit's at the same \eqn{\lambda}) while
+#'     the additive \eqn{B_2 = V_p - V_e} allowance scales with \eqn{\hat\phi},
+#'     consistently with the \eqn{S/\hat\phi} penalty convention; see
+#'     `tests/testthat/test-pffr-quasi-score.R`.}
 #'   \item{`"approx"`}{An extended family (`nb`, `tw`, `betar`, `ocat`, ...)
 #'     that is neither scaled-t nor location-scale. The generic
 #'     working-residual score is only an exponential-family approximation to the
