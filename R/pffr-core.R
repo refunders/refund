@@ -3180,6 +3180,31 @@ apply_sandwich_correction <- function(
     cluster_rank = if (!is.null(core)) core$diagnostics$rank else NULL,
     storage_format = PFFR_COV_STORAGE_FORMAT
   )
+  # Small-cluster-count guard (plan S-C, amended 2026-09-08: warn below G =
+  # 40, the paper's own recommendation boundary for pffr_coefboot(), not the
+  # earlier G = 20 draft threshold). Only for the two cluster-robust
+  # estimators; "hc" and "none" never reach a meaningful G here. Fires once,
+  # at fit time in pffr() -- pffr_vcov() (coef/predict/plot) recomputes the
+  # robust covariance without calling this function again, so the warning is
+  # not repeated on every accessor call.
+  G_resolved <- gam_obj$pffr$sandwich_info$G
+  if (
+    type %in% c("cluster", "cl2") && is.finite(G_resolved) && G_resolved < 40
+  ) {
+    warning(warningCondition(
+      sprintf(
+        paste0(
+          "Only G = %d clusters: cluster-robust intervals undercover at ",
+          "this size (paper benchmark: CL2 ~0.77-0.79 at G = 20 under ",
+          "dependence). Consider the refitting curve bootstrap ",
+          "pffr_coefboot() or wider nominal levels."
+        ),
+        G_resolved
+      ),
+      class = "pffr_small_G_warning"
+    ))
+  }
+
   # Keep the legacy CL2 leverage-cap diagnostic slot populated.
   gam_obj$pffr$cl2_n_capped <- if (type == "cl2") n_capped else NULL
   gam_obj$pffr$cl2_adjustment <- if (type == "cl2") resolved_adjustment else

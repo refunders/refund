@@ -198,7 +198,7 @@ test_that("summary() reports median/min Satterthwaite df for cluster-robust fits
   dat <- get_basic_pffr_data()
   s <- attr(dat, "xindex")
   t <- attr(dat, "yindex")
-  m_cl2 <- pffr(
+  m_cl2 <- quiet_pffr(
     Y ~ ff(X1, xind = s) + xlin,
     yind = t,
     data = dat,
