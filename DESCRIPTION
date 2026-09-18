@@ -172,4 +172,4 @@ Encoding: UTF-8
 Config/roxygen2/version: 8.1.0
 PffrInferenceCore: fixed-fit-core-2026-09-09
 PffrBaseCommit: 07e09fffff08b1014068c2e948e2c2eb05a655b0
-PffrInferenceCoreRevision: 2026-09-17-integrated
+PffrInferenceCoreRevision: 2026-09-18-precompute

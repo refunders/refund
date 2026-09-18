@@ -13,6 +13,12 @@
 #' @param leverage_cap Numerical cap strictly between zero and one.
 #' @param tol Positive shortcut eigenvalue floor.
 #' @param rank_tol Relative SVD tolerance; NULL uses dimension times machine epsilon.
+#' @param df_precompute_bytes Memory budget for the per-cluster residualization
+#'   blocks \eqn{R T_g^\top} used by [pffr_influence_df()], where \eqn{C = R^\top R}.
+#'   They cost `8 * p * sum(rank_g)` bytes and let the df evaluate its Gram as a
+#'   symmetric rank-k update without any \eqn{p \times p} product. Above the
+#'   budget, or when `C` is not usably positive definite, the blocks are not
+#'   stored and the df falls back to the general product.
 #' @returns Influence object with separate sampling columns, B2 and geometry.
 #'   Its `diagnostics` data frame carries the per-cluster hat-invariant monitors
 #'   `max_leverage`/`min_hat_eig` (extreme eigenvalues of \eqn{H_{gg}}),
@@ -27,7 +33,8 @@ pffr_influence_core <- function(
   adjustment = c("exact", "shortcut", "none"),
   leverage_cap = .999,
   tol = 1e-8,
-  rank_tol = NULL
+  rank_tol = NULL,
+  df_precompute_bytes = 2^28
 ) {
   adjustment <- match.arg(adjustment)
   Xw <- as.matrix(Xw)
@@ -80,6 +87,16 @@ pffr_influence_core <- function(
         rank_tol >= 1)
   )
     stop("rank_tol must be in [0,1).", call. = FALSE)
+  if (
+    length(df_precompute_bytes) != 1L ||
+      !is.numeric(df_precompute_bytes) ||
+      is.na(df_precompute_bytes) ||
+      df_precompute_bytes < 0
+  )
+    stop(
+      "df_precompute_bytes must be a single nonnegative number.",
+      call. = FALSE
+    )
   groups <- unique(cluster_id)
   G <- length(groups)
   if (G < 2L)
@@ -155,6 +172,25 @@ pffr_influence_core <- function(
       K[, g] <- B %*%
         crossprod(T, A %*% crossprod(dec$u[, keep, drop = FALSE], z[idx]))
   }
+  # Residualization factor for the moment df. pffr_influence_df() needs the
+  # Gram t_g' C t_h for every cluster pair and every contrast. For a genuine
+  # penalized bread C = B + B S B is positive definite, so with C = R'R that
+  # Gram is crossprod(R T): a symmetric rank-k update, half the flops of the
+  # general product, and the per-contrast O(p^2 G) product C %*% T disappears
+  # because R T_g' is cached here, per cluster. The Gram, not that product, is
+  # what dominates the df (87% of it at G = 200), which is why caching C T_g'
+  # alone -- the obvious precompute -- buys about 1.1x while this buys about
+  # 2.1x; see inst/benchmarks/df-timing.R.
+  # The factorization is verified rather than assumed: a contrived or
+  # numerically inconsistent bread can make C indefinite, or so ill conditioned
+  # that R'R no longer reproduces it, and the df then falls back to the general
+  # product. The byte budget bounds the cached blocks (8 * p * sum_g r_g).
+  Rchol <- tryCatch(chol(C), error = function(e) NULL)
+  if (!is.null(Rchol) && max(abs(crossprod(Rchol) - C)) > 1e-10 * max(abs(C)))
+    Rchol <- NULL
+  df_precompute <- !is.null(Rchol) && 8 * p * sum(rank) <= df_precompute_bytes
+  if (df_precompute)
+    for (g in seq_len(G)) blocks[[g]]$RT <- Rchol %*% t(blocks[[g]]$T)
   structure(
     list(
       B = B,
@@ -164,6 +200,7 @@ pffr_influence_core <- function(
       G = G,
       groups = groups,
       adjustment = adjustment,
+      df_precompute = df_precompute,
       correction = G / (G - 1),
       B2 = matrix(0, p, p),
       diagnostics = data.frame(
@@ -261,6 +298,13 @@ pffr_influence_vcov <- function(
 #' is the diagonal moment df of the exact geometry and differs from the
 #' historical number (2e-5 to 2e-2 relative on the package fixtures; there is no
 #' bound on the difference in general).
+#'
+#' Per contrast the residualized Gram \eqn{T^\top C\,T} dominates the cost. When
+#' the core carries the cached blocks \eqn{R T_g^\top} with \eqn{C = R^\top R}
+#' (see [pffr_influence_core()]'s `df_precompute_bytes`) it is evaluated as
+#' `crossprod(R T)`, a symmetric rank-k update at half the flops and without the
+#' \eqn{O(p^2 G)} product `C %*% T`. Cores without the cached blocks use the
+#' general path and return the same numbers.
 #' @param core Fixed-fit influence object.
 #' @param Xp Finite full-coefficient contrasts, one per row.
 #' @param chunk_size Positive number of contrasts per batch.
@@ -296,21 +340,39 @@ pffr_influence_df <- function(
   expected <- numeric(n)
   if (!n)
     return(list(df = out, G = core$G, expected_sampling_variance = expected))
+  p <- ncol(core$B)
+  G <- core$G
+  full <- df_gram == "full"
+  # With the cached per-cluster blocks R T_g' (pffr_influence_core()'s
+  # df_precompute, C = R'R) the residualized Gram is one symmetric rank-k
+  # update per contrast, and no p x p product is needed at all. Cores without
+  # them -- older cached objects, a bread whose C is not usably positive
+  # definite, or a geometry above the memory budget -- keep the general path.
+  factored <- full && isTRUE(core$df_precompute)
   for (start in seq.int(1L, n, by = as.integer(chunk_size))) {
     jj <- seq.int(start, min(n, start + as.integer(chunk_size) - 1L))
+    nj <- length(jj)
     M <- core$B %*% t(Xp[jj, , drop = FALSE])
-    q2 <- matrix(0, core$G, length(jj))
-    ts <- lapply(seq_len(core$G), function(g) {
+    q2 <- matrix(0, G, nj)
+    # Column j of vmat holds the p x G matrix [v_1 ... v_G] for contrast jj[j],
+    # flattened column-major, with v_g = R t_g (factored) or v_g = t_g.
+    vmat <- if (full) matrix(0, p * G, nj) else NULL
+    for (g in seq_len(G)) {
       block <- core$blocks[[g]]
       q <- block$A %*% (block$T %*% M)
-      q2[g, ] <<- colSums(q^2)
-      if (df_gram == "full") crossprod(block$T, q) else NULL
-    })
-    for (j in seq_along(jj)) {
-      if (df_gram == "full") {
-        T <- do.call(cbind, lapply(ts, function(x) x[, j]))
-        Gamma <- diag(q2[, j], nrow = core$G) - crossprod(T, core$C %*% T)
-        Gamma <- (Gamma + t(Gamma)) / 2
+      q2[g, ] <- colSums(q^2)
+      if (full)
+        vmat[seq.int((g - 1L) * p + 1L, g * p), ] <- if (factored)
+          block$RT %*% q else crossprod(block$T, q)
+    }
+    for (j in seq_len(nj)) {
+      if (full) {
+        V <- matrix(vmat[, j], p, G)
+        gram <- if (factored) crossprod(V) else crossprod(V, core$C %*% V)
+        Gamma <- diag(q2[, j], nrow = G) - gram
+        # crossprod(V) is symmetric by construction; the general product is
+        # symmetric only up to rounding.
+        if (!factored) Gamma <- (Gamma + t(Gamma)) / 2
       } else {
         # Historical diagonal shortcut: Gamma = diag(||q_g||^2), so
         # tr^2 / tr(Gamma^2) = (sum_g ||q_g||^2)^2 / sum_g ||q_g||^4.
@@ -349,8 +411,10 @@ pffr_influence_df <- function(
 #'   as `"none"` so the same object is reused whatever they are set to.
 #' @returns A `pffr_influence` object: the symmetrized penalized bread `B`, the
 #'   residualization matrix `C`, the per-cluster residual influence columns `K`,
-#'   the compressed per-cluster geometry `blocks` (`T` and the leverage weight
-#'   `A`), the cluster count `G` and labels `groups`, the resolved `adjustment`,
+#'   the compressed per-cluster geometry `blocks` (`T`, the leverage weight `A`
+#'   and, when the df precompute applies, the residualization block `RT` =
+#'   \eqn{R T_g^\top}), the cluster count `G` and labels `groups`,
+#'   the resolved `adjustment`,
 #'   the finite-sample `correction` (`G/(G-1)` times any CR1 dof factor), the
 #'   Bayesian smoothing-bias term `B2`, the per-cluster `diagnostics` (see
 #'   [pffr_influence_core()]) and the numerical settings. Cached on the fit
