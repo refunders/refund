@@ -48,12 +48,14 @@ Imports:
     methods
 Suggests:
     knitr,
+    numDeriv,
     RColorBrewer,
     clubSandwich,
     reshape2,
     rmarkdown,
     sandwich,
-    testthat
+    testthat,
+    withr
 VignetteBuilder: knitr
 Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
