@@ -16,6 +16,16 @@ test_that("NCV neighbourhoods partition shuffled, unequal blocks with both APIs"
   expect_error(pffr_ncv_nei(rep(1, 3)), "at least two blocks")
 })
 
+test_that("unused factor levels in cluster ids never create empty NCV blocks", {
+  # e.g. a curve whose responses are all missing leaves an unused level
+  ids <- factor(c("b", "b", "c", "c", "c"), levels = c("a", "b", "c", "d"))
+  nei <- pffr_ncv_nei(ids)
+  expect_identical(nei$ma, c(2L, 5L))
+  expect_equal(nei$a, 1:5)
+  one_observed <- factor(rep("b", 3), levels = c("a", "b"))
+  expect_error(pffr_ncv_nei(one_observed), "at least two blocks")
+})
+
 test_that("installed mgcv honours blocks and the cached guard preserves RNG", {
   skip_if_not_installed("mgcv", "1.9.0")
   local_mocked_bindings(.pffr_ncv_cache = new.env(parent = emptyenv()))
