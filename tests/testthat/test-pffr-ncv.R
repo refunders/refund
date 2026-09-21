@@ -33,7 +33,7 @@ test_that("installed mgcv honours blocks and the cached guard preserves RNG", {
   seed <- .Random.seed
   expect_true(pffr_ncv_check_blocks())
   expect_identical(.Random.seed, seed)
-  local_mocked_bindings(pffr_ncv_probe = function() stop("must use cache"))
+  local_mocked_bindings(pffr_ncv_probe = function(...) stop("must use cache"))
   expect_true(pffr_ncv_check_blocks())
 })
 
@@ -41,10 +41,10 @@ test_that("guard fails loudly if mgcv silently ignores blocks", {
   skip_if_not_installed("mgcv", "1.9.0")
   local_mocked_bindings(
     .pffr_ncv_cache = new.env(parent = emptyenv()),
-    pffr_ncv_probe = function() list(blocked = c(1, 2), point = c(1, 2))
+    pffr_ncv_probe = function(...) list(blocked = c(1, 2), point = c(1, 2))
   )
   expect_error(pffr_ncv_check_blocks(), "ignored the NCV block structure")
-  expect_false(isTRUE(.pffr_ncv_cache$checked))
+  expect_false(isTRUE(.pffr_ncv_cache$gam))
 })
 
 test_that("dense NCV aligns retained model-frame rows and curve clusters", {
@@ -125,7 +125,7 @@ test_that("irregular NCV follows supplied ydata order, not curve sorting", {
 test_that("NCV rejects unsafe backends and extra row omissions", {
   set.seed(2)
   dat <- data.frame(Y = I(matrix(rnorm(120), 12, 10)), z = 1:12)
-  for (backend in c("bam", "gamm", "gamm4", "jagam")) {
+  for (backend in c("gamm", "gamm4", "jagam")) {
     expect_error(
       pffr(
         Y ~ c(z),
@@ -145,7 +145,7 @@ test_that("NCV rejects unsafe backends and extra row omissions", {
       discrete = TRUE,
       sandwich = "none"
     ),
-    "supports only algorithm"
+    "requires explicit algorithm"
   )
   expect_error(
     pffr(
@@ -155,7 +155,7 @@ test_that("NCV rejects unsafe backends and extra row omissions", {
       discrete = 10,
       sandwich = "none"
     ),
-    "supports only algorithm"
+    "requires explicit algorithm"
   )
   skip_if_not_installed("mgcv", "1.9.0")
   expect_error(
@@ -327,4 +327,122 @@ test_that("NCV rejects NA padding and missing weights and supports fit-time CL2"
     sp = fit$sp
   )
   expect_equal(fixed$coefficients, fit$coefficients, tolerance = 1e-7)
+})
+
+test_that("bam NCV blocks affect smoothing and approximate gam, with CL2 SEs", {
+  skip_on_cran()
+  skip_if_not_installed("mgcv", "1.9.0")
+  set.seed(1)
+  dat <- ncv_test_data()
+  blocked <- ncv_test_fit(dat, algorithm = "bam")
+  point <- ncv_test_fit(dat, algorithm = "bam", ncv_blocks = "point")
+  exact <- ncv_test_fit(dat)
+  expect_identical(blocked$method, "NCV")
+  expect_s3_class(blocked, "bam")
+  expect_false(is.null(blocked$dinfo)) # discretized fit
+  expect_identical(blocked$pffr$ncv$blocks, "cluster")
+  expect_equal(blocked$pffr$ncv$n_blocks, nrow(dat))
+  expect_gt(max(abs(log(blocked$sp / point$sp))), .1)
+  expect_equal(
+    as.numeric(blocked$fitted.values),
+    as.numeric(exact$fitted.values),
+    tolerance = .02
+  )
+  expect_equal(sum(blocked$edf), sum(exact$edf), tolerance = .02)
+  robust <- coef(blocked, sandwich = "cl2", n1 = 4, n2 = 4)
+  model <- coef(blocked, sandwich = "none", n1 = 4, n2 = 4)
+  rse <- unlist(lapply(robust$smterms, function(x) x$se))
+  mse <- unlist(lapply(model$smterms, function(x) x$se))
+  expect_true(length(rse) > 0L && all(is.finite(rse)))
+  expect_gt(max(abs(rse - mse)), 1e-4)
+})
+
+test_that("bam NCV aligns dense and shuffled sparse data and rejects unsafe input", {
+  skip_on_cran()
+  skip_if_not_installed("mgcv", "1.9.0")
+  set.seed(39)
+  dat <- data.frame(Y = I(matrix(rnorm(120), 12, 10)), z = 1:12)
+  tt <- seq(0, 1, length.out = 10)
+  yd <- data.frame(
+    .obs = rep(1:12, each = 10),
+    .index = rep(tt, 12),
+    .value = as.vector(t(dat$Y))
+  )
+  fit <- function(ydata = NULL, data = dat, ...)
+    pffr(
+      Y ~ c(z),
+      data = data,
+      yind = tt,
+      ydata = ydata,
+      method = "NCV",
+      algorithm = "bam",
+      bs.int = list(k = 4, bs = "ps"),
+      sandwich = "none",
+      weights = seq_len(12) / 12 + 1,
+      offset = seq_len(12) / 20,
+      ...
+    )
+  dense <- fit()
+  ncv_expect_alignment(dense, dense$model$z)
+  shuffled <- yd[sample(nrow(yd)), ]
+  sparse <- fit(shuffled)
+  ncv_expect_alignment(sparse, sparse$model$z)
+  expect_equal(as.numeric(sparse$model$Y), shuffled$.value)
+  expect_equal(sparse$coefficients, dense$coefficients, tolerance = 1e-7)
+  expect_equal(sparse$sp, dense$sp, tolerance = 1e-7)
+  expect_message(manual <- fit(nei = dense$pffr$ncv$nei), "user-supplied")
+  expect_equal(manual$coefficients, dense$coefficients, tolerance = 1e-12)
+  expect_equal(manual$sp, dense$sp, tolerance = 1e-12)
+  expect_error(fit(discrete = FALSE), "requires discrete = TRUE")
+  expect_error(fit(rho = .2), "rho.*unavailable with NCV")
+  expect_error(
+    suppressMessages(fit(nei = list(k = 1:120, m = 1:120))),
+    "a/ma/d/md"
+  )
+  # mgcv's discrete NCV corrupts memory for unequal neighbourhoods: these must
+  # stop in pffr, before bam is ever called.
+  holes <- dat
+  holes$Y[cbind(c(1, 4, 8), c(3, 1, 10))] <- NA
+  expect_error(fit(data = holes), "neighbourhoods of equal size")
+  expect_error(
+    fit(data = holes, na.action = na.exclude),
+    "requires na.action = na.omit"
+  )
+  expect_error(fit(yd[-c(3, 31, 80), ]), "neighbourhoods of equal size")
+  unequal <- pffr_ncv_nei(rep(1:3, times = c(30, 40, 50)))
+  expect_error(
+    suppressMessages(fit(nei = unequal)),
+    "neighbourhoods of equal size"
+  )
+  gam_fit <- pffr(
+    Y ~ c(z),
+    data = holes,
+    yind = tt,
+    method = "NCV",
+    bs.int = list(k = 4, bs = "ps"),
+    sandwich = "none"
+  )
+  expect_equal(nrow(gam_fit$model), 117L)
+})
+
+test_that("bam guard is independent, cached, and detects ignored blocks", {
+  skip_if_not_installed("mgcv", "1.9.0")
+  local_mocked_bindings(.pffr_ncv_cache = new.env(parent = emptyenv()))
+  set.seed(716)
+  seed <- .Random.seed
+  expect_true(pffr_ncv_check_blocks("gam"))
+  expect_false(isTRUE(.pffr_ncv_cache$bam))
+  expect_true(pffr_ncv_check_blocks("bam"))
+  expect_identical(.Random.seed, seed)
+  local_mocked_bindings(pffr_ncv_probe = function(...) stop("must use cache"))
+  expect_true(pffr_ncv_check_blocks("bam"))
+  local_mocked_bindings(
+    .pffr_ncv_cache = list(gam = TRUE),
+    pffr_ncv_probe = function(algorithm) {
+      expect_identical(algorithm, "bam")
+      list(blocked = 1, point = 1)
+    }
+  )
+  expect_error(pffr_ncv_check_blocks("bam"), "ignored the NCV block structure")
+  expect_false(isTRUE(.pffr_ncv_cache$bam))
 })
