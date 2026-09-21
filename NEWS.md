@@ -1,5 +1,11 @@
 # refund 0.1-38
 
+* `pffr(method = "NCV")` now leaves out whole curves (or `cluster` groups)
+  by default. `ncv_blocks = "point"` provides pointwise comparisons; explicit
+  `nei` takes precedence. Dual mgcv neighbourhood names, a cached behavioural
+  check, and model-frame alignment checks prevent silent pointwise fallbacks.
+  NCV is supported with `algorithm = "gam"` only.
+
 ## Breaking changes
 
 * **The default sandwich option for `pffr()` is now `sandwich = "cluster"`

@@ -112,6 +112,7 @@ Collate:
     'pffr-sff.R'
     'pffr-formula.R'
     'pffr-core.R'
+    'pffr-ncv.R'
     'pffr-influence.R'
     'pffr-utilities.R'
     'pffr-simulate.R'

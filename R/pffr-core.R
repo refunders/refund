@@ -449,6 +449,7 @@ pffr_build_call <- function(
     newcall$bs.yindex <- newcall$algorithm <- newcall$ydata <- NULL
   newcall$sandwich <- NULL
   newcall$cluster <- NULL
+  newcall$ncv_blocks <- NULL
   newcall$cl2_adjustment <- NULL
   newcall$dof_correction <- newcall$edf_type <- NULL
   newcall$formula <- new_formula
@@ -1491,6 +1492,13 @@ compute_dof_factor <- function(
   }
   G <- n_clusters_checked(cluster_id)
 
+  if (edf_type == "edf2" && is.null(b$edf2) && identical(b$method, "NCV")) {
+    warning(
+      'edf2 is unavailable for NCV; using trace EDF for the sandwich correction.',
+      call. = FALSE
+    )
+    edf_type <- "trace"
+  }
   edf <- switch(
     edf_type,
     trace = if (!is.null(b$edf)) sum(b$edf) else NA_real_,
