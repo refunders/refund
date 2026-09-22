@@ -19,6 +19,7 @@ pffr(
   edf_type = c("trace", "edf2", "basis"),
   cl2_adjustment = c("auto", "exact", "shortcut"),
   cluster = NULL,
+  ncv_blocks = c("cluster", "point"),
   ...
 )
 }
@@ -147,6 +148,12 @@ variant. Ignored unless the resolved sandwich is \code{"cl2"}.}
 \item{cluster}{Optional grouping with one nonmissing entry per curve.
 Evaluated in data; stored and inherited by covariance accessors. Use
 subject identifiers for repeated curves. Currently supports dense data.}
+
+\item{ncv_blocks}{For \code{method = "NCV"}, \code{"cluster"} (default)
+leaves out each whole curve, or each group of curves defined by
+\code{cluster}. \code{"point"} uses leave-one-point-out NCV for comparisons.
+A supplied \code{nei} in \code{...} takes precedence; its indices
+must refer to retained model-frame rows, after response omissions.}
 
 \item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}},
 \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
@@ -297,6 +304,47 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   given, \code{pffr} will use the parameters from argument \code{bs.int} to
   define a spline basis along the index of the response, i.e., a smooth
   variance function over $t$ for responses $Y(t)$.
+}
+
+\section{Neighbourhood cross-validation}{
+
+With mgcv >= 1.9, \code{method = "NCV"} targets prediction of whole new
+curves (or clusters). Leaving out single points can undersmooth severely
+when errors within curves are dependent. Blocked NCV typically costs roughly
+3--5 times as much as REML, depending on the model and block sizes.
+Supported backends are \code{algorithm = "gam"} and \code{algorithm = "bam"}.
+An unspecified algorithm selects gam even for large data. For bam, pffr sets
+\code{discrete = TRUE}; explicitly supplying \code{discrete = FALSE} errors.
+Discrete NCV inverts a matrix of side equal to the neighbourhood size for
+each neighbourhood. It is usually slower than gam for whole-curve blocks;
+\code{nei$sample} can reduce the cost (see \code{\link[mgcv]{bam}}).
+Nonzero \code{rho} (AR1 residuals) is unavailable with NCV and errors.
+With bam, all neighbourhoods must have the same size: mgcv's discrete NCV
+(checked for 1.9-3 and 1.9-4) corrupts memory when they differ, so curves
+with missing responses or irregular grids stop with an error; use
+\code{algorithm = "gam"} for those.
+gamm and gamm4 do not provide this NCV selector. \code{subset} is unsupported.
+Missing dense response values are allowed with \code{na.action = na.omit};
+\code{na.exclude} padding and additional model-frame omissions cause an
+error. Sparse responses use the supplied \code{ydata} row order; custom
+\code{cluster} grouping for sparse responses remains unsupported.
+For both backends, user-supplied \code{nei} indices refer to retained
+model-frame rows. Bam requires the \code{a/ma/d/md} neighbourhood names
+(not the older gam names \code{k/m/i/mi}); its documented defaults for
+omitted prediction indices apply. Pffr removes missing response rows before
+bam's fresh setup, including corresponding weights and offsets, so bam
+receives these retained-row indices without a second NA translation.
+Smoothing parameters supplied via \code{sp} must be either all fixed or all
+free: mgcv (up to at least 1.9-4) fails in its NCV optimizer when only some
+are fixed.
+Generated neighbourhoods use \code{jackknife = FALSE}, retaining model-based
+covariance for the sandwich machinery. The first NCV call checks that the
+installed mgcv honours blocks, cached separately for each backend. The fit
+records \code{blocks}, \code{n_blocks}
+and \code{nei} in \code{fit$pffr$ncv}. Model-based covariance falls back to
+\code{Vp} when smoothing-parameter uncertainty covariance is unavailable.
+If \code{edf_type = "edf2"} is requested for the sandwich correction and
+unavailable, NCV fits use trace EDF with a warning.
 }
 
 \examples{

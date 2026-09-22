@@ -1,5 +1,19 @@
 # refund 0.1-38
 
+* `pffr(method = "NCV")` now leaves out whole curves (or `cluster` groups)
+  by default. `ncv_blocks = "point"` provides pointwise comparisons; explicit
+  `nei` takes precedence. Dual mgcv neighbourhood names, a cached behavioural
+  check, and model-frame alignment checks prevent silent pointwise fallbacks.
+  NCV supports `algorithm = "gam"` (the default even for large data) and
+  explicit `algorithm = "bam"`, which sets `discrete = TRUE` and rejects
+  `discrete = FALSE`. Both use retained model-frame row indices for `nei`;
+  bam requires `a/ma/d/md` names. Discrete NCV inverts a neighbourhood-sized
+  matrix per neighbourhood and is usually slower than gam for whole-curve
+  blocks; `nei$sample` allows sub-sampling. Nonzero AR1 `rho` is unavailable
+  with NCV and errors. With bam, neighbourhoods must have equal size (mgcv's
+  discrete NCV corrupts memory otherwise), so missing responses and irregular
+  grids need `algorithm = "gam"`.
+
 ## Breaking changes
 
 * **The default sandwich option for `pffr()` is now `sandwich = "cluster"`
