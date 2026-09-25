@@ -212,16 +212,7 @@ test_that("Gaussian NCV equals brute-force fixed-penalty curve deletion loss", {
   dat <- ncv_test_data()
   fit <- ncv_test_fit(dat)
   X <- predict(fit, type = "lpmatrix", reformat = FALSE)
-  S <- matrix(0, ncol(X), ncol(X))
-  j <- 0L
-  for (sm in fit$smooth) {
-    ii <- seq.int(sm$first.para, sm$last.para)
-    for (penalty in sm$S) {
-      j <- j + 1L
-      S[ii, ii] <- S[ii, ii] + fit$sp[j] * penalty
-    }
-  }
-  expect_equal(j, length(fit$sp))
+  S <- ncv_test_penalty(fit)
   expect_equal(
     as.numeric(solve(crossprod(X) + S, crossprod(X, fit$y))),
     as.numeric(fit$coefficients),
@@ -249,6 +240,47 @@ test_that("Gaussian NCV equals brute-force fixed-penalty curve deletion loss", {
   implied <- attr(fit$gcv.ubre, "eta.cv")
   if (!is.null(implied))
     expect_equal(predictions, as.numeric(implied), tolerance = 1e-7)
+})
+
+test_that("Poisson and binomial NCV approximate fixed-penalty curve deletion", {
+  skip_on_cran()
+  skip_if_not_installed("mgcv", "1.9.0")
+  # For non-Gaussian families mgcv replaces each deletion refit by a Newton
+  # step from the full fit (?mgcv::NCV), so agreement is approximate. The
+  # tolerances sit about 2x above the observed error on these data (loss
+  # within 0.2%, deletion predictions within 0.013 on the link scale), while
+  # the in-sample predictor is 0.15 to 0.5 away: a check that ignored the
+  # curve blocks would fail.
+  for (family in list(poisson(), binomial())) {
+    set.seed(102)
+    dat <- ncv_test_glm_data(family)
+    fit <- ncv_test_fit(dat, family = family)
+    X <- predict(fit, type = "lpmatrix", reformat = FALSE)
+    S <- ncv_test_penalty(fit)
+    expect_equal(
+      ncv_test_pirls(X, fit$y, S, family, fit$coefficients),
+      as.numeric(fit$coefficients),
+      tolerance = 1e-7
+    )
+    predictions <- numeric(nrow(X))
+    for (rows in ncv_test_groups(fit$pffr$ncv$nei)) {
+      beta <- ncv_test_pirls(
+        X[-rows, ],
+        fit$y[-rows],
+        S,
+        family,
+        fit$coefficients
+      )
+      predictions[rows] <- as.numeric(X[rows, ] %*% beta)
+    }
+    loss <- sum(family$dev.resids(fit$y, family$linkinv(predictions), 1))
+    expect_equal(as.numeric(fit$gcv.ubre), loss, tolerance = 1e-2)
+    implied <- attr(fit$gcv.ubre, "eta.cv")
+    if (is.null(implied)) next
+    error <- max(abs(implied - predictions))
+    expect_lt(error, 0.03)
+    expect_gt(max(abs(implied - fit$linear.predictors)), 5 * error)
+  }
 })
 
 test_that("NCV supports CL2 coefficients and model covariance fallback", {
