@@ -36,8 +36,9 @@
 \item{se}{logical, defaults to TRUE. Return estimated standard error of the estimates?}
 
 \item{freq}{logical, defaults to FALSE. If FALSE, use Bayesian posterior covariance for
-variability estimates: \code{object$Vc} if available (includes correction for smoothing
-parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
+variability estimates: \code{object$Vp} for NCV fits; otherwise \code{object$Vc} if
+available (includes correction for smoothing parameter uncertainty), with fallback to
+\code{object$Vp}. If TRUE, use frequentist
 covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.}
 
 \item{sandwich}{Type of sandwich-corrected covariance for standard errors.
