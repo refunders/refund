@@ -274,6 +274,11 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
       explicitly supplies a different method)
     \item \code{discrete} is auto-set to \code{TRUE} for non-Gaussian families
       (errors if the user explicitly supplies \code{discrete = FALSE})
+    \item \code{sandwich} resolves to \code{"none"} when left at its
+      default (or \code{"auto"}): the sandwich estimators assume
+      working-independence scores and are not valid for the AR(1)-whitened
+      fit. An explicit \code{"cluster"}, \code{"cl2"} or \code{"hc"}
+      request errors.
   }
   Explicit user overrides that conflict with these constraints will produce
   an informative error.\cr

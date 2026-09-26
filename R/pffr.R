@@ -98,6 +98,11 @@
 #'       explicitly supplies a different method)
 #'     \item \code{discrete} is auto-set to \code{TRUE} for non-Gaussian families
 #'       (errors if the user explicitly supplies \code{discrete = FALSE})
+#'     \item \code{sandwich} resolves to \code{"none"} when left at its
+#'       default (or \code{"auto"}): the sandwich estimators assume
+#'       working-independence scores and are not valid for the AR(1)-whitened
+#'       fit. An explicit \code{"cluster"}, \code{"cl2"} or \code{"hc"}
+#'       request errors.
 #'   }
 #'   Explicit user overrides that conflict with these constraints will produce
 #'   an informative error.\cr
@@ -445,14 +450,6 @@ pffr <- function(
     )
     dof_correction <- "none"
   }
-  if (sandwich_missing) {
-    message(
-      "Note: pffr() now defaults to sandwich = \"auto\" ",
-      "(cluster-robust covariance). ",
-      "Set sandwich = \"none\" for the previous default behavior. ",
-      "See ?pffr for details."
-    )
-  }
   yind_missing <- missing(yind)
 
   prep <- pffr_prepare(
@@ -472,6 +469,30 @@ pffr <- function(
     dots = list(...)
   )
   algorithm_chr <- as.character(prep$algorithm)
+
+  # AR(1) working correlation: the sandwich estimators assume
+  # working-independence scores, so the default ("auto") resolves to "none"
+  # and an explicit sandwich request errors before anything is fitted.
+  if (prep$use_ar && sandwich != "none") {
+    if (sandwich_missing || identical(sandwich, "auto")) {
+      message(
+        "pffr inference: sandwich = \"auto\" resolved to \"none\" because ",
+        "an AR(1) working correlation (rho) is used; sandwich estimators ",
+        "assume working-independence scores."
+      )
+      sandwich <- "none"
+      dof_correction <- "none"
+    } else {
+      pffr_check_sandwich_ar1(NULL, sandwich, rho = prep$dots$rho)
+    }
+  } else if (sandwich_missing) {
+    message(
+      "Note: pffr() now defaults to sandwich = \"auto\" ",
+      "(cluster-robust covariance). ",
+      "Set sandwich = \"none\" for the previous default behavior. ",
+      "See ?pffr for details."
+    )
+  }
 
   if (!is.null(cluster_value))
     build_cluster_id(

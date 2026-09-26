@@ -2038,6 +2038,51 @@ restore_model_cov <- function(object) {
   object
 }
 
+#' Does a fit use an AR(1) working correlation?
+#'
+#' `TRUE` when the fit was estimated by [mgcv::bam()] with a nonzero `rho`
+#' (stored by mgcv as `$AR1.rho`), i.e. on AR(1)-whitened residuals.
+#'
+#' @param object A fitted pffr model or its stripped gam version.
+#' @returns A single logical.
+#' @keywords internal
+pffr_is_ar1_fit <- function(object) {
+  rho <- object$AR1.rho
+  is.numeric(rho) && length(rho) == 1 && is.finite(rho) && rho != 0
+}
+
+#' Refuse sandwich covariances for AR(1) working-correlation fits
+#'
+#' The sandwich estimators (`"cluster"`, `"cl2"`, `"hc"`) build their scores
+#' from the working-independence design and residuals. On a fit with an AR(1)
+#' working correlation (`rho` in [pffr()]) the estimating equations are the
+#' AR-whitened ones, so these sandwiches would be silently wrong. This is the
+#' single guard shared by every sandwich path ([pffr_compute_sandwich()],
+#' [pffr_influence()], [vcov.pffr()] and the fit-time check in [pffr()]).
+#'
+#' @param object A fitted pffr model or its stripped gam version, or `NULL`
+#'   when `rho` is given directly.
+#' @param type Requested sandwich type.
+#' @param rho Optional AR(1) coefficient; defaults to the fit's `$AR1.rho`.
+#' @returns `invisible(TRUE)`; errors for a non-`"none"` type on an AR(1) fit.
+#' @keywords internal
+pffr_check_sandwich_ar1 <- function(object, type, rho = object$AR1.rho) {
+  type <- normalize_sandwich_type(type)
+  if (identical(type, "none") || !pffr_is_ar1_fit(list(AR1.rho = rho))) {
+    return(invisible(TRUE))
+  }
+  stop(
+    "sandwich = \"",
+    type,
+    "\" is not supported for fits with an AR(1) working correlation (rho = ",
+    format(rho, digits = 3),
+    "): the sandwich estimators assume working-independence scores and would ",
+    "be wrong on the AR-whitened fit. Use sandwich = \"none\" with the AR(1) ",
+    "working model, or drop `rho` to use a cluster-robust sandwich.",
+    call. = FALSE
+  )
+}
+
 #' Compute a robust covariance matrix from a model-based gam
 #'
 #' Single dispatch point used by both fit-time correction and on-demand
@@ -2074,6 +2119,7 @@ pffr_compute_sandwich <- function(
   cl2_adjustment = "auto",
   influence = NULL
 ) {
+  pffr_check_sandwich_ar1(b, type)
   switch(
     type,
     cluster = gam_sandwich_cluster(
