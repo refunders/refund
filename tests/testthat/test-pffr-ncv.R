@@ -242,6 +242,31 @@ test_that("Gaussian NCV equals brute-force fixed-penalty curve deletion loss", {
     expect_equal(predictions, as.numeric(implied), tolerance = 1e-7)
 })
 
+test_that("model-based covariance of NCV fits is Vp, not mgcv's Vc", {
+  skip_on_cran()
+  skip_if_not_installed("mgcv", "1.9.0")
+  set.seed(102)
+  dat <- ncv_test_data()
+  ncv <- ncv_test_fit(dat)
+  # mgcv's Vc for NCV fits is far smaller than Vp, so it cannot be a covariance of the
+  # estimate that adds smoothing-parameter uncertainty to Vp
+  expect_lt(median(sqrt(diag(ncv$Vc)) / sqrt(diag(ncv$Vp))), 0.9)
+  expect_identical(pffr_vcov(ncv, sandwich = "none"), ncv$Vp)
+  expect_identical(pffr_vcov(ncv, sandwich = "none", freq = TRUE), ncv$Ve)
+  reml <- pffr(
+    Y ~
+      ff(
+        X,
+        splinepars = list(bs = "ps", m = list(c(2, 1), c(2, 1)), k = c(4, 4))
+      ),
+    data = dat,
+    yind = seq(0, 1, length.out = ncol(dat$Y)),
+    bs.int = list(bs = "ps", k = 4),
+    sandwich = "none"
+  )
+  expect_identical(pffr_vcov(reml, sandwich = "none"), reml$Vc)
+})
+
 test_that("Poisson and binomial NCV approximate fixed-penalty curve deletion", {
   skip_on_cran()
   skip_if_not_installed("mgcv", "1.9.0")
