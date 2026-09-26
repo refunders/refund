@@ -80,12 +80,68 @@ test_that("check.ident = FALSE switches the guard off", {
 test_that("the guard survives a rank cap set by the number of curves", {
   set.seed(20260807)
   s <- seq(0, 1, length.out = 40)
-  # only 6 curves: effective rank <= 6 no matter how rich the generator is
+  # only 6 curves: centred effective rank <= 5 however rich the generator is
   X <- low_rank_curves(6, s, rank = 20, sd_decay = 1)
 
   w <- tryCatch(
     ff(X, xind = s, splinepars = list(bs = "ps", k = c(8, 5))),
     warning = conditionMessage
   )
-  expect_match(w, "cannot exceed min\\(nrow\\(X\\), ncol\\(X\\)\\) = 6")
+  expect_match(w, "cannot exceed min\\(nrow\\(X\\) - 1, ncol\\(X\\)\\) = 5")
+})
+
+# rank-5 centred variation around a common mean curve of size `mean_scale`:
+# the mean adds one direction to the uncentred SVD (small scale) or swamps the
+# variation (large scale), but never changes the rank of Cov(X(s)).
+curves_with_mean <- function(
+  mean_scale,
+  n = 60,
+  s = seq(0, 1, length.out = 40)
+) {
+  basis <- sapply(1:5, function(j) sin(j * pi * s))
+  scores <- scale(matrix(rnorm(n * 5), n, 5), scale = FALSE)
+  mean_curve <- cos(0.5 * pi * s) + s^2
+  scores %*%
+    t(basis) +
+    mean_scale * matrix(mean_curve, n, length(s), byrow = TRUE)
+}
+
+effective_rank <- function(X) {
+  ev <- svd(X, nu = 0, nv = 0)$d^2
+  min(which(cumsum(ev) / sum(ev) >= 0.995))
+}
+
+test_that("the rank guard uses centred X: a mean curve does not add rank", {
+  set.seed(1)
+  s <- seq(0, 1, length.out = 40)
+  X <- curves_with_mean(1, s = s)
+  # fixture sanity: uncentred rank 6 would clear 1.5 * 4, centred rank 5 not
+  expect_equal(effective_rank(X), 6)
+  expect_equal(effective_rank(scale(X, scale = FALSE)), 5)
+
+  w <- tryCatch(
+    ff(X, xind = s, splinepars = list(bs = "ps", k = c(4, 5))),
+    warning = conditionMessage
+  )
+  expect_match(w, "Effective rank of <X> is 5, below 1.5 \\* k = 6")
+})
+
+test_that("a dominant mean curve does not deflate the centred rank", {
+  set.seed(1)
+  s <- seq(0, 1, length.out = 40)
+  X <- curves_with_mean(10, s = s)
+  # uncentred rank 4 would trip the "very low effective rank" warning
+  expect_equal(effective_rank(X), 4)
+  expect_equal(effective_rank(scale(X, scale = FALSE)), 5)
+
+  warns <- character()
+  withCallingHandlers(
+    ff(X, xind = s, splinepars = list(bs = "ps", k = c(4, 5))),
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_false(any(grepl("Very low effective rank", warns)))
+  expect_match(warns, "Effective rank of <X> is 5", all = FALSE)
 })

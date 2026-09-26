@@ -96,8 +96,8 @@ constrained to be orthogonal to functions in that overlap space (e.g., if the
 overlap contains constant functions, constraints "\eqn{\int \beta(t,s) ds =
 0} for all t" are enforced). See reference for details.\cr A warning is
 always given if the effective rank of Cov\eqn{(X(s))} (defined as the number
-of eigenvalues accounting for at least 0.995 of the total variance in
-\eqn{X_i(s)}) is lower than 4. If \eqn{X_i(s)} is of very low rank,
+of eigenvalues of the column-centred \eqn{X} accounting for at least 0.995
+of the total variance in \eqn{X_i(s)}) is at most 4. If \eqn{X_i(s)} is of very low rank,
 \code{\link{ffpc}}-term may be preferable.
 }
 \section{Effective rank and weak identifiability}{
@@ -122,7 +122,7 @@ interpret, and it does not show up as a fitting failure. A factor of about
 the simulation studies behind the cluster-robust \code{\link{pffr}}
 intervals.
 
-The effective rank can never exceed \code{min(nrow(X), ncol(X))}, so with
+The effective rank can never exceed \code{min(nrow(X) - 1, ncol(X))}, so with
 few curves the warning may be impossible to satisfy at the requested
 \eqn{k_s}. Remedies, in order of preference: lower \eqn{k_s} (via
 \code{splinepars = list(k = c(k_s, k_t))}); use more or more varied curves;

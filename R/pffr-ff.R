@@ -23,8 +23,8 @@
 #' overlap contains constant functions, constraints "\eqn{\int \beta(t,s) ds =
 #' 0} for all t" are enforced). See reference for details.\cr A warning is
 #' always given if the effective rank of Cov\eqn{(X(s))} (defined as the number
-#' of eigenvalues accounting for at least 0.995 of the total variance in
-#' \eqn{X_i(s)}) is lower than 4. If \eqn{X_i(s)} is of very low rank,
+#' of eigenvalues of the column-centred \eqn{X} accounting for at least 0.995
+#' of the total variance in \eqn{X_i(s)}) is at most 4. If \eqn{X_i(s)} is of very low rank,
 #' \code{\link{ffpc}}-term may be preferable.
 #'
 #' @section Effective rank and weak identifiability:
@@ -48,7 +48,7 @@
 #' the simulation studies behind the cluster-robust \code{\link{pffr}}
 #' intervals.
 #'
-#' The effective rank can never exceed \code{min(nrow(X), ncol(X))}, so with
+#' The effective rank can never exceed \code{min(nrow(X) - 1, ncol(X))}, so with
 #' few curves the warning may be impossible to satisfy at the requested
 #' \eqn{k_s}. Remedies, in order of preference: lower \eqn{k_s} (via
 #' \code{splinepars = list(k = c(k_s, k_t))}); use more or more varied curves;
@@ -215,8 +215,14 @@ ff <- function(
 
   if (check.ident) {
     ## check whether (number of basis functions) < (number of relevant eigenfunctions of X)
-    evX <- svd(X, nu = 0, nv = 0)$d^2
-    maxK <- max(1, min(which((cumsum(evX) / sum(evX)) >= .995)))
+    ## Effective rank of Cov(X(s)): eigenvalues of the column-centred X, so
+    ## the mean curve does not count as a direction of variation.
+    evX <- svd(scale(X, center = TRUE, scale = FALSE), nu = 0, nv = 0)$d^2
+    maxK <- if (sum(evX) > 0) {
+      max(1, min(which((cumsum(evX) / sum(evX)) >= .995)))
+    } else {
+      1
+    }
     term_spec <- eval(call)
     bsdim <- if (!is.null(term_spec$margin)) {
       term_spec$margin[[1]]$bs.dim
@@ -263,8 +269,8 @@ ff <- function(
           "determined by the penalty alone, so estimates can be biased and ",
           "interval coverage unreliable in those directions. Reduce k along ",
           "<s>, or use more / richer curves -- the effective rank cannot ",
-          "exceed min(nrow(X), ncol(X)) = ",
-          min(n, nxgrid),
+          "exceed min(nrow(X) - 1, ncol(X)) = ",
+          min(n - 1, nxgrid),
           ". See ?ff (Details) and Scheipl & Greven (2016).",
           call. = FALSE
         )
