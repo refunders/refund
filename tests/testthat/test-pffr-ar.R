@@ -2,6 +2,12 @@
 # Tests for pffr with AR(1) correlated errors
 ###############################################################################
 
+skip_if_mgcv_1_9_5_binomial_ar <- function() {
+  if (utils::packageVersion("mgcv") == utils::package_version("1.9-5")) {
+    skip("Skipping known mgcv 1.9-5 binomial+rho segfault case.")
+  }
+}
+
 test_that("pffr builds AR.start for dense data when rho is supplied", {
   skip_on_cran()
 
@@ -51,6 +57,7 @@ test_that("unsupported AR settings throw informative errors", {
   )
   sim_bin <- sim
   sim_bin$Y <- I(1L * (sim$Y > 0))
+  skip_if_mgcv_1_9_5_binomial_ar()
   fit <- quiet_pffr(
     Y ~ c(1),
     data = sim_bin,
@@ -142,10 +149,8 @@ test_that("pffr builds AR.start for sparse responses", {
     yind = tgrid,
     algorithm = "bam",
     rho = 0.4,
-    # explicit: this test is about AR.start, not the sandwich; the "auto"
-    # default would promote this saturated-leverage G=12 fixture to cl2 and
-    # (correctly) emit the leverage-cap warning
-    sandwich = "cluster",
+    # sandwich estimators are unavailable with an AR(1) working correlation
+    sandwich = "none",
     bs.int = list(bs = "ps", k = length(tgrid), m = c(2, 1))
   )
 
@@ -166,6 +171,7 @@ test_that("binomial models can use rho when discrete sampling is enabled", {
   df <- data.frame(Y = I(binary_Y))
   tgrid <- seq(0, 1, length.out = ny)
 
+  skip_if_mgcv_1_9_5_binomial_ar()
   fit_binom <- quiet_pffr(
     Y ~ c(1),
     data = df,
@@ -178,4 +184,86 @@ test_that("binomial models can use rho when discrete sampling is enabled", {
   )
   expect_equal(fit_binom$family$family, "binomial")
   expect_equal(fit_binom$AR1.rho, 0.3, tolerance = 1e-8)
+})
+
+test_that("explicit sandwich requests with rho error before fitting", {
+  skip_on_cran()
+
+  sim <- get_ar_data()
+  tgrid <- attr(sim, "yindex")
+  fit_ar <- function(sandwich) {
+    pffr(
+      Y ~ c(1),
+      data = sim,
+      yind = tgrid,
+      rho = 0.3,
+      sandwich = sandwich,
+      bs.int = list(bs = "ps", k = length(tgrid), m = c(2, 1))
+    )
+  }
+  for (type in c("cluster", "cl2", "hc")) {
+    expect_error(
+      fit_ar(type),
+      paste0(
+        "sandwich = \"",
+        type,
+        "\" is not supported for fits with an AR\\(1\\) working correlation"
+      )
+    )
+  }
+  expect_error(fit_ar(TRUE), "sandwich = \"cluster\" is not supported")
+  expect_error(fit_ar("cluster"), "Use sandwich = \"none\"")
+})
+
+test_that("default sandwich resolves to none for AR(1) fits", {
+  skip_on_cran()
+
+  sim <- get_ar_data()
+  tgrid <- attr(sim, "yindex")
+  fit_default <- function(...) {
+    pffr(
+      Y ~ c(1),
+      data = sim,
+      yind = tgrid,
+      rho = 0.3,
+      bs.int = list(bs = "ps", k = length(tgrid), m = c(2, 1)),
+      ...
+    )
+  }
+
+  msgs <- character()
+  fit <- withCallingHandlers(
+    expect_no_warning(fit_default()),
+    message = function(m) {
+      msgs <<- c(msgs, conditionMessage(m))
+      invokeRestart("muffleMessage")
+    }
+  )
+  expect_length(grep("resolved to \"none\"", msgs), 1)
+  expect_false(any(grepl("now defaults to sandwich", msgs)))
+  expect_identical(fit$pffr$sandwich, "none")
+  expect_null(fit$pffr[["Vsandwich"]])
+  expect_equal(fit$AR1.rho, 0.3)
+
+  # explicit "auto" is a request for the policy, not a specific sandwich
+  fit_auto <- suppressMessages(fit_default(sandwich = "auto"))
+  expect_identical(fit_auto$pffr$sandwich, "none")
+
+  # model-based inference works; post-hoc sandwich requests error
+  cf <- coef(fit)
+  expect_true(all(is.finite(cf$smterms[[1]]$coef$se)))
+  expect_error(coef(fit, sandwich = "cluster"), "AR\\(1\\) working correlation")
+  expect_error(coef(fit, sandwich = "cl2"), "AR\\(1\\) working correlation")
+  expect_error(vcov(fit, sandwich = TRUE), "AR\\(1\\) working correlation")
+  expect_equal(unname(vcov(fit)), unname(fit$Vp))
+})
+
+test_that("the shared sandwich guard is a no-op without rho", {
+  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = NULL), "cluster"))
+  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = 0), "cl2"))
+  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = 0.5), "none"))
+  expect_error(
+    pffr_check_sandwich_ar1(list(AR1.rho = 0.5), "hc"),
+    "sandwich = \"hc\""
+  )
 })

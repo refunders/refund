@@ -440,6 +440,7 @@ pffr_influence <- function(
       "Fixed-fit cluster influence requires sandwich='cluster' or 'cl2'.",
       call. = FALSE
     )
+  pffr_check_sandwich_ar1(object, type)
   b <- pffr_model_based_gam(object)
   kind <- pffr_score_kind(b$family)
   if (kind == "custom")

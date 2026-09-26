@@ -24,6 +24,50 @@ ncv_test_fit <- function(dat, ...) {
   )
 }
 
+# Response on the scale of `family`, driven by the dependent Gaussian data.
+ncv_test_glm_data <- function(family) {
+  dat <- ncv_test_data()
+  eta <- 0.5 * scale(dat$Y)
+  y <- if (family$family == "poisson") {
+    rpois(length(eta), 3 * exp(eta))
+  } else {
+    rbinom(length(eta), 1, plogis(eta - 0.5))
+  }
+  dat$Y <- I(matrix(y, nrow(eta)))
+  dat
+}
+
+# Total penalty matrix sum_j sp_j S_j of a fitted model, in coefficient order.
+ncv_test_penalty <- function(fit) {
+  p <- length(fit$coefficients)
+  S <- matrix(0, p, p)
+  j <- 0L
+  for (sm in fit$smooth) {
+    ii <- seq.int(sm$first.para, sm$last.para)
+    for (penalty in sm$S) {
+      j <- j + 1L
+      S[ii, ii] <- S[ii, ii] + fit$sp[j] * penalty
+    }
+  }
+  stopifnot(j == length(fit$sp))
+  S
+}
+
+# Penalized IRLS at fixed penalty S (minimizes deviance + beta' S beta).
+ncv_test_pirls <- function(X, y, S, family, beta, tol = 1e-12) {
+  for (iter in 1:100) {
+    eta <- as.numeric(X %*% beta)
+    mu <- family$linkinv(eta)
+    deta <- family$mu.eta(eta)
+    w <- deta^2 / family$variance(mu)
+    z <- eta + (y - mu) / deta
+    new <- solve(crossprod(X, w * X) + S, crossprod(X, w * z))
+    if (max(abs(new - beta)) < tol) break
+    beta <- new
+  }
+  as.numeric(new)
+}
+
 ncv_test_groups <- function(nei) {
   split(nei$a, rep(seq_along(nei$ma), diff(c(0L, nei$ma))))
 }

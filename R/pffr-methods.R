@@ -1890,6 +1890,7 @@ coef.pffr <- function(
 #' @export
 #' @method vcov pffr
 vcov.pffr <- function(object, sandwich = FALSE, ...) {
+  if (isTRUE(sandwich)) pffr_check_sandwich_ar1(object, "hc")
   object <- pffr_model_based_gam(object)
   stats::vcov(object, sandwich = sandwich, ...)
 }
