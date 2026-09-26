@@ -2195,6 +2195,7 @@ pffr_vcov <- function(
     normalize_sandwich_type(sandwich)
   }
   requested <- match.arg(requested, c("none", "cluster", "cl2", "hc"))
+  pffr_check_sandwich_ar1(canon$model, requested)
 
   if (identical(requested, "none")) {
     mb <- canon$model

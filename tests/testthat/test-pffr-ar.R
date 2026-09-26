@@ -2,6 +2,12 @@
 # Tests for pffr with AR(1) correlated errors
 ###############################################################################
 
+skip_if_mgcv_1_9_5_binomial_ar <- function() {
+  if (utils::packageVersion("mgcv") == utils::package_version("1.9-5")) {
+    skip("Skipping known mgcv 1.9-5 binomial+rho segfault case.")
+  }
+}
+
 test_that("pffr builds AR.start for dense data when rho is supplied", {
   skip_on_cran()
 
@@ -51,6 +57,7 @@ test_that("unsupported AR settings throw informative errors", {
   )
   sim_bin <- sim
   sim_bin$Y <- I(1L * (sim$Y > 0))
+  skip_if_mgcv_1_9_5_binomial_ar()
   fit <- quiet_pffr(
     Y ~ c(1),
     data = sim_bin,
@@ -164,6 +171,7 @@ test_that("binomial models can use rho when discrete sampling is enabled", {
   df <- data.frame(Y = I(binary_Y))
   tgrid <- seq(0, 1, length.out = ny)
 
+  skip_if_mgcv_1_9_5_binomial_ar()
   fit_binom <- quiet_pffr(
     Y ~ c(1),
     data = df,
