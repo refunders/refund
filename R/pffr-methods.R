@@ -1331,8 +1331,9 @@ pffr_end_undefined_df <- function(opened) {
 #' @param raw logical, defaults to FALSE. If TRUE, the function simply returns \code{object$coefficients}
 #' @param se logical, defaults to TRUE. Return estimated standard error of the estimates?
 #' @param freq logical, defaults to FALSE. If FALSE, use Bayesian posterior covariance for
-#'   variability estimates: \code{object$Vc} if available (includes correction for smoothing
-#'   parameter uncertainty), otherwise \code{object$Vp}. If TRUE, use frequentist
+#'   variability estimates: \code{object$Vp} for NCV fits; otherwise \code{object$Vc} if
+#'   available (includes correction for smoothing parameter uncertainty), with fallback to
+#'   \code{object$Vp}. If TRUE, use frequentist
 #'   covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.
 #' @param sandwich Type of sandwich-corrected covariance for standard errors.
 #'   \code{NULL} (default) inherits the fit-time covariance choice.

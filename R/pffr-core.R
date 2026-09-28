@@ -2141,9 +2141,18 @@ pffr_compute_sandwich <- function(
       influence = influence
     ),
     hc = mgcv::vcov.gam(b, sandwich = TRUE, freq = freq),
-    none = if (freq) b$Ve else (b$Vc %||% b$Vp),
+    none = pffr_model_based_cov(b, list(Vp = b$Vp, Vc = b$Vc, Ve = b$Ve), freq),
     stop("Unknown sandwich type: ", type, call. = FALSE)
   )
+}
+
+# Model-based covariance of a fit: Ve (frequentist) or Vc, which adds the
+# smoothing-parameter uncertainty correction, falling back to Vp. For NCV fits mgcv's
+# Vc is not a valid covariance (it is much smaller than Vp), so they use Vp.
+pffr_model_based_cov <- function(object, model, freq = FALSE) {
+  if (freq) return(model$Ve)
+  if (identical(object$method, "NCV")) return(model$Vp)
+  model$Vc %||% model$Vp
 }
 
 #' Resolve the covariance matrix for a pffr fit (single accessor)
@@ -2198,8 +2207,7 @@ pffr_vcov <- function(
   pffr_check_sandwich_ar1(canon$model, requested)
 
   if (identical(requested, "none")) {
-    mb <- canon$model
-    return(if (freq) mb$Ve else (mb$Vc %||% mb$Vp))
+    return(pffr_model_based_cov(object, canon$model, freq))
   }
 
   dof_correction <- dof_correction %||% (object$pffr$dof_correction %||% "none")
