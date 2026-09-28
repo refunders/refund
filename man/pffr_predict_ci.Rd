@@ -32,7 +32,10 @@ conditional mean.}
 \item{level}{Confidence level, defaults to `0.95`.}
 
 \item{sandwich, freq, cluster, dof_correction, edf_type, cl2_adjustment}{Covariance choice, as in [coef.pffr()]. `sandwich = NULL` inherits the
-fit-time choice.}
+fit-time choice; with `bias_ref`, `sandwich = NULL` and
+`cl2_adjustment = NULL` instead default to the exact CL2 sandwich (with the
+default `freq = FALSE`, its Bayesian form), the covariance the bias-aware
+interval was evaluated with.}
 
 \item{bias_ref}{Optional reference fit of the same model and data (typically
 the REML fit when `object` is the NCV fit), differing only in how the
@@ -79,9 +82,15 @@ adds the difference between the two estimates in quadrature:
 for the rows \eqn{L} of the prediction matrix. The recommended recipe is
 an NCV fit with curve blocks (the default `ncv_blocks = "cluster"`) as
 `object`, the exact CL2 sandwich in its Bayesian form
-(`sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE`) and a REML fit
-of the same model as `bias_ref`. Fit both with `sandwich = "none"` to avoid
-computing a fit-time sandwich that is not used.
+(`sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE`, the default
+covariance whenever `bias_ref` is supplied) and a REML fit of the same model
+as `bias_ref`. Fit both with `sandwich = "none"` to avoid computing a
+fit-time sandwich that is not used.
+
+The full functional intercept \eqn{\alpha(t)}{alpha(t)} (level included)
+is the linear predictor at covariate values at which all other terms vanish,
+e.g. `X = 0` for `ff(X)` and `z = 0` for a linear effect of `z`; see the
+examples and [coef.pffr()].
 
 \eqn{\delta} estimates only the part of the smoothing bias in which the two
 fits differ. Bias that both fits share -- a basis too small for the truth,
@@ -97,9 +106,15 @@ fit_ncv <- pffr(Y ~ ff(X1), yind = yind, data = d, method = "NCV",
                 sandwich = "none")
 fit_reml <- pffr(Y ~ ff(X1), yind = yind, data = d, method = "REML",
                  sandwich = "none")
-ci <- pffr_predict_ci(fit_ncv, sandwich = "cl2", cl2_adjustment = "exact",
-                      bias_ref = fit_reml)
+# exact CL2 (Bayesian form) is the default covariance with bias_ref
+ci <- pffr_predict_ci(fit_ncv, bias_ref = fit_reml)
 head(ci)
+
+# Full functional intercept alpha(t) with its bias-aware interval: the
+# linear predictor of a curve with X1 = 0, where the ff() term vanishes.
+zero <- data.frame(X1 = I(matrix(0, 1, ncol(d$X1))))
+alpha <- pffr_predict_ci(fit_ncv, newdata = zero, bias_ref = fit_reml)
+head(alpha[, c(".index", "fit", "lower", "upper")])
 }
 }
 \seealso{

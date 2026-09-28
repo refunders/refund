@@ -249,6 +249,90 @@ test_that("pffr_predict_ci passes covariance options through", {
   expect_equal(ci_model$se_link, unname(sqrt(rowSums((L %*% fit$Vp) * L))))
 })
 
+test_that("bias_ref defaults to exact Bayesian CL2 unless overridden", {
+  skip_if_not_installed("mgcv", "1.9.0")
+  set.seed(4218)
+  dat <- bias_aware_data()
+  fit_ncv <- bias_aware_fit(dat, "NCV")
+  fit_reml <- bias_aware_fit(dat, "REML")
+  explicit <- list(sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE)
+  ff_se <- function(...) {
+    cf <- suppressMessages(coef(
+      fit_ncv,
+      ci = "pointwise",
+      seWithMean = FALSE,
+      bias_ref = fit_reml,
+      ...
+    ))
+    cf$smterms[["ff(X)"]]$coef$se
+  }
+  expect_equal(ff_se(), do.call(ff_se, explicit))
+  expect_equal(
+    pffr_predict_ci(fit_ncv, bias_ref = fit_reml),
+    do.call(pffr_predict_ci, c(list(fit_ncv, bias_ref = fit_reml), explicit))
+  )
+  # Explicit choices are respected: the fit-time model-based covariance, the
+  # CL2 shortcut and the frequentist form each change the SE.
+  for (override in list(
+    list(sandwich = "none"),
+    list(sandwich = "cl2", cl2_adjustment = "shortcut"),
+    list(freq = TRUE)
+  )) {
+    expect_false(isTRUE(all.equal(do.call(ff_se, override), ff_se())))
+  }
+  L <- predict(fit_ncv, type = "lpmatrix", reformat = FALSE)
+  model_based <- pffr_predict_ci(
+    fit_ncv,
+    bias_ref = fit_reml,
+    sandwich = "none"
+  )
+  expect_equal(
+    model_based$se_link,
+    unname(sqrt(rowSums((L %*% fit_ncv$Vp) * L)))
+  )
+  # Without bias_ref, NULL still inherits the fit-time (here model-based) choice.
+  expect_equal(pffr_predict_ci(fit_ncv)$se_link, model_based$se_link)
+})
+
+test_that("pffr_predict_ci at zero covariates gives the full intercept alpha(t)", {
+  skip_if_not_installed("mgcv", "1.9.0")
+  set.seed(4219)
+  dat <- bias_aware_data()
+  fit_ncv <- bias_aware_fit(dat, "NCV")
+  fit_reml <- bias_aware_fit(dat, "REML")
+  zero <- list(X = I(matrix(0, 1, ncol(dat$X))), z = 0)
+  alpha <- pffr_predict_ci(fit_ncv, newdata = zero, bias_ref = fit_reml)
+  # The full intercept's rows: the scalar intercept plus the centred
+  # Intercept(yindex) basis at the response grid (the study's alpha rows).
+  sm <- fit_ncv$smooth[["s(yindex.vec)"]]
+  yind <- fit_ncv$pffr$yind
+  L <- matrix(0, length(yind), length(fit_ncv$coefficients))
+  L[, sm$first.para:sm$last.para] <- mgcv::PredictMat(
+    sm,
+    data.frame(yindex.vec = yind)
+  )
+  L[, names(fit_ncv$coefficients) == "(Intercept)"] <- 1
+  ref <- bias_aware_direct(L, fit_ncv, fit_reml, bias_aware_cl2(fit_ncv))
+  expect_equal(alpha$.index, yind)
+  expect_equal(alpha$fit, ref$est, tolerance = 1e-10)
+  expect_equal(alpha$se_link, ref$se, tolerance = 1e-10)
+  expect_equal(alpha$delta_link, ref$delta, tolerance = 1e-10)
+  expect_equal(alpha$lower, ref$lower, tolerance = 1e-10)
+  expect_equal(alpha$upper, ref$upper, tolerance = 1e-10)
+  # Its estimate is the centred term plus the scalar intercept from coef().
+  cf <- suppressMessages(coef(
+    fit_ncv,
+    bias_ref = fit_reml,
+    eval_grid = list(`Intercept(yindex)` = data.frame(yindex.vec = yind))
+  ))
+  expect_equal(
+    alpha$fit,
+    cf$smterms[["Intercept(yindex)"]]$coef$value +
+      cf$pterms["(Intercept)", "value"],
+    tolerance = 1e-10
+  )
+})
+
 test_that("pffr_predict_ci aligns fitted points with missing responses", {
   skip_if_not_installed("mgcv", "1.9.0")
   set.seed(4215)

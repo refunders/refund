@@ -248,9 +248,10 @@ test_that("model-based covariance of NCV fits is Vp, not mgcv's Vc", {
   set.seed(102)
   dat <- ncv_test_data()
   ncv <- ncv_test_fit(dat)
-  # mgcv's Vc for NCV fits is far smaller than Vp, so it cannot be a covariance of the
-  # estimate that adds smoothing-parameter uncertainty to Vp
-  expect_lt(median(sqrt(diag(ncv$Vc)) / sqrt(diag(ncv$Vp))), 0.9)
+  # Unpatched mgcv 1.9-5 returns only the smoothing-parameter correction as Vc for
+  # NCV fits (far smaller than Vp); a fixed mgcv returns Vp plus that correction.
+  # Either way Vc differs from Vp, and refund must return Vp.
+  expect_false(isTRUE(all.equal(ncv$Vc, ncv$Vp)))
   expect_identical(pffr_vcov(ncv, sandwich = "none"), ncv$Vp)
   expect_identical(pffr_vcov(ncv, sandwich = "none", freq = TRUE), ncv$Ve)
   reml <- pffr(

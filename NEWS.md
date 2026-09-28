@@ -7,8 +7,10 @@
   `est -/+ z * sqrt(se^2 + delta^2)` with `delta` the difference between the
   two estimates, built on the link scale with transformed endpoints for the
   response mean. Recommended: NCV with curve blocks, exact CL2 in Bayesian form
-  (`sandwich = "cl2", cl2_adjustment = "exact"`), REML reference. `delta`
-  does not capture smoothing bias that both fits share.
+  (`sandwich = "cl2", cl2_adjustment = "exact"`, the default covariance when
+  `bias_ref` is given), REML reference, default `seWithMean = TRUE`. `delta`
+  does not capture smoothing bias that both fits share. The docs show how to
+  get the full functional intercept (level included) and its interval.
 * `pffr(method = "NCV")` now leaves out whole curves (or `cluster` groups)
   by default. `ncv_blocks = "point"` provides pointwise comparisons; explicit
   `nei` takes precedence. Dual mgcv neighbourhood names, a cached behavioural

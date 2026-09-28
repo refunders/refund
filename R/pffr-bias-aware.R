@@ -101,6 +101,25 @@ pffr_smooth_knots <- function(sm) {
   sm$knots
 }
 
+#' Default covariance of bias-aware intervals
+#'
+#' Bias-aware intervals were evaluated with the exact CL2 sandwich in its
+#' Bayesian form, so that is what they use unless the caller chose otherwise:
+#' `sandwich = NULL` becomes `"cl2"`, and `cl2_adjustment = NULL` becomes
+#' `"exact"` whenever the resolved sandwich is CL2. `freq` keeps its default
+#' `FALSE` (Bayesian form) in the callers.
+#'
+#' @param sandwich,cl2_adjustment As supplied by the caller.
+#' @returns A list with the resolved `sandwich` and `cl2_adjustment`.
+#' @keywords internal
+pffr_bias_aware_cov_defaults <- function(sandwich, cl2_adjustment) {
+  sandwich <- sandwich %||% "cl2"
+  if (identical(normalize_sandwich_type(sandwich), "cl2")) {
+    cl2_adjustment <- cl2_adjustment %||% "exact"
+  }
+  list(sandwich = sandwich, cl2_adjustment = cl2_adjustment)
+}
+
 #' Combine a variance-only standard error with a bias estimate
 #'
 #' @param se Standard errors (variance part).
@@ -139,9 +158,15 @@ pffr_bias_aware_se <- function(se, delta) {
 #' for the rows \eqn{L} of the prediction matrix. The recommended recipe is
 #' an NCV fit with curve blocks (the default `ncv_blocks = "cluster"`) as
 #' `object`, the exact CL2 sandwich in its Bayesian form
-#' (`sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE`) and a REML fit
-#' of the same model as `bias_ref`. Fit both with `sandwich = "none"` to avoid
-#' computing a fit-time sandwich that is not used.
+#' (`sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE`, the default
+#' covariance whenever `bias_ref` is supplied) and a REML fit of the same model
+#' as `bias_ref`. Fit both with `sandwich = "none"` to avoid computing a
+#' fit-time sandwich that is not used.
+#'
+#' The full functional intercept \eqn{\alpha(t)}{alpha(t)} (level included)
+#' is the linear predictor at covariate values at which all other terms vanish,
+#' e.g. `X = 0` for `ff(X)` and `z = 0` for a linear effect of `z`; see the
+#' examples and [coef.pffr()].
 #'
 #' \eqn{\delta} estimates only the part of the smoothing bias in which the two
 #' fits differ. Bias that both fits share -- a basis too small for the truth,
@@ -157,7 +182,10 @@ pffr_bias_aware_se <- function(se, delta) {
 #' @param level Confidence level, defaults to `0.95`.
 #' @param sandwich,freq,cluster,dof_correction,edf_type,cl2_adjustment
 #'   Covariance choice, as in [coef.pffr()]. `sandwich = NULL` inherits the
-#'   fit-time choice.
+#'   fit-time choice; with `bias_ref`, `sandwich = NULL` and
+#'   `cl2_adjustment = NULL` instead default to the exact CL2 sandwich (with the
+#'   default `freq = FALSE`, its Bayesian form), the covariance the bias-aware
+#'   interval was evaluated with.
 #' @param bias_ref Optional reference fit of the same model and data (typically
 #'   the REML fit when `object` is the NCV fit), differing only in how the
 #'   smoothing parameters were chosen. If supplied, intervals are bias-aware
@@ -186,9 +214,15 @@ pffr_bias_aware_se <- function(se, delta) {
 #'                 sandwich = "none")
 #' fit_reml <- pffr(Y ~ ff(X1), yind = yind, data = d, method = "REML",
 #'                  sandwich = "none")
-#' ci <- pffr_predict_ci(fit_ncv, sandwich = "cl2", cl2_adjustment = "exact",
-#'                       bias_ref = fit_reml)
+#' # exact CL2 (Bayesian form) is the default covariance with bias_ref
+#' ci <- pffr_predict_ci(fit_ncv, bias_ref = fit_reml)
 #' head(ci)
+#'
+#' # Full functional intercept alpha(t) with its bias-aware interval: the
+#' # linear predictor of a curve with X1 = 0, where the ff() term vanishes.
+#' zero <- data.frame(X1 = I(matrix(0, 1, ncol(d$X1))))
+#' alpha <- pffr_predict_ci(fit_ncv, newdata = zero, bias_ref = fit_reml)
+#' head(alpha[, c(".index", "fit", "lower", "upper")])
 #' }
 pffr_predict_ci <- function(
   object,
@@ -222,8 +256,12 @@ pffr_predict_ci <- function(
       call. = FALSE
     )
   }
-  theta_diff <- if (!is.null(bias_ref)) {
-    pffr_bias_ref_difference(object, bias_ref)
+  theta_diff <- NULL
+  if (!is.null(bias_ref)) {
+    theta_diff <- pffr_bias_ref_difference(object, bias_ref)
+    cov_defaults <- pffr_bias_aware_cov_defaults(sandwich, cl2_adjustment)
+    sandwich <- cov_defaults$sandwich
+    cl2_adjustment <- cov_defaults$cl2_adjustment
   }
 
   lp <- pffr_prediction_design(object, newdata)

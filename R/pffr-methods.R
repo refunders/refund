@@ -1399,7 +1399,12 @@ pffr_end_undefined_df <- function(opened) {
 #'   applies the documented feasibility rule, while \code{"exact"} and
 #'   \code{"shortcut"} force either CL2 variant. Supplying a value forces a
 #'   covariance recomputation.
-#' @param seWithMean logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?
+#' @param seWithMean logical, defaults to TRUE. Include uncertainty about the
+#'   intercept/overall mean in standard errors returned for smooth components?
+#'   Acts only on terms with an identifiability constraint (e.g.
+#'   \code{Intercept(yindex)}); \code{ff()} terms and varying coefficients of
+#'   scalar covariates are unconstrained by-variable smooths and are unaffected.
+#'   With \code{bias_ref}, \code{delta} uses the same linear map as the SE.
 #' @param n1 see below
 #' @param n2 see below
 #' @param n3 \code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
@@ -1458,8 +1463,13 @@ pffr_end_undefined_df <- function(opened) {
 #'   difference in the mean level), and pointwise intervals use
 #'   \eqn{\sqrt{se^2 + delta^2}}{sqrt(se^2 + delta^2)} instead of \code{se};
 #'   \code{se} itself stays the variance part. Only \code{ci = "none"} and
-#'   \code{ci = "pointwise"} with \code{crit = "z"} are available. See the
-#'   section \sQuote{Bias-aware intervals}.
+#'   \code{ci = "pointwise"} with \code{crit = "z"} are available. With
+#'   \code{bias_ref}, \code{sandwich = NULL} and \code{cl2_adjustment = NULL}
+#'   default to the exact CL2 sandwich (\code{"cl2"}, \code{"exact"}) instead
+#'   of the fit-time choice; together with the default \code{freq = FALSE}
+#'   (Bayesian form) this is the covariance the interval was evaluated with.
+#'   Explicit values are respected. See the section
+#'   \sQuote{Bias-aware intervals}.
 #' @param ... other arguments, not used.
 #'
 #' @return If \code{raw==FALSE}, a list containing \itemize{
@@ -1496,9 +1506,38 @@ pffr_end_undefined_df <- function(opened) {
 #' on the link scale. The recommended recipe fits the model twice with
 #' \code{sandwich = "none"}, by NCV with curve blocks (the default
 #' \code{ncv_blocks = "cluster"}) and by REML, and computes \code{se} from the
-#' exact CL2 sandwich in its Bayesian form of the NCV fit:
-#' \preformatted{coef(fit_ncv, sandwich = "cl2", cl2_adjustment = "exact",
+#' exact CL2 sandwich in its Bayesian form of the NCV fit, which is the default
+#' covariance whenever \code{bias_ref} is supplied:
+#' \preformatted{coef(fit_ncv, ci = "pointwise", bias_ref = fit_reml)
+#' # same as
+#' coef(fit_ncv, sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE,
 #'      ci = "pointwise", bias_ref = fit_reml)}
+#'
+#' Keep the default \code{seWithMean = TRUE} for bias-aware intervals. It
+#' changes only constrained terms, of which the functional intercept is the
+#' main one: in the simulation study behind this recipe (full intercept
+#' scored, dependent errors, Gaussian, Poisson and binary responses) the
+#' \code{seWithMean = TRUE} intervals were practically identical to those from
+#' the exact full-intercept rows below (root-mean-square undercoverage 0 to 3
+#' percentage points), while \code{seWithMean = FALSE} omits the level's
+#' uncertainty and undercovered by 7 to 15 points, with 11 to 22\% larger
+#' interval scores.
+#'
+#' \strong{Functional intercept.} The \code{Intercept(yindex)} term is centred
+#' (sum-to-zero over the observed response grid); the level of
+#' \eqn{\alpha(t)}{alpha(t)} is the scalar \code{"(Intercept)"} in
+#' \code{pterms}. The full intercept is their sum,
+#' \preformatted{alpha_hat <- cf$smterms[["Intercept(yindex)"]]$coef[, "value"] +
+#'   cf$pterms["(Intercept)", "value"]}
+#' but the \code{se}, \code{delta} and interval of the centred term do not
+#' describe it: they omit the level (\code{seWithMean = FALSE}) or add the
+#' column means of all other terms (\code{seWithMean = TRUE}). For an interval
+#' for the full \eqn{\alpha(t)}{alpha(t)} use \code{\link{pffr_predict_ci}} at
+#' covariate values at which every other term vanishes (e.g. \code{X = 0} for
+#' \code{ff(X)} and \code{z = 0} for a linear effect of a scalar \code{z}); its
+#' prediction rows are then exactly the intercept rows
+#' \eqn{(1, B(t))}{(1, B(t))}. See the examples of
+#' \code{\link{pffr_predict_ci}}.
 #' \eqn{\delta}{delta} estimates only the part of the smoothing bias in which
 #' the two fits differ: bias that both fits share (a basis too small for the
 #' truth, or both fits oversmoothing a rough truth) is not covered. Any second
@@ -1542,6 +1581,11 @@ coef.pffr <- function(
   on.exit(pffr_end_undefined_df(df_warn_window), add = TRUE)
 
   sandwich_missing <- missing(sandwich)
+  if (!is.null(bias_ref)) {
+    cov_defaults <- pffr_bias_aware_cov_defaults(sandwich, cl2_adjustment)
+    sandwich <- cov_defaults$sandwich
+    cl2_adjustment <- cov_defaults$cl2_adjustment
+  }
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
   if (is.null(sandwich)) sandwich <- pffr_canonicalize_cov(object)$fit_type
