@@ -1,5 +1,14 @@
 # refund 0.1-38
 
+* Bias-aware pointwise intervals for NCV fits: `coef.pffr()` gains
+  `bias_ref`, and the new `pffr_predict_ci()` gives pointwise intervals for the
+  linear predictor or conditional mean (optionally bias-aware). Given a second
+  fit of the same model (typically REML for an NCV fit), the interval is
+  `est -/+ z * sqrt(se^2 + delta^2)` with `delta` the difference between the
+  two estimates, built on the link scale with transformed endpoints for the
+  response mean. Recommended: NCV with curve blocks, exact CL2 in Bayesian form
+  (`sandwich = "cl2", cl2_adjustment = "exact"`), REML reference. `delta`
+  does not capture smoothing bias that both fits share.
 * `pffr(method = "NCV")` now leaves out whole curves (or `cluster` groups)
   by default. `ncv_blocks = "point"` provides pointwise comparisons; explicit
   `nei` takes precedence. Dual mgcv neighbourhood names, a cached behavioural
