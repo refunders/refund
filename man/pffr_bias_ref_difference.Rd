@@ -23,6 +23,7 @@ matrices, in the same row order), prior weights and offsets, the smooth bases
 (labels, classes, basis dimensions, knots and penalty matrices, which carry the
 identifiability constraints), `ffpc`/`pcre` metadata, and family and link.
 Family parameters estimated during fitting (e.g. the negative binomial
-\eqn{\theta}{theta}) may differ between the fits.
+\eqn{\theta}{theta}) may differ between the fits. Fits with several linear
+predictors (e.g. `gaulss`) are rejected.
 }
 \keyword{internal}

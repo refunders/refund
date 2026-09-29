@@ -439,3 +439,10 @@ test_that("bias references of a different model or data are rejected", {
   expect_error(coef(fit, crit = "tG1", bias_ref = fit), "crit = \"z\"")
   expect_error(coef(fit, raw = TRUE, bias_ref = fit), "raw = TRUE")
 })
+
+test_that("bias references are rejected for multi-linear-predictor families", {
+  skip_if_not_installed("mgcv", "1.9.0")
+  fit <- get_gaulss_model()
+  expect_error(coef(fit, bias_ref = fit), "single linear-predictor")
+  expect_error(pffr_predict_ci(fit, bias_ref = fit), "single linear-predictor")
+})

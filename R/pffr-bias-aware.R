@@ -18,7 +18,8 @@
 #' (labels, classes, basis dimensions, knots and penalty matrices, which carry the
 #' identifiability constraints), `ffpc`/`pcre` metadata, and family and link.
 #' Family parameters estimated during fitting (e.g. the negative binomial
-#' \eqn{\theta}{theta}) may differ between the fits.
+#' \eqn{\theta}{theta}) may differ between the fits. Fits with several linear
+#' predictors (e.g. `gaulss`) are rejected.
 #'
 #' @param object The fit whose intervals are computed.
 #' @param bias_ref The reference fit.
@@ -27,6 +28,13 @@
 pffr_bias_ref_difference <- function(object, bias_ref) {
   if (!inherits(bias_ref, "pffr")) {
     stop("`bias_ref` must be a fitted pffr model.", call. = FALSE)
+  }
+  if (isTRUE((object$family$nlp %||% 1L) > 1L)) {
+    stop(
+      "Bias-aware intervals (`bias_ref`) support single linear-predictor ",
+      "families only.",
+      call. = FALSE
+    )
   }
   mismatch <- function(what) {
     stop(
