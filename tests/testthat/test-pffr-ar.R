@@ -3,7 +3,7 @@
 ###############################################################################
 
 skip_if_mgcv_1_9_5_binomial_ar <- function() {
-  if (utils::packageVersion("mgcv") == utils::package_version("1.9-5")) {
+  if (utils::packageVersion("mgcv") == package_version("1.9-5")) {
     skip("Skipping known mgcv 1.9-5 binomial+rho segfault case.")
   }
 }

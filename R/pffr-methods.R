@@ -879,7 +879,9 @@ ensure_grid_axis_attributes <- function(d, trm, is_pcre, pffr_info) {
 #'
 #' @param trm Smooth term object.
 #' @param data_grid Data frame from coef_make_data_grid.
-#' @param object_info List with: coefficients, cmX, Vp.
+#' @param object_info List with: coefficients, cmX, Vp, and optionally
+#'   theta_diff (coefficient difference to a bias reference fit; see
+#'   `bias_ref` in [coef.pffr()]).
 #' @param pffr_info List with: yind_name.
 #' @param covmat Covariance matrix for SE computation.
 #' @param se Logical, compute standard errors?
@@ -926,8 +928,11 @@ coef_get_predictions <- function(
   P$value <- X %*% object_info$coefficients[trmind]
   P$coef <- cbind(data_grid, value = P$value)
 
-  # Compute standard errors and intervals if requested
-  if (se) {
+  # Bias estimate of a bias-aware interval: the reference-fit contrast through
+  # the same linear map as the standard error (so it includes the mean-level
+  # columns when seWithMean applies).
+  theta_diff <- object_info$theta_diff
+  if (se || !is.null(theta_diff)) {
     linear_map <- build_coef_linear_map(
       X = X,
       trmind = trmind,
@@ -935,9 +940,16 @@ coef_get_predictions <- function(
       object_info = object_info,
       seWithMean = seWithMean
     )
+  }
+  if (se) {
     P$se <- compute_coef_se(linear_map = linear_map, covmat = covmat)
     P$coef <- cbind(P$coef, se = P$se)
-
+  }
+  if (!is.null(theta_diff)) {
+    P$delta <- compute_coef_delta(linear_map, theta_diff)
+    P$coef <- cbind(P$coef, delta = P$delta)
+  }
+  if (se) {
     if (ci == "simultaneous") {
       crit <- compute_ci_critical(
         ci = ci,
@@ -965,7 +977,12 @@ coef_get_predictions <- function(
         crit_df_const = crit_df_const
       )
       P$crit <- pw$crit
-      ci_half <- pw$crit * P$se
+      ci_se <- if (is.null(theta_diff)) {
+        P$se
+      } else {
+        pffr_bias_aware_se(P$se, P$delta)
+      }
+      ci_half <- pw$crit * ci_se
       P$coef <- cbind(
         P$coef,
         lower = P$value - ci_half,
@@ -1055,6 +1072,17 @@ compute_coef_se <- function(linear_map, covmat) {
   }
   trmind <- linear_map$trmind
   sqrt(rowSums((linear_map$X %*% covmat[trmind, trmind]) * linear_map$X))
+}
+
+#' Evaluate a coefficient difference through a coefficient linear map
+#'
+#' @param linear_map List returned by build_coef_linear_map().
+#' @param theta_diff Full-length coefficient difference vector.
+#' @returns Numeric vector, one value per evaluation point.
+#' @keywords internal
+compute_coef_delta <- function(linear_map, theta_diff) {
+  d <- if (linear_map$use_full) theta_diff else theta_diff[linear_map$trmind]
+  as.vector(linear_map$X %*% d)
 }
 
 #' Draw coefficient perturbations for simultaneous intervals
@@ -1371,7 +1399,12 @@ pffr_end_undefined_df <- function(opened) {
 #'   applies the documented feasibility rule, while \code{"exact"} and
 #'   \code{"shortcut"} force either CL2 variant. Supplying a value forces a
 #'   covariance recomputation.
-#' @param seWithMean logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?
+#' @param seWithMean logical, defaults to TRUE. Include uncertainty about the
+#'   intercept/overall mean in standard errors returned for smooth components?
+#'   Acts only on terms with an identifiability constraint (e.g.
+#'   \code{Intercept(yindex)}); \code{ff()} terms and varying coefficients of
+#'   scalar covariates are unconstrained by-variable smooths and are unaffected.
+#'   With \code{bias_ref}, \code{delta} uses the same linear map as the SE.
 #' @param n1 see below
 #' @param n2 see below
 #' @param n3 \code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
@@ -1420,6 +1453,23 @@ pffr_end_undefined_df <- function(opened) {
 #' @param n_sim Number of simulations for simultaneous intervals, defaults to
 #'   \code{2000}. Ignored unless \code{ci = "simultaneous"}.
 #' @param sim_seed Optional integer seed for simultaneous interval simulation.
+#' @param bias_ref Optional reference fit for bias-aware intervals: a
+#'   \code{pffr} fit of the same model and data that differs from \code{object}
+#'   only in how the smoothing parameters were chosen (typically the REML fit
+#'   when \code{object} was fitted with \code{method = "NCV"}). If supplied,
+#'   every returned coefficient table gets a column \code{delta}, the estimate
+#'   of \code{object} minus that of \code{bias_ref} (evaluated through the same
+#'   linear map as \code{se}, so with \code{seWithMean = TRUE} it includes the
+#'   difference in the mean level), and pointwise intervals use
+#'   \eqn{\sqrt{se^2 + delta^2}}{sqrt(se^2 + delta^2)} instead of \code{se};
+#'   \code{se} itself stays the variance part. Only \code{ci = "none"} and
+#'   \code{ci = "pointwise"} with \code{crit = "z"} are available. With
+#'   \code{bias_ref}, \code{sandwich = NULL} and \code{cl2_adjustment = NULL}
+#'   default to the exact CL2 sandwich (\code{"cl2"}, \code{"exact"}) instead
+#'   of the fit-time choice; together with the default \code{freq = FALSE}
+#'   (Bayesian form) this is the covariance the interval was evaluated with.
+#'   Explicit values are respected. See the section
+#'   \sQuote{Bias-aware intervals}.
 #' @param ... other arguments, not used.
 #'
 #' @return If \code{raw==FALSE}, a list containing \itemize{
@@ -1441,7 +1491,60 @@ pffr_end_undefined_df <- function(opened) {
 #' \code{crit = "tG1"}, and the per-point Satterthwaite df for
 #' \code{crit = "satterthwaite"}/\code{"auto"}). The returned list also includes
 #' \code{ci_meta} with CI settings (including \code{crit} and the resolved
-#' \code{crit_used}).
+#' \code{crit_used}). With \code{bias_ref}, the matrices also include a column
+#' \code{delta} (placed after \code{se}) and \code{ci_meta$bias_ref_method}
+#' records the smoothing-parameter method of the reference fit.
+#' @section Bias-aware intervals:
+#' Smoothing-parameter selection by curve-blocked neighbourhood
+#' cross-validation (\code{pffr(method = "NCV")}) is robust to within-curve
+#' dependence but smooths more than REML, so its smoothing bias is no longer
+#' negligible and variance-only intervals undercover. The bias-aware pointwise
+#' interval for an estimate \eqn{L\hat\theta_{NCV}}{L theta_NCV} is
+#' \deqn{L\hat\theta_{NCV} \pm z_{(1+level)/2}\sqrt{se^2 + \delta^2},
+#'   \qquad \delta = L(\hat\theta_{NCV} - \hat\theta_{REML}),}{
+#'   L theta_NCV -/+ z * sqrt(se^2 + delta^2), delta = L (theta_NCV - theta_REML),}
+#' on the link scale. The recommended recipe fits the model twice with
+#' \code{sandwich = "none"}, by NCV with curve blocks (the default
+#' \code{ncv_blocks = "cluster"}) and by REML, and computes \code{se} from the
+#' exact CL2 sandwich in its Bayesian form of the NCV fit, which is the default
+#' covariance whenever \code{bias_ref} is supplied:
+#' \preformatted{coef(fit_ncv, ci = "pointwise", bias_ref = fit_reml)
+#' # same as
+#' coef(fit_ncv, sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE,
+#'      ci = "pointwise", bias_ref = fit_reml)}
+#'
+#' Keep the default \code{seWithMean = TRUE} for bias-aware intervals. It
+#' changes only constrained terms, of which the functional intercept is the
+#' main one: in the simulation study behind this recipe (full intercept
+#' scored, dependent errors, Gaussian, Poisson and binary responses) the
+#' \code{seWithMean = TRUE} intervals were practically identical to those from
+#' the exact full-intercept rows below (root-mean-square undercoverage 0 to 3
+#' percentage points), while \code{seWithMean = FALSE} omits the level's
+#' uncertainty and undercovered by 7 to 15 points, with 11 to 22\% larger
+#' interval scores.
+#'
+#' \strong{Functional intercept.} The \code{Intercept(yindex)} term is centred
+#' (sum-to-zero over the observed response grid); the level of
+#' \eqn{\alpha(t)}{alpha(t)} is the scalar \code{"(Intercept)"} in
+#' \code{pterms}. The full intercept is their sum,
+#' \preformatted{alpha_hat <- cf$smterms[["Intercept(yindex)"]]$coef[, "value"] +
+#'   cf$pterms["(Intercept)", "value"]}
+#' but the \code{se}, \code{delta} and interval of the centred term do not
+#' describe it: they omit the level (\code{seWithMean = FALSE}) or add the
+#' column means of all other terms (\code{seWithMean = TRUE}). For an interval
+#' for the full \eqn{\alpha(t)}{alpha(t)} use \code{\link{pffr_predict_ci}} at
+#' covariate values at which every other term vanishes (e.g. \code{X = 0} for
+#' \code{ff(X)} and \code{z = 0} for a linear effect of a scalar \code{z}); its
+#' prediction rows are then exactly the intercept rows
+#' \eqn{(1, B(t))}{(1, B(t))}. See the examples of
+#' \code{\link{pffr_predict_ci}}.
+#' \eqn{\delta}{delta} estimates only the part of the smoothing bias in which
+#' the two fits differ: bias that both fits share (a basis too small for the
+#' truth, or both fits oversmoothing a rough truth) is not covered. Any second
+#' fit of the same model is accepted as \code{bias_ref}; \eqn{\delta}{delta}
+#' is then the contrast between the two estimators. For fitted values and
+#' predictions see \code{\link{pffr_predict_ci}}.
+#'
 #' @method coef pffr
 #' @export
 #' @importFrom mgcv PredictMat get.var
@@ -1469,6 +1572,7 @@ coef.pffr <- function(
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
+  bias_ref = NULL,
   ...
 ) {
   # One coef() call warns at most once about undefined moment df, however many
@@ -1477,6 +1581,11 @@ coef.pffr <- function(
   on.exit(pffr_end_undefined_df(df_warn_window), add = TRUE)
 
   sandwich_missing <- missing(sandwich)
+  if (!is.null(bias_ref)) {
+    cov_defaults <- pffr_bias_aware_cov_defaults(sandwich, cl2_adjustment)
+    sandwich <- cov_defaults$sandwich
+    cl2_adjustment <- cov_defaults$cl2_adjustment
+  }
   # Backward compat: TRUE -> "cluster", FALSE -> "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
   if (is.null(sandwich)) sandwich <- pffr_canonicalize_cov(object)$fit_type
@@ -1556,6 +1665,28 @@ coef.pffr <- function(
   }
   if (!is.null(sim_seed)) sim_seed <- as.integer(sim_seed)
 
+  theta_diff <- NULL
+  if (!is.null(bias_ref)) {
+    if (raw) {
+      stop("`bias_ref` cannot be combined with raw = TRUE.", call. = FALSE)
+    }
+    if (ci == "simultaneous") {
+      stop(
+        "Bias-aware intervals (`bias_ref`) are pointwise only; use ",
+        "ci = \"pointwise\".",
+        call. = FALSE
+      )
+    }
+    if (crit != "z") {
+      stop(
+        "Bias-aware intervals (`bias_ref`) use crit = \"z\"; the reference ",
+        "df of the other choices describe only the variance part.",
+        call. = FALSE
+      )
+    }
+    theta_diff <- pffr_bias_ref_difference(object, bias_ref)
+  }
+
   dots <- list(...)
   eval_grid <- dots$eval_grid %||% NULL
 
@@ -1586,7 +1717,8 @@ coef.pffr <- function(
     object_info <- list(
       coefficients = object$coefficients,
       cmX = object$cmX,
-      Vp = object$Vp
+      Vp = object$Vp,
+      theta_diff = theta_diff
     )
 
     getCoefs <- function(i) {
@@ -1777,9 +1909,15 @@ coef.pffr <- function(
     }))
     ret$pterms <- cbind(value = object$coefficients[-smind])
     if (se) ret$pterms <- cbind(ret$pterms, se = sqrt(diag(covmat)[-smind]))
+    if (!is.null(theta_diff)) {
+      ret$pterms <- cbind(ret$pterms, delta = theta_diff[-smind])
+    }
 
     if (se && ci != "none") {
       p_se <- ret$pterms[, "se"]
+      if (!is.null(theta_diff)) {
+        p_se <- pffr_bias_aware_se(p_se, ret$pterms[, "delta"])
+      }
       p_df <- NULL
       if (ci == "pointwise") {
         prob <- (1 + level) / 2
@@ -1863,7 +2001,12 @@ coef.pffr <- function(
       ci_ref_n_clusters = ci_ref_n_clusters,
       ci_ref_df = ci_ref_df,
       crit = crit,
-      crit_used = if (ci == "pointwise") crit_mode else NA_character_
+      crit_used = if (ci == "pointwise") crit_mode else NA_character_,
+      bias_ref_method = if (is.null(bias_ref)) {
+        NA_character_
+      } else {
+        bias_ref$method %||% NA_character_
+      }
     )
     return(ret)
   }

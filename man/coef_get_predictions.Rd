@@ -27,7 +27,9 @@ coef_get_predictions(
 
 \item{data_grid}{Data frame from coef_make_data_grid.}
 
-\item{object_info}{List with: coefficients, cmX, Vp.}
+\item{object_info}{List with: coefficients, cmX, Vp, and optionally
+theta_diff (coefficient difference to a bias reference fit; see
+`bias_ref` in [coef.pffr()]).}
 
 \item{pffr_info}{List with: yind_name.}
 
