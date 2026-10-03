@@ -216,3 +216,137 @@ test_that("summary() reports median/min Satterthwaite df for cluster-robust fits
   m_none <- get_basic_pffr_model()
   expect_null(summary(m_none)$satterthwaite_df)
 })
+
+test_that("the default crit is Satterthwaite only for exact CL2", {
+  expect_identical(
+    resolve_crit_reference("auto", "cl2", 30, "exact"),
+    "satterthwaite"
+  )
+  expect_identical(
+    resolve_crit_reference("auto", "cl2", 300, "exact"),
+    "satterthwaite"
+  )
+  expect_identical(resolve_crit_reference("auto", "cl2", 30, "shortcut"), "z")
+  expect_identical(resolve_crit_reference("auto", "cl2", 30, NULL), "z")
+  expect_identical(resolve_crit_reference("auto", "cluster", 30, NULL), "z")
+  expect_identical(resolve_crit_reference("auto", "hc", 30, NULL), "z")
+  expect_identical(resolve_crit_reference("auto", "none", 30, NULL), "z")
+
+  skip_on_cran()
+  m <- get_basic_pffr_model()
+  crit_used <- function(...) {
+    suppressMessages(coef(
+      m,
+      ci = "pointwise",
+      n1 = 20,
+      n2 = 8,
+      ...
+    ))$ci_meta$crit_used
+  }
+  expect_identical(
+    crit_used(sandwich = "cl2", cl2_adjustment = "exact"),
+    "satterthwaite"
+  )
+  expect_identical(
+    crit_used(sandwich = "cl2", cl2_adjustment = "shortcut"),
+    "z"
+  )
+  expect_identical(crit_used(sandwich = "cluster"), "z")
+  expect_identical(crit_used(sandwich = "none"), "z")
+  expect_identical(
+    eval(formals(coef.pffr)$crit)[1],
+    "auto"
+  )
+})
+
+test_that("predict() and pffr_predict_ci() return per-point crit and df", {
+  skip_on_cran()
+  m <- get_basic_pffr_model()
+  dat <- get_basic_pffr_data()
+  s <- attr(dat, "xindex")
+  fit_cl2 <- suppressWarnings(pffr(
+    Y ~ ff(X1, xind = s) + xlin,
+    yind = attr(dat, "yindex"),
+    data = dat,
+    sandwich = "cl2",
+    cl2_adjustment = "exact"
+  ))
+  p <- predict(fit_cl2, se.fit = TRUE, reformat = FALSE)
+  expect_named(p, c("fit", "se.fit", "crit", "df"))
+  expect_true(all(is.finite(p$df) & p$df >= 1))
+  expect_equal(p$crit, stats::qt(0.975, p$df))
+
+  p_z <- predict(fit_cl2, se.fit = TRUE, reformat = FALSE, crit = "z")
+  expect_equal(p_z$crit, rep(stats::qnorm(0.975), length(p_z$fit)))
+  expect_true(all(is.infinite(p_z$df)))
+  expect_equal(p_z$se.fit, p$se.fit)
+
+  p_90 <- predict(fit_cl2, se.fit = TRUE, reformat = FALSE, level = 0.9)
+  expect_equal(p_90$crit, stats::qt(0.95, p$df))
+  # reformatted output: matrices like fit
+  p_mat <- predict(fit_cl2, se.fit = TRUE)
+  expect_equal(dim(p_mat$df), dim(p_mat$fit))
+
+  ci <- pffr_predict_ci(fit_cl2)
+  expect_identical(attr(ci, "crit_used"), "satterthwaite")
+  expect_equal(ci$df, unname(p$df))
+  expect_equal(ci$upper - ci$fit, stats::qt(0.975, ci$df) * ci$se_link)
+
+  # non-exact covariances keep z
+  expect_identical(
+    attr(pffr_predict_ci(m, sandwich = "cluster"), "crit_used"),
+    "z"
+  )
+  expect_true(all(is.infinite(predict(m, se.fit = TRUE, reformat = FALSE)$df)))
+})
+
+test_that("the auto Satterthwaite default is capped by prediction points", {
+  skip_on_cran()
+  fit_cl2 <- suppressWarnings(pffr(
+    Y ~ xlin,
+    yind = attr(get_basic_pffr_data(), "yindex"),
+    data = get_basic_pffr_data(),
+    sandwich = "cl2",
+    cl2_adjustment = "exact"
+  ))
+  old <- options(refund.pffr_satterthwaite_max_points = 10)
+  on.exit(options(old), add = TRUE)
+  expect_message(
+    p <- predict(fit_cl2, se.fit = TRUE, reformat = FALSE),
+    "Using Gaussian critical values"
+  )
+  expect_true(all(is.infinite(p$df)))
+  p_s <- predict(
+    fit_cl2,
+    se.fit = TRUE,
+    reformat = FALSE,
+    crit = "satterthwaite"
+  )
+  expect_true(all(is.finite(p_s$df)))
+})
+
+test_that("coef() and predict() give the same df for the same contrasts", {
+  skip_on_cran()
+  dat <- get_basic_pffr_data()
+  t <- attr(dat, "yindex")
+  # Without an intercept, the prediction rows at xlin = 1 are exactly the
+  # coefficient-function rows of xlin(t) that coef() evaluates.
+  fit <- suppressWarnings(pffr(
+    Y ~ 0 + xlin,
+    yind = t,
+    data = dat,
+    sandwich = "cl2",
+    cl2_adjustment = "exact"
+  ))
+  co <- coef(fit, ci = "pointwise", n1 = length(t))
+  cf <- co$smterms[[1]]$coef
+  expect_equal(cf[[1]], t)
+
+  nd <- list(xlin = 1)
+  p <- predict(fit, newdata = nd, se.fit = TRUE, reformat = FALSE)
+  ci <- pffr_predict_ci(fit, newdata = nd)
+  expect_equal(as.vector(p$se.fit), cf$se, tolerance = 1e-8)
+  expect_equal(as.vector(p$df), cf$df, tolerance = 1e-8)
+  expect_equal(ci$df, cf$df, tolerance = 1e-8)
+  expect_equal(ci$lower, cf$lower, tolerance = 1e-8)
+})

@@ -24,11 +24,12 @@ testthat::test_that("subject clustering and covariance survive coef predict plot
     fit,
     sandwich = "cl2",
     cluster = subject,
-    crit = "z",
+    crit = "satterthwaite",
     ci = "pointwise",
     n1 = 18
   )
-  testthat::expect_identical(co$ci_meta$crit_used, "z")
+  # exact CL2: Satterthwaite critical values by default
+  testthat::expect_identical(co$ci_meta$crit_used, "satterthwaite")
   testthat::expect_equal(co$smterms, explicit$smterms)
   V <- pffr_vcov(fit)
   B <- fit$Vp

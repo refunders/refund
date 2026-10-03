@@ -1,5 +1,21 @@
 # refund 0.1-38
 
+* Pointwise critical values now default to `crit = "auto"`: Satterthwaite
+  critical values (a separate working-model moment df for every evaluation
+  point) for the exact CL2 sandwich, and Gaussian ones for every other
+  covariance (CR1 `"cluster"`, shortcut CL2, `"hc"`, model-based). Previously
+  the default was `crit = "z"`, and `"auto"` also switched CR1 to
+  Satterthwaite at `G < 150`. This applies to `coef.pffr()`,
+  `pffr_predict_ci()` and `predict.pffr()`. Both prediction functions gain
+  `crit`, and `predict()` also gains `level`; with `se.fit = TRUE` it now
+  returns `crit` and `df` alongside `se.fit`. The df of a prediction row equal
+  those that `coef()` gives for the same contrast. In predictions, `"auto"`
+  computes the df for at most
+  `getOption("refund.pffr_satterthwaite_max_points", 1e4)` points (about
+  0.5-1.5 ms per point) and otherwise falls back to `"z"` with a message. With
+  `bias_ref`, `"auto"` means `"z"`. The small-`G` warning now states what the
+  simulations cover: CL2 with Satterthwaite critical values was evaluated down
+  to `G = 20`.
 * Bias-aware pointwise intervals for NCV fits: `coef.pffr()` gains
   `bias_ref`, and the new `pffr_predict_ci()` gives pointwise intervals for the
   linear predictor or conditional mean (optionally bias-aware). Given a second

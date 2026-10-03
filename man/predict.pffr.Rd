@@ -11,7 +11,9 @@
   type = "link",
   se.fit = FALSE,
   ...,
-  se_method = c("normal", "jackknife")
+  se_method = c("normal", "jackknife"),
+  crit = c("auto", "z", "tG1", "satterthwaite"),
+  level = 0.95
 )
 }
 \arguments{
@@ -49,10 +51,31 @@ comes after \code{...} and must be given by name. Custom jackknife
 groupings are not accepted here (the \code{cluster} dot is
 \code{\link[mgcv]{predict.bam}}'s parallel cluster); use
 \code{\link{pffr_jackknife_se}(object, cluster = )} for that.}
+
+\item{crit}{reference distribution for the critical values returned with
+standard errors (\code{se.fit = TRUE}, \code{type} \code{"link"} or
+\code{"response"}, \code{se_method = "normal"}), as in
+\code{\link{coef.pffr}}: \code{"auto"} (default) uses Satterthwaite
+critical values with a separate df for every prediction point when the
+fit's covariance is the exact CL2 sandwich, and Gaussian ones otherwise;
+\code{"z"}, \code{"tG1"} and \code{"satterthwaite"} force a reference.
+Satterthwaite df cost about 0.5 to 1.5 ms per prediction point (growing
+with the number of clusters), so \code{"auto"} uses Gaussian values with a
+message for more than \code{getOption("refund.pffr_satterthwaite_max_points",
+1e4)} points; an explicit \code{"satterthwaite"} is always computed. Must
+be given by name.}
+
+\item{level}{confidence level of the returned critical values, defaults to
+0.95. Must be given by name.}
 }
 \value{
 If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long format.
  If \code{se == TRUE}, a list with entries \code{fit} and \code{se.fit} containing fits and standard errors, respectively.
+ For \code{type} \code{"link"} or \code{"response"} with
+ \code{se_method = "normal"}, the list also contains \code{crit} and
+ \code{df}, the pointwise critical values for \code{level} and their
+ reference df (\code{Inf} for Gaussian), so that \code{fit -/+ crit * se.fit}
+ are pointwise confidence intervals (see \code{crit}).
  If \code{type == "terms"} or \code{"iterms"} each of these lists is a list of matrices of the same dimension as the response for \code{newdata}
  containing the linear predictor and its se for each term.
 }

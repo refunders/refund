@@ -15,7 +15,8 @@ pffr_predict_ci(
   dof_correction = NULL,
   edf_type = NULL,
   cl2_adjustment = NULL,
-  bias_ref = NULL
+  bias_ref = NULL,
+  crit = c("auto", "z", "tG1", "satterthwaite")
 )
 }
 \arguments{
@@ -43,6 +44,13 @@ smoothing parameters were chosen. If supplied, intervals are bias-aware
 (see the section above). Any second fit of the same model is accepted;
 \eqn{\delta}{delta} is then the contrast between the two estimators, which
 is a smoothing-bias proxy only for the NCV-versus-REML pairing.}
+
+\item{crit}{Reference distribution for the critical value, as in
+[coef.pffr()]: `"auto"` (default) uses per-point Satterthwaite df
+(\eqn{t_\nu}{t_nu} with \eqn{\nu}{nu} from the prediction rows) for the
+exact CL2 sandwich and the Gaussian quantile otherwise; `"z"`, `"tG1"`
+(\eqn{t_{G-1}}{t_(G-1)}) and `"satterthwaite"` force a reference. With
+`bias_ref`, `"auto"` uses `"z"`, the only choice available there.}
 }
 \value{
 A data frame with one row per evaluation point, in the row order of
@@ -51,9 +59,11 @@ A data frame with one row per evaluation point, in the row order of
   `ydata` when `newdata = NULL`), with columns `.obs` (curve), `.index`
   (value of the response index), `fit` (on the scale of `type`), `se_link`
   (variance part, link scale), `delta_link` (link scale; only with
-  `bias_ref`), `lower` and `upper` (on the scale of `type`). Attributes
-  `type`, `level`, `crit_value` and `bias_ref_method` (the reference fit's
-  smoothing-parameter method, or `NA`).
+  `bias_ref`), `df` (reference df of the critical value: `Inf` for `"z"`),
+  `lower` and `upper` (on the scale of `type`). Attributes `type`, `level`,
+  `crit_value` (one value, or one per row for `"satterthwaite"`),
+  `crit_used` and `bias_ref_method` (the reference fit's smoothing-parameter
+  method, or `NA`).
 }
 \description{
 Pointwise Wald intervals for the linear predictor, or for the conditional
@@ -63,9 +73,10 @@ bias-aware widening computed from a second fit of the same model.
 }
 \details{
 Intervals are always built on the link scale,
-\deqn{\hat\eta \pm z_{(1+\mathrm{level})/2}\sqrt{\mathrm{se}^2 +
-  \delta^2},}{eta_hat -/+ z * sqrt(se^2 + delta^2),}
-with \eqn{\delta = 0} unless `bias_ref` is supplied. For
+\deqn{\hat\eta \pm c\,\sqrt{\mathrm{se}^2 +
+  \delta^2},}{eta_hat -/+ c * sqrt(se^2 + delta^2),}
+with \eqn{\delta = 0} unless `bias_ref` is supplied, and the critical value
+\eqn{c} chosen by `crit` (per point for `"satterthwaite"`). For
 `type = "response"` the estimate and both endpoints are mapped through the
 inverse link (so the interval is not symmetric around the estimate); `se`
 and `delta` stay on the link scale.

@@ -20,7 +20,7 @@
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
-  crit = c("z", "auto", "tG1", "satterthwaite"),
+  crit = c("auto", "z", "tG1", "satterthwaite"),
   df_gram = c("full", "diagonal"),
   level = 0.95,
   n_sim = 2000,
@@ -112,11 +112,20 @@ multiplier reference. Pointwise intervals are governed instead by
 
 \item{crit}{Reference distribution for the \emph{pointwise} critical value
 (\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
-\code{"z"} (default) uses the Gaussian quantile. \code{"tG1"} uses
-\eqn{t_{G-1}}. Opt-in \code{"auto"} selects \code{"satterthwaite"} for
-cluster/CL2 covariance with \eqn{G<150}, and \code{"z"} otherwise.
-\code{"satterthwaite"} matches the first two moments of the sampling
-quadratic form using the full cross-cluster residualization Gram:
+\code{"auto"} (default) uses \code{"satterthwaite"} when the standard
+errors come from the exact CL2 sandwich (\code{sandwich = "cl2"} with the
+exact leverage adjustment, which \code{cl2_adjustment = "auto"} selects
+wherever it is feasible), and \code{"z"} for all other covariances (CR1
+\code{"cluster"}, shortcut CL2, \code{"hc"}, model-based): Satterthwaite
+critical values were evaluated only with exact CL2, where they bring
+pointwise coverage of coefficient surfaces and fitted means close to
+nominal at small \eqn{G}, at the cost of wider intervals.
+\code{"z"} uses the Gaussian quantile. \code{"tG1"} uses
+\eqn{t_{G-1}}.
+\code{"satterthwaite"} uses \eqn{t_\nu} with a separate df \eqn{\nu} for
+every evaluation point (returned in column \code{df}), matching the first
+two moments of the sampling quadratic form using the full cross-cluster
+residualization Gram:
 \eqn{\nu(a)=\{\mathrm{tr}(\Gamma)\}^2/\mathrm{tr}(\Gamma^2)}.
 Covariance and df use the same resolved CL2 adjustment and grouping.
 This central Gaussian working-independence calculation fixes smoothing
@@ -124,7 +133,8 @@ parameters and weights. It establishes neither an exact t pivot nor
 calibration for B2, smoothing bias, correlated errors or smoothing
 selection. Undefined df gives missing limits with a warning; requests
 on non-cluster covariance fall back to z with a warning. Simultaneous
-bands are unaffected.}
+bands are unaffected. With \code{bias_ref}, \code{"auto"} uses
+\code{"z"}.}
 
 \item{df_gram}{Gram matrix used by \code{crit = "satterthwaite"}:
 \code{"full"} (default) is the residualized

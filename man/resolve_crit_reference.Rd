@@ -4,27 +4,33 @@
 \alias{resolve_crit_reference}
 \title{Resolve the pointwise critical-value reference for [coef.pffr()]}
 \usage{
-resolve_crit_reference(crit, sandwich_type, G)
+resolve_crit_reference(crit, sandwich_type, G, cl2_adjustment = NULL)
 }
 \arguments{
 \item{crit}{One of `"auto"`, `"z"`, `"tG1"`, `"satterthwaite"`.}
 
 \item{sandwich_type}{The resolved covariance type used for the SEs.}
 
-\item{G}{Number of independent curves / clusters.}
+\item{G}{Number of independent curves / clusters (unused by `"auto"`; kept
+for the callers' interface).}
+
+\item{cl2_adjustment}{The resolved CL2 leverage adjustment of the
+covariance (`"exact"` or `"shortcut"`), or `NULL` if unknown.}
 }
 \value{
 One of `"z"`, `"tG1"`, `"satterthwaite"`.
 }
 \description{
 Maps the user's `crit` (`"auto"`/`"z"`/`"tG1"`/`"satterthwaite"`) to a
-concrete reference. `"auto"` selects the per-point Satterthwaite reference
-when the pointwise SEs come from a cluster-robust sandwich
-(`"cluster"`/`"cl2"`) and the number of independent curves/clusters is
-moderate (`G < 150`), and the Gaussian reference otherwise. An explicit
-`"satterthwaite"` on a non-cluster covariance has no cluster leverage
-structure to match and degrades to `"z"` with a warning; `"tG1"` (the
-\eqn{t_{G-1}} reference, pointwise counterpart of the simultaneous
-`ci_ref = "t"`) uses the curve/cluster count regardless of the covariance.
+concrete reference. `"auto"` (the default) selects the per-point
+Satterthwaite reference when the pointwise SEs come from the exact CL2
+sandwich (`sandwich_type = "cl2"` with `cl2_adjustment = "exact"`), the only
+covariance for which it was evaluated, and the Gaussian reference for
+everything else: CR1 (`"cluster"`), shortcut CL2, `"hc"` and model-based
+covariances. An explicit `"satterthwaite"` on a non-cluster covariance has
+no cluster leverage structure to match and degrades to `"z"` with a
+warning; `"tG1"` (the \eqn{t_{G-1}} reference, pointwise counterpart of the
+simultaneous `ci_ref = "t"`) uses the curve/cluster count regardless of the
+covariance.
 }
 \keyword{internal}
