@@ -23,9 +23,41 @@
 #' overlap contains constant functions, constraints "\eqn{\int \beta(t,s) ds =
 #' 0} for all t" are enforced). See reference for details.\cr A warning is
 #' always given if the effective rank of Cov\eqn{(X(s))} (defined as the number
-#' of eigenvalues accounting for at least 0.995 of the total variance in
-#' \eqn{X_i(s)}) is lower than 4. If \eqn{X_i(s)} is of very low rank,
+#' of eigenvalues of the column-centred \eqn{X} accounting for at least 0.995
+#' of the total variance in \eqn{X_i(s)}) is at most 4. If \eqn{X_i(s)} is of very low rank,
 #' \code{\link{ffpc}}-term may be preferable.
+#'
+#' @section Effective rank and weak identifiability:
+#'
+#' \code{check.ident} also compares the effective rank of Cov\eqn{(X(s))}
+#' against the marginal basis dimension \eqn{k_s} used for \eqn{\beta(t,s)}
+#' along \eqn{s} (i.e. \code{splinepars$k[1]}), and warns whenever the
+#' effective rank is below \eqn{1.5 k_s}. The hard case \eqn{\mathrm{rank} <
+#' k_s} (the surface is identified through the penalty alone) is a special case
+#' of this warning and is flagged explicitly in its message.
+#'
+#' The reason for the margin is that identifiability is not a yes/no property
+#' here: the data only inform \eqn{\beta(t,s)} in directions that the observed
+#' curves span. Once \eqn{k_s} approaches the effective rank, an appreciable
+#' part of a rough true surface lies outside that span, and this component is
+#' returned by the penalty rather than estimated. It is a shared bias floor: it
+#' affects every estimator and every kind of standard error, so both point
+#' estimates and interval coverage for the \code{ff} term become hard to
+#' interpret, and it does not show up as a fitting failure. A factor of about
+#' 1.5 was the smallest margin at which this contamination was negligible in
+#' the simulation studies behind the cluster-robust \code{\link{pffr}}
+#' intervals.
+#'
+#' The effective rank can never exceed \code{min(nrow(X) - 1, ncol(X))}, so with
+#' few curves the warning may be impossible to satisfy at the requested
+#' \eqn{k_s}. Remedies, in order of preference: lower \eqn{k_s} (via
+#' \code{splinepars = list(k = c(k_s, k_t))}); use more or more varied curves;
+#' switch to \code{\link{ffpc}}, which parameterizes the effect in the leading
+#' functional principal components of \eqn{X} and is designed for the low-rank
+#' case. If none of these is possible, the fit is still usable, but conclusions
+#' about \eqn{\beta(t,s)} -- including the width and coverage of its confidence
+#' bands -- should be drawn with that caveat in mind. The check can be switched
+#' off with \code{check.ident = FALSE}.
 #'
 #' @param X an n by \code{ncol(xind)} matrix of function evaluations
 #'   \eqn{X_i(s_{i1}),\dots, X_i(s_{iS})}; \eqn{i=1,\dots,n}.
@@ -41,7 +73,10 @@
 #' @param integration method used for numerical integration. Defaults to
 #'   \code{"simpson"}'s rule for calculating entries in \code{L}. Alternatively
 #'   and for non-equidistant grids, \code{"trapezoidal"} or \code{"riemann"}.
-#'   \code{"riemann"} integration is always used if \code{limits} is specified
+#'   \code{"riemann"} integration is always used if \code{limits} is specified.
+#'   \code{"simpson_legacy"} reproduces the mis-scaled Simpson weights used up
+#'   to refund 0.1-40 (see \code{\link{compute_integration_weights}}) and is
+#'   deprecated; it exists only to reproduce results from older versions.
 #' @param L optional: an n by \code{ncol(xind)} matrix giving the weights for
 #'   the numerical integration over \eqn{s}.
 #' @param limits defaults to NULL for integration across the entire range of
@@ -77,159 +112,191 @@
 # TODO: allow X to be a factor -- would result in one beta(s,t) surface for each level? (?)
 # TODO: by variables
 # TODO: add FAME penalty?
-ff <- function(X,
+ff <- function(
+  X,
   yind = NULL,
-  xind=seq(0, 1, l=ncol(X)),
-  basistype= c("te", "t2", "ti", "s", "tes"),
-  integration=c("simpson", "trapezoidal", "riemann"),
-  L=NULL,
-  limits=NULL,
-  splinepars=if(basistype != "s") {
-    list(bs="ps", m=list(c(2, 1), c(2,1)), k=c(5, 5))
+  xind = seq(0, 1, l = ncol(X)),
+  basistype = c("te", "t2", "ti", "s", "tes"),
+  integration = c("simpson", "trapezoidal", "riemann", "simpson_legacy"),
+  L = NULL,
+  limits = NULL,
+  splinepars = if (basistype != "s") {
+    list(bs = "ps", m = list(c(2, 1), c(2, 1)), k = c(5, 5))
   } else {
-    list(bs="tp", m=NA)
+    list(bs = "tp", m = NA)
   },
-  check.ident=TRUE
-){
+  check.ident = TRUE
+) {
+  # Deprecation warning for yind
+  if (!is.null(yind)) {
+    .Deprecated(
+      msg = paste0(
+        "The 'yind' argument in ff() is deprecated and ignored. ",
+        "The y-index is now obtained automatically from pffr()."
+      )
+    )
+  }
+
   n <- nrow(X)
   nxgrid <- ncol(X)
-  stopifnot(all(!is.na(X)))
 
+  # Validate X has no NA values
+  if (anyNA(X)) {
+    stop("`X` must not contain NA values.")
+  }
 
-  # check & format index for X
-  if(is.null(dim(xind))){
-    xind <- t(as.matrix(xind))
-  }
-  stopifnot(ncol(xind) == nxgrid)
-  if(nrow(xind)== 1){
-    xind <- matrix(as.vector(xind), nrow=n, ncol=nxgrid, byrow=T)
-  } else {
-    stop("<xind> has to be supplied as a vector or matrix with a single row.")
-  }
-  stopifnot(nrow(xind) == n)
-  stopifnot(all.equal(order(xind[1,]), 1:nxgrid))
+  # Validate and expand xind to matrix form
+  xind <- validate_and_expand_xind(xind, n, nxgrid, arg_name = "xind")
 
   basistype <- match.arg(basistype)
   integration <- match.arg(integration)
 
-  # scale xind to [0, 1] and check for reasonably equidistant gridpoints
-  xind.sc <- xind - min(xind)
-  xind.sc <- xind.sc/max(xind.sc)
-  diffXind <- t(round(apply(xind.sc, 1, diff), 3))
-  if(is.null(L) & any(apply(diffXind, 1, function(x) length(unique(x))) != 1) &&
-      # gridpoints for any  X_i(s) not equidistant?
-      integration=="simpson"){
-    message("Non-equidistant grid detected for ", deparse(substitute(X)),
-      ".\n Changing to trapezoidal rule for integration.")
+  # Check for non-equidistant grid and adjust integration method
+  xind_sc <- xind - min(xind)
+  xind_sc <- xind_sc / max(xind_sc)
+  diff_xind <- t(round(apply(xind_sc, 1, diff), 3))
+
+  if (
+    is.null(L) &&
+      any(apply(diff_xind, 1, \(x) length(unique(x))) != 1) &&
+      integration %in% c("simpson", "simpson_legacy")
+  ) {
+    message(
+      "Non-equidistant grid detected for ",
+      deparse(substitute(X)),
+      ".\n Changing to trapezoidal rule for integration."
+    )
     integration <- "trapezoidal"
   }
-  if(!is.null(limits) && integration != "riemann"){
+
+  if (!is.null(limits) && integration != "riemann") {
     integration <- "riemann"
-    message("<limits>-argument detected. ",
-      "Changing to Riemann sums for numerical integration.")
-  }
-  # FIXME: figure out weights for simpson's rule on non-equidistant grids instead of all this...
-
-  #make weight matrix for by-term
-  if(!is.null(L)){
-    stopifnot(nrow(L) == n, ncol(L) == nxgrid)
-    #TODO: check whether supplied L is compatibel with limits argument
-  } else {
-
-    L <- switch(integration,
-      "simpson" = {
-        # \int^b_a f(t) dt = (b-a)/gridlength/3 * [f(a) + 4*f(t_1) + 2*f(t_2) + 4*f(t_3) + 2*f(t_3) +...+ f(b)]
-        ((xind[,nxgrid]-xind[,1])/nxgrid)/3 *
-          matrix(c(1, rep(c(4, 2), length=nxgrid-2), 1), nrow=n, ncol=nxgrid, byrow=T)
-      },
-      "trapezoidal" = {
-        # \int^b_a f(t) dt = .5* sum_i (t_i - t_{i-1}) f(t_i) + f(t_{i-1}) =
-        #	(t_2 - t_1)/2 * f(a=t_1) + sum^{nx-1}_{i=2} ((t_i - t_i-1)/2 + (t_i+1 - t_i)/2) * f(t_i) + ... +
-        #			+ (t_nx - t_{nx-1})/2 * f(b=t_n)
-        diffs <- t(apply(xind, 1, diff))
-        .5 * cbind(diffs[,1],
-          t(apply(diffs, 1, filter, filter=c(1,1)))[,-(nxgrid-1)],
-          diffs[,(nxgrid-1)])
-      },
-      "riemann" = {
-        # simple quadrature rule:
-        # \int^b_a f(t) dt = sum_i (t_i-t_{i-1})*(f(t_i))
-        diffs <- t(apply(xind, 1, diff))
-        #assume delta(t_0=a, t_1) = avg. delta
-        cbind(rep(mean(diffs),n), diffs)
-      }
+    message(
+      "<limits>-argument detected. ",
+      "Changing to Riemann sums for numerical integration."
     )
-
   }
-  LX <- L*X
 
-  if(!is.null(limits)){
-    if(!is.function(limits)){
-      if(!(limits %in% c("s<t","s<=t"))){
-        stop("supplied <limits> argument unknown")
-      }
-      if(limits=="s<t"){
-        limits <- function(s, t){
-          s < t
-        }
-      } else {
-        if(limits=="s<=t"){
-          limits <- function(s, t){
-            (s < t) | (s == t)
-          }
-        }
-      }
+  # Compute integration weights
+  if (!is.null(L)) {
+    if (nrow(L) != n || ncol(L) != nxgrid) {
+      stop("`L` must be a ", n, " x ", nxgrid, " matrix.")
     }
+  } else {
+    L <- compute_integration_weights(xind, integration)
   }
+  LX <- L * X
 
+  # Parse limits argument
+  limits <- build_limits_function(limits)
 
   # assign unique names based on the given args
-  xindname <- paste(deparse(substitute(X)), ".smat", sep="")
-  yindname <- paste(deparse(substitute(X)), ".tmat", sep="")
-  LXname <- paste("L.", deparse(substitute(X)), sep="")
+  xindname <- paste(deparse(substitute(X)), ".smat", sep = "")
+  yindname <- paste(deparse(substitute(X)), ".tmat", sep = "")
+  LXname <- paste("L.", deparse(substitute(X)), sep = "")
 
   # make call
   splinefun <- as.symbol(basistype) # if(basistype=="te") quote(te) else quote(s)
-  frmls <- if(exists(basistype, asNamespace("mgcv"),  inherits = FALSE)) {
-    formals(getFromNamespace(basistype, ns="mgcv"))
+  frmls <- if (exists(basistype, asNamespace("mgcv"), inherits = FALSE)) {
+    formals(getFromNamespace(basistype, ns = "mgcv"))
   } else {
     formals(basistype)
   }
   frmls <- modifyList(frmls[names(frmls) %in% names(splinepars)], splinepars)
   call <- as.call(c(
-    list(splinefun,
+    list(
+      splinefun,
       x = as.symbol(substitute(xindname)),
       z = as.symbol(substitute(yindname)),
-      by =as.symbol(substitute(LXname))),
-    frmls))
+      by = as.symbol(substitute(LXname))
+    ),
+    frmls
+  ))
 
-  if(check.ident){
+  if (check.ident) {
     ## check whether (number of basis functions) < (number of relevant eigenfunctions of X)
-    evX <- svd(X, nu = 0, nv = 0)$d^2
-    maxK <- max(1, min(which((cumsum( evX)/sum(evX)) >= .995)))
-    bsdim <- eval(call)$margin[[1]]$bs.dim
-    if(maxK <= 4)
-      warning("Very low effective rank of <", deparse(match.call()$X),
-        "> detected. ", maxK,
-        " largest eigenvalues of its covariance alone account for >99.5% of ",
-        "variability. <ffpc> might be a better choice here.")
-    if(maxK < bsdim){
-      warning("<k> larger than effective rank of <",deparse(match.call()$X),
-        ">. Model identifiable only through penalty.")
+    ## Effective rank of Cov(X(s)): eigenvalues of the column-centred X, so
+    ## the mean curve does not count as a direction of variation.
+    evX <- svd(scale(X, center = TRUE, scale = FALSE), nu = 0, nv = 0)$d^2
+    maxK <- if (sum(evX) > 0) {
+      max(1, min(which((cumsum(evX) / sum(evX)) >= .995)))
+    } else {
+      1
     }
-    if(basistype!="s"){
+    term_spec <- eval(call)
+    bsdim <- if (!is.null(term_spec$margin)) {
+      term_spec$margin[[1]]$bs.dim
+    } else {
+      term_spec$bs.dim
+    }
+    if (maxK <= 4)
+      warning(
+        "Very low effective rank of <",
+        deparse(match.call()$X),
+        "> detected. ",
+        maxK,
+        " largest eigenvalues of its covariance alone account for >99.5% of ",
+        "variability. <ffpc> might be a better choice here."
+      )
+    ## Weak-identifiability guard. The effective rank of Cov(X(s)) has to
+    ## exceed the marginal basis dimension along s comfortably, not merely
+    ## match it: maxK < bsdim is the hard case (the surface is pinned down by
+    ## the penalty alone), while maxK < 1.5 * bsdim is the practical margin
+    ## below which part of beta(t, s) lies outside the span of the observed
+    ## curves and is therefore not estimable from the data.
+    if (length(bsdim) == 1 && is.finite(bsdim) && bsdim > 0) {
+      if (maxK < 1.5 * bsdim) {
+        warning(
+          "Effective rank of <",
+          deparse(match.call()$X),
+          "> is ",
+          maxK,
+          ", below 1.5 * k = ",
+          format(1.5 * bsdim),
+          " for the k = ",
+          bsdim,
+          " basis functions along <s>",
+          if (maxK < bsdim) {
+            paste0(
+              "; <k> is larger than the effective rank, so the model is ",
+              "identifiable only through the penalty"
+            )
+          } else {
+            ""
+          },
+          ". The coefficient surface is only weakly identified: components of ",
+          "beta(t, s) in directions the observed curves do not span are ",
+          "determined by the penalty alone, so estimates can be biased and ",
+          "interval coverage unreliable in those directions. Reduce k along ",
+          "<s>, or use more / richer curves -- the effective rank cannot ",
+          "exceed min(nrow(X) - 1, ncol(X)) = ",
+          min(n - 1, nxgrid),
+          ". See ?ff (Details) and Scheipl & Greven (2016).",
+          call. = FALSE
+        )
+      }
+    }
+    if (basistype != "s") {
       # check whether span(Null(X)), span(L * B_s%*%Null(penalty)) are disjunct:
       # set up marginal spline basis:
-      smConstr <- get(paste0("smooth.construct.",
-        attr(eval(call)$margin[[1]], "class")))
+      smConstr <- get(paste0(
+        "smooth.construct.",
+        attr(eval(call)$margin[[1]], "class")
+      ))
       basisdata <- list(sort(unique(xind)))
       names(basisdata) <- xindname
-      basis <- smConstr(object=list(term=xindname,
-          bs.dim=ifelse(!is.null(call$k[1]), call$k[1], -1),
-          fixed=FALSE, dim=1,
-          p.order=if(!is.null(call$m)) call$m[[1]] else NA,
-          by=NA),
-        data=basisdata, knots=list())
+      basis <- smConstr(
+        object = list(
+          term = xindname,
+          bs.dim = ifelse(!is.null(call$k[1]), call$k[1], -1),
+          fixed = FALSE,
+          dim = 1,
+          p.order = if (!is.null(call$m)) call$m[[1]] else NA,
+          by = NA
+        ),
+        data = basisdata,
+        knots = list()
+      )
 
       # get condition number of marginal design matrix
       evDs <- svd(LX %*% basis$X, nu = 0, nv = 0)$d^2
@@ -243,41 +310,60 @@ ff <- function(X,
       ## unless diag(L[1,]) is rm'ed from N.pen: non-constant integration wts
       ## seem to implicate higher order eigenfunctions in the kernel as well, e.g.
       ## sv's of N.pen have high frequency oscillations, etc (...waves hands...)
-      N.pen <- diag(L[1,]) %*% basis$X %*% Null(basis$S[[1]])
-      if(any(c(NCOL(N.X) == 0, NCOL(N.pen) == 0))) {
+      N.pen <- diag(L[1, ]) %*% basis$X %*% Null(basis$S[[1]])
+      if (any(c(NCOL(N.X) == 0, NCOL(N.pen) == 0))) {
         nullOverlap <- 0
       } else {
         nullOverlap <- trace_lv(svd(N.X)$u, svd(N.pen)$u)
       }
-      if(nullOverlap > 0.95 & logCondDs > 6){
-        warning("Found badly conditioned design matrix for the functional effect",
-          " and kernel overlap for <", deparse(match.call()$X),
+      if (nullOverlap > 0.95 & logCondDs > 6) {
+        warning(
+          "Found badly conditioned design matrix for the functional effect",
+          " and kernel overlap for <",
+          deparse(match.call()$X),
           "> and the specified basis and penalty. ",
           "Enforcing constraint to force function components in this overlap to 0 ",
           "since coefficient surface is not identifiable in that function space.",
-          "See Scheipl/Greven (2016) for details & alternatives.")
+          "See Scheipl/Greven (2016) for details & alternatives."
+        )
 
         C_overlap <- {
           tmp <- svd(qr.fitted(qr(N.X), N.pen))
-          t(tmp$u[, which(tmp$d > max(tmp$d)*.Machine$double.eps^.66), drop=FALSE]) %*%
+          t(tmp$u[,
+            which(tmp$d > max(tmp$d) * .Machine$double.eps^.66),
+            drop = FALSE
+          ]) %*%
             basis$X
         }
-        if(is.null(call$xt)) {
+        if (is.null(call$xt)) {
           call$xt <- list(C1 = C_overlap)
         } else {
           call$xt <- c(call$xt, C1 = C_overlap)
         }
 
-        call$bs <- c("ps_c",
-          sub(".smooth.spec", "", attr(eval(call)$margin[[2]], "class"), fixed=TRUE))
+        call$bs <- c(
+          "ps_c",
+          sub(
+            ".smooth.spec",
+            "",
+            attr(eval(call)$margin[[2]], "class"),
+            fixed = TRUE
+          )
+        )
         call[[1]] <- as.symbol("ti")
         call$mc <- c(TRUE, FALSE)
       } else {
-
       }
     }
   }
-  return(list(call=call, xind=xind[1,], LX=LX, L=L,
-    xindname=xindname, yindname=yindname,
-    LXname=LXname, limits=limits))
-}#end ff()
+  return(list(
+    call = call,
+    xind = xind[1, ],
+    LX = LX,
+    L = L,
+    xindname = xindname,
+    yindname = yindname,
+    LXname = LXname,
+    limits = limits
+  ))
+} #end ff()

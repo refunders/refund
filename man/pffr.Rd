@@ -14,6 +14,9 @@ pffr(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+  sandwich = TRUE,
+  cluster = NULL,
+  ncv_blocks = c("cluster", "point"),
   ...
 )
 }
@@ -61,6 +64,31 @@ penalty.}
 the global functional intercept. Defaults to \code{list(bs="ps", k=20,
 m=c(2, 1))}, i.e. 20 cubic B-splines bases with first order difference
 penalty.}
+
+\item{sandwich}{Covariance for standard errors and confidence intervals.
+\code{TRUE} (default): the curve-clustered CL2 sandwich, computed at fit
+time; see the section \sQuote{Inference}. \code{FALSE}: the model-based
+(Bayesian posterior) covariance of the working-independence fit with
+Gaussian critical values. Model-based intervals assume independent errors
+within each curve and are too narrow under within-curve dependence, more
+so on dense grids; use them only if that dependence is known to be
+absent. The character values of refund 0.1-40 are deprecated:
+\code{"cl2"} means \code{TRUE}, \code{"none"} means \code{FALSE}, and
+\code{"cluster"} and \code{"hc"} are no longer available and give the CL2
+sandwich.}
+
+\item{cluster}{Optional grouping with one nonmissing entry per curve,
+evaluated in \code{data}. With several curves per subject, cluster by
+subject: the CL2 sandwich (and, for \code{method = "NCV"}, the
+neighbourhoods) then treat subjects, not curves, as the independent units.
+This leaves fewer clusters and does not address dependence between
+subjects. Supported for densely observed responses only.}
+
+\item{ncv_blocks}{For \code{method = "NCV"}, \code{"cluster"} (default)
+leaves out each whole curve, or each group of curves defined by
+\code{cluster}. \code{"point"} uses leave-one-point-out NCV for comparisons.
+A supplied \code{nei} in \code{...} takes precedence; its indices
+must refer to retained model-frame rows, after response omissions.}
 
 \item{...}{additional arguments that are valid for \code{\link[mgcv]{gam}},
 \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
@@ -165,6 +193,30 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   matrix is number of observations times number of evaluations of \eqn{Y(t)}
   per observation.\cr
 
+  When a \code{rho} argument (as defined in \code{\link[mgcv]{bam}}) is supplied,
+  \code{pffr} automatically constructs the required \code{AR.start} indicator
+  so that residuals can follow an AR(1) process along the functional response.
+  This facility is available for \code{algorithm = "bam"} fits that use
+  \code{method = "fREML"}. For non-Gaussian families, \code{discrete = TRUE}
+  is required; \code{pffr} will set this automatically if needed, mirroring
+  the constraints documented in \code{\link[mgcv]{bam}}.\cr
+
+  The following automatic defaults apply when \code{rho} is supplied:
+  \itemize{
+    \item \code{algorithm} auto-switches to \code{"bam"} (errors if the user
+      explicitly requests a non-\code{bam} algorithm)
+    \item \code{method} auto-switches to \code{"fREML"} (errors if the user
+      explicitly supplies a different method)
+    \item \code{discrete} is auto-set to \code{TRUE} for non-Gaussian families
+      (errors if the user explicitly supplies \code{discrete = FALSE})
+    \item \code{sandwich} resolves to \code{FALSE} (model-based
+      intervals, with a message) when left at its default: the sandwich
+      assumes working-independence scores and is not valid for the
+      AR(1)-whitened fit. An explicit \code{sandwich = TRUE} errors.
+  }
+  Explicit user overrides that conflict with these constraints will produce
+  an informative error.\cr
+
   Note that \code{pffr} does not use \code{mgcv}'s default identifiability
   constraints (i.e., \eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0} or
   \eqn{\sum_{i,t} \hat f(x_i, t) = 0}) for tensor product terms whose
@@ -193,12 +245,122 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   variance function over $t$ for responses $Y(t)$.
 }
 
+\section{Inference}{
+
+By default (\code{sandwich = TRUE}) standard errors and intervals use the
+curve-clustered CL2 sandwich: per-curve (or per-\code{cluster}) score sums
+of the working-independence fit, each adjusted by the full block of the
+penalized hat matrix \eqn{H},
+\eqn{A_g = \{(I - H)^2\}_{gg}^{-1/2}}{A_g = ((I - H)^2)_gg^(-1/2)}
+(Bell and McCaffrey), in the Bayesian form that adds \eqn{V_p - V_e} to the
+sandwich. Pointwise intervals from \code{\link{coef.pffr}},
+\code{\link{predict.pffr}} and \code{\link{pffr_predict_ci}} use
+Satterthwaite critical values, i.e. \eqn{t_\nu}{t_nu} quantiles with a
+separate working-model moment df \eqn{\nu}{nu} for every evaluation point.
+Fit by REML (the default) for inference. In simulations with Gaussian, count
+and binary responses, dependent and independent errors and 20 to 100
+curves, these intervals covered the mean, coefficient surfaces and
+coefficient functions of scalar covariates close to the nominal level; they
+are wide for coefficient surfaces. Only pointwise intervals were evaluated.
+The following are exceptions or caveats:
+\itemize{
+  \item With fewer than 40 curves or clusters \code{pffr()} warns once at
+    fit time (class \code{"pffr_small_G_warning"}): the procedure was
+    evaluated down to 20 curves; treat intervals as approximate.
+  \item For binary responses a message (once per session) states that
+    intervals for the functional intercept and for coefficient functions of
+    scalar covariates can undercover, also with Satterthwaite critical
+    values. Intervals for count responses whose curves are misregistered
+    (observed on their own clocks) undercover as well.
+  \item Families: exponential-family responses (including quasi families)
+    use their exact scores, \code{gaulss} and \code{scat} exact
+    (two-block) scores. Other extended families (\code{nb}, \code{tw},
+    \code{betar}, \code{ocat}, ...) use the exponential-family
+    working-residual approximation to the score, with a warning once per
+    session. Families without a cluster score path (those defining their
+    own \code{family$sandwich}, e.g. \code{multinom}), the
+    \code{"gamm"}/\code{"gamm4"} algorithms and fits with a single curve
+    fall back to model-based intervals with a message (a warning if
+    \code{sandwich = TRUE} was given explicitly).
+  \item The full-block adjustment grows with the number of curves, the
+    curve length and the basis dimension, but stays well below the cost of
+    the fit (a few seconds for 100 or 300 curves of 60 points with 104
+    coefficients, against 15 and 60 seconds for the REML fit); there is no
+    upper limit on the number of curves.
+    \code{\link{predict.pffr}} and \code{\link{pffr_predict_ci}} compute
+    Satterthwaite df for at most
+    \code{getOption("refund.pffr_satterthwaite_max_points", 1e4)}
+    prediction points and use Gaussian critical values beyond that, with a
+    message. Where a df is undefined (a contrast with zero sampling
+    variance) the Gaussian critical value is used, with a message.
+  \item \code{\link{summary.pffr}} reports mgcv's model-based tests;
+    \code{\link{plot.pffr}} draws mgcv's bands of \eqn{\pm 2}{+/- 2} CL2
+    standard errors. Use \code{\link{coef.pffr}} with
+    \code{ci = "pointwise"} for the intervals described here.
+}
+Storage: the fit's model-based (Bayesian posterior) covariance matrices
+\code{$Vp}, \code{$Vc} and \code{$Ve} are left exactly as
+\code{\link[mgcv]{gam}} produced them; the CL2 covariance is stored in
+\code{$pffr$Vsandwich} (with metadata in \code{$pffr$sandwich_info}) and
+returned by \code{\link{vcov.pffr}}. mgcv's generics applied to the
+underlying gam report model-based uncertainty.
+}
+
+\section{Neighbourhood cross-validation}{
+
+With mgcv >= 1.9, \code{method = "NCV"} targets prediction of whole new
+curves (or clusters). Leaving out single points can undersmooth severely
+when errors within curves are dependent. Under within-curve dependence REML
+undersmooths and its estimate of a coefficient surface is noisy, while
+curve-blocked NCV smooths more and estimates the surface's shape better.
+Use the NCV fit's estimate to describe the shape of coefficient surfaces,
+and a REML fit of the same model with the default CL2 intervals for
+inference: intervals centred at the NCV estimate undercover, so do not use
+the NCV fit's intervals for inference (\code{\link{coef.pffr}} and the
+prediction functions say so once per session). For the intercept, effects
+of scalar covariates and fitted means, the REML fit gives both estimate and
+intervals.
+Blocked NCV typically costs roughly
+3--5 times as much as REML, depending on the model and block sizes.
+Supported backends are \code{algorithm = "gam"} and \code{algorithm = "bam"}.
+An unspecified algorithm selects gam even for large data. For bam, pffr sets
+\code{discrete = TRUE}; explicitly supplying \code{discrete = FALSE} errors.
+Discrete NCV inverts a matrix of side equal to the neighbourhood size for
+each neighbourhood. It is usually slower than gam for whole-curve blocks;
+\code{nei$sample} can reduce the cost (see \code{\link[mgcv]{bam}}).
+Nonzero \code{rho} (AR1 residuals) is unavailable with NCV and errors.
+With bam, all neighbourhoods must have the same size: mgcv's discrete NCV
+(checked for 1.9-3 and 1.9-4) corrupts memory when they differ, so curves
+with missing responses or irregular grids stop with an error; use
+\code{algorithm = "gam"} for those.
+gamm and gamm4 do not provide this NCV selector. \code{subset} is unsupported.
+Missing dense response values are allowed with \code{na.action = na.omit};
+\code{na.exclude} padding and additional model-frame omissions cause an
+error. Sparse responses use the supplied \code{ydata} row order; custom
+\code{cluster} grouping for sparse responses remains unsupported.
+For both backends, user-supplied \code{nei} indices refer to retained
+model-frame rows. Bam requires the \code{a/ma/d/md} neighbourhood names
+(not the older gam names \code{k/m/i/mi}); its documented defaults for
+omitted prediction indices apply. Pffr removes missing response rows before
+bam's fresh setup, including corresponding weights and offsets, so bam
+receives these retained-row indices without a second NA translation.
+Smoothing parameters supplied via \code{sp} must be either all fixed or all
+free: mgcv (up to at least 1.9-4) fails in its NCV optimizer when only some
+are fixed.
+Generated neighbourhoods use \code{jackknife = FALSE}, retaining model-based
+covariance for the sandwich machinery. The first NCV call checks that the
+installed mgcv honours blocks, cached separately for each backend. The fit
+records \code{blocks}, \code{n_blocks}
+and \code{nei} in \code{fit$pffr$ncv}. Model-based covariance falls back to
+\code{Vp} when smoothing-parameter uncertainty covariance is unavailable.
+}
+
 \examples{
 ###############################################################################
 # univariate model:
 # Y(t) = f(t)  + \int X1(s)\beta(s,t)ds + eps
 set.seed(2121)
-data1 <- pffrSim(scenario="ff", n=40)
+data1 <- pffr_simulate(Y ~ ff(X1), n=40)
 t <- attr(data1, "yindex")
 s <- attr(data1, "xindex")
 m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
@@ -210,7 +372,7 @@ plot(m1, pages=1)
 # multivariate model:
 # E(Y(t)) = \beta_0(t)  + \int X1(s)\beta_1(s,t)ds + xlin \beta_3(t) +
 #        f_1(xte1, xte2) + f_2(xsmoo, t) + \beta_4 xconst
-data2 <- pffrSim(scenario="all", n=200)
+data2 <- pffr_simulate(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=200)
 t <- attr(data2, "yindex")
 s <- attr(data2, "xindex")
 m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
@@ -224,7 +386,7 @@ summary(m2)
 plot(m2)
 str(coef(m2))
 # convenience functions:
-preddata <- pffrSim(scenario="all", n=20)
+preddata <- pffr_simulate(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=20)
 str(predict(m2, newdata=preddata))
 str(predict(m2, type="terms"))
 cm2 <- coef(m2)
@@ -235,7 +397,7 @@ str(cm2$smterms[["s(xsmoo)"]]$coef)
 #############################################################################
 # sparse data (80\% missing on a regular grid):
 set.seed(88182004)
-data3 <- pffrSim(scenario=c("int", "smoo"), n=100, propmissing=0.8)
+data3 <- pffr_simulate(Y ~ 1 + s(xsmoo), n=100, propmissing=0.8)
 t <- attr(data3, "yindex")
 m3.sparse <- pffr(Y ~ s(xsmoo), data=data3$data, ydata=data3$ydata, yind=t)
 summary(m3.sparse)

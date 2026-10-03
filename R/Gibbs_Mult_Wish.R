@@ -28,48 +28,62 @@
 #'
 #' @references
 #' Goldsmith, J., Kitago, T. (2016).
-#' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
+#' Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 #' Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 #' Series C}, 65 215-236.
 #'
 #' @author Jeff Goldsmith \email{ajg2202@@cumc.columbia.edu}
 #' @importFrom splines bs
+#' @return A list of class \code{"fosr"} containing posterior mean estimates
+#'   (\code{beta.hat}), credible bounds (\code{beta.UB}, \code{beta.LB}),
+#'   and fitted values (\code{Yhat}).
 #' @importFrom MASS mvrnorm
 #' @importFrom stats rWishart
 #' @export
 #'
-gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 5000, N.burn = 1000, alpha = .1,
-                           Az = NULL, Bz = NULL, Aw = NULL, Bw = NULL, v = NULL, SEED = NULL){
-
+gibbs_mult_wish = function(
+  formula,
+  Kt = 5,
+  data = NULL,
+  verbose = TRUE,
+  N.iter = 5000,
+  N.burn = 1000,
+  alpha = .1,
+  Az = NULL,
+  Bz = NULL,
+  Aw = NULL,
+  Bw = NULL,
+  v = NULL,
+  SEED = NULL
+) {
   call <- match.call()
   tf <- terms.formula(formula, specials = "re")
   trmstrings <- attr(tf, "term.labels")
   specials <- attr(tf, "specials")
-  where.re <-specials$re - 1
+  where.re <- specials$re - 1
   if (length(where.re) != 0) {
     mf_fixed <- model.frame(tf[-where.re], data = data)
     formula = tf[-where.re]
     responsename <- attr(tf, "variables")[2][[1]]
     ###
     REs = list(NA, NA)
-    REs[[1]] = names(eval(parse(text=attr(tf[where.re], "term.labels")), envir=data)$data)
-    REs[[2]]=paste0("(1|",REs[[1]],")")
+    REs[[1]] = names(
+      eval(parse(text = attr(tf[where.re], "term.labels")), envir = data)$data
+    )
+    REs[[2]] = paste0("(1|", REs[[1]], ")")
     ###
     formula2 <- paste(responsename, "~", REs[[1]], sep = "")
     newfrml <- paste(responsename, "~", REs[[2]], sep = "")
     newtrmstrings <- attr(tf[-where.re], "term.labels")
-    formula2 <- formula(paste(c(formula2, newtrmstrings),
-                              collapse = "+"))
+    formula2 <- formula(paste(c(formula2, newtrmstrings), collapse = "+"))
     newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse = "+"))
     mf <- model.frame(formula2, data = data)
     if (length(data) == 0) {
       Z = lme4::mkReTrms(lme4::findbars(newfrml), fr = mf)$Zt
-    }
-    else {
+    } else {
       Z = lme4::mkReTrms(lme4::findbars(newfrml), fr = data)$Zt
     }
-  }
-  else {
+  } else {
     mf_fixed <- model.frame(tf, data = data)
   }
   mt_fixed <- attr(mf_fixed, "terms")
@@ -81,7 +95,9 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
   # automatically adds in intercept
   X <- model.matrix(mt_fixed, mf_fixed, contrasts)
 
-  if(!is.null(SEED)) { set.seed(SEED) }
+  if (!is.null(SEED)) {
+    set.seed(SEED)
+  }
 
   ## fixed and random effect design matrices
   W.des = X
@@ -94,22 +110,27 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
   p = dim(W.des)[2]
 
   ## bspline basis and penalty matrix
-  Theta = bs(1:D, df=Kt, intercept=TRUE, degree=3)
+  Theta = bs(1:D, df = Kt, intercept = TRUE, degree = 3)
 
   diff0 = diag(1, D, D)
-  diff2 = matrix(rep(c(1,-2,1, rep(0, D-2)), D-2)[1:((D-2)*D)], D-2, D, byrow = TRUE)
+  diff2 = matrix(
+    rep(c(1, -2, 1, rep(0, D - 2)), D - 2)[1:((D - 2) * D)],
+    D - 2,
+    D,
+    byrow = TRUE
+  )
   P0 = t(Theta) %*% t(diff0) %*% diff0 %*% Theta
   P2 = t(Theta) %*% t(diff2) %*% diff2 %*% Theta
-  P.mat = alpha * P0 + (1-alpha) * P2
+  P.mat = alpha * P0 + (1 - alpha) * P2
 
   SUBJ = factor(apply(Z.des %*% 1:dim(Z.des)[2], 1, sum))
 
   ## find first observation
   firstobs = rep(NA, length(unique(SUBJ)))
-  for(i in 1:length(unique(SUBJ))){
+  for (i in 1:length(unique(SUBJ))) {
     firstobs[i] = which(SUBJ %in% unique(SUBJ)[i])[1]
   }
-  Wi = W.des[firstobs,]
+  Wi = W.des[firstobs, ]
 
   ## data organization; these computations only need to be done once
   Y.vec = as.vector(t(Y))
@@ -120,10 +141,10 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
 
   ## initial estimation and hyperparameter choice
   mu.q.BZ = matrix(NA, nrow = Kt, ncol = I)
-  for(subj in 1:length(unique(SUBJ))){
-    mu.q.BZ[,subj] = solve(kronecker(Ji[subj], t(Theta) %*% Theta)) %*% t(kronecker(rep(1, Ji[subj]), Theta)) %*%
-      (as.vector(t(Y[which(SUBJ == unique(SUBJ)[subj]),])))
-
+  for (subj in 1:length(unique(SUBJ))) {
+    mu.q.BZ[, subj] = solve(kronecker(Ji[subj], t(Theta) %*% Theta)) %*%
+      t(kronecker(rep(1, Ji[subj]), Theta)) %*%
+      (as.vector(t(Y[which(SUBJ == unique(SUBJ)[subj]), ])))
   }
   vec.BZ = as.vector(mu.q.BZ)
 
@@ -132,10 +153,17 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
 
   Yhat = as.matrix(Z.des %*% t(mu.q.BZ) %*% t(Theta))
 
-  if(is.null(v)){
+  if (is.null(v)) {
     fpca.temp = fpca.sc(Y = Y - Yhat, pve = .95, var = TRUE)
-    cov.hat = fpca.temp$efunctions %*% tcrossprod(diag(fpca.temp$evalues, nrow = length(fpca.temp$evalues),
-                                                       ncol = length(fpca.temp$evalues)), fpca.temp$efunctions)
+    cov.hat = fpca.temp$efunctions %*%
+      tcrossprod(
+        diag(
+          fpca.temp$evalues,
+          nrow = length(fpca.temp$evalues),
+          ncol = length(fpca.temp$evalues)
+        ),
+        fpca.temp$efunctions
+      )
     cov.hat = cov.hat + diag(fpca.temp$sigma2, D, D)
     Psi = cov.hat * IJ
   } else {
@@ -143,50 +171,74 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
   }
 
   v = ifelse(is.null(v), IJ, v)
-  inv.sig = solve(Psi/v)
+  inv.sig = solve(Psi / v)
 
-  Az = ifelse(is.null(Az), I*Kt/2, Az)
-  Bz = b.q.lambda.BZ = ifelse(is.null(Bz), .5*sum(diag((t(mu.q.BZ) - Wi %*% t(mu.q.BW)) %*% P.mat %*% t(t(mu.q.BZ) - Wi %*% t(mu.q.BW)))), Bz)
+  Az = ifelse(is.null(Az), I * Kt / 2, Az)
+  Bz = b.q.lambda.BZ = ifelse(
+    is.null(Bz),
+    .5 *
+      sum(diag(
+        (t(mu.q.BZ) - Wi %*% t(mu.q.BW)) %*%
+          P.mat %*%
+          t(t(mu.q.BZ) - Wi %*% t(mu.q.BW))
+      )),
+    Bz
+  )
 
-  Aw = ifelse(is.null(Aw), Kt/2, Aw)
-  if(is.null(Bw)){
-    Bw = b.q.lambda.BW = sapply(1:p, function(u) max(1, .5*sum(diag( t(mu.q.BW[,u]) %*% P.mat %*% (mu.q.BW[,u])))))
+  Aw = ifelse(is.null(Aw), Kt / 2, Aw)
+  if (is.null(Bw)) {
+    Bw = b.q.lambda.BW = sapply(
+      1:p,
+      function(u)
+        max(1, .5 * sum(diag(t(mu.q.BW[, u]) %*% P.mat %*% (mu.q.BW[, u]))))
+    )
   } else {
     Bw = b.q.lambda.BW = rep(Bw, p)
   }
 
   ## matrices to store within-iteration estimates
   BW = array(NA, c(Kt, p, N.iter))
-    BW[,,1] = bw = matrix(rnorm(Kt * p, 0, 10), Kt, p)
+  BW[,, 1] = bw = matrix(rnorm(Kt * p, 0, 10), Kt, p)
   BZ = array(NA, c(Kt, I, N.iter))
-    BZ[,,1] = bz = matrix(rnorm(Kt * I, 0, 10),  Kt, I)
+  BZ[,, 1] = bz = matrix(rnorm(Kt * I, 0, 10), Kt, I)
   INV.SIG = array(NA, c(D, D, N.iter))
-    INV.SIG[,,1] = inv.sig = diag(10, D, D)
+  INV.SIG[,, 1] = inv.sig = diag(10, D, D)
   LAMBDA.BW = matrix(NA, nrow = N.iter, ncol = p)
-    LAMBDA.BW[1,] = lambda.bw = runif(p, .1, 10)
+  LAMBDA.BW[1, ] = lambda.bw = runif(p, .1, 10)
   LAMBDA.BZ = rep(NA, N.iter)
-    LAMBDA.BZ[1] = lambda.ranef = runif(1, .1, 10)
+  LAMBDA.BZ[1] = lambda.ranef = runif(1, .1, 10)
 
   y.post = array(NA, dim = c(IJ, D, (N.iter - N.burn)))
 
-  if(verbose) { cat("Beginning Sampler \n") }
+  if (verbose) {
+    cat("Beginning Sampler \n")
+  }
 
-  for(i in 1:N.iter){
-
+  for (i in 1:N.iter) {
     ###############################################################
     ## update b-spline parameters for subject random effects
     ###############################################################
 
-    for(subj in 1:length(unique(SUBJ))){
-
+    for (subj in 1:length(unique(SUBJ))) {
       t.designmat.Z = t(kronecker(rep(1, Ji[subj]), Theta))
 
-      sigma = solve(t.designmat.Z %*% kronecker(diag(1, Ji[subj], Ji[subj]), inv.sig) %*% t(t.designmat.Z) +
-                    (lambda.ranef) * P.mat)
-      mu = sigma %*% (t.designmat.Z %*% kronecker(diag(1, Ji[subj], Ji[subj]), inv.sig) %*% (as.vector(t(Y[which(SUBJ == unique(SUBJ)[subj]),]))) +
-                       ((lambda.ranef) * P.mat) %*% bw %*% (Wi[subj,]))
+      sigma = solve(
+        t.designmat.Z %*%
+          kronecker(diag(1, Ji[subj], Ji[subj]), inv.sig) %*%
+          t(t.designmat.Z) +
+          (lambda.ranef) * P.mat
+      )
+      mu = sigma %*%
+        (t.designmat.Z %*%
+          kronecker(diag(1, Ji[subj], Ji[subj]), inv.sig) %*%
+          (as.vector(t(Y[which(SUBJ == unique(SUBJ)[subj]), ]))) +
+          ((lambda.ranef) * P.mat) %*% bw %*% (Wi[subj, ]))
 
-      bz[,subj] = matrix(mvrnorm(1, mu = mu, Sigma = sigma), nrow = Kt, ncol = 1)
+      bz[, subj] = matrix(
+        mvrnorm(1, mu = mu, Sigma = sigma),
+        nrow = Kt,
+        ncol = 1
+      )
     }
     ranef.cur = Z.des %*% t(bz) %*% t(Theta)
 
@@ -194,7 +246,7 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     ## update b-spline parameters for fixed effects
     ###############################################################
 
-    sigma = solve( kronecker(diag(lambda.bw), P.mat) + ((lambda.ranef) * tWIW) )
+    sigma = solve(kronecker(diag(lambda.bw), P.mat) + ((lambda.ranef) * tWIW))
     mu = sigma %*% ((lambda.ranef) * tWI %*% as.vector(bz))
 
     bw = matrix(mvrnorm(1, mu = mu, Sigma = sigma), nrow = Kt, ncol = p)
@@ -206,41 +258,52 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
     ###############################################################
 
     resid.cur = Y - ranef.cur
-    inv.sig = rWishart(1, v + IJ, solve(Psi + t(resid.cur) %*% resid.cur))[,,1]
+    inv.sig = rWishart(1, v + IJ, solve(Psi + t(resid.cur) %*% resid.cur))[,, 1]
 
     ###############################################################
     ## update variance components
     ###############################################################
 
     ## lambda for beta's
-    for(term in 1:p){
-      a.post = Aw + Kt/2
-      b.post = Bw[term] + 1/2 * bw[,term] %*% P.mat %*% bw[,term]
+    for (term in 1:p) {
+      a.post = Aw + Kt / 2
+      b.post = Bw[term] + 1 / 2 * bw[, term] %*% P.mat %*% bw[, term]
       lambda.bw[term] = rgamma(1, a.post, b.post)
     }
 
     ## lambda for random effects
-    a.post = Az + I*Kt/2
-    b.post = Bz + .5 * sum(sapply(1:I, function(u) (t(bz[,u]) - Wi[u,] %*% t(bw)) %*% P.mat %*% t(t(bz[,u]) - Wi[u,] %*% t(bw)) ))
+    a.post = Az + I * Kt / 2
+    b.post = Bz +
+      .5 *
+        sum(sapply(
+          1:I,
+          function(u)
+            (t(bz[, u]) - Wi[u, ] %*% t(bw)) %*%
+              P.mat %*%
+              t(t(bz[, u]) - Wi[u, ] %*% t(bw))
+        ))
     lambda.ranef = rgamma(1, a.post, b.post)
 
     ###############################################################
     ## save this iteration's parameters
     ###############################################################
 
-    BW[,,i] = as.matrix(bw)
-    BZ[,,i] = as.matrix(bz)
+    BW[,, i] = as.matrix(bw)
+    BZ[,, i] = as.matrix(bz)
 
-    INV.SIG[,,i] = inv.sig
-    LAMBDA.BW[i,] = lambda.bw
+    INV.SIG[,, i] = inv.sig
+    LAMBDA.BW[i, ] = lambda.bw
     LAMBDA.BZ[i] = lambda.ranef
 
-    if(i > N.burn){
-      y.post[,,i - N.burn] = ranef.cur
+    if (i > N.burn) {
+      y.post[,, i - N.burn] = ranef.cur
     }
 
-    if(verbose) { if(round(i %% (N.iter/10)) == 0) {cat(".")} }
-
+    if (verbose) {
+      if (round(i %% (N.iter / 10)) == 0) {
+        cat(".")
+      }
+    }
   }
 
   ###############################################################
@@ -249,38 +312,41 @@ gibbs_mult_wish = function(formula, Kt=5, data=NULL, verbose = TRUE, N.iter = 50
 
   ## main effects
   beta.post = array(NA, dim = c(p, D, (N.iter - N.burn)))
-  for(n in 1:(N.iter - N.burn)){
-    beta.post[,,n] = t(BW[,, n + N.burn]) %*% t(Theta)
+  for (n in 1:(N.iter - N.burn)) {
+    beta.post[,, n] = t(BW[,, n + N.burn]) %*% t(Theta)
   }
-  beta.pm = apply(beta.post, c(1,2), mean)
-  beta.LB = apply(beta.post, c(1,2), quantile, c(.025))
-  beta.UB = apply(beta.post, c(1,2), quantile, c(.975))
+  beta.pm = apply(beta.post, c(1, 2), mean)
+  beta.LB = apply(beta.post, c(1, 2), quantile, c(.025))
+  beta.UB = apply(beta.post, c(1, 2), quantile, c(.975))
 
   ## random effects
   b.pm = matrix(NA, nrow = I, ncol = D)
-  for(i in 1:I){
-  	b.post = matrix(NA, nrow = (N.iter - N.burn), ncol = D)
-  	for(n in 1:(N.iter - N.burn)){
-  	  b.post[n,] = BZ[,i, n + N.burn] %*% t(Theta)
-  	}
-  	b.pm[i,] = apply(b.post, 2, mean)
+  for (i in 1:I) {
+    b.post = matrix(NA, nrow = (N.iter - N.burn), ncol = D)
+    for (n in 1:(N.iter - N.burn)) {
+      b.post[n, ] = BZ[, i, n + N.burn] %*% t(Theta)
+    }
+    b.pm[i, ] = apply(b.post, 2, mean)
   }
 
   ## covariance matrix
-  sig.pm = solve(apply(INV.SIG, c(1,2), mean))
+  sig.pm = solve(apply(INV.SIG, c(1, 2), mean))
 
   ## export fitted values
   fixef.pm = W.des %*% beta.pm
   ranef.pm = Z.des %*% b.pm
-  Yhat = apply(y.post, c(1,2), mean)
+  Yhat = apply(y.post, c(1, 2), mean)
 
-  data = if(is.null(data)) { mf_fixed }  else { data }
+  data = if (is.null(data)) {
+    mf_fixed
+  } else {
+    data
+  }
 
   ret = list(beta.pm, beta.UB, beta.LB, Yhat, mt_fixed, data)
   names(ret) = c("beta.hat", "beta.UB", "beta.LB", "Yhat", "terms", "data")
   class(ret) = "fosr"
   ret
-
 }
 
 ###############################################################
