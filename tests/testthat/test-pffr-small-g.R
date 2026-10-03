@@ -1,7 +1,7 @@
 #--------------------------------------
-# Small-cluster-count warning (plan S-C, amended 2026-09-08: threshold is
-# G < 40, the paper's own recommendation boundary for pffr_coefboot(), not
-# the earlier G < 20 draft). pffr() warns once, at fit time, when the
+# Small-cluster-count warning (threshold G < 40; the text states that CL2
+# with Satterthwaite critical values was evaluated down to G = 20). pffr()
+# warns once, at fit time, when the
 # resolved sandwich is "cluster" or "cl2" and the number of clusters G is
 # below 40. The warning carries class "pffr_small_G_warning" so it can be
 # muffled by class.
@@ -33,7 +33,7 @@ test_that("cl2 at G < 40 emits exactly one pffr_small_G_warning", {
   )
   expect_length(warnings_seen, 1)
   expect_match(warnings_seen, "Only G = 15 clusters")
-  expect_match(warnings_seen, "pffr_coefboot")
+  expect_match(warnings_seen, "evaluated down to G = 20")
   expect_identical(fit$pffr$sandwich_info$G, 15L)
 })
 

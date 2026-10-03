@@ -198,9 +198,10 @@
 #'   stability require separate validation, particularly at small G.
 #'
 #'   Small-\eqn{G} warning: when \code{sandwich} resolves to \code{"cluster"}
-#'   or \code{"cl2"} and the number of clusters \eqn{G} is below 40 (the
-#'   threshold below which the paper benchmark recommends the refitting curve
-#'   bootstrap instead of a plug-in Wald interval), \code{pffr()} emits a
+#'   or \code{"cl2"} and the number of clusters \eqn{G} is below 40, so that
+#'   intervals rest on few independent units (CL2 intervals with
+#'   Satterthwaite critical values were evaluated down to \eqn{G = 20}),
+#'   \code{pffr()} emits a
 #'   single \code{\link{warning}} of class \code{"pffr_small_G_warning"}. It
 #'   fires once, at fit time; \code{\link{coef.pffr}}, \code{\link{plot.pffr}}
 #'   and \code{\link{predict.pffr}} do not repeat it. Muffle it explicitly

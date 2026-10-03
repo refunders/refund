@@ -51,10 +51,29 @@
 #'  groupings are not accepted here (the \code{cluster} dot is
 #'  \code{\link[mgcv]{predict.bam}}'s parallel cluster); use
 #'  \code{\link{pffr_jackknife_se}(object, cluster = )} for that.
+#' @param crit reference distribution for the critical values returned with
+#'  standard errors (\code{se.fit = TRUE}, \code{type} \code{"link"} or
+#'  \code{"response"}, \code{se_method = "normal"}), as in
+#'  \code{\link{coef.pffr}}: \code{"auto"} (default) uses Satterthwaite
+#'  critical values with a separate df for every prediction point when the
+#'  fit's covariance is the exact CL2 sandwich, and Gaussian ones otherwise;
+#'  \code{"z"}, \code{"tG1"} and \code{"satterthwaite"} force a reference.
+#'  Satterthwaite df cost about 0.5 to 1.5 ms per prediction point (growing
+#'  with the number of clusters), so \code{"auto"} uses Gaussian values with a
+#'  message for more than \code{getOption("refund.pffr_satterthwaite_max_points",
+#'  1e4)} points; an explicit \code{"satterthwaite"} is always computed. Must
+#'  be given by name.
+#' @param level confidence level of the returned critical values, defaults to
+#'  0.95. Must be given by name.
 #' @param ...  additional arguments passed on to \code{\link[mgcv]{predict.gam}()}
 #' @seealso \code{\link[mgcv]{predict.gam}()}, \code{\link{pffr_jackknife_se}}
 #' @return If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long format.
 #'  If \code{se == TRUE}, a list with entries \code{fit} and \code{se.fit} containing fits and standard errors, respectively.
+#'  For \code{type} \code{"link"} or \code{"response"} with
+#'  \code{se_method = "normal"}, the list also contains \code{crit} and
+#'  \code{df}, the pointwise critical values for \code{level} and their
+#'  reference df (\code{Inf} for Gaussian), so that \code{fit -/+ crit * se.fit}
+#'  are pointwise confidence intervals (see \code{crit}).
 #'  If \code{type == "terms"} or \code{"iterms"} each of these lists is a list of matrices of the same dimension as the response for \code{newdata}
 #'  containing the linear predictor and its se for each term.
 #' @export
@@ -68,17 +87,22 @@ predict.pffr <- function(
   type = "link",
   se.fit = FALSE,
   ...,
-  se_method = c("normal", "jackknife")
+  se_method = c("normal", "jackknife"),
+  crit = c("auto", "z", "tG1", "satterthwaite"),
+  level = 0.95
 ) {
   #browser()
 
   # `se_method` sits AFTER ... so it can only be matched by name -- a value
   # intended for a predict.gam dot can never bind to it positionally.
   se_method <- match.arg(se_method)
-  # `se_method` is a pffr-only argument (not a predict.gam formal); strip it
-  # from the reconstructed predict.gam call below.
+  crit <- match.arg(crit)
+  # `se_method`, `crit` and `level` are pffr-only arguments (not predict.gam
+  # formals); strip them from the reconstructed predict.gam call below.
   call <- match.call()
   call$se_method <- NULL
+  call$crit <- NULL
+  call$level <- NULL
   if (
     identical(se_method, "jackknife") &&
       isTRUE(se.fit) &&
@@ -359,6 +383,7 @@ predict.pffr <- function(
   fit_sandwich_type <- normalize_sandwich_type(
     object$pffr$sandwich_info$type %||% object$pffr$sandwich
   )
+  se_cov <- NULL
   if (
     isTRUE(se.fit) &&
       identical(se_method, "normal") &&
@@ -366,6 +391,7 @@ predict.pffr <- function(
       !identical(fit_sandwich_type, "none")
   ) {
     vsw <- pffr_vcov(object, sandwich = NULL)
+    se_cov <- vsw
     object$Vp <- vsw
     object$Vc <- vsw
   }
@@ -402,6 +428,30 @@ predict.pffr <- function(
       )
     }
     ret$se.fit <- jk_se
+  }
+
+  # Critical values for pointwise intervals fit +/- crit * se.fit, with the
+  # same reference as coef.pffr() for the same contrasts (rows of the
+  # prediction matrix).
+  if (
+    isTRUE(se.fit) &&
+      identical(se_method, "normal") &&
+      type %in% c("link", "response")
+  ) {
+    lp_call <- call
+    lp_call$type <- "lpmatrix"
+    lp_call$se.fit <- FALSE
+    cv <- pffr_pointwise_crit(
+      object,
+      X = eval(lp_call),
+      level = level,
+      crit = crit,
+      sandwich = fit_sandwich_type,
+      covmat = se_cov %||% object$Vp,
+      max_auto_points = getOption("refund.pffr_satterthwaite_max_points", 1e4)
+    )
+    ret$crit <- rep_len(cv$crit, length(ret$fit))
+    ret$df <- cv$df
   }
 
   if (type == "lpmatrix" && reformat) {
@@ -1422,11 +1472,20 @@ pffr_end_undefined_df <- function(opened) {
 #'   \code{crit} (below).
 #' @param crit Reference distribution for the \emph{pointwise} critical value
 #'   (\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
-#'   \code{"z"} (default) uses the Gaussian quantile. \code{"tG1"} uses
-#'   \eqn{t_{G-1}}. Opt-in \code{"auto"} selects \code{"satterthwaite"} for
-#'   cluster/CL2 covariance with \eqn{G<150}, and \code{"z"} otherwise.
-#'   \code{"satterthwaite"} matches the first two moments of the sampling
-#'   quadratic form using the full cross-cluster residualization Gram:
+#'   \code{"auto"} (default) uses \code{"satterthwaite"} when the standard
+#'   errors come from the exact CL2 sandwich (\code{sandwich = "cl2"} with the
+#'   exact leverage adjustment, which \code{cl2_adjustment = "auto"} selects
+#'   wherever it is feasible), and \code{"z"} for all other covariances (CR1
+#'   \code{"cluster"}, shortcut CL2, \code{"hc"}, model-based): Satterthwaite
+#'   critical values were evaluated only with exact CL2, where they bring
+#'   pointwise coverage of coefficient surfaces and fitted means close to
+#'   nominal at small \eqn{G}, at the cost of wider intervals.
+#'   \code{"z"} uses the Gaussian quantile. \code{"tG1"} uses
+#'   \eqn{t_{G-1}}.
+#'   \code{"satterthwaite"} uses \eqn{t_\nu} with a separate df \eqn{\nu} for
+#'   every evaluation point (returned in column \code{df}), matching the first
+#'   two moments of the sampling quadratic form using the full cross-cluster
+#'   residualization Gram:
 #'   \eqn{\nu(a)=\{\mathrm{tr}(\Gamma)\}^2/\mathrm{tr}(\Gamma^2)}.
 #'   Covariance and df use the same resolved CL2 adjustment and grouping.
 #'   This central Gaussian working-independence calculation fixes smoothing
@@ -1434,7 +1493,8 @@ pffr_end_undefined_df <- function(opened) {
 #'   calibration for B2, smoothing bias, correlated errors or smoothing
 #'   selection. Undefined df gives missing limits with a warning; requests
 #'   on non-cluster covariance fall back to z with a warning. Simultaneous
-#'   bands are unaffected.
+#'   bands are unaffected. With \code{bias_ref}, \code{"auto"} uses
+#'   \code{"z"}.
 #' @param df_gram Gram matrix used by \code{crit = "satterthwaite"}:
 #'   \code{"full"} (default) is the residualized
 #'   \eqn{\Gamma_{gh}=1\{g=h\}\lVert q_g\rVert^2-t_g^\top C t_h}.
@@ -1567,7 +1627,7 @@ coef.pffr <- function(
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
   ci_ref = c("t", "normal"),
-  crit = c("z", "auto", "tG1", "satterthwaite"),
+  crit = c("auto", "z", "tG1", "satterthwaite"),
   df_gram = c("full", "diagonal"),
   level = 0.95,
   n_sim = 2000,
@@ -1677,6 +1737,7 @@ coef.pffr <- function(
         call. = FALSE
       )
     }
+    if (crit == "auto") crit <- "z"
     if (crit != "z") {
       stop(
         "Bias-aware intervals (`bias_ref`) use crit = \"z\"; the reference ",
@@ -1830,42 +1891,27 @@ coef.pffr <- function(
     # reference distribution (independent of the simultaneous-band `ci_ref`):
     # "z" (Gaussian), "tG1" (t_{G-1}, the pointwise counterpart of the
     # simultaneous ci_ref = "t"), "satterthwaite" (per-point Bell-McCaffrey df),
-    # or "auto" (satterthwaite for cluster/cl2 SEs at G < 150, else z). df is a
+    # or "auto" (the default: satterthwaite for exact CL2 SEs, else z). df is a
     # pointwise concept, so this only engages for ci = "pointwise"; simultaneous
     # bands keep their existing multiplier machinery.
     crit_mode <- "z"
     crit_df_const <- NA_real_
     df_ctx <- NULL
     if (ci == "pointwise") {
-      df_G <- length(unique(build_cluster_id(object$pffr, cluster = cluster)))
-      crit_mode <- resolve_crit_reference(crit, sandwich, df_G)
-      if (crit_mode == "tG1") {
-        crit_df_const <- df_G - 1
-        if (!is.finite(crit_df_const) || crit_df_const < 1) {
-          warning(
-            "crit = \"tG1\" requires at least two independent curves or ",
-            "clusters; using crit = \"z\" instead.",
-            call. = FALSE
-          )
-          crit_mode <- "z"
-        }
-      } else if (crit_mode == "satterthwaite") {
-        df_ctx <- pffr_df_context(
-          object,
-          sandwich,
-          cluster = cluster,
-          cl2_adjustment = attr(covmat, "cl2_adjustment") %||% cl2_adjustment,
-          df_gram = df_gram,
-          dof_correction = dof_correction,
-          edf_type = edf_type
-        )
-        if (!isTRUE(df_ctx$ok)) {
-          # No whitened score path for this family; degrade to the Gaussian
-          # reference (still an honest pointwise interval from the robust SE).
-          crit_mode <- "z"
-          df_ctx <- NULL
-        }
-      }
+      crit_setup <- pffr_crit_setup(
+        object,
+        crit = crit,
+        sandwich = sandwich,
+        covmat = covmat,
+        cluster = cluster,
+        cl2_adjustment = cl2_adjustment,
+        df_gram = df_gram,
+        dof_correction = dof_correction,
+        edf_type = edf_type
+      )
+      crit_mode <- crit_setup$mode
+      crit_df_const <- crit_setup$df_const
+      df_ctx <- crit_setup$df_ctx
     }
 
     coef_draws <- NULL
@@ -2041,15 +2087,16 @@ vcov.pffr <- function(object, sandwich = FALSE, ...) {
 #' Summarize the Satterthwaite pointwise-CI df of a pffr fit
 #'
 #' For a fit whose sandwich type is cluster-robust (`"cluster"`/`"cl2"`) and
-#' whose curve/cluster count is moderate (\eqn{G < 150}, so the `crit = "auto"`
-#' pointwise reference would be Satterthwaite), computes the per-point
+#' whose curve/cluster count is moderate (\eqn{G < 150}), computes the per-point
 #' Bell-McCaffrey df over a coarse coefficient grid and returns its median and
 #' minimum. Returns `NULL` (so [print.summary.pffr()] prints nothing) for
 #' non-cluster fits, large \eqn{G}, families without a whitened score path, or
 #' any error. Uses a coarse grid to stay cheap.
 #'
 #' @param object A fitted pffr model.
-#' @returns `NULL`, or a list with `type`, `G`, `median`, `min`, `n_points`.
+#' @returns `NULL`, or a list with `type`, `G`, `default` (is Satterthwaite
+#'   the default `crit` for this fit, i.e. exact CL2?), `median`, `min`,
+#'   `n_points`.
 #' @keywords internal
 pffr_summary_df <- function(object) {
   type <- normalize_sandwich_type(
@@ -2111,6 +2158,16 @@ pffr_summary_df <- function(object) {
   list(
     type = type,
     G = G,
+    # Satterthwaite is the default crit only for exact CL2
+    default = identical(
+      resolve_crit_reference(
+        "auto",
+        type,
+        G,
+        pffr_fit_cl2_adjustment(object, type, NULL)
+      ),
+      "satterthwaite"
+    ),
     median = stats::median(df_vals),
     min = min(df_vals),
     n_points = length(df_vals)
@@ -2310,10 +2367,11 @@ print.summary.pffr <- function(
     st <- x$satterthwaite_df
     cat(sprintf(
       paste0(
-        "Working-model Satterthwaite df for %s pointwise CIs (opt-in): ",
+        "Working-model Satterthwaite df for %s pointwise CIs (%s): ",
         "median %s, min %s (G = %d).\n"
       ),
       st$type,
+      if (isTRUE(st$default)) "default" else "opt-in",
       formatC(st$median, digits = digits, format = "fg"),
       formatC(st$min, digits = digits, format = "fg"),
       st$G

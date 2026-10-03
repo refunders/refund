@@ -157,7 +157,8 @@ test_that("a fit as its own bias reference gives delta = 0 and plain intervals",
     fit,
     sandwich = "cl2",
     cl2_adjustment = "exact",
-    ci = "pointwise"
+    ci = "pointwise",
+    crit = "z"
   )
   plain <- suppressMessages(do.call(coef, args))
   self <- suppressMessages(do.call(coef, c(args, list(bias_ref = fit))))
@@ -174,7 +175,12 @@ test_that("a fit as its own bias reference gives delta = 0 and plain intervals",
     plain$pterms[, c("lower", "upper")]
   )
 
-  pred_plain <- pffr_predict_ci(fit, sandwich = "cl2", cl2_adjustment = "exact")
+  pred_plain <- pffr_predict_ci(
+    fit,
+    sandwich = "cl2",
+    cl2_adjustment = "exact",
+    crit = "z"
+  )
   pred_self <- pffr_predict_ci(
     fit,
     sandwich = "cl2",
@@ -237,7 +243,8 @@ test_that("pffr_predict_ci passes covariance options through", {
       sandwich = "cl2",
       cl2_adjustment = "exact",
       freq = freq,
-      level = 0.9
+      level = 0.9,
+      crit = "z"
     )
     se <- unname(sqrt(rowSums((L %*% V) * L)))
     expect_equal(ci$se_link, se, tolerance = 1e-10)

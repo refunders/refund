@@ -2441,26 +2441,37 @@ pffr_df_from_context <- function(ctx, Xp, df_gram = NULL) {
 #' Resolve the pointwise critical-value reference for [coef.pffr()]
 #'
 #' Maps the user's `crit` (`"auto"`/`"z"`/`"tG1"`/`"satterthwaite"`) to a
-#' concrete reference. `"auto"` selects the per-point Satterthwaite reference
-#' when the pointwise SEs come from a cluster-robust sandwich
-#' (`"cluster"`/`"cl2"`) and the number of independent curves/clusters is
-#' moderate (`G < 150`), and the Gaussian reference otherwise. An explicit
-#' `"satterthwaite"` on a non-cluster covariance has no cluster leverage
-#' structure to match and degrades to `"z"` with a warning; `"tG1"` (the
-#' \eqn{t_{G-1}} reference, pointwise counterpart of the simultaneous
-#' `ci_ref = "t"`) uses the curve/cluster count regardless of the covariance.
+#' concrete reference. `"auto"` (the default) selects the per-point
+#' Satterthwaite reference when the pointwise SEs come from the exact CL2
+#' sandwich (`sandwich_type = "cl2"` with `cl2_adjustment = "exact"`), the only
+#' covariance for which it was evaluated, and the Gaussian reference for
+#' everything else: CR1 (`"cluster"`), shortcut CL2, `"hc"` and model-based
+#' covariances. An explicit `"satterthwaite"` on a non-cluster covariance has
+#' no cluster leverage structure to match and degrades to `"z"` with a
+#' warning; `"tG1"` (the \eqn{t_{G-1}} reference, pointwise counterpart of the
+#' simultaneous `ci_ref = "t"`) uses the curve/cluster count regardless of the
+#' covariance.
 #'
 #' @param crit One of `"auto"`, `"z"`, `"tG1"`, `"satterthwaite"`.
 #' @param sandwich_type The resolved covariance type used for the SEs.
-#' @param G Number of independent curves / clusters.
+#' @param G Number of independent curves / clusters (unused by `"auto"`; kept
+#'   for the callers' interface).
+#' @param cl2_adjustment The resolved CL2 leverage adjustment of the
+#'   covariance (`"exact"` or `"shortcut"`), or `NULL` if unknown.
 #' @returns One of `"z"`, `"tG1"`, `"satterthwaite"`.
 #' @keywords internal
-resolve_crit_reference <- function(crit, sandwich_type, G) {
+resolve_crit_reference <- function(
+  crit,
+  sandwich_type,
+  G,
+  cl2_adjustment = NULL
+) {
   crit <- match.arg(crit, c("auto", "z", "tG1", "satterthwaite"))
   type <- normalize_sandwich_type(sandwich_type)
   is_cluster <- type %in% c("cluster", "cl2")
   if (crit == "auto") {
-    return(if (is_cluster && is.finite(G) && G < 150) "satterthwaite" else "z")
+    exact_cl2 <- type == "cl2" && identical(cl2_adjustment, "exact")
+    return(if (exact_cl2) "satterthwaite" else "z")
   }
   if (crit == "satterthwaite" && !is_cluster) {
     warning(
@@ -2471,6 +2482,164 @@ resolve_crit_reference <- function(crit, sandwich_type, G) {
     return("z")
   }
   crit
+}
+
+#' Set up the pointwise critical-value reference for a covariance
+#'
+#' Shared by [coef.pffr()], [predict.pffr()] and [pffr_predict_ci()]: resolves
+#' `crit` for the covariance `covmat` (see [resolve_crit_reference()]) and
+#' builds what the per-point critical values need: the constant
+#' \eqn{G - 1} for `"tG1"`, or the cached df context for `"satterthwaite"`.
+#' Falls back to `"z"` (with a warning for `"tG1"`) where these are undefined.
+#'
+#' @param object Fitted pffr model.
+#' @param crit User's `crit` choice.
+#' @param sandwich Resolved covariance type of `covmat`.
+#' @param covmat The covariance the SEs use (its `"cl2_adjustment"` attribute
+#'   identifies exact CL2).
+#' @param cluster,cl2_adjustment,df_gram,dof_correction,edf_type As in
+#'   [coef.pffr()].
+#' @returns List with `mode` (`"z"`, `"tG1"` or `"satterthwaite"`),
+#'   `df_const` and `df_ctx`.
+#' @keywords internal
+pffr_crit_setup <- function(
+  object,
+  crit,
+  sandwich,
+  covmat,
+  cluster = NULL,
+  cl2_adjustment = NULL,
+  df_gram = "full",
+  dof_correction = NULL,
+  edf_type = NULL
+) {
+  out <- list(mode = "z", df_const = NA_real_, df_ctx = NULL)
+  G <- length(unique(build_cluster_id(object$pffr, cluster = cluster)))
+  adjustment <- attr(covmat, "cl2_adjustment") %||%
+    pffr_fit_cl2_adjustment(object, sandwich, cl2_adjustment)
+  out$mode <- resolve_crit_reference(crit, sandwich, G, adjustment)
+  if (out$mode == "tG1") {
+    out$df_const <- G - 1
+    if (!is.finite(out$df_const) || out$df_const < 1) {
+      warning(
+        "crit = \"tG1\" requires at least two independent curves or ",
+        "clusters; using crit = \"z\" instead.",
+        call. = FALSE
+      )
+      out$mode <- "z"
+    }
+  } else if (out$mode == "satterthwaite") {
+    out$df_ctx <- pffr_df_context(
+      object,
+      sandwich,
+      cluster = cluster,
+      cl2_adjustment = adjustment %||% cl2_adjustment,
+      df_gram = df_gram,
+      dof_correction = dof_correction,
+      edf_type = edf_type
+    )
+    if (!isTRUE(out$df_ctx$ok)) {
+      # No whitened score path for this family; degrade to the Gaussian
+      # reference (still an honest pointwise interval from the robust SE).
+      out$mode <- "z"
+      out$df_ctx <- NULL
+    }
+  }
+  out
+}
+
+#' Pointwise critical values for prediction contrasts
+#'
+#' Applies [pffr_crit_setup()] and [compute_pointwise_ci()] to the rows of a
+#' prediction matrix, so predictions get the same critical values as
+#' [coef.pffr()] gives for the same contrasts.
+#'
+#' @param object Fitted pffr model.
+#' @param X Prediction matrix (full coefficient space), one row per point.
+#' @param level Confidence level.
+#' @param max_auto_points Largest number of rows for which `crit = "auto"`
+#'   computes Satterthwaite df. The df cost grows with the number of rows and
+#'   with \eqn{G^2} (about 1 ms per row at \eqn{G = 100}); above this many
+#'   rows `"auto"` uses `"z"` with a message. An explicit
+#'   `crit = "satterthwaite"` is always honoured.
+#' @inheritParams pffr_crit_setup
+#' @returns List with `mode`, `crit` (scalar, or one per row for
+#'   `"satterthwaite"`) and `df` (one per row; `Inf` for `"z"`).
+#' @keywords internal
+pffr_pointwise_crit <- function(
+  object,
+  X,
+  level,
+  crit,
+  sandwich,
+  covmat,
+  cluster = NULL,
+  cl2_adjustment = NULL,
+  dof_correction = NULL,
+  edf_type = NULL,
+  max_auto_points = Inf
+) {
+  setup <- pffr_crit_setup(
+    object,
+    crit = crit,
+    sandwich = sandwich,
+    covmat = covmat,
+    cluster = cluster,
+    cl2_adjustment = cl2_adjustment,
+    dof_correction = dof_correction,
+    edf_type = edf_type
+  )
+  if (
+    crit == "auto" &&
+      setup$mode == "satterthwaite" &&
+      nrow(X) > max_auto_points
+  ) {
+    message(
+      "Using Gaussian critical values for ",
+      nrow(X),
+      " prediction points: Satterthwaite df (the default for exact CL2) are ",
+      "computed for at most ",
+      max_auto_points,
+      " points (option refund.pffr_satterthwaite_max_points). ",
+      "Use crit = \"satterthwaite\" to compute them anyway, or fewer points."
+    )
+    setup$mode <- "z"
+    setup$df_ctx <- NULL
+  }
+  pw <- compute_pointwise_ci(
+    crit_mode = setup$mode,
+    level = level,
+    linear_map = list(X = as.matrix(X), use_full = TRUE),
+    df_ctx = setup$df_ctx,
+    crit_df_const = setup$df_const
+  )
+  list(mode = setup$mode, crit = pw$crit, df = pw$df)
+}
+
+#' Resolved CL2 adjustment of a covariance request, if it can be known
+#'
+#' Fallback for covariances without a `"cl2_adjustment"` attribute: an
+#' explicit `"exact"`/`"shortcut"` request, or the fit-time resolution when
+#' the request inherits it.
+#'
+#' @param object Fitted pffr model.
+#' @param sandwich Resolved covariance type.
+#' @param cl2_adjustment Requested adjustment (`NULL` inherits the fit).
+#' @returns `"exact"`, `"shortcut"` or `NULL`.
+#' @keywords internal
+pffr_fit_cl2_adjustment <- function(object, sandwich, cl2_adjustment) {
+  if (!identical(normalize_sandwich_type(sandwich), "cl2")) return(NULL)
+  if (!is.null(cl2_adjustment) && cl2_adjustment %in% c("exact", "shortcut")) {
+    return(cl2_adjustment)
+  }
+  if (is.null(cl2_adjustment)) {
+    fit_adj <- object$pffr$sandwich_info$cl2_adjustment %||%
+      object$pffr$cl2_adjustment
+    if (!is.null(fit_adj) && fit_adj %in% c("exact", "shortcut")) {
+      return(fit_adj)
+    }
+  }
+  NULL
 }
 
 #' Does a family have an exact or two-block cluster score path?
@@ -3250,9 +3419,9 @@ apply_sandwich_correction <- function(
     cluster_rank = if (!is.null(core)) core$diagnostics$rank else NULL,
     storage_format = PFFR_COV_STORAGE_FORMAT
   )
-  # Small-cluster-count guard (plan S-C, amended 2026-09-08: warn below G =
-  # 40, the paper's own recommendation boundary for pffr_coefboot(), not the
-  # earlier G = 20 draft threshold). Only for the two cluster-robust
+  # Small-cluster-count guard: warn below G = 40, stating what the simulation
+  # evidence covers (exact CL2 with Satterthwaite critical values, evaluated
+  # down to G = 20). Only for the two cluster-robust
   # estimators; "hc" and "none" never reach a meaningful G here. Fires once,
   # at fit time in pffr() -- pffr_vcov() (coef/predict/plot) recomputes the
   # robust covariance without calling this function again, so the warning is
@@ -3264,10 +3433,10 @@ apply_sandwich_correction <- function(
     warning(warningCondition(
       sprintf(
         paste0(
-          "Only G = %d clusters: cluster-robust intervals undercover at ",
-          "this size (paper benchmark: CL2 ~0.77-0.79 at G = 20 under ",
-          "dependence). Consider the refitting curve bootstrap ",
-          "pffr_coefboot() or wider nominal levels."
+          "Only G = %d clusters: CL2 intervals with Satterthwaite critical ",
+          "values were evaluated down to G = 20 (near-nominal for ",
+          "coefficient surfaces and fitted means; intercepts of binary ",
+          "models can undercover). Treat intervals as approximate."
         ),
         G_resolved
       ),

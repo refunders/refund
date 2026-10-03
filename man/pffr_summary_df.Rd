@@ -10,12 +10,13 @@ pffr_summary_df(object)
 \item{object}{A fitted pffr model.}
 }
 \value{
-`NULL`, or a list with `type`, `G`, `median`, `min`, `n_points`.
+`NULL`, or a list with `type`, `G`, `default` (is Satterthwaite
+  the default `crit` for this fit, i.e. exact CL2?), `median`, `min`,
+  `n_points`.
 }
 \description{
 For a fit whose sandwich type is cluster-robust (`"cluster"`/`"cl2"`) and
-whose curve/cluster count is moderate (\eqn{G < 150}, so the `crit = "auto"`
-pointwise reference would be Satterthwaite), computes the per-point
+whose curve/cluster count is moderate (\eqn{G < 150}), computes the per-point
 Bell-McCaffrey df over a coarse coefficient grid and returns its median and
 minimum. Returns `NULL` (so [print.summary.pffr()] prints nothing) for
 non-cluster fits, large \eqn{G}, families without a whitened score path, or

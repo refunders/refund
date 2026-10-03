@@ -148,9 +148,10 @@ pffr_bias_aware_se <- function(se, delta) {
 #' bias-aware widening computed from a second fit of the same model.
 #'
 #' Intervals are always built on the link scale,
-#' \deqn{\hat\eta \pm z_{(1+\mathrm{level})/2}\sqrt{\mathrm{se}^2 +
-#'   \delta^2},}{eta_hat -/+ z * sqrt(se^2 + delta^2),}
-#' with \eqn{\delta = 0} unless `bias_ref` is supplied. For
+#' \deqn{\hat\eta \pm c\,\sqrt{\mathrm{se}^2 +
+#'   \delta^2},}{eta_hat -/+ c * sqrt(se^2 + delta^2),}
+#' with \eqn{\delta = 0} unless `bias_ref` is supplied, and the critical value
+#' \eqn{c} chosen by `crit` (per point for `"satterthwaite"`). For
 #' `type = "response"` the estimate and both endpoints are mapped through the
 #' inverse link (so the interval is not symmetric around the estimate); `se`
 #' and `delta` stay on the link scale.
@@ -188,6 +189,12 @@ pffr_bias_aware_se <- function(se, delta) {
 #' @param type `"link"` (default) for the linear predictor, `"response"` for the
 #'   conditional mean.
 #' @param level Confidence level, defaults to `0.95`.
+#' @param crit Reference distribution for the critical value, as in
+#'   [coef.pffr()]: `"auto"` (default) uses per-point Satterthwaite df
+#'   (\eqn{t_\nu}{t_nu} with \eqn{\nu}{nu} from the prediction rows) for the
+#'   exact CL2 sandwich and the Gaussian quantile otherwise; `"z"`, `"tG1"`
+#'   (\eqn{t_{G-1}}{t_(G-1)}) and `"satterthwaite"` force a reference. With
+#'   `bias_ref`, `"auto"` uses `"z"`, the only choice available there.
 #' @param sandwich,freq,cluster,dof_correction,edf_type,cl2_adjustment
 #'   Covariance choice, as in [coef.pffr()]. `sandwich = NULL` inherits the
 #'   fit-time choice; with `bias_ref`, `sandwich = NULL` and
@@ -206,9 +213,11 @@ pffr_bias_aware_se <- function(se, delta) {
 #'   `ydata` when `newdata = NULL`), with columns `.obs` (curve), `.index`
 #'   (value of the response index), `fit` (on the scale of `type`), `se_link`
 #'   (variance part, link scale), `delta_link` (link scale; only with
-#'   `bias_ref`), `lower` and `upper` (on the scale of `type`). Attributes
-#'   `type`, `level`, `crit_value` and `bias_ref_method` (the reference fit's
-#'   smoothing-parameter method, or `NA`).
+#'   `bias_ref`), `df` (reference df of the critical value: `Inf` for `"z"`),
+#'   `lower` and `upper` (on the scale of `type`). Attributes `type`, `level`,
+#'   `crit_value` (one value, or one per row for `"satterthwaite"`),
+#'   `crit_used` and `bias_ref_method` (the reference fit's smoothing-parameter
+#'   method, or `NA`).
 #' @seealso [coef.pffr()] (argument `bias_ref`) for bias-aware intervals of
 #'   coefficient functions, [pffr_jackknife_se()].
 #' @export
@@ -243,12 +252,14 @@ pffr_predict_ci <- function(
   dof_correction = NULL,
   edf_type = NULL,
   cl2_adjustment = NULL,
-  bias_ref = NULL
+  bias_ref = NULL,
+  crit = c("auto", "z", "tG1", "satterthwaite")
 ) {
   if (!inherits(object, "pffr")) {
     stop("`object` must be a fitted pffr model.", call. = FALSE)
   }
   type <- match.arg(type)
+  crit <- match.arg(crit)
   if (
     !is.numeric(level) ||
       length(level) != 1 ||
@@ -266,6 +277,14 @@ pffr_predict_ci <- function(
   }
   theta_diff <- NULL
   if (!is.null(bias_ref)) {
+    if (crit == "auto") crit <- "z"
+    if (crit != "z") {
+      stop(
+        "Bias-aware intervals (`bias_ref`) use crit = \"z\"; the reference ",
+        "df of the other choices describe only the variance part.",
+        call. = FALSE
+      )
+    }
     theta_diff <- pffr_bias_ref_difference(object, bias_ref)
     cov_defaults <- pffr_bias_aware_cov_defaults(sandwich, cl2_adjustment)
     sandwich <- cov_defaults$sandwich
@@ -284,7 +303,20 @@ pffr_predict_ci <- function(
   )
   se <- sqrt(as.vector(rowSums((lp$X %*% V) * lp$X)))
   delta <- if (!is.null(theta_diff)) as.vector(lp$X %*% theta_diff)
-  crit_value <- stats::qnorm((1 + level) / 2)
+  cv <- pffr_pointwise_crit(
+    object,
+    X = lp$X,
+    level = level,
+    crit = crit,
+    sandwich = sandwich %||% pffr_canonicalize_cov(object)$fit_type,
+    covmat = V,
+    cluster = cluster,
+    cl2_adjustment = cl2_adjustment,
+    dof_correction = dof_correction,
+    edf_type = edf_type,
+    max_auto_points = getOption("refund.pffr_satterthwaite_max_points", 1e4)
+  )
+  crit_value <- cv$crit
   half <- crit_value * if (is.null(delta)) se else pffr_bias_aware_se(se, delta)
   lower <- lp$eta - half
   upper <- lp$eta + half
@@ -301,11 +333,13 @@ pffr_predict_ci <- function(
   out$fit <- fit
   out$se_link <- se
   if (!is.null(delta)) out$delta_link <- delta
+  out$df <- cv$df
   out$lower <- lower
   out$upper <- upper
   attr(out, "type") <- type
   attr(out, "level") <- level
   attr(out, "crit_value") <- crit_value
+  attr(out, "crit_used") <- cv$mode
   attr(out, "bias_ref_method") <- if (is.null(bias_ref)) {
     NA_character_
   } else {
