@@ -248,6 +248,8 @@ test_that("(iv) approx-score warning fires only for families without exact/two-b
   # builders: the influence object behind the Satterthwaite df too.
   m_ext <- m0
   class(m_ext$family) <- c("extended.family", class(m_ext$family))
+  # a copied fit shares the cache environment; start from an empty one
+  m_ext$pffr$Vsandwich_cache <- new.env(parent = emptyenv())
   clear_approx_score_warnings()
   warn_core <- captured_warnings(core <- refund:::pffr_influence(m_ext))
   expect_true(any(grepl(approx_msg, warn_core)))
