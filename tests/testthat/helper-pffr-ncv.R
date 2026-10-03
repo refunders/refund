@@ -19,7 +19,7 @@ ncv_test_fit <- function(dat, ...) {
     yind = seq(0, 1, length.out = ncol(dat$Y)),
     method = "NCV",
     bs.int = list(bs = "ps", k = 4),
-    sandwich = "none",
+    sandwich = FALSE,
     ...
   )
 }

@@ -17,6 +17,12 @@ This function only generates plots (and invisibly returns
 }
 \description{
 Plot a fitted pffr-object. Simply dispatches to \code{\link[mgcv]{plot.gam}}.
+Its standard-error bands use the fit's covariance: the CL2 sandwich for
+fits with \code{sandwich = TRUE} (the default), the model-based covariance
+otherwise. They are mgcv's bands of \eqn{\pm 2}{+/- 2} standard errors (see
+argument \code{se} of \code{\link[mgcv]{plot.gam}}), not intervals with
+Satterthwaite critical values; use \code{\link{coef.pffr}} with
+\code{ci = "pointwise"} for those.
 }
 \author{
 Fabian Scheipl

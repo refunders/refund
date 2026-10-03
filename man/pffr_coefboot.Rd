@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr-robust.R
 \name{pffr_coefboot}
 \alias{pffr_coefboot}
-\title{Simple bootstrap CIs for pffr}
+\title{Simple bootstrap CIs for pffr (deprecated)}
 \usage{
 pffr_coefboot(
   object,
@@ -54,6 +54,12 @@ a list with similar structure as the return value of \code{\link{coef.pffr}}, co
         original point estimates of the various terms along with their bootstrap CIs.
 }
 \description{
+**Deprecated.** Use the default intervals of [pffr()] fits instead
+(`coef(fit, ci = "pointwise")`: CL2 sandwich with Satterthwaite critical
+values, see the section \sQuote{Inference} of [pffr()]). In simulations the
+curve bootstrap gave valid but 1.4 to 1.6 times wider intervals, at a cost
+orders of magnitude higher.
+
 This function resamples observations in the data set to obtain approximate CIs for different
 terms and coefficient functions that correct for the effects of dependency and heteroskedasticity
 of the residuals along the index of the functional response, i.e., it aims for correct inference

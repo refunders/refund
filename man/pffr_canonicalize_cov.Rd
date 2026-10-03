@@ -11,18 +11,20 @@ pffr_canonicalize_cov(object)
 }
 \value{
 A list with `model` (list of model-based `Vp`/`Vc`/`Ve`),
-  `fit_type` (the fit-time sandwich type), `Vsandwich`/`Vsandwich_freq` (the
-  fit-time robust matrices or `NULL`), and `format`
+  `fit_type` (the fit-time sandwich type, `"none"` for model-based fits),
+  `Vsandwich` (the fit-time robust matrix or `NULL`), and `format`
   (`"new"`/`"old"`/`"ancient"`).
 }
 \description{
 The current storage contract (format 2) keeps `Vp`/`Vc`/`Ve` model-based
-ALWAYS and stores the robust covariance in `object$pffr$Vsandwich`
-(+ `Vsandwich_freq`). Older fits (format 1) instead overwrote `Vp`/`Vc`/`Ve`
-with the robust matrices and stashed the model-based originals in
-`object$pffr$model_cov`. This helper resolves either layout into a single
-shape, emitting a session-scoped one-time back-compat warning for old-format
-objects. All covariance recomputation must use the model-based matrices as
-the (penalized) bread, or the sandwich is applied on top of itself.
+ALWAYS and stores the robust covariance in `object$pffr$Vsandwich`. Fits
+made with intermediate development versions (format 1) instead overwrote
+`Vp`/`Vc`/`Ve` with the robust matrices and stashed the model-based
+originals in `object$pffr$model_cov`; fits made with refund 0.1-40 and
+earlier overwrote them without a stash. This helper resolves each layout
+into a single shape, emitting a session-scoped one-time back-compat warning
+for old fits. All covariance recomputation must use the model-based
+matrices as the (penalized) bread, or the sandwich is applied on top of
+itself.
 }
 \keyword{internal}

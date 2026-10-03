@@ -450,8 +450,6 @@ pffr_build_call <- function(
   newcall$sandwich <- NULL
   newcall$cluster <- NULL
   newcall$ncv_blocks <- NULL
-  newcall$cl2_adjustment <- NULL
-  newcall$dof_correction <- newcall$edf_type <- NULL
   newcall$formula <- new_formula
   newcall$data <- quote(pffr_data)
   newcall[[1]] <- algorithm
@@ -676,10 +674,7 @@ pffr_build_metadata <- function(
   missing_indices,
   is_sparse,
   ydata,
-  sandwich,
-  dof_correction = "none",
-  edf_type = "trace",
-  cl2_adjustment = "auto"
+  sandwich
 ) {
   list(
     call = call,
@@ -700,9 +695,6 @@ pffr_build_metadata <- function(
     is_sparse = is_sparse,
     ydata = ydata,
     sandwich = sandwich,
-    dof_correction = dof_correction,
-    edf_type = edf_type,
-    cl2_adjustment = cl2_adjustment,
     # Covariance storage contract version: format 2 keeps $Vp/$Vc/$Ve
     # model-based ALWAYS; the robust covariance lives in $pffr$Vsandwich.
     cov_format = PFFR_COV_STORAGE_FORMAT,
@@ -1009,7 +1001,8 @@ build_cluster_id <- function(pffr_meta, cluster = NULL) {
     }
     cluster_id <- rep(cluster, each = pffr_meta$nyindex)
   } else if (isTRUE(pffr_meta$is_sparse)) {
-    cluster_id <- pffr_meta$ydata$.obs
+    # The model frame omits ydata rows with a missing .value.
+    cluster_id <- pffr_meta$ydata$.obs[!is.na(pffr_meta$ydata$.value)]
   } else {
     cluster_id <- rep(seq_len(pffr_meta$nobs), each = pffr_meta$nyindex)
   }
@@ -1021,16 +1014,15 @@ build_cluster_id <- function(pffr_meta, cluster = NULL) {
 
 #' Classify a family's sandwich-score path
 #'
-#' Determines how the cluster-robust sandwich builds per-observation scores for
-#' a given family. The returned label drives the dispatch in
-#' [gam_sandwich_cluster()], [gam_sandwich_cluster_cl2()] and
-#' [pffr_df_context()].
+#' Determines how the CL2 sandwich builds per-observation scores for a given
+#' family. The returned label drives the dispatch in
+#' [gam_sandwich_cluster_cl2()] and [pffr_influence()].
 #'
 #' \describe{
 #'   \item{`"gaulss"`}{Gaussian location-scale; exact two-block Fisher-whitened
-#'     score ([compute_gaulss_scores()] / [build_cl2_working_gaulss()]).}
+#'     score ([build_cl2_working_gaulss()]).}
 #'   \item{`"scat"`}{Scaled-t (`mgcv::scat`); exact single-block score
-#'     ([compute_scat_scores()] / [build_cl2_working_scat()]).}
+#'     ([build_cl2_working_scat()]).}
 #'   \item{`"exact"`}{An ordinary exponential-dispersion family (`gaussian`,
 #'     `poisson`, `binomial`, `Gamma`, `inverse.gaussian`, quasi-families).
 #'     Their generic working-residual score
@@ -1048,8 +1040,8 @@ build_cluster_id <- function(pffr_meta, cluster = NULL) {
 #'     working-residual score is only an exponential-family approximation to the
 #'     true score; the sandwich builders emit [pffr_warn_approx_score()].}
 #'   \item{`"custom"`}{A family defining its own `family$sandwich` (other than
-#'     gaulss, e.g. `multinom`); no cluster score factorization is implemented,
-#'     so the builders fall back to [mgcv::vcov.gam()].}
+#'     gaulss, e.g. `multinom`); no cluster score factorization is
+#'     implemented, so [pffr()] falls back to model-based intervals.}
 #' }
 #'
 #' @param family A family object (ordinary `stats::family` or `mgcv` extended /
@@ -1101,98 +1093,6 @@ pffr_warn_approx_score <- function(family) {
       "' use the exponential-family working-residual approximation"
     )
   )
-}
-
-#' Compute per-observation scores for gaulss family
-#'
-#' gaulss uses `tau = 1/sigma` with logb link and defines `family$sandwich`,
-#' which prevents the generic GLM score path. Scores are computed analytically
-#' from the log-likelihood and transformed to linear predictor space.
-#'
-#' @param b Fitted GAM object.
-#' @param X Model matrix with `lpi` attribute.
-#' @returns Score matrix (n_obs x p).
-#' @keywords internal
-compute_gaulss_scores <- function(b, X) {
-  lpi <- attr(X, "lpi")
-  n_obs <- length(b$y)
-
-  mu <- b$fitted.values[seq_len(n_obs)]
-  tau <- b$fitted.values[n_obs + seq_len(n_obs)]
-  eta1 <- b$linear.predictors[seq_len(n_obs)]
-  eta2 <- b$linear.predictors[n_obs + seq_len(n_obs)]
-
-  r <- b$y - mu
-
-  # Scores w.r.t. natural parameters, transformed to LP space via chain rule
-  w1 <- (tau^2 * r) * b$family$linfo[[1]]$mu.eta(eta1)
-  w2 <- (1 / tau - tau * r^2) * b$family$linfo[[2]]$mu.eta(eta2)
-
-  pw <- b$prior.weights
-  if (!is.null(pw) && any(pw != 1)) {
-    w1 <- pw * w1
-    w2 <- pw * w2
-  }
-
-  # Use += to handle possible overlapping lpi indices (shared coefficients)
-  S <- matrix(0, nrow = n_obs, ncol = ncol(X))
-  S[, lpi[[1]]] <- S[, lpi[[1]]] + w1 * X[, lpi[[1]], drop = FALSE]
-  S[, lpi[[2]]] <- S[, lpi[[2]]] + w2 * X[, lpi[[2]], drop = FALSE]
-  S
-}
-
-#' Compute per-observation scores for the scaled-t (scat) family
-#'
-#' `mgcv::scat` is a scaled-t location family, NOT an exponential family, so the
-#' generic working-residual score is only an approximation. This computes the
-#' EXACT location score. For \eqn{y \sim \mathrm{scaled\text{-}t}(\nu, \mu,
-#' \sigma)}, \eqn{r = y - \mu},
-#' \deqn{\frac{\partial \ell}{\partial \mu} = \frac{(\nu+1)\,r}{\nu\sigma^2 +
-#' r^2},}
-#' verified against the numerical derivative of the scaled-t log-density and
-#' against `family$Dd()$Dmu = -2\,\partial\ell/\partial\mu`. The per-observation
-#' score in coefficient space is \eqn{(\partial\ell/\partial\eta)\,x =
-#' (\partial\ell/\partial\mu)(\mathrm{d}\mu/\mathrm{d}\eta)\,x}, which handles
-#' the identity (default), log and inverse links uniformly. \eqn{(\nu, \sigma)}
-#' are taken on the natural scale via `family$getTheta(TRUE)`
-#' (\eqn{\nu = \mathtt{min.df} + e^{\theta_1}}, \eqn{\sigma = e^{\theta_2}}).
-#'
-#' @param b Fitted GAM object with `family = scat()`.
-#' @param X Model matrix.
-#' @returns Score matrix (n_obs x p).
-#' @keywords internal
-compute_scat_scores <- function(b, X) {
-  th <- b$family$getTheta(TRUE)
-  nu <- th[1]
-  sig <- th[2]
-
-  mu <- as.vector(b$fitted.values)
-  eta <- as.vector(b$linear.predictors)
-  r <- as.vector(b$y) - mu
-  mu_eta <- as.vector(b$family$mu.eta(eta))
-
-  dl_dmu <- (nu + 1) * r / (nu * sig^2 + r^2)
-  score_eta <- dl_dmu * mu_eta # d l / d eta
-
-  pw <- b$prior.weights
-  if (!is.null(pw) && any(pw != 1)) {
-    score_eta <- as.vector(pw) * score_eta
-  }
-  score_eta[!is.finite(score_eta)] <- 0
-  score_eta * X
-}
-
-#' Symmetric matrix inverse square root with eigenvalue floor
-#'
-#' @param M Symmetric matrix.
-#' @param tol Eigenvalue floor for numerical stability.
-#' @returns Matrix inverse square root of `M`.
-#' @keywords internal
-sym_inv_sqrt <- function(M, tol = 1e-8) {
-  M <- 0.5 * (M + t(M))
-  ee <- eigen(M, symmetric = TRUE)
-  vals <- pmax(ee$values, tol)
-  ee$vectors %*% diag(1 / sqrt(vals), nrow = length(vals)) %*% t(ee$vectors)
 }
 
 #' Build CL2 working representation for standard single-LP families
@@ -1247,7 +1147,7 @@ build_cl2_working_standard <- function(b, cluster_id) {
 #' blocks therefore decouple: each pseudo-row is whitened with its own Fisher
 #' working weight \eqn{W_k}, putting `Xtilde_k = sqrt(W_k) X_k` into the design
 #' and `z_k = w_k / sqrt(W_k)` into the residual, where `w_k` are the
-#' (prior-weighted) score weights from [compute_gaulss_scores()]. Both blocks
+#' (prior-weighted) gaulss score weights. Both blocks
 #' reconstruct the exact gaulss score (`Xtilde_k^T z_k = w_k X_k`), but because
 #' `Xtilde` carries the Fisher weight, the per-cluster hat block
 #' `H_gg = Xtilde_g Vp Xtilde_g^T` is the genuine penalized hat: its total trace
@@ -1289,7 +1189,7 @@ build_cl2_working_gaulss <- function(b, cluster_id) {
   mu_eta1 <- b$family$linfo[[1]]$mu.eta(eta1) # location link derivative
   mu_eta2 <- b$family$linfo[[2]]$mu.eta(eta2) # dtau/deta2
 
-  # Same score components used by compute_gaulss_scores()
+  # Score weights w.r.t. the location and scale linear predictors
   w1 <- (tau^2 * r) * mu_eta1
   w2 <- (1 / tau - tau * r^2) * mu_eta2
 
@@ -1393,291 +1293,34 @@ build_cl2_working_scat <- function(b, cluster_id) {
   list(Xw = Xw, z = z, cluster_id = cluster_id)
 }
 
-#' Number of clusters, requiring at least two
-#'
-#' The cluster sandwich's G/(G-1) small-sample factor is undefined for a
-#' single cluster.
-#'
-#' @param cluster_id Cluster membership vector.
-#' @returns The number of distinct clusters.
-#' @keywords internal
-n_clusters_checked <- function(cluster_id) {
-  G <- length(unique(cluster_id))
-  if (G < 2) {
-    stop("Need at least two clusters for cluster sandwich.", call. = FALSE)
-  }
-  G
-}
-
-#' Assemble cluster-robust sandwich from score matrix
-#'
-#' Given a per-observation score matrix, aggregates by cluster and forms
-#' \eqn{V_{CL} = f \cdot c \cdot V_p M_{CL} V_p + B_2} with HC1 correction
-#' \eqn{c = G / (G - 1)} and an optional small-sample dof factor \eqn{f}
-#' (default 1; see [compute_dof_factor()]).
-#'
-#' @param scores Per-observation score matrix (n_obs x p).
-#' @param cluster_id Cluster membership vector.
-#' @param Vp Bayesian posterior covariance (p x p).
-#' @param B2 Bias correction matrix (p x p, or scalar 0).
-#' @param dof_factor Scalar multiplier on the meat (default 1). Used to apply
-#'   the optional CR1 small-sample correction \eqn{(N-1)/(N-\mathrm{EDF})}.
-#' @returns A p x p covariance matrix.
-#' @keywords internal
-assemble_cluster_sandwich <- function(
-  scores,
-  cluster_id,
-  Vp,
-  B2,
-  dof_factor = 1,
-  b2 = TRUE,
-  center_scores = FALSE
-) {
-  G <- n_clusters_checked(cluster_id)
-  U <- rowsum(scores, cluster_id)
-  if (isTRUE(center_scores)) {
-    # U_g^c = U_g - (sum_g U_g) / G; sum_g U_g = S theta-hat (the working
-    # log-likelihood penalty gradient). Centering removes the rank-one penalty
-    # direction from the meat (X6). Exact: crossprod(U - Ubar) =
-    # crossprod(U) - (colSums U)(colSums U)' / G.
-    Ubar <- colSums(U) / G
-    U <- sweep(U, 2L, Ubar, "-")
-  }
-  meat <- crossprod(U)
-  hc1 <- G / (G - 1)
-  core <- dof_factor * hc1 * Vp %*% meat %*% Vp
-  if (isTRUE(b2)) core + B2 else core
-}
-
-#' Compute the optional CR1 small-sample dof factor
-#'
-#' Returns the scalar \eqn{(N-1)/(N-\mathrm{EDF})} when `dof_correction = "edf"`,
-#' or `1` when `dof_correction = "none"`. Here \eqn{N} is the number of fitted
-#' observations (`length(cluster_id)`) and the effective degrees of freedom is
-#' selected by `edf_type`: `"trace"` uses `sum(b$edf)` (= trace of the penalized
-#' hat), `"edf2"` uses `sum(b$edf2)` (mgcv's bias-corrected EDF), and `"basis"`
-#' uses the basis dimension (`length(b$coefficients)`).
-#'
-#' This is the textbook CR1 finite-sample factor (Stata's cluster-robust default
-#' multiplies the meat by an analogous \eqn{(N-1)/(N-k)} term). It is applied
-#' ONLY in the CR1 path ([gam_sandwich_cluster()]); the CL2 path
-#' ([gam_sandwich_cluster_cl2()]) already performs a per-cluster leverage
-#' correction targeting the same downward bias, so combining the two would
-#' double-correct.
-#'
-#' @param b Fitted GAM object.
-#' @param cluster_id Cluster membership vector (length = number of fitted obs).
-#' @param dof_correction `"none"` (factor 1) or `"edf"`.
-#' @param edf_type Which EDF to use: `"trace"`, `"edf2"`, or `"basis"`.
-#' @returns A finite positive scalar.
-#' @keywords internal
-compute_dof_factor <- function(
-  b,
-  cluster_id,
-  dof_correction = c("none", "edf"),
-  edf_type = c("trace", "edf2", "basis")
-) {
-  dof_correction <- match.arg(dof_correction)
-  if (dof_correction == "none") {
-    return(1)
-  }
-  edf_type <- match.arg(edf_type)
-
-  N <- length(cluster_id)
-  if (!is.finite(N) || N < 2) {
-    stop(
-      "dof_correction = \"edf\" requires at least N = 2 fitted observations.",
-      call. = FALSE
-    )
-  }
-  G <- n_clusters_checked(cluster_id)
-
-  if (edf_type == "edf2" && is.null(b$edf2) && identical(b$method, "NCV")) {
-    warning(
-      'edf2 is unavailable for NCV; using trace EDF for the sandwich correction.',
-      call. = FALSE
-    )
-    edf_type <- "trace"
-  }
-  edf <- switch(
-    edf_type,
-    trace = if (!is.null(b$edf)) sum(b$edf) else NA_real_,
-    edf2 = if (!is.null(b$edf2)) sum(b$edf2) else NA_real_,
-    basis = length(b$coefficients)
-  )
-  if (!is.finite(edf) || edf < 0 || edf >= N) {
-    stop(
-      "dof_correction = \"edf\": effective degrees of freedom (edf_type = \"",
-      edf_type,
-      "\") evaluated to ",
-      format(edf),
-      ", which must be finite and in [0, N) with N = ",
-      N,
-      ". (Is 'edf2' available for this fit?)",
-      call. = FALSE
-    )
-  }
-  (N - 1) / (N - edf)
-}
-
-#' Cluster-robust sandwich covariance estimator
-#'
-#' Computes a cluster-robust (CR1) sandwich covariance matrix for a fitted
-#' GAM, clustering by curve. Handles both heteroskedasticity and within-curve
-#' autocorrelation, requiring only that curves are independent.
-#'
-#' @param b Fitted GAM object (must not have class `"pffr"`).
-#' @param cluster_id Integer vector of length `nrow(model.matrix(b))` mapping
-#'   each vectorized observation to its curve.
-#' @param freq If `TRUE`, use frequentist sandwich (`B2 = 0`).
-#'   If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).
-#' @param dof_correction Optional small-sample correction multiplying the meat:
-#'   `"none"` (default, factor 1 = current behavior) or `"edf"`, which applies
-#'   the textbook CR1 factor \eqn{(N-1)/(N-\mathrm{EDF})}. This is OFF by default
-#'   and is applied only here (CR1), never in the CL2 path, which already
-#'   corrects per-cluster leverage; see [compute_dof_factor()].
-#' @param edf_type Which effective degrees of freedom the `"edf"` correction
-#'   uses: `"trace"` (default, `sum(b$edf)`), `"edf2"`, or `"basis"`.
-#' @param b2 Internal ablation switch (default `TRUE` = current behavior). When
-#'   `FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
-#'   V_e}, returning \eqn{c\,V_p (\sum_g U_g U_g^\top) V_p} only. Not a
-#'   user-facing option; used by the B2-ablation experiment (X5).
-#' @param center_scores Internal ablation switch (default `FALSE` = current
-#'   behavior). When `TRUE`, center the per-cluster score sums
-#'   \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat (X6). Since
-#'   \eqn{\sum_g U_g = S\hat\theta} (the working-log-likelihood penalty
-#'   gradient), this removes the rank-one penalty direction from the meat.
-#' @returns A p x p covariance matrix.
-#' @keywords internal
-gam_sandwich_cluster <- function(
-  b,
-  cluster_id,
-  freq = FALSE,
-  dof_correction = c("none", "edf"),
-  edf_type = c("trace", "edf2", "basis"),
-  b2 = TRUE,
-  center_scores = FALSE
-) {
-  dof_correction <- match.arg(dof_correction)
-  edf_type <- match.arg(edf_type)
-  dof_factor <- compute_dof_factor(b, cluster_id, dof_correction, edf_type)
-
-  B2 <- if (freq) 0 else b$Vp - b$Ve
-  X <- model.matrix(b)
-
-  kind <- pffr_score_kind(b$family)
-
-  if (kind == "gaulss") {
-    scores <- compute_gaulss_scores(b, X)
-    return(assemble_cluster_sandwich(
-      scores,
-      cluster_id,
-      b$Vp,
-      B2,
-      dof_factor = dof_factor,
-      b2 = b2,
-      center_scores = center_scores
-    ))
-  }
-
-  if (kind == "scat") {
-    scores <- compute_scat_scores(b, X)
-    return(assemble_cluster_sandwich(
-      scores,
-      cluster_id,
-      b$Vp,
-      B2,
-      dof_factor = dof_factor,
-      b2 = b2,
-      center_scores = center_scores
-    ))
-  }
-
-  # Families that define family$sandwich (e.g. multinom) use custom
-  # score computation — cluster aggregation not yet implemented for these.
-  if (kind == "custom") {
-    stop(
-      "No cluster-robust covariance is available for this family.",
-      call. = FALSE
-    )
-  }
-
-  # Extended families with no exact/two-block score fall through to the generic
-  # working-residual approximation below; disclose that (review D1).
-  if (kind == "approx") {
-    pffr_warn_approx_score(b$family)
-  }
-
-  # Standard GLM case: per-observation scores via general score weight
-  # w = pw * (d mu/d eta) * (y - mu) / (phi * V(mu)); prior weights enter the
-  # estimating equation (the CL2 and gaulss paths already include them). For
-  # ordinary exponential-dispersion families ("exact") this IS the exact score.
-  mu <- b$fitted.values
-  pw <- b$prior.weights %||% 1
-  scores <- pw *
-    b$family$mu.eta(b$linear.predictors) *
-    (b$y - mu) /
-    (b$sig2 * b$family$variance(mu)) *
-    X
-  assemble_cluster_sandwich(
-    scores,
-    cluster_id,
-    b$Vp,
-    B2,
-    dof_factor = dof_factor,
-    b2 = b2,
-    center_scores = center_scores
-  )
-}
-
 #' Cluster-robust CL2 sandwich covariance estimator
 #'
-#' Computes a cluster-robust covariance matrix with a Bell-McCaffrey style
-#' leverage adjustment (`CL2` in this package), clustering by curve.
+#' Computes the curve-clustered CL2 covariance with the full-block ("exact")
+#' Bell--McCaffrey leverage adjustment
+#' \eqn{A_g = \{(I - H)^2\}_{gg}^{-1/2}}{A_g = ((I - H)^2)_gg^(-1/2)} in its
+#' Bayesian form, i.e. \eqn{G/(G-1)\,V_p \sum_g \tilde X_g^\top A_g z_g
+#' z_g^\top A_g \tilde X_g V_p + (V_p - V_e)}, see [pffr_influence_core()].
 #'
-#' @param b Fitted GAM object (must not have class `"pffr"`).
-#' @param cluster_id Integer vector mapping each vectorized observation to a
-#'   curve.
-#' @param freq If `TRUE`, use frequentist sandwich (`B2 = 0`).
-#'   If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).
-#' @param tol Eigenvalue floor for numerical stability.
-#' @param leverage_cap Cap for cluster leverage eigenvalues (< 1).
-#' @param cl2_adjustment CL2 leverage adjustment: `"auto"` (default) selects
-#'   the exact Bell--McCaffrey block where it is relevant and affordable,
-#'   `"exact"` forces that block, and `"shortcut"` uses the historical
-#'   per-cluster shortcut `(I - H_gg)^(-1/2)`.
-#' @param b2 Internal ablation switch (default `TRUE` = current behavior). When
-#'   `FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
-#'   V_e} (X5).
-#' @param center_scores Internal ablation switch (default `FALSE` = current
-#'   behavior). When `TRUE`, center the leverage-adjusted per-cluster
-#'   contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
-#'   (X6).
-#' @param influence Optional precomputed fixed-fit influence object.
-#' @returns A p x p covariance matrix with leverage diagnostics. Exact CL2
-#'   returns `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`),
-#'   `min_block_eig`, `max_block_kappa` and `min_block_eig_rel`; the shortcut
-#'   returns the legacy `n_capped_clusters` and `max_leverage` attributes.
-#'   Since the shared influence core computes the same geometry on both paths,
-#'   `max_leverage` is now also populated on the exact path and `min_block_eig`
-#'   / `max_block_kappa` on the shortcut path. Both return the hat-invariant
-#'   monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
-#'   `hat_invariant_violation` (`NULL` when the penalized hat respects its
-#'   bounds, otherwise a description of the violation; see
-#'   [pffr_hat_invariant_violation()]). At most one leverage-related warning is
-#'   emitted per call: the invariant warning when an invariant is broken,
-#'   otherwise the shortcut leverage-cap warning. Option-validation warnings
-#'   (an ignored `dof_correction`, say) are separate and unaffected.
+#' @param b Fitted GAM object (must not have class `"pffr"`) with model-based
+#'   covariance matrices.
+#' @param cluster_id Vector mapping each vectorized observation to a curve (or
+#'   cluster). Ignored if `influence` is supplied.
+#' @param leverage_cap Eigenvalue floor setting, see [pffr_influence_core()].
+#' @param influence Optional precomputed influence object
+#'   ([pffr_influence()]).
+#' @returns A p x p covariance matrix with leverage diagnostics as attributes:
+#'   `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`), `min_block_eig`,
+#'   `max_block_kappa`, `min_block_eig_rel`, `max_leverage`, and the
+#'   hat-invariant monitors `max_obs_leverage`, `min_obs_leverage`,
+#'   `min_hat_eig` and `hat_invariant_violation` (`NULL` when the penalized hat
+#'   respects its bounds, otherwise a description of the violation; see
+#'   [pffr_hat_invariant_violation()]). A violation is reported with one
+#'   warning.
 #' @keywords internal
 gam_sandwich_cluster_cl2 <- function(
   b,
   cluster_id,
-  freq = FALSE,
-  tol = 1e-8,
   leverage_cap = 0.999,
-  cl2_adjustment = c("auto", "exact", "shortcut"),
-  b2 = TRUE,
-  center_scores = FALSE,
   influence = NULL
 ) {
   if (is.null(influence)) {
@@ -1694,35 +1337,21 @@ gam_sandwich_cluster_cl2 <- function(
       scat = build_cl2_working_scat(b, cluster_id),
       build_cl2_working_standard(b, cluster_id)
     )
-    adjustment <- resolve_cl2_adjustment(
-      cl2_adjustment,
-      G = length(unique(work$cluster_id)),
-      maxDg = max(table(work$cluster_id)),
-      p = ncol(work$Xw)
-    )
     influence <- pffr_influence_core(
       work$Xw,
       b$Vp,
       work$cluster_id,
       work$z,
-      adjustment,
-      leverage_cap,
-      tol
+      leverage_cap = leverage_cap
     )
     influence$B2 <- (b$Vp + t(b$Vp)) / 2 - b$Ve
   }
-  V <- pffr_influence_vcov(influence, freq, b2, center_scores)
-  # Exactly one warning per covariance call. Study-LB P-LB5 first: a penalized
-  # hat that has broken its own bounds means the bread and the weighted design
-  # are numerically inconsistent, which subsumes (and explains) any capping the
-  # adjustment then had to do. Absent an invariant violation, only the shortcut
-  # path warns: capping H_gg at `leverage_cap` substitutes the largest
-  # legitimate variance inflation for an unidentified one, whereas the exact
-  # path's (1 - cap)^2 floor on the residual-block eigenvalues is a routine
-  # numerical safeguard (upstream left it silent).
+  V <- pffr_influence_vcov(influence)
+  # Study-LB P-LB5: a penalized hat that has broken its own bounds means the
+  # bread and the weighted design are numerically inconsistent. The (1 - cap)^2
+  # floor on the residual-block eigenvalues is a routine numerical safeguard
+  # and stays silent.
   hat_violation <- attr(V, "hat_invariant_violation")
-  n_capped_clusters <- attr(V, "n_capped_clusters") %||% 0L
-  max_leverage <- attr(V, "max_leverage") %||% NA_real_
   if (!is.null(hat_violation)) {
     warning(
       "Cluster-robust covariance is NOT trustworthy for this fit: ",
@@ -1732,32 +1361,7 @@ gam_sandwich_cluster_cl2 <- function(
       "bread and the weighted design have become numerically inconsistent -- ",
       "typically an ill-conditioned or barely converged fit (extreme fitted ",
       "values, a near-singular penalized Hessian, or a basis far too rich for ",
-      "the data). Both the CL2 and the CR1 cluster-robust covariances inherit ",
-      "the problem, so switching sandwich type does not repair it: inspect and ",
-      "refit the model instead.",
-      call. = FALSE
-    )
-  } else if (
-    identical(influence$adjustment, "shortcut") && n_capped_clusters > 0
-  ) {
-    max_leverage_label <- if (is.finite(max_leverage)) {
-      sprintf("%.3f", max_leverage)
-    } else {
-      "NA"
-    }
-    warning(
-      sprintf(
-        paste0(
-          "CL2 leverage adjustment hit the leverage cap %.3f in %d of %d ",
-          "clusters (max pre-cap eigenvalue %s). CL2 can be unreliable ",
-          "with small G or saturated per-cluster leverage; consider ",
-          "sandwich = \"cluster\" as the safer choice."
-        ),
-        influence$leverage_cap,
-        n_capped_clusters,
-        influence$G,
-        max_leverage_label
-      ),
+      "the data). Inspect and refit the model.",
       call. = FALSE
     )
   }
@@ -1774,38 +1378,21 @@ gam_sandwich_cluster_cl2 <- function(
 #' ill-conditioned or barely converged fit, e.g. a Poisson fit whose fitted
 #' means span many orders of magnitude --- the bread \eqn{V_p} stops being the
 #' inverse of the same weighted cross-product, and these invariants break by
-#' orders of magnitude rather than by round-off. This was the mechanism behind
-#' the numerically exploded interval widths observed on hard Poisson
-#' replicates in the locked benchmark (study LB, claim P-LB5).
-#'
-#' Detection is deliberately separate from the leverage cap. Capping
-#' \eqn{H_{gg}} at `leverage_cap` silently converts an impossible leverage into
-#' the *largest legitimate* one, so the shortcut adjustment responds to garbage
-#' with its maximal variance inflation; the exact block, being a squared
-#' operator, instead deflates. Both are bounded, neither is meaningful, and
-#' only a diagnostic can tell the user which situation they are in. We
-#' therefore warn and keep going rather than substituting a differently wrong
-#' number: the CR1 covariance is built from the same bread and is no more
-#' trustworthy here.
+#' orders of magnitude rather than by round-off (study LB, claim P-LB5).
 #'
 #' @param max_obs_leverage Largest per-observation leverage \eqn{h_{ii}} seen,
 #'   or `NA`.
-#' @param max_leverage Largest eigenvalue of any \eqn{H_{gg}} (shortcut path
-#'   only; `NA` otherwise).
 #' @param min_block_eig_rel Smallest eigenvalue of any \eqn{B_g} relative to
-#'   that block's largest eigenvalue (exact path only; `0` otherwise).
+#'   that block's largest eigenvalue.
 #' @param min_obs_leverage Smallest per-observation leverage \eqn{h_{ii}} seen,
 #'   or `NA`. A negative value means the penalized hat is indefinite.
-#' @param min_hat_eig Smallest eigenvalue of any \eqn{H_{gg}}, or `NA`. Checked
-#'   on every adjustment: the lower bound \eqn{0 \le \mathrm{eigen}(H_{gg})}
-#'   holds whatever leverage weight is used.
+#' @param min_hat_eig Smallest eigenvalue of any \eqn{H_{gg}}, or `NA`.
 #' @param tol Relative slack allowed before an invariant counts as violated.
 #' @returns `NULL` when every invariant holds, otherwise a one-sentence
 #'   character description of the violation.
 #' @keywords internal
 pffr_hat_invariant_violation <- function(
   max_obs_leverage = NA_real_,
-  max_leverage = NA_real_,
   min_block_eig_rel = 0,
   min_obs_leverage = NA_real_,
   min_hat_eig = NA_real_,
@@ -1818,15 +1405,6 @@ pffr_hat_invariant_violation <- function(
       sprintf(
         "the largest per-observation leverage is %.3g, above the bound 1;",
         max_obs_leverage
-      )
-    )
-  }
-  if (isTRUE(is.finite(max_leverage) && max_leverage > 1 + tol)) {
-    msgs <- c(
-      msgs,
-      sprintf(
-        "the largest per-cluster hat eigenvalue is %.3g, above the bound 1;",
-        max_leverage
       )
     )
   }
@@ -1867,81 +1445,42 @@ pffr_hat_invariant_violation <- function(
   paste(msgs, collapse = " ")
 }
 
-#' Resolve the CL2 leverage adjustment
-#'
-#' Exact CL2 is the default when the finite-sample correction can matter
-#' (`G <= 100`; Study EX measured the exact-over-shortcut coverage gain
-#' decaying from ~+1pp at G = 20 to under +0.15pp at G = 100) and the dense
-#' block multiplication is affordable. The cost proxy `G * maxDg * p^2`
-#' covers the dominant `(Xw_g Vp) (Xw'Xw)` multiplication. The 5e9 bound is
-#' calibrated by measurement, not guessed: both adjustments pay the same
-#' per-cluster eigendecomposition, so the exact block's MARGINAL cost is only
-#' these multiplications -- timed at ~0.03 s extra at proxy 5e8 and ~0.7 s
-#' total at 5e9 (single-thread BLAS), i.e. the bound caps the correctness
-#' upgrade at well under a second and in particular never denies it in the
-#' saturated small-G regime where its benefit is largest. Large-G CL2 uses
-#' the historical shortcut because the correction tends to zero there.
-#'
-#' @param cl2_adjustment One of `"auto"`, `"exact"`, or `"shortcut"`.
-#' @param G Number of clusters.
-#' @param maxDg Largest cluster size.
-#' @param p Coefficient-space dimension.
-#' @returns `"exact"` or `"shortcut"`.
-#' @keywords internal
-resolve_cl2_adjustment <- function(
-  cl2_adjustment = c("auto", "exact", "shortcut"),
-  G,
-  maxDg,
-  p
-) {
-  cl2_adjustment <- match.arg(cl2_adjustment)
-  if (cl2_adjustment != "auto") return(cl2_adjustment)
-
-  cost <- G * maxDg * p^2
-  if (
-    is.finite(G) && is.finite(maxDg) && is.finite(p) && G <= 100 && cost <= 5e9
-  ) {
-    "exact"
-  } else {
-    "shortcut"
-  }
-}
-
 #' Resolve a pffr fit's covariance matrices to a canonical representation
 #'
 #' The current storage contract (format 2) keeps `Vp`/`Vc`/`Ve` model-based
-#' ALWAYS and stores the robust covariance in `object$pffr$Vsandwich`
-#' (+ `Vsandwich_freq`). Older fits (format 1) instead overwrote `Vp`/`Vc`/`Ve`
-#' with the robust matrices and stashed the model-based originals in
-#' `object$pffr$model_cov`. This helper resolves either layout into a single
-#' shape, emitting a session-scoped one-time back-compat warning for old-format
-#' objects. All covariance recomputation must use the model-based matrices as
-#' the (penalized) bread, or the sandwich is applied on top of itself.
+#' ALWAYS and stores the robust covariance in `object$pffr$Vsandwich`. Fits
+#' made with intermediate development versions (format 1) instead overwrote
+#' `Vp`/`Vc`/`Ve` with the robust matrices and stashed the model-based
+#' originals in `object$pffr$model_cov`; fits made with refund 0.1-40 and
+#' earlier overwrote them without a stash. This helper resolves each layout
+#' into a single shape, emitting a session-scoped one-time back-compat warning
+#' for old fits. All covariance recomputation must use the model-based
+#' matrices as the (penalized) bread, or the sandwich is applied on top of
+#' itself.
 #'
 #' @param object A fitted pffr model.
 #' @returns A list with `model` (list of model-based `Vp`/`Vc`/`Ve`),
-#'   `fit_type` (the fit-time sandwich type), `Vsandwich`/`Vsandwich_freq` (the
-#'   fit-time robust matrices or `NULL`), and `format`
+#'   `fit_type` (the fit-time sandwich type, `"none"` for model-based fits),
+#'   `Vsandwich` (the fit-time robust matrix or `NULL`), and `format`
 #'   (`"new"`/`"old"`/`"ancient"`).
 #' @keywords internal
 pffr_canonicalize_cov <- function(object) {
   meta <- object$pffr
   fit_type <- normalize_sandwich_type(meta$sandwich)
 
-  # Format 2 (current): model-based Vp/Vc/Ve, robust in $pffr$Vsandwich.
-  # The cov_format stamp is set at metadata-build time, so this branch is also
+  # Format 2 (current): model-based Vp/Vc/Ve, robust in $pffr$Vsandwich. The
+  # cov_format stamp is set at metadata-build time, so this branch is also
   # taken during fitting, before apply_sandwich_correction() has stored
   # Vsandwich (Vp/Vc/Ve are model-based there too).
   if (
     isTRUE((meta$cov_format %||% 0L) >= 2L) ||
       !is.null(meta$sandwich_info) ||
-      !is.null(meta$Vsandwich)
+      !is.null(meta[["Vsandwich"]])
   ) {
     return(list(
       model = list(Vp = object$Vp, Vc = object$Vc, Ve = object$Ve),
       fit_type = meta$sandwich_info$type %||% fit_type,
-      Vsandwich = meta$Vsandwich,
-      Vsandwich_freq = meta$Vsandwich_freq,
+      Vsandwich = meta[["Vsandwich"]],
       format = "new"
     ))
   }
@@ -1952,51 +1491,47 @@ pffr_canonicalize_cov <- function(object) {
       model = list(Vp = object$Vp, Vc = object$Vc, Ve = object$Ve),
       fit_type = "none",
       Vsandwich = NULL,
-      Vsandwich_freq = NULL,
       format = "new"
     ))
   }
 
-  # Format 1 (old): Vp/Vc/Ve overwritten with robust, model-based in model_cov.
+  # Format 1: Vp/Vc/Ve overwritten with robust, model-based in model_cov.
   mc <- meta$model_cov
   if (!is.null(mc)) {
     pffr_warn_once(
       "oldformat_modelcov",
       paste0(
         "This pffr fit was created by an older refund version: its $Vp/$Vc/$Ve ",
-        "hold the sandwich-adjusted (robust) covariance and the model-based ",
-        "matrices are stashed in $pffr$model_cov. Reading it in ",
-        "backward-compatible mode. Call pffr_upgrade_fit() to convert it to ",
-        "the current storage format ($Vp model-based, robust in ",
-        "$pffr$Vsandwich)."
+        "hold a sandwich-adjusted covariance and the model-based matrices are ",
+        "stashed in $pffr$model_cov. Intervals are recomputed from the ",
+        "model-based matrices. Refit with the current refund version to ",
+        "store the current format."
       )
     )
     return(list(
       model = list(Vp = mc$Vp, Vc = mc$Vc, Ve = mc$Ve),
       fit_type = fit_type,
       Vsandwich = object$Vp,
-      Vsandwich_freq = object$Ve,
       format = "old"
     ))
   }
 
-  # Ancient: robust matrices, model-based irrecoverably lost.
+  # refund <= 0.1-40: robust matrices, model-based irrecoverably lost.
   pffr_warn_once(
     "oldformat_nostash",
     paste0(
       "This pffr fit was created with sandwich = \"",
       fit_type,
-      "\" by a very old refund version and does not carry the model-based ",
-      "covariance matrices. Model-based uncertainty cannot be recovered and ",
-      "any recomputed sandwich would double-apply the correction; refit the ",
-      "model with the current refund version."
+      "\" by refund 0.1-40 or earlier and does not carry the model-based ",
+      "covariance matrices. Its stored covariance is used with Gaussian ",
+      "critical values; refit the model with the current refund version for ",
+      "CL2 intervals with Satterthwaite critical values."
     )
   )
   list(
     model = list(Vp = object$Vp, Vc = object$Vc, Ve = object$Ve),
     fit_type = fit_type,
     Vsandwich = object$Vp,
-    Vsandwich_freq = object$Ve,
     format = "ancient"
   )
 }
@@ -2004,7 +1539,7 @@ pffr_canonicalize_cov <- function(object) {
 #' Return a fit's underlying gam with model-based covariance matrices
 #'
 #' Strips the `"pffr"` class and guarantees `Vp`/`Vc`/`Ve` are the model-based
-#' matrices, so downstream mgcv machinery and the sandwich estimators use the
+#' matrices, so downstream mgcv machinery and the sandwich estimator use the
 #' penalized bread rather than an already-robustified matrix.
 #'
 #' @param object A fitted pffr model.
@@ -2016,25 +1551,6 @@ pffr_model_based_gam <- function(object) {
   object$Vc <- canon$model$Vc
   object$Ve <- canon$model$Ve
   class(object) <- setdiff(class(object), "pffr")
-  object
-}
-
-#' Back-compat shim: restore model-based covariance on a fit
-#'
-#' Retained for backward compatibility. Sets `Vp`/`Vc`/`Ve` to the model-based
-#' matrices (a no-op for current-format fits, whose `Vp`/`Vc`/`Ve` are already
-#' model-based; a restore-from-stash for old-format fits). See
-#' [pffr_canonicalize_cov()].
-#'
-#' @param object A fitted pffr model (or its stripped gam version with the
-#'   `$pffr` metadata still attached).
-#' @returns The object with model-based `Vp`/`Vc`/`Ve`.
-#' @keywords internal
-restore_model_cov <- function(object) {
-  canon <- pffr_canonicalize_cov(object)
-  object$Vp <- canon$model$Vp
-  object$Vc <- canon$model$Vc
-  object$Ve <- canon$model$Ve
   object
 }
 
@@ -2051,1240 +1567,468 @@ pffr_is_ar1_fit <- function(object) {
   is.numeric(rho) && length(rho) == 1 && is.finite(rho) && rho != 0
 }
 
-#' Refuse sandwich covariances for AR(1) working-correlation fits
+#' Refuse the sandwich covariance for AR(1) working-correlation fits
 #'
-#' The sandwich estimators (`"cluster"`, `"cl2"`, `"hc"`) build their scores
-#' from the working-independence design and residuals. On a fit with an AR(1)
-#' working correlation (`rho` in [pffr()]) the estimating equations are the
-#' AR-whitened ones, so these sandwiches would be silently wrong. This is the
-#' single guard shared by every sandwich path ([pffr_compute_sandwich()],
-#' [pffr_influence()], [vcov.pffr()] and the fit-time check in [pffr()]).
+#' The CL2 sandwich builds its scores from the working-independence design and
+#' residuals. On a fit with an AR(1) working correlation (`rho` in [pffr()])
+#' the estimating equations are the AR-whitened ones, so the sandwich would be
+#' silently wrong. This is the single guard shared by every sandwich path
+#' ([pffr_influence()], [pffr_vcov()] and the fit-time check in [pffr()]).
 #'
 #' @param object A fitted pffr model or its stripped gam version, or `NULL`
 #'   when `rho` is given directly.
-#' @param type Requested sandwich type.
+#' @param sandwich Is the sandwich requested?
 #' @param rho Optional AR(1) coefficient; defaults to the fit's `$AR1.rho`.
-#' @returns `invisible(TRUE)`; errors for a non-`"none"` type on an AR(1) fit.
+#' @returns `invisible(TRUE)`; errors for a sandwich request on an AR(1) fit.
 #' @keywords internal
-pffr_check_sandwich_ar1 <- function(object, type, rho = object$AR1.rho) {
-  type <- normalize_sandwich_type(type)
-  if (identical(type, "none") || !pffr_is_ar1_fit(list(AR1.rho = rho))) {
+pffr_check_sandwich_ar1 <- function(object, sandwich, rho = object$AR1.rho) {
+  if (!isTRUE(sandwich) || !pffr_is_ar1_fit(list(AR1.rho = rho))) {
     return(invisible(TRUE))
   }
   stop(
-    "sandwich = \"",
-    type,
-    "\" is not supported for fits with an AR(1) working correlation (rho = ",
+    "sandwich = TRUE is not supported for fits with an AR(1) working ",
+    "correlation (rho = ",
     format(rho, digits = 3),
-    "): the sandwich estimators assume working-independence scores and would ",
-    "be wrong on the AR-whitened fit. Use sandwich = \"none\" with the AR(1) ",
-    "working model, or drop `rho` to use a cluster-robust sandwich.",
+    "): the sandwich assumes working-independence scores and would be wrong ",
+    "on the AR-whitened fit. Use sandwich = FALSE with the AR(1) working ",
+    "model, or drop `rho` to use the CL2 sandwich.",
     call. = FALSE
   )
 }
 
-#' Compute a robust covariance matrix from a model-based gam
+#' Model-based covariance of a fit
 #'
-#' Single dispatch point used by both fit-time correction and on-demand
-#' recomputation. `b` must be a (stripped) gam whose `Vp`/`Vc`/`Ve` are the
-#' model-based (penalized) matrices used as the sandwich bread.
+#' \eqn{V_c}, which adds mgcv's smoothing-parameter uncertainty correction,
+#' falling back to \eqn{V_p}. For NCV fits mgcv's \eqn{V_c} is not a valid
+#' covariance (it is much smaller than \eqn{V_p}), so they use \eqn{V_p}.
 #'
-#' @param b Stripped gam object with model-based covariance matrices.
-#' @param type One of `"cluster"`, `"cl2"`, `"hc"`, `"none"`.
-#' @param cluster_id Integer cluster vector (for `"cluster"`/`"cl2"`), else
-#'   `NULL`.
-#' @param freq If `TRUE`, frequentist sandwich (`B2 = 0`).
-#' @param dof_correction,edf_type CR1 small-sample dof options (`"cluster"`
-#'   only).
-#' @param b2 Internal ablation switch (default `TRUE`); drop the additive
-#'   \eqn{B_2} term when `FALSE` (X5). Applies to `"cluster"`/`"cl2"` only.
-#' @param center_scores Internal ablation switch (default `FALSE`); center the
-#'   per-cluster score sums before the meat when `TRUE` (X6). Applies to
-#'   `"cluster"`/`"cl2"` only.
-#' @param cl2_adjustment CL2 leverage adjustment (`"auto"`, `"exact"`, or
-#'   `"shortcut"`), used only for `type = "cl2"`.
-#' @param influence Optional precomputed fixed-fit influence object.
-#' @returns A covariance matrix (with CL2 leverage attributes for `type =
-#'   "cl2"`).
+#' @param object A fitted pffr model.
+#' @param model List of model-based `Vp`/`Vc`/`Ve`.
+#' @returns A covariance matrix.
 #' @keywords internal
-pffr_compute_sandwich <- function(
-  b,
-  type,
-  cluster_id,
-  freq = FALSE,
-  dof_correction = "none",
-  edf_type = "trace",
-  b2 = TRUE,
-  center_scores = FALSE,
-  cl2_adjustment = "auto",
-  influence = NULL
-) {
-  pffr_check_sandwich_ar1(b, type)
-  switch(
-    type,
-    cluster = gam_sandwich_cluster(
-      b,
-      cluster_id,
-      freq = freq,
-      dof_correction = dof_correction,
-      edf_type = edf_type,
-      b2 = b2,
-      center_scores = center_scores
-    ),
-    cl2 = gam_sandwich_cluster_cl2(
-      b,
-      cluster_id,
-      freq = freq,
-      b2 = b2,
-      center_scores = center_scores,
-      cl2_adjustment = cl2_adjustment,
-      influence = influence
-    ),
-    hc = mgcv::vcov.gam(b, sandwich = TRUE, freq = freq),
-    none = pffr_model_based_cov(b, list(Vp = b$Vp, Vc = b$Vc, Ve = b$Ve), freq),
-    stop("Unknown sandwich type: ", type, call. = FALSE)
+pffr_model_based_cov <- function(object, model) {
+  if (identical(object$method, "NCV")) return(model$Vp)
+  model$Vc %||% model$Vp
+}
+
+#' Resolve a user-supplied `sandwich` argument
+#'
+#' `TRUE` requests the CL2 sandwich, `FALSE` the model-based covariance and
+#' `NULL` (only where documented) inherits the fit. The character values of
+#' refund 0.1-40 are deprecated: `"none"` maps to `FALSE`, `"cl2"` to `TRUE`,
+#' and `"cluster"` and `"hc"`, which are no longer available, to `TRUE` (CL2).
+#'
+#' @param sandwich The argument as supplied.
+#' @returns `TRUE`, `FALSE` or `NULL`.
+#' @keywords internal
+pffr_sandwich_arg <- function(sandwich) {
+  if (is.null(sandwich)) return(NULL)
+  if (is.logical(sandwich) && length(sandwich) == 1L && !is.na(sandwich)) {
+    return(sandwich)
+  }
+  legacy <- c("cluster", "cl2", "hc", "none")
+  if (
+    is.character(sandwich) && length(sandwich) == 1L && sandwich %in% legacy
+  ) {
+    use <- sandwich != "none"
+    .Deprecated(
+      msg = paste0(
+        "sandwich = \"",
+        sandwich,
+        "\" is deprecated; use sandwich = ",
+        use,
+        ".",
+        if (sandwich %in% c("cluster", "hc")) {
+          paste0(
+            " The \"",
+            sandwich,
+            "\" covariance is no longer available; the CL2 sandwich is ",
+            "used instead."
+          )
+        } else {
+          ""
+        }
+      )
+    )
+    return(use)
+  }
+  stop(
+    "`sandwich` must be TRUE (CL2 sandwich, the default) or FALSE ",
+    "(model-based covariance).",
+    call. = FALSE
   )
 }
 
-# Model-based covariance of a fit: Ve (frequentist) or Vc, which adds the
-# smoothing-parameter uncertainty correction, falling back to Vp. For NCV fits mgcv's
-# Vc is not a valid covariance (it is much smaller than Vp), so they use Vp.
-pffr_model_based_cov <- function(object, model, freq = FALSE) {
-  if (freq) return(model$Ve)
-  if (identical(object$method, "NCV")) return(model$Vp)
-  model$Vc %||% model$Vp
+#' Error on arguments removed from the pffr inference interface
+#'
+#' Arguments of development versions of refund that were removed rather than
+#' deprecated (they were never released) would otherwise disappear silently
+#' into `...`.
+#'
+#' @param dots Named list of the `...` arguments.
+#' @param fun Name of the calling function, for the message.
+#' @returns `invisible(NULL)`; errors if a removed argument is present.
+#' @keywords internal
+pffr_check_removed_args <- function(dots, fun) {
+  removed <- c(
+    "freq",
+    "cl2_adjustment",
+    "dof_correction",
+    "edf_type",
+    "crit",
+    "ci_ref",
+    "df_gram",
+    "bias_ref",
+    "se_method"
+  )
+  found <- intersect(names(dots), removed)
+  if (length(found)) {
+    stop(
+      fun,
+      "(): argument(s) ",
+      paste0("`", found, "`", collapse = ", "),
+      " no longer exist. Intervals use the CL2 sandwich with Satterthwaite ",
+      "critical values (sandwich = TRUE, the default) or the model-based ",
+      "covariance with Gaussian critical values (sandwich = FALSE); see ",
+      "?pffr.",
+      call. = FALSE
+    )
+  }
+  invisible(NULL)
 }
 
 #' Resolve the covariance matrix for a pffr fit (single accessor)
 #'
 #' The one internal accessor through which every refund consumer
-#' (`coef.pffr`, `plot.pffr`, `predict.pffr`, simultaneous bands) obtains a
-#' covariance matrix, so that `$Vp`/`$Vc`/`$Ve` stay model-based and robust
-#' matrices are never double-applied.
+#' (`coef.pffr`, `plot.pffr`, `predict.pffr`, `pffr_predict_ci`, simultaneous
+#' bands) obtains a covariance matrix, so that `$Vp`/`$Vc`/`$Ve` stay
+#' model-based and robust matrices are never double-applied.
 #'
 #' @param object A fitted pffr model.
-#' @param sandwich `NULL` (default) uses the fit-time choice; otherwise one of
-#'   `"none"`/`"cluster"`/`"cl2"`/`"hc"` (or a legacy logical). `"none"` returns
-#'   the genuinely model-based covariance; any other value that differs from the
-#'   fit-time choice (or supplies a custom `cluster`) recomputes from the
-#'   model-based bread.
-#' @param freq If `TRUE`, return the frequentist covariance.
+#' @param sandwich `NULL` (default) uses the fit-time choice; `TRUE` the CL2
+#'   sandwich (exact leverage adjustment, Bayesian form); `FALSE` the
+#'   model-based covariance ([pffr_model_based_cov()]).
 #' @param cluster Optional per-curve grouping forcing recomputation at a custom
 #'   cluster level.
-#' @param dof_correction,edf_type CR1 dof options; `NULL` inherits the fit's.
-#' @param b2 Internal ablation switch (default `TRUE` = current behavior). When
-#'   `FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2} from the
-#'   cluster/CL2 sandwich (X5). Non-default values always force a fresh
-#'   recomputation and are never served from or written to the cache.
-#' @param center_scores Internal ablation switch (default `FALSE` = current
-#'   behavior). When `TRUE`, center the per-cluster score sums before forming
-#'   the cluster/CL2 meat (X6). Same cache semantics as `b2`.
-#' @param cl2_adjustment CL2 leverage adjustment. `NULL` (default) inherits
-#'   the fitted choice; otherwise one of `"auto"`, `"exact"`, or `"shortcut"`.
 #' @returns A covariance matrix.
 #' @keywords internal
-pffr_vcov <- function(
-  object,
-  sandwich = NULL,
-  freq = FALSE,
-  cluster = NULL,
-  dof_correction = NULL,
-  edf_type = NULL,
-  b2 = TRUE,
-  center_scores = FALSE,
-  cl2_adjustment = NULL
-) {
-  # Ablation variants (X5/X6) bypass the fit-time and recompute caches entirely,
-  # so they never overwrite or shadow the standard cached matrices.
-  ablation <- !isTRUE(b2) || isTRUE(center_scores)
+pffr_vcov <- function(object, sandwich = NULL, cluster = NULL) {
   canon <- pffr_canonicalize_cov(object)
-  requested <- if (is.null(sandwich)) {
-    canon$fit_type
-  } else {
-    normalize_sandwich_type(sandwich)
+  use_sandwich <- sandwich %||% !identical(canon$fit_type, "none")
+  if (!use_sandwich) {
+    return(pffr_model_based_cov(object, canon$model))
   }
-  requested <- match.arg(requested, c("none", "cluster", "cl2", "hc"))
-  pffr_check_sandwich_ar1(canon$model, requested)
-
-  if (identical(requested, "none")) {
-    return(pffr_model_based_cov(object, canon$model, freq))
+  pffr_check_sandwich_ar1(object, TRUE)
+  if (identical(canon$format, "ancient")) {
+    return(canon$Vsandwich)
   }
-
-  dof_correction <- dof_correction %||% (object$pffr$dof_correction %||% "none")
-  edf_type <- edf_type %||% (object$pffr$edf_type %||% "trace")
-  cl2_adjustment_explicit <- !is.null(cl2_adjustment)
-  cl2_adjustment <- cl2_adjustment %||%
-    (object$pffr$cl2_adjustment %||% "auto")
-  cl2_adjustment <- match.arg(
-    cl2_adjustment,
-    c("auto", "exact", "shortcut")
-  )
-
-  # Serve the cached fit-time robust matrix when the request matches it exactly.
-  opts_match <- if (requested == "cluster") {
-    identical(dof_correction, object$pffr$dof_correction %||% "none") &&
-      (dof_correction == "none" ||
-        identical(edf_type, object$pffr$edf_type %||% "trace"))
-  } else {
-    TRUE
+  # Serve the fit-time matrix when it is the exact CL2 sandwich.
+  stored_exact <- identical(canon$fit_type, "cl2") &&
+    identical(object$pffr$sandwich_info$cl2_adjustment, "exact") &&
+    !is.null(canon$Vsandwich)
+  if (is.null(cluster) && stored_exact) {
+    return(canon$Vsandwich)
   }
-  adjustment_match <- requested != "cl2" ||
-    !cl2_adjustment_explicit ||
-    identical(
-      cl2_adjustment,
-      object$pffr$sandwich_info$cl2_adjustment %||%
-        object$pffr$cl2_adjustment %||%
-        "shortcut"
-    )
-  if (
-    !ablation &&
-      is.null(cluster) &&
-      identical(requested, canon$fit_type) &&
-      opts_match &&
-      adjustment_match &&
-      !is.null(canon$Vsandwich)
-  ) {
-    return(
-      if (freq) {
-        canon$Vsandwich_freq %||% canon$Vsandwich
-      } else {
-        canon$Vsandwich
-      }
-    )
-  }
-
-  # Recompute from the model-based bread (safe by construction). Cache the
-  # result in fit$pffr$Vsandwich_cache[[type]] -- an environment, so the cache
-  # actually persists across coef()/predict() calls on the same stored object
-  # (a plain list slot could not, under copy-on-modify). Keys extend the type
-  # with the freq/dof options; custom `cluster` requests are never cached.
+  # Recompute from the model-based bread (safe by construction) and cache it
+  # in fit$pffr$Vsandwich_cache -- an environment, so the cache persists
+  # across coef()/predict() calls on the same stored object. Custom `cluster`
+  # requests are never cached.
   cache <- object$pffr$Vsandwich_cache
-  key <- if (!ablation && is.null(cluster)) {
-    if (requested == "cluster" && (freq || dof_correction != "none")) {
-      paste(requested, freq, dof_correction, edf_type, sep = "|")
-    } else if (requested == "cl2") {
-      if (cl2_adjustment == "auto") {
-        if (freq) paste(requested, "freq", sep = "|") else requested
-      } else {
-        paste(
-          requested,
-          cl2_adjustment,
-          if (freq) "freq" else "bayes",
-          sep = "|"
-        )
-      }
-    } else if (freq) {
-      paste(requested, "freq", sep = "|")
-    } else {
-      requested
-    }
-  } else {
-    NULL
+  cacheable <- is.null(cluster) && is.environment(cache)
+  if (cacheable && !is.null(cache$cl2)) {
+    return(cache$cl2)
   }
-  if (!is.null(cache) && !is.null(key) && !is.null(cache[[key]])) {
-    return(cache[[key]])
-  }
-
-  b <- object
-  b$Vp <- canon$model$Vp
-  b$Vc <- canon$model$Vc
-  b$Ve <- canon$model$Ve
-  class(b) <- setdiff(class(b), "pffr")
-  cluster_id <- if (requested %in% c("cluster", "cl2")) {
-    build_cluster_id(object$pffr, cluster = cluster)
-  } else {
-    NULL
-  }
-  V <- pffr_compute_sandwich(
-    b,
-    requested,
-    cluster_id,
-    freq = freq,
-    dof_correction = dof_correction,
-    edf_type = edf_type,
-    b2 = b2,
-    center_scores = center_scores,
-    cl2_adjustment = cl2_adjustment,
-    influence = if (requested == "cl2")
-      pffr_influence(object, requested, cluster, cl2_adjustment) else NULL
+  V <- gam_sandwich_cluster_cl2(
+    pffr_model_based_gam(object),
+    cluster_id = NULL,
+    influence = pffr_influence(object, cluster = cluster)
   )
-  if (!is.null(cache) && !is.null(key)) {
-    cache[[key]] <- V
-  }
+  if (cacheable) cache$cl2 <- V
   V
 }
 
-#' Central Gaussian working-model sampling-variance moment df
+#' Critical-value setup for pointwise intervals
 #'
-#' For a contrast \eqn{a} with Fisher-whitened per-cluster design
-#' \eqn{\tilde X_g = \sqrt{W_g}\,X_g}, model-based penalized bread \eqn{V_p} and
-#' leverage adjustment \eqn{A_g} (exact Bell--McCaffrey block, the historical
-#' shortcut \eqn{(I - H_{gg})^{-1/2}}, or the identity on the CR1 path), write
-#' \eqn{q_g = A_g\,\tilde X_g\,(V_p a)} and \eqn{t_g = \tilde X_g' q_g}. The
-#' residualized moment Gram is
-#' \deqn{\Gamma_{gh} = 1\{g = h\}\lVert q_g\rVert^2 - t_g^\top C\,t_h,
-#'   \qquad C = 2 V_p - V_p \tilde X^\top \tilde X V_p,}
-#' and matching the first two moments of the sampling quadratic form gives
-#' \deqn{\nu(a) = \frac{\{\mathrm{tr}(\Gamma)\}^2}{\mathrm{tr}(\Gamma^2)},
-#'   \qquad \mathrm{crit} = t_{1 - \alpha/2,\,\nu}.}
-#' Dropping the off-diagonal terms recovers the historical working-iid shortcut
-#' \eqn{(\sum_g \lVert q_g\rVert^2)^2 / \sum_g \lVert q_g\rVert^4}, which
-#' returns \eqn{\approx G} for a balanced design where the residualized df
-#' returns \eqn{G - 1} (see [pffr_influence_df()]'s `df_gram`). This is
-#' conditional on the fitted weights and smoothing parameters and is not an
-#' exact t law.
+#' Intervals from the CL2 sandwich use Satterthwaite critical values, with a
+#' separate working-model moment df for every evaluation point (see
+#' [pffr_influence_df()]); model-based intervals, and fits of refund 0.1-40
+#' and earlier whose model-based bread is lost, use Gaussian ones.
 #'
-#' @param Xw Working-likelihood-scaled design.
-#' @param cluster_id Grouping per working row.
-#' @param Vp Penalized model-based bread.
-#' @param Xp Full coefficient-space contrasts, one per row.
-#' @param use_cl2 Apply leverage adjustment?
-#' @param leverage_cap,tol Numerical floor settings.
-#' @param cl2_adjustment Exact (default) or shortcut leverage block.
-#' @returns List with df, G and expected sampling variance. Undefined df is NA.
-#' @keywords internal
-satterthwaite_df_kernel <- function(
-  Xw,
-  cluster_id,
-  Vp,
-  Xp,
-  use_cl2,
-  leverage_cap = 0.999,
-  tol = 1e-8,
-  cl2_adjustment = "exact"
-) {
-  core <- pffr_influence_core(
-    Xw,
-    Vp,
-    cluster_id,
-    adjustment = if (use_cl2) cl2_adjustment else "none",
-    leverage_cap = leverage_cap,
-    tol = tol
-  )
-  pffr_influence_df(core, Xp)
-}
-
-#' Cached residualization context for central Gaussian moment df
 #' @param object Fitted pffr model.
-#' @param sandwich_type Resolved cluster or cl2 covariance choice.
-#' @param cluster Optional per-curve grouping override.
-#' @param leverage_cap,tol Numerical floor settings.
-#' @param cl2_adjustment NULL inherits the fit; otherwise auto, exact or shortcut.
-#' @param df_gram Gram matrix for the moment df: the residualized default
-#'   (`"full"`) or the diagonal shortcut. `"diagonal"` drops the off-diagonal
-#'   residualization and uses **the same `q_g` as the covariance**, so it
-#'   reproduces the historical (pre-2026-09) df exactly only together with
-#'   `cl2_adjustment = "shortcut"`; see [pffr_influence_df()].
-#' @param dof_correction,edf_type CR1 small-sample correction for
-#'   `sandwich_type = "cluster"`; `NULL` inherits the fit. They scale the
-#'   context's `expected_sampling_variance` (not the df itself).
-#' @returns List with ok, type, cached core, Vp, G, the `df_gram` choice and the
-#'   adjustment settings.
+#' @param use_sandwich Do the standard errors come from the CL2 sandwich?
+#' @param cluster Optional per-curve grouping, as in [coef.pffr()].
+#' @returns List with `mode` (`"satterthwaite"` or `"z"`) and the influence
+#'   object `core` (or `NULL`).
 #' @keywords internal
-pffr_df_context <- function(
-  object,
-  sandwich_type,
-  cluster = NULL,
-  leverage_cap = 0.999,
-  tol = 1e-8,
-  cl2_adjustment = NULL,
-  df_gram = c("full", "diagonal"),
-  dof_correction = NULL,
-  edf_type = NULL
-) {
-  df_gram <- match.arg(df_gram)
-  type <- normalize_sandwich_type(sandwich_type)
-  if (!type %in% c("cluster", "cl2")) return(list(ok = FALSE, type = type))
-  core <- pffr_influence(
-    object,
-    type,
-    cluster,
-    cl2_adjustment,
-    leverage_cap,
-    tol,
-    dof_correction,
-    edf_type
-  )
-  list(
-    ok = TRUE,
-    type = type,
-    core = core,
-    Vp = core$B,
-    G = core$G,
-    use_cl2 = type == "cl2",
-    leverage_cap = leverage_cap,
-    tol = tol,
-    df_gram = df_gram
-  )
-}
-
-#' Per-point Satterthwaite df for a set of contrasts, from a df context
-#'
-#' Thin wrapper around [satterthwaite_df_kernel()] that returns just the df
-#' vector, or all-`NA` when the context carries no whitened design (`ok =
-#' FALSE`). Undefined df does not justify a Gaussian reference.
-#'
-#' @param ctx A [pffr_df_context()] result.
-#' @param Xp Contrast matrix (`n_points x p`, full coefficient space).
-#' @param df_gram Optional override of the context's Gram choice.
-#' @returns Numeric vector of per-point df (length `nrow(Xp)`).
-#' @keywords internal
-pffr_df_from_context <- function(ctx, Xp, df_gram = NULL) {
-  if (!isTRUE(ctx$ok)) return(rep(NA_real_, nrow(Xp)))
-  pffr_influence_df(
-    ctx$core,
-    Xp,
-    df_gram = df_gram %||% ctx$df_gram %||% "full"
-  )$df
-}
-
-#' Resolve the pointwise critical-value reference for [coef.pffr()]
-#'
-#' Maps the user's `crit` (`"auto"`/`"z"`/`"tG1"`/`"satterthwaite"`) to a
-#' concrete reference. `"auto"` selects the per-point Satterthwaite reference
-#' when the pointwise SEs come from a cluster-robust sandwich
-#' (`"cluster"`/`"cl2"`) and the number of independent curves/clusters is
-#' moderate (`G < 150`), and the Gaussian reference otherwise. An explicit
-#' `"satterthwaite"` on a non-cluster covariance has no cluster leverage
-#' structure to match and degrades to `"z"` with a warning; `"tG1"` (the
-#' \eqn{t_{G-1}} reference, pointwise counterpart of the simultaneous
-#' `ci_ref = "t"`) uses the curve/cluster count regardless of the covariance.
-#'
-#' @param crit One of `"auto"`, `"z"`, `"tG1"`, `"satterthwaite"`.
-#' @param sandwich_type The resolved covariance type used for the SEs.
-#' @param G Number of independent curves / clusters.
-#' @returns One of `"z"`, `"tG1"`, `"satterthwaite"`.
-#' @keywords internal
-resolve_crit_reference <- function(crit, sandwich_type, G) {
-  crit <- match.arg(crit, c("auto", "z", "tG1", "satterthwaite"))
-  type <- normalize_sandwich_type(sandwich_type)
-  is_cluster <- type %in% c("cluster", "cl2")
-  if (crit == "auto") {
-    return(if (is_cluster && is.finite(G) && G < 150) "satterthwaite" else "z")
-  }
-  if (crit == "satterthwaite" && !is_cluster) {
-    warning(
-      "crit = \"satterthwaite\" requires a cluster-robust covariance ",
-      "(sandwich = \"cluster\" or \"cl2\"); using crit = \"z\" instead.",
-      call. = FALSE
-    )
-    return("z")
-  }
-  crit
-}
-
-#' Does a family have an exact or two-block cluster score path?
-#'
-#' Decides whether the `sandwich = "auto"` policy may promote a fit to the
-#' leverage-adjusted CL2 sandwich. The classification is delegated to
-#' [pffr_score_kind()] --- the single source of truth for the ACTUAL sandwich
-#' dispatch (`gam_sandwich_cluster_cl2()` / `build_cl2_working_*()`) --- so the
-#' two cannot drift:
-#' \itemize{
-#'   \item `"gaulss"` --- two-block Fisher-whitened exact score
-#'     ([build_cl2_working_gaulss()]): eligible.
-#'   \item `"scat"` --- exact scaled-t score ([compute_scat_scores()] /
-#'     [build_cl2_working_scat()], task S4): eligible.
-#'   \item `"custom"` (families defining their own `family$sandwich`, e.g.
-#'     `multinom`) --- the CL2 path falls back to the observation-level HC
-#'     sandwich, so there is no cluster score path: not eligible.
-#'   \item `"approx"` (remaining extended families: `nb`, `tw`, `betar`, ...)
-#'     --- only the exponential-family working-residual APPROXIMATION (the D1
-#'     review item), not an exact score: not eligible.
-#'   \item `"exact"` (standard exponential-dispersion GLM families) ---
-#'     eligible, provided the object actually carries the score ingredients
-#'     `build_cl2_working_standard()` consumes.
-#' }
-#'
-#' @param family A fitted model's `family` object.
-#' @returns `TRUE` if the family has an exact or two-block cluster score path.
-#' @keywords internal
-family_has_exact_score <- function(family) {
-  if (is.null(family)) {
-    return(FALSE)
-  }
-  switch(
-    pffr_score_kind(family),
-    gaulss = TRUE,
-    scat = TRUE,
-    custom = FALSE,
-    approx = FALSE,
-    # "exact" fallthrough: require the score ingredients
-    # build_cl2_working_standard() actually consumes -- not merely "anything
-    # that is not an extended family" (a custom family-like object without
-    # mu.eta/variance has no score path and must not be auto-promoted).
-    inherits(family, "family") &&
-      !inherits(family, "extended.family") &&
-      is.function(family$mu.eta) &&
-      is.function(family$variance)
-  )
-}
-
-#' Resolve `sandwich = "auto"` to a concrete cluster-robust estimator
-#'
-#' The single place the `sandwich = "auto"` policy lives (task S2). Promotes a
-#' fit to the leverage-adjusted CL2 sandwich when it is both appropriate and
-#' affordable, and falls back to the plain CR1 cluster sandwich otherwise.
-#' Resolves to `"cl2"` iff ALL of:
-#' \enumerate{
-#'   \item the family has an exact or two-block cluster score path
-#'     ([family_has_exact_score()]);
-#'   \item there are at least two clusters (\eqn{G \ge 2}; the cluster
-#'     sandwich's \eqn{G/(G-1)} factor is undefined at \eqn{G = 1}) and the
-#'     number of independent curves/clusters is moderate, \eqn{G \le} `G_max`
-#'     (default 150); and
-#'   \item the largest cluster is not too large, \eqn{\max_g D_g \le} `Dg_max`
-#'     (default 500).
-#' }
-#' otherwise `"cluster"`.
-#'
-#' @param G Number of independent curves/clusters.
-#' @param maxDg Largest per-cluster observation count \eqn{\max_g D_g}.
-#' @param family The fitted model's `family` object.
-#' @returns One of `"cl2"` or `"cluster"`.
-#' @section Overriding:
-#' `options(refund.pffr.autopolicy = <value>)` overrides the policy. A
-#' \emph{function} `function(G, maxDg, family)` returning `"cl2"`/`"cluster"`
-#' replaces the whole rule; a \emph{named list} may override the thresholds, e.g.
-#' `options(refund.pffr.autopolicy = list(G_max = 80, Dg_max = 300))`.
-#' Malformed overrides (any other type, a function returning something other
-#' than `"cluster"`/`"cl2"`, or non-scalar/non-finite thresholds) emit a
-#' warning and fall back to the defaults.
-#' @keywords internal
-pffr_sandwich_auto_policy <- function(G, maxDg, family) {
-  opt <- getOption("refund.pffr.autopolicy", NULL)
-  if (is.function(opt)) {
-    out <- opt(G, maxDg, family)
-    if (
-      is.character(out) && length(out) == 1L && out %in% c("cluster", "cl2")
-    ) {
-      return(out)
-    }
-    warning(
-      "options(refund.pffr.autopolicy=): the override function must return ",
-      "\"cluster\" or \"cl2\"; ignoring the override and using the default ",
-      "policy.",
-      call. = FALSE
-    )
-    opt <- NULL
-  } else if (!is.null(opt) && !is.list(opt)) {
-    warning(
-      "options(refund.pffr.autopolicy=) must be a function(G, maxDg, family) ",
-      "or a named list of thresholds (G_max, Dg_max); ignoring the malformed ",
-      "option and using the default policy.",
-      call. = FALSE
-    )
-    opt <- NULL
-  }
-
-  G_max <- 150
-  # CL2's per-cluster leverage adjustment (I - H_gg)^{-1/2} is an O(D_g^3)
-  # eigendecomposition; the paper's timing study found CL2 overhead negligible
-  # beside the fit up to n_y = 120, so cap the largest cluster to keep the
-  # promotion affordable on dense grids.
-  Dg_max <- 500
-  if (is.list(opt)) {
-    valid_threshold <- function(x) {
-      is.numeric(x) && length(x) == 1L && is.finite(x)
-    }
-    if (!is.null(opt$G_max)) {
-      if (valid_threshold(opt$G_max)) {
-        G_max <- opt$G_max
-      } else {
-        warning(
-          "options(refund.pffr.autopolicy=): G_max must be a single finite ",
-          "numeric value; using the default (",
-          G_max,
-          ").",
-          call. = FALSE
-        )
-      }
-    }
-    if (!is.null(opt$Dg_max)) {
-      if (valid_threshold(opt$Dg_max)) {
-        Dg_max <- opt$Dg_max
-      } else {
-        warning(
-          "options(refund.pffr.autopolicy=): Dg_max must be a single finite ",
-          "numeric value; using the default (",
-          Dg_max,
-          ").",
-          call. = FALSE
-        )
-      }
-    }
-  }
-
-  # G >= 2: the cluster sandwich's G/(G-1) small-sample factor (and CL2's
-  # per-cluster machinery) is undefined for a single cluster -- never promote.
-  eligible <- family_has_exact_score(family) &&
-    is.finite(G) &&
-    G >= 2 &&
-    G <= G_max &&
-    is.finite(maxDg) &&
-    maxDg <= Dg_max
-  if (eligible) "cl2" else "cluster"
-}
-
-#' Penalty-direction and B2-magnitude diagnostics for a pffr sandwich
-#'
-#' Fit-level diagnostics that quantify how much of the cluster-robust sandwich
-#' is driven by the penalty (uncentered-meat) direction and by the additive
-#' \eqn{B_2} smoothing-bias term. Used by the X5/X6 ablation experiment; needs
-#' the raw per-cluster scores, so it lives in the package rather than being
-#' derivable from the covariance accessor alone.
-#'
-#' Definitions (CR1 per-cluster score sums \eqn{U_g}, total score
-#' \eqn{S\hat\theta = \sum_g U_g}, meat \eqn{M = \sum_g U_g U_g^\top}, penalized
-#' bread \eqn{V_p}, \eqn{c = G/(G-1)}, \eqn{B_2 = V_p - V_e}):
-#' \itemize{
-#'   \item `pen_share` \eqn{= \lVert S\hat\theta\rVert^2 / \sum_g \lVert
-#'     U_g\rVert^2} --- the fraction of the total score energy that lies in the
-#'     (rank-one) penalty direction the uncentered meat injects (X6).
-#'   \item `fro_ratio` \eqn{= \lVert B_2\rVert_F / \lVert c\,V_p M V_p\rVert_F}
-#'     --- the Frobenius-norm size of the additive \eqn{B_2} term relative to
-#'     the score-sandwich core (X5), for the CR1 meat.
-#' }
-#' The centered-meat components (`Sbeta`, `meat`, `Vp`, `hc1`, `G`) are returned
-#' so callers can verify the exact rank-one centering identity
-#' \eqn{M_c = M - S\hat\theta\, S\hat\theta^\top / G}.
-#'
-#' @param object A fitted pffr model (any sandwich type; the model-based bread
-#'   is used regardless).
-#' @returns A list with `pen_share`, `fro_ratio`, `G`, `hc1`, `Sbeta` (total
-#'   score), `meat` (CR1 meat \eqn{\sum_g U_g U_g^\top}), `Vp`, and `B2`.
-#' @keywords internal
-pffr_sandwich_shares <- function(object) {
-  b <- pffr_model_based_gam(object)
-  cluster_id <- build_cluster_id(object$pffr)
-  G <- n_clusters_checked(cluster_id)
-  X <- model.matrix(b)
-
-  score_kind <- pffr_score_kind(b$family)
-  # Disclose the working-residual approximation for approx families here too
-  # (review D1 covers every consumer, not just the sandwich builders).
-  if (score_kind == "approx") {
-    pffr_warn_approx_score(b$family)
-  }
-  scores <- switch(
-    score_kind,
-    gaulss = compute_gaulss_scores(b, X),
-    scat = compute_scat_scores(b, X),
-    {
-      mu <- b$fitted.values
-      pw <- b$prior.weights %||% 1
-      pw *
-        b$family$mu.eta(b$linear.predictors) *
-        (b$y - mu) /
-        (b$sig2 * b$family$variance(mu)) *
-        X
-    }
-  )
-
-  U <- rowsum(scores, cluster_id)
-  Sbeta <- colSums(scores)
-  # sum_g ||U_g||^2 = sum of all squared entries of the G x p matrix U
-  pen_share <- sum(Sbeta^2) / sum(U^2)
-
-  Vp <- b$Vp
-  B2 <- Vp - b$Ve
-  hc1 <- G / (G - 1)
-  meat <- crossprod(U)
-  core <- hc1 * Vp %*% meat %*% Vp
-  fro_ratio <- norm(B2, "F") / norm(core, "F")
-
-  list(
-    pen_share = pen_share,
-    fro_ratio = fro_ratio,
-    G = G,
-    hc1 = hc1,
-    Sbeta = Sbeta,
-    meat = meat,
-    Vp = Vp,
-    B2 = B2
-  )
-}
-
-#' Leave-one-cluster-out jackknife of the fitted linear predictor (core)
-#'
-#' Internal engine for [pffr_jackknife_se()]. Computes, per evaluation point,
-#' the exact leave-one-cluster-out (LOCO) jackknife variance of the linear
-#' predictor \eqn{\hat\eta(x) = X_p(x)^\top\hat\theta} via a Sherman--Morrison--
-#' Woodbury (SMW) downdate of the penalized (weighted) normal equations at fixed
-#' smoothing parameters and converged working weights.
-#'
-#' For each cluster \eqn{g} the deleted-cluster coefficient is
-#' \deqn{\hat\theta_{(-g)} = \hat\theta -
-#'   A^{-1} \tilde X_g^\top (I - H_{gg})^{-1} \tilde r_g,\quad
-#'   A^{-1} = V_p/\sigma^2,\; H_{gg} = \tilde X_g A^{-1} \tilde X_g^\top,}
-#' with \eqn{\tilde X_g = \sqrt{W_g}\,X_g} the Fisher-whitened training design of
-#' cluster \eqn{g} (\eqn{W_i = w_i (\mathrm{d}\mu/\mathrm{d}\eta)_i^2 /
-#' \mathrm{Var}(\mu_i)}) and \eqn{\tilde r_g} the whitened working residual
-#' (\eqn{\tilde r_i = \mathrm{sign}(\mathrm{d}\mu/\mathrm{d}\eta_i)
-#' \sqrt{w_i/\mathrm{Var}(\mu_i)}\,(y_i - \mu_i)}). For a Gaussian-identity fit
-#' \eqn{\tilde X_g = X_g}, \eqn{\tilde r_g = y_g - X_g\hat\theta} and the downdate
-#' is the exact deleted-cluster penalized solve; for other families it is the
-#' one-step approximation at the converged \eqn{(W, \lambda)}. `A^{-1}` uses the
-#' MODEL-BASED penalized bread (`pffr_canonicalize_cov()$model$Vp`), never the
-#' robust `$pffr$Vsandwich` slot, so the jackknife bread stays genuinely
-#' model-based even on a sandwich fit.
-#'
-#' The mean-centered CV3 jackknife variance at evaluation point \eqn{j} is
-#' \eqn{V_{jack}(j) = \frac{G-1}{G}\sum_g (\eta_{(-g),j} -
-#' \bar\eta_{\cdot,j})^2}. Eigenvalues of \eqn{I - H_{gg}} are floored at
-#' `eig_floor` before inversion; the number of floored clusters and the maximum
-#' per-cluster leverage are returned for diagnostics.
-#'
-#' @param object A fitted [pffr()] model (single linear-predictor family).
-#' @param newdata Optional prediction data (as in [predict.pffr()]); `NULL`
-#'   evaluates at the fitted observation points. For fits with a model offset
-#'   only `NULL` is supported (the stored linear predictor includes the offset
-#'   exactly there; resolving an offset for `newdata` is not).
-#' @param cluster Optional per-curve grouping (one entry per curve) forcing a
-#'   coarser leave-one-cluster-out level, as in [pffr_vcov()]. `NULL` clusters
-#'   by curve.
-#' @param eig_floor Eigenvalue floor for \eqn{(I - H_{gg})^{-1}} (default
-#'   `1e-8`, matching the X3 prototype's `X3_JACK_EIG_FLOOR`).
-#' @param smw_check If `TRUE`, additionally verify the SMW downdate against a
-#'   direct solve of the deleted-cluster (whitened) penalized normal equations
-#'   for the first cluster, returning the max abs coefficient discrepancy in
-#'   `smw_max_abs_err`.
-#' @returns A list with `var_link` (per evaluation point LOCO jackknife variance
-#'   of \eqn{\hat\eta}), `eta_hat` (the fitted linear predictor at the evaluation
-#'   points), `G`, `max_eig_Hgg` (per cluster), `n_floored`, and
-#'   `smw_max_abs_err`.
-#' @keywords internal
-pffr_jackknife_core <- function(
-  object,
-  newdata = NULL,
-  cluster = NULL,
-  eig_floor = 1e-8,
-  smw_check = FALSE
-) {
-  if (!inherits(object, "pffr")) {
-    stop("`object` must be a fitted pffr model.", call. = FALSE)
-  }
-  fam <- object$family
-  if (is.null(fam$mu.eta) || is.null(fam$variance)) {
-    stop(
-      "pffr_jackknife_se() supports single linear-predictor families with a ",
-      "standard variance()/mu.eta() (e.g. gaussian, poisson, binomial, Gamma, ",
-      "scat); family '",
-      as.character(fam$family)[1],
-      "' (e.g. gaulss / multivariate) is not supported.",
-      call. = FALSE
-    )
-  }
-
-  # Cluster ids at the fitted (missing-removed) training rows. Error if there is
-  # no usable cluster structure (need >= 2 independent curves/clusters).
-  cluster_id <- build_cluster_id(object$pffr, cluster = cluster)
-  G <- length(unique(cluster_id))
-  if (!is.finite(G) || G < 2L) {
-    stop(
-      "The leave-one-cluster-out jackknife needs at least two independent ",
-      "curves/clusters; this fit resolves to G = ",
-      G,
-      ". Supply a `cluster` grouping with >= 2 levels.",
-      call. = FALSE
-    )
-  }
-
-  # MODEL-BASED penalized bread (S1: $Vp is inviolate/model-based; use the
-  # canonical accessor so old-format fits are handled too). NEVER the sandwich.
-  canon <- pffr_canonicalize_cov(object)
-  Vp <- canon$model$Vp
-  sig2 <- object$sig2
-  if (is.null(sig2) || !is.finite(sig2) || sig2 <= 0) sig2 <- 1
-  A_inv <- Vp / sig2 # penalized bread (X'WX + S_lambda)^{-1}
-  theta <- object$coefficients
-
-  # Training design at the FITTED rows (align with residuals + cluster_id).
-  # Under pffr's NA handling, predict(type = "lpmatrix") already EXCLUDES rows
-  # whose response is missing (an NA response gives nrow(X_full) == length(y)
-  # < nobs*nyindex; verified empirically). Only drop missing_indices when the
-  # lpmatrix still covers the full dense grid -- subsetting an already-reduced
-  # matrix would remove fitted rows a second time.
-  X_full <- predict(object, type = "lpmatrix", reformat = FALSE)
-  mi <- object$pffr$missing_indices
-  full_grid_rows <- object$pffr$nobs * object$pffr$nyindex
-  X_train <- if (!is.null(mi) && nrow(X_full) == full_grid_rows) {
-    X_full[-mi, , drop = FALSE]
-  } else {
-    X_full
-  }
-  y <- as.vector(object$y)
-  mu <- as.vector(object$fitted.values)
-  eta <- as.vector(object$linear.predictors)
+pffr_crit_setup <- function(object, use_sandwich, cluster = NULL) {
   if (
-    nrow(X_train) != length(y) ||
-      length(cluster_id) != length(y) ||
-      length(mu) != length(y) ||
-      length(eta) != length(y)
+    !isTRUE(use_sandwich) ||
+      identical(pffr_canonicalize_cov(object)$format, "ancient")
   ) {
-    stop(
-      "pffr_jackknife_core: internal length mismatch between the training ",
-      "design, residuals and cluster ids.",
-      call. = FALSE
-    )
+    return(list(mode = "z", core = NULL))
   }
-
-  # Fisher whitening of the training rows (undispersioned; sigma^2 lives in the
-  # bread A_inv = Vp/sig2). For Gaussian-identity this is the identity map, so
-  # Xt = X_train and rt = y - X_train theta exactly (prototype's unwhitened path).
-  pw <- object$prior.weights
-  if (is.null(pw)) pw <- rep(1, length(y))
-  pw <- as.vector(pw)
-  mu_eta <- as.vector(fam$mu.eta(eta))
-  var_mu <- as.vector(fam$variance(mu))
-  w_star <- pw * mu_eta^2 / var_mu
-  s <- sqrt(w_star)
-  s[!is.finite(s)] <- 0
-  Xt <- X_train * s
-  Xt[!is.finite(Xt)] <- 0
-  rt <- sign(mu_eta) * sqrt(pw / var_mu) * (y - mu)
-  rt[!is.finite(rt)] <- 0
-
-  # Model offset. The whitening above is offset-correct already (it works off
-  # the fit's linear.predictors / fitted.values), and the LOO shift
-  # X_eval %*% delta_g is offset-free by construction, so the jackknife
-  # VARIANCE never sees the offset. But eta_hat at the EVALUATION points (the
-  # returned fit, and the eta at which the response-scale delta method
-  # evaluates linkinv/mu.eta) must include it. mgcv stores $offset on the fit
-  # (all-zero when none was supplied).
-  has_offset <- !is.null(object$offset) && any(object$offset != 0)
-
-  # Evaluation design: fitted points (default) or newdata.
-  if (is.null(newdata)) {
-    X_eval <- X_train
-    # linear.predictors = X_train %*% theta + offset exactly (verified to
-    # ~7e-16), so the fitted evaluation points are offset-exact for free.
-    eta_hat_eval <- eta
-  } else {
-    if (has_offset) {
-      stop(
-        "This fit uses a model offset: jackknife SEs are only available at ",
-        "the fitted evaluation points (newdata = NULL), where the stored ",
-        "linear predictor includes the offset exactly. Resolving the offset ",
-        "for `newdata` is not supported.",
-        call. = FALSE
-      )
-    }
-    X_eval <- predict(
-      object,
-      newdata = newdata,
-      type = "lpmatrix",
-      reformat = FALSE
-    )
-    eta_hat_eval <- as.vector(X_eval %*% theta)
-  }
-  n_eval <- nrow(X_eval)
-
-  groups <- unique(cluster_id)
-  # D[g, ] = X_eval %*% delta_g (the LOO shift of eta at each evaluation point).
-  Dmat <- matrix(0, nrow = G, ncol = n_eval)
-  max_eig_Hgg <- numeric(G)
-  n_floored <- 0L
-  smw_max_abs_err <- NA_real_
-  A <- if (isTRUE(smw_check)) solve(A_inv) else NULL
-
-  for (gi in seq_along(groups)) {
-    idx <- which(cluster_id == groups[gi])
-    Xtg <- Xt[idx, , drop = FALSE]
-    rtg <- rt[idx]
-    Hgg <- Xtg %*% A_inv %*% t(Xtg)
-    Hgg <- 0.5 * (Hgg + t(Hgg))
-
-    ee <- eigen(diag(length(idx)) - Hgg, symmetric = TRUE)
-    max_eig_Hgg[gi] <- 1 - min(ee$values)
-    vals <- ee$values
-    if (any(vals < eig_floor)) {
-      n_floored <- n_floored + 1L
-      vals <- pmax(vals, eig_floor)
-    }
-    # (I - H_gg)^{-1} rt_g via the (floored) eigendecomposition.
-    u <- ee$vectors %*% (crossprod(ee$vectors, rtg) / vals)
-    delta <- A_inv %*% crossprod(Xtg, u)
-    Dmat[gi, ] <- as.vector(X_eval %*% delta)
-
-    if (isTRUE(smw_check) && gi == 1L) {
-      # Direct solve of the deleted-cluster whitened penalized normal equations:
-      # (A - Xtg'Xtg) theta_(-g) = A theta - Xtg'Xtg theta - Xtg' rt_g, with
-      # A = (Vp/sig2)^{-1} = Xt'Xt + S_lambda. For Gaussian-identity this equals
-      # the prototype's (A - Xg'Xg) theta_(-g) = A theta - Xg' y_g.
-      rhs <- as.vector(A %*% theta) -
-        as.vector(crossprod(Xtg, Xtg %*% theta)) -
-        as.vector(crossprod(Xtg, rtg))
-      theta_direct <- solve(A - crossprod(Xtg), rhs)
-      theta_smw <- theta - as.vector(delta)
-      smw_max_abs_err <- max(abs(theta_direct - theta_smw))
-    }
-  }
-
-  eta_bar <- colMeans(Dmat)
-  dev <- sweep(Dmat, 2L, eta_bar)
-  var_link <- (G - 1) / G * colSums(dev^2)
-
   list(
-    var_link = var_link,
-    eta_hat = eta_hat_eval,
-    G = G,
-    max_eig_Hgg = max_eig_Hgg,
-    n_floored = n_floored,
-    smw_max_abs_err = smw_max_abs_err
+    mode = "satterthwaite",
+    core = pffr_influence(object, cluster = cluster)
   )
 }
 
-#' Leave-one-cluster-out jackknife standard errors for the fitted mean
+#' Pointwise critical values and reference df
 #'
-#' Per-evaluation-point standard errors (and Wald intervals) for the fitted
-#' linear predictor / response mean of a [pffr()] fit, from an exact
-#' leave-one-cluster-out (LOCO) jackknife of the penalized normal equations. It
-#' is the recommended small-\eqn{G} path for fitted-mean / response-scale
-#' (\eqn{E(Y)}) intervals on cluster-robust fits, where the plug-in
-#' cluster/CL2 sandwich under-propagates the aggregated variance because the
-#' estimated cross-term blocks of the rank-\eqn{\le G} meat inject noise that
-#' shrinks the aggregated \eqn{E(Y)} SE (see \sQuote{References}).
+#' @param setup A [pffr_crit_setup()] result.
+#' @param level Confidence level.
+#' @param Xp Contrast matrix (`n_points x p`, full coefficient space), only
+#'   needed for Satterthwaite critical values.
+#' @returns A list with `crit` (scalar or per-point vector) and `df` (per-point
+#'   vector; `Inf` for Gaussian critical values). Where the moment df is
+#'   undefined (a contrast with zero sampling variance), the Gaussian critical
+#'   value is used, with a message.
+#' @keywords internal
+pffr_pointwise_crit_values <- function(setup, level, Xp) {
+  prob <- (1 + level) / 2
+  n <- nrow(Xp)
+  if (setup$mode == "z" || n == 0L) {
+    return(list(crit = stats::qnorm(prob), df = rep(Inf, n)))
+  }
+  df <- pffr_influence_df(setup$core, Xp)$df
+  if (any(!is.finite(df))) {
+    pffr_note_undefined_df()
+    df[!is.finite(df)] <- Inf
+  }
+  list(crit = stats::qt(prob, df), df = df)
+}
+
+#' Pointwise critical values for prediction contrasts
 #'
-#' The jackknife recomputes the deleted-cluster coefficients by an exact
-#' Sherman--Morrison--Woodbury downdate of the penalized (weighted) normal
-#' equations at fixed smoothing parameters \eqn{\lambda} and converged working
-#' weights, using the MODEL-BASED penalized bread \eqn{A^{-1} = V_p/\sigma^2}
-#' (the fit's inviolate `$Vp`, never the robust `$pffr$Vsandwich`). See
-#' [pffr_jackknife_core()] for the algorithm.
+#' Applies [pffr_crit_setup()] and [pffr_pointwise_crit_values()] to the rows
+#' of a prediction matrix, so predictions get the same critical values as
+#' [coef.pffr()] gives for the same contrasts. The df cost grows with the
+#' number of rows and with the number of clusters (about 1 ms per row at
+#' \eqn{G = 100}); for more than
+#' `getOption("refund.pffr_satterthwaite_max_points", 1e4)` rows Gaussian
+#' critical values are used, with a message.
 #'
-#' @section Calibration caveat (read this):
-#' This interval reaches only \eqn{\approx 0.86}--\eqn{0.90} pointwise coverage
-#' --- \emph{not} nominal --- at the hardest simulated cells (small \eqn{G},
-#' e.g. \eqn{G = 20}, with strong within-curve AR(1) dependence): there it
-#' over-inflates some replicates and compensates, so it is a workable interval,
-#' not a calibrated pivot. It is \emph{exact} only for Gaussian-identity
-#' responses at fixed smoothing parameters; for other families it is a
-#' \emph{one-step approximation} at the converged working weights and fixed
-#' \eqn{\lambda} (measured max coefficient gap versus a direct fixed-\eqn{sp}
-#' deleted-cluster IRLS refit on the validation Poisson fit: about
-#' \eqn{2\times 10^{-3}}, i.e. \eqn{\approx}0.2\% of the coefficient scale; see
-#' the package tests). The default reference is \eqn{t_{G-1}}.
-#'
-#' @param object A fitted [pffr()] model with a single linear predictor
-#'   (e.g. `family = gaussian()`, `poisson()`, `binomial()`, `Gamma()`,
-#'   `scat()`). `gaulss` / multivariate families are not supported.
-#' @param newdata Optional prediction data, in the format supplied to [pffr()]
-#'   (as in [predict.pffr()]). `NULL` (default) evaluates at the fitted
-#'   observation points. Fits with a model offset are supported at the fitted
-#'   points only (there the stored linear predictor includes the offset
-#'   exactly, so `fit` and the response-scale delta method are offset-correct);
-#'   supplying `newdata` for an offset fit errors, because resolving the offset
-#'   for new data is not supported.
-#' @param alpha Significance level for the Wald intervals; default `0.05` for
-#'   95\% intervals.
-#' @param crit Critical-value reference: `"tG1"` (default, the \eqn{t_{G-1}}
-#'   reference recommended at small \eqn{G}) or `"z"` (Gaussian).
-#' @param se_scale `"link"` (default) returns the SE of the linear predictor;
-#'   `"response"` applies the delta method via `family$mu.eta()` and returns the
-#'   fitted mean, SE and interval on the response scale.
-#' @param eig_floor Eigenvalue floor for the \eqn{(I - H_{gg})^{-1}} inversion
-#'   in the SMW downdate (default `1e-8`).
-#' @param cluster Optional per-curve grouping (one entry per curve) forcing a
-#'   coarser leave-one-cluster-out level; `NULL` (default) clusters by curve.
-#' @returns A data frame with one row per evaluation point (in `predict`
-#'   lpmatrix order --- curve-major, index-fastest) and columns `fit`, `se`,
-#'   `lower`, `upper`, plus attributes `G`, `n_floored`, `max_eig_Hgg` (per
-#'   cluster), `crit`, `crit_value`, `df` (`G - 1` for `"tG1"`, else `NA`),
-#'   `se_scale` and `alpha`.
-#' @references
-#' The \eqn{E(Y)} under-propagation mechanism (cross-term rank deficit of the
-#' rank-\eqn{\le G} meat) and this jackknife's simulated coverage are documented
-#' in the paper's \eqn{E(Y)} section (\code{sec-eymean}) and in
-#' \code{notes/X3-phase2-findings.md} of the accompanying study repository:
-#' the jackknife reaches 0.856 (\eqn{z}) / 0.864 (\eqn{t_{G-1}}) at AR(1),
-#' \eqn{G = 20} versus 0.231 for the plug-in cluster sandwich.
-#' @seealso [pffr_vcov()], [predict.pffr()] (with `se_method = "jackknife"`),
-#'   [pffr_coefboot()].
-#' @export
-#' @author Fabian Scheipl
-#' @examples
-#' \donttest{
-#' set.seed(1)
-#' d <- pffr_simulate(Y ~ ff(X1), n = 20, nxgrid = 15, nygrid = 15)
-#' m <- pffr(Y ~ ff(X1), yind = attr(d, "yindex"), data = d,
-#'           sandwich = "cluster")
-#' jk <- pffr_jackknife_se(m)
-#' head(jk)
-#' attr(jk, "G")
-#' }
-pffr_jackknife_se <- function(
+#' @param object Fitted pffr model.
+#' @param X Prediction matrix (full coefficient space), one row per point.
+#' @param level Confidence level.
+#' @param use_sandwich Do the standard errors come from the CL2 sandwich?
+#' @param cluster Optional per-curve grouping.
+#' @returns List with `mode`, `crit` (scalar, or one per row) and `df` (one
+#'   per row; `Inf` for Gaussian critical values).
+#' @keywords internal
+pffr_pointwise_crit <- function(
   object,
-  newdata = NULL,
-  alpha = 0.05,
-  crit = c("tG1", "z"),
-  se_scale = c("link", "response"),
-  eig_floor = 1e-8,
+  X,
+  level,
+  use_sandwich,
   cluster = NULL
 ) {
-  crit <- match.arg(crit)
-  se_scale <- match.arg(se_scale)
-  if (!is.numeric(alpha) || length(alpha) != 1L || alpha <= 0 || alpha >= 1) {
-    stop("`alpha` must be a single value in (0, 1).", call. = FALSE)
+  setup <- pffr_crit_setup(object, use_sandwich, cluster = cluster)
+  max_points <- getOption("refund.pffr_satterthwaite_max_points", 1e4)
+  if (setup$mode == "satterthwaite" && nrow(X) > max_points) {
+    message(
+      "Using Gaussian critical values for ",
+      nrow(X),
+      " prediction points: Satterthwaite df are computed for at most ",
+      max_points,
+      " points (option refund.pffr_satterthwaite_max_points)."
+    )
+    setup <- list(mode = "z", core = NULL)
   }
-
-  core <- pffr_jackknife_core(
-    object,
-    newdata = newdata,
-    cluster = cluster,
-    eig_floor = eig_floor
-  )
-  G <- core$G
-  se_link <- sqrt(pmax(core$var_link, 0))
-  eta_hat <- core$eta_hat
-
-  crit_df <- if (crit == "tG1") G - 1 else NA_real_
-  crit_value <- if (crit == "tG1") {
-    qt(1 - alpha / 2, df = crit_df)
-  } else {
-    qnorm(1 - alpha / 2)
-  }
-
-  if (se_scale == "response") {
-    mu_eta_eval <- as.vector(object$family$mu.eta(eta_hat))
-    se <- se_link * abs(mu_eta_eval)
-    fit <- as.vector(object$family$linkinv(eta_hat))
-  } else {
-    se <- se_link
-    fit <- eta_hat
-  }
-
-  out <- data.frame(
-    fit = fit,
-    se = se,
-    lower = fit - crit_value * se,
-    upper = fit + crit_value * se
-  )
-  attr(out, "G") <- G
-  attr(out, "n_floored") <- core$n_floored
-  attr(out, "max_eig_Hgg") <- core$max_eig_Hgg
-  attr(out, "crit") <- crit
-  attr(out, "crit_value") <- crit_value
-  attr(out, "df") <- crit_df
-  attr(out, "se_scale") <- se_scale
-  attr(out, "alpha") <- alpha
-  out
+  cv <- pffr_pointwise_crit_values(setup, level, as.matrix(X))
+  list(mode = setup$mode, crit = cv$crit, df = cv$df)
 }
 
-#' Upgrade an old-format pffr fit to the current covariance storage contract
+# Undefined working-model moment df can be detected at several sites per
+# coef.pffr() call (once per smooth term and once for the parametric
+# coefficients). pffr_begin_undefined_df() opens a collection window for the
+# duration of one call; inside it the sites only record the fact and
+# pffr_end_undefined_df() emits a single message on exit. Outside a window the
+# message is emitted immediately.
+pffr_df_note_state <- new.env(parent = emptyenv())
+pffr_df_note_state$active <- FALSE
+pffr_df_note_state$seen <- FALSE
+
+PFFR_UNDEFINED_DF_MSG <- paste0(
+  "Satterthwaite df are undefined at some evaluation points (zero sampling ",
+  "variance); Gaussian critical values are used there."
+)
+
+#' Note (or record) that a working-model moment df was undefined
 #'
-#' Older refund versions (storage format 1) overwrote a sandwich-corrected
-#' fit's `$Vp`/`$Vc`/`$Ve` with the robust covariance and stashed the
-#' model-based matrices in `$pffr$model_cov`. This converts such a fit to the
-#' current contract: `$Vp`/`$Vc`/`$Ve` become model-based again and the robust
-#' covariance moves to `$pffr$Vsandwich`. Current-format fits and
-#' `sandwich = "none"` fits are returned unchanged (with a message). Fits that
-#' lack the model-based stash cannot be upgraded (they must be refitted).
+#' @returns `NULL`, invisibly. Called for the side effect.
+#' @keywords internal
+pffr_note_undefined_df <- function() {
+  if (isTRUE(pffr_df_note_state$active)) {
+    pffr_df_note_state$seen <- TRUE
+    return(invisible(NULL))
+  }
+  message(PFFR_UNDEFINED_DF_MSG)
+  invisible(NULL)
+}
+
+#' Open an undefined-df collection window
+#'
+#' Pair with [pffr_end_undefined_df()] via `on.exit()`. Nested windows keep
+#' the outermost one in charge.
+#'
+#' @returns `TRUE` if this call opened the window, `FALSE` if one was already
+#'   open.
+#' @keywords internal
+pffr_begin_undefined_df <- function() {
+  if (isTRUE(pffr_df_note_state$active)) {
+    return(FALSE)
+  }
+  pffr_df_note_state$active <- TRUE
+  pffr_df_note_state$seen <- FALSE
+  TRUE
+}
+
+#' Close an undefined-df collection window, noting at most once
+#'
+#' @param opened The value returned by the matching [pffr_begin_undefined_df()].
+#' @returns `NULL`, invisibly. Called for the side effect.
+#' @keywords internal
+pffr_end_undefined_df <- function(opened) {
+  if (!isTRUE(opened)) {
+    return(invisible(NULL))
+  }
+  seen <- isTRUE(pffr_df_note_state$seen)
+  pffr_df_note_state$active <- FALSE
+  pffr_df_note_state$seen <- FALSE
+  if (seen) message(PFFR_UNDEFINED_DF_MSG)
+  invisible(NULL)
+}
+
+#' Inform once per session that NCV-centred intervals are not for inference
 #'
 #' @param object A fitted pffr model.
-#' @returns The fit in the current storage format.
-#' @export
-#' @seealso [pffr()]
-pffr_upgrade_fit <- function(object) {
-  if (!inherits(object, "pffr")) {
-    stop("`object` must be a fitted pffr model.", call. = FALSE)
-  }
-  meta <- object$pffr
-  if (
-    isTRUE((meta$cov_format %||% 0L) >= 2L) ||
-      !is.null(meta$sandwich_info) ||
-      !is.null(meta$Vsandwich)
-  ) {
-    message("pffr fit is already in the current storage format; nothing to do.")
-    return(object)
-  }
-  fit_type <- normalize_sandwich_type(meta$sandwich)
-  if (identical(fit_type, "none")) {
-    message("pffr fit uses sandwich = \"none\"; nothing to upgrade.")
-    return(object)
-  }
-  mc <- meta$model_cov
-  if (is.null(mc)) {
-    warning(
-      "Cannot upgrade: this fit does not carry the model-based covariance ",
-      "(created by a very old refund version). Refit with the current version.",
-      call. = FALSE
+#' @returns `invisible(NULL)`.
+#' @keywords internal
+pffr_inform_ncv_intervals <- function(object) {
+  if (!identical(object$method, "NCV")) return(invisible(NULL))
+  pffr_inform_once(
+    "ncv_intervals",
+    paste0(
+      "Intervals around NCV estimates undercover: use the NCV fit for the ",
+      "shape of coefficient surfaces, and a REML fit of the same model for ",
+      "intervals (see ?pffr)."
     )
-    return(object)
-  }
-  robust <- object$Vp
-  robust_freq <- object$Ve
-  object$Vp <- mc$Vp
-  object$Vc <- mc$Vc
-  object$Ve <- mc$Ve
-  object$pffr$Vsandwich <- robust
-  object$pffr$Vsandwich_freq <- robust_freq
-  object$pffr$sandwich_info <- list(
-    type = fit_type,
-    cluster_var = NULL,
-    G = NA_integer_,
-    n_capped = meta$cl2_n_capped %||% 0L,
-    max_leverage = NA_real_,
-    dof_correction = meta$dof_correction %||% "none",
-    edf_type = meta$edf_type %||% "trace",
-    version = as.character(utils::packageVersion("refund")),
-    storage_format = PFFR_COV_STORAGE_FORMAT
   )
-  object$pffr$Vsandwich_cache <- new.env(parent = emptyenv())
-  object$pffr$model_cov <- NULL
-  object$pffr$cov_format <- PFFR_COV_STORAGE_FORMAT
-  message(
-    "Upgraded pffr fit to the current storage format: $Vp/$Vc/$Ve are now ",
-    "model-based; the robust covariance is in $pffr$Vsandwich."
-  )
-  object
 }
 
-#' Store a robust sandwich covariance on a fitted pffr model
+#' Why the CL2 sandwich is unavailable for a fit, if it is
 #'
-#' Computes the requested robust covariance (observation-level HC via
-#' [mgcv::vcov.gam()], or cluster-robust CR1 via [gam_sandwich_cluster()] / CL2
-#' via [gam_sandwich_cluster_cl2()]) from the fit's model-based bread and stores
-#' it in `$pffr$Vsandwich` (+ `$pffr$Vsandwich_freq`) together with
-#' `$pffr$sandwich_info`. The model-based `$Vp`/`$Vc`/`$Ve` are left untouched,
-#' so recomputing a sandwich later never double-applies the correction.
+#' @param m The fitted gam (or gamm) object.
+#' @param algorithm Algorithm name.
+#' @param cluster_id Cluster vector of the fit (one entry per fitted
+#'   observation).
+#' @returns `NULL` if CL2 is available, otherwise a short reason.
+#' @keywords internal
+pffr_cl2_unavailable <- function(m, algorithm, cluster_id) {
+  if (algorithm %in% c("gamm4", "gamm")) {
+    return(paste0(
+      "the sandwich is not available for algorithm = \"",
+      algorithm,
+      "\""
+    ))
+  }
+  if (pffr_score_kind(m$family) == "custom") {
+    return(paste0(
+      "no cluster-robust covariance is available for family '",
+      m$family$family,
+      "'"
+    ))
+  }
+  if (length(unique(cluster_id)) < 2L) {
+    return("the CL2 sandwich needs at least two curves or clusters")
+  }
+  NULL
+}
+
+#' Does a fit have a binary response?
 #'
-#' @param m Fitted model.
-#' @param algorithm Algorithm symbol.
-#' @param type `"cluster"` (default) for CR1 cluster-robust, `"cl2"` for
-#'   leverage-adjusted cluster-robust CL2, or `"hc"` for observation-level HC.
-#' @param dof_correction Optional CR1 small-sample dof correction
-#'   (`"none"`/`"edf"`); applied only when `type = "cluster"`. Ignored (with a
-#'   warning) for `"cl2"`, which already corrects per-cluster leverage.
-#' @param edf_type Which EDF the `"edf"` correction uses (`"trace"`/`"edf2"`/
-#'   `"basis"`).
-#' @param cl2_adjustment CL2 leverage adjustment (`"auto"` (default),
-#'   `"exact"`, or `"shortcut"`), used only for `type = "cl2"`.
+#' @param m A fitted gam object.
+#' @returns A single logical.
+#' @keywords internal
+pffr_is_binary_fit <- function(m) {
+  fam <- tolower(as.character(m$family$family))
+  fam %in%
+    c("binomial", "quasibinomial") &&
+    all(as.vector(m$y) %in% c(0, 1)) &&
+    all(as.vector(m$prior.weights %||% 1) == 1)
+}
+
+#' Store the CL2 sandwich covariance on a fitted pffr model
+#'
+#' Computes the curve-clustered CL2 covariance (exact leverage adjustment,
+#' Bayesian form) from the fit's model-based bread and stores it in
+#' `$pffr$Vsandwich` together with `$pffr$sandwich_info`. The model-based
+#' `$Vp`/`$Vc`/`$Ve` are left untouched, so recomputing a sandwich later never
+#' double-applies the correction. Emits the small-\eqn{G} warning and the
+#' one-time message for binary responses.
+#'
+#' @param m Fitted model (gam/bam with `$pffr` metadata).
 #' @returns Model with the robust covariance stored in `$pffr$Vsandwich`.
 #' @keywords internal
-apply_sandwich_correction <- function(
-  m,
-  algorithm,
-  type = "cluster",
-  dof_correction = "none",
-  edf_type = "trace",
-  cl2_adjustment = "auto"
-) {
-  gam_obj <- if (as.character(algorithm) %in% c("gamm4", "gamm")) m$gam else m
-
-  if (type == "cl2" && !identical(dof_correction, "none")) {
-    warning(
-      "dof_correction = \"",
-      dof_correction,
-      "\" is ignored for sandwich = \"cl2\": the CL2 leverage adjustment ",
-      "already targets the same small-sample bias.",
-      call. = FALSE
-    )
-  }
-
-  # $Vp/$Vc/$Ve stay model-based ALWAYS. The sandwich estimators read them as
-  # the penalized bread; we store the resulting robust matrices separately.
-  bread <- pffr_model_based_gam(gam_obj)
-  cluster_id <- if (type %in% c("cluster", "cl2")) {
-    build_cluster_id(gam_obj$pffr)
-  } else {
-    NULL
-  }
-
-  if (!is.environment(gam_obj$pffr$Vsandwich_cache))
-    gam_obj$pffr$Vsandwich_cache <- new.env(parent = emptyenv())
-  core <- if (type == "cl2")
-    pffr_influence(gam_obj, type, cl2_adjustment = cl2_adjustment) else NULL
-  Vsw <- pffr_compute_sandwich(
-    bread,
-    type,
-    cluster_id,
-    freq = FALSE,
-    dof_correction = dof_correction,
-    edf_type = edf_type,
-    cl2_adjustment = cl2_adjustment,
+apply_sandwich_correction <- function(m) {
+  if (!is.environment(m$pffr$Vsandwich_cache))
+    m$pffr$Vsandwich_cache <- new.env(parent = emptyenv())
+  core <- pffr_influence(m)
+  Vsw <- gam_sandwich_cluster_cl2(
+    pffr_model_based_gam(m),
+    cluster_id = NULL,
     influence = core
   )
-  Vsw_freq <- if (!is.null(core)) pffr_influence_vcov(core, freq = TRUE) else
-    pffr_compute_sandwich(
-      bread,
-      type,
-      cluster_id,
-      freq = TRUE,
-      dof_correction = dof_correction,
-      edf_type = edf_type,
-      cl2_adjustment = cl2_adjustment,
-      influence = core
-    )
-
-  n_capped <- attr(Vsw, "n_capped_clusters") %||% 0L
-  max_lev <- attr(Vsw, "max_leverage") %||% NA_real_
-  n_adjusted <- attr(Vsw, "n_adjusted") %||% 0L
-  resolved_adjustment <- attr(Vsw, "cl2_adjustment") %||% NA_character_
-
-  gam_obj$pffr$Vsandwich <- Vsw
-  gam_obj$pffr$Vsandwich_freq <- Vsw_freq
-  gam_obj$pffr$sandwich_info <- list(
-    type = type,
-    cluster_var = gam_obj$pffr$cluster,
-    G = if (!is.null(cluster_id)) length(unique(cluster_id)) else NA_integer_,
-    n_capped = n_capped,
-    max_leverage = max_lev,
-    cl2_adjustment = resolved_adjustment,
-    n_adjusted = n_adjusted,
+  G <- core$G
+  m$pffr$Vsandwich <- Vsw
+  m$pffr$sandwich_info <- list(
+    type = "cl2",
+    cluster_var = m$pffr$cluster,
+    G = G,
+    cl2_adjustment = "exact",
+    n_adjusted = attr(Vsw, "n_adjusted") %||% 0L,
+    max_leverage = attr(Vsw, "max_leverage") %||% NA_real_,
     min_block_eig = attr(Vsw, "min_block_eig") %||% NA_real_,
     max_block_kappa = attr(Vsw, "max_block_kappa") %||% NA_real_,
-    # Hat-invariant monitors (study LB, claim P-LB5). CL2 only: the CR1 path
-    # (gam_sandwich_cluster()) forms no per-cluster leverage geometry, so
-    # these stay NA there. On a cl2 fit they make a degenerate fit visible
-    # from the fit object.
+    # Hat-invariant monitors (study LB, claim P-LB5): make a degenerate fit
+    # visible from the fit object.
     max_obs_leverage = attr(Vsw, "max_obs_leverage") %||% NA_real_,
     min_obs_leverage = attr(Vsw, "min_obs_leverage") %||% NA_real_,
     min_hat_eig = attr(Vsw, "min_hat_eig") %||% NA_real_,
     min_block_eig_rel = attr(Vsw, "min_block_eig_rel") %||% NA_real_,
     hat_invariant_violation = attr(Vsw, "hat_invariant_violation"),
-    dof_correction = if (type == "cluster") dof_correction else "none",
-    edf_type = edf_type,
     version = as.character(utils::packageVersion("refund")),
-    inference_core_version = "fixed-fit-core-2026-09-09",
-    cluster_rank = if (!is.null(core)) core$diagnostics$rank else NULL,
+    inference_core_version = core$version,
+    cluster_rank = core$diagnostics$rank,
     storage_format = PFFR_COV_STORAGE_FORMAT
   )
-  # Small-cluster-count guard (plan S-C, amended 2026-09-08: warn below G =
-  # 40, the paper's own recommendation boundary for pffr_coefboot(), not the
-  # earlier G = 20 draft threshold). Only for the two cluster-robust
-  # estimators; "hc" and "none" never reach a meaningful G here. Fires once,
-  # at fit time in pffr() -- pffr_vcov() (coef/predict/plot) recomputes the
-  # robust covariance without calling this function again, so the warning is
-  # not repeated on every accessor call.
-  G_resolved <- gam_obj$pffr$sandwich_info$G
-  if (
-    type %in% c("cluster", "cl2") && is.finite(G_resolved) && G_resolved < 40
-  ) {
+  # Small-cluster-count guard: warn below G = 40, stating what the simulation
+  # evidence covers. Fires once, at fit time -- pffr_vcov() (coef/predict/plot)
+  # never calls this function again.
+  if (G < 40) {
     warning(warningCondition(
       sprintf(
         paste0(
-          "Only G = %d clusters: cluster-robust intervals undercover at ",
-          "this size (paper benchmark: CL2 ~0.77-0.79 at G = 20 under ",
-          "dependence). Consider the refitting curve bootstrap ",
-          "pffr_coefboot() or wider nominal levels."
+          "Only G = %d clusters: CL2 intervals with Satterthwaite critical ",
+          "values were evaluated down to G = 20 (near-nominal for ",
+          "coefficient surfaces and fitted means; intercepts of binary ",
+          "models can undercover). Treat intervals as approximate."
         ),
-        G_resolved
+        G
       ),
       class = "pffr_small_G_warning"
     ))
   }
-
-  # Keep the legacy CL2 leverage-cap diagnostic slot populated.
-  gam_obj$pffr$cl2_n_capped <- if (type == "cl2") n_capped else NULL
-  gam_obj$pffr$cl2_adjustment <- if (type == "cl2") resolved_adjustment else
-    NULL
-  # Retain cached influence geometry for covariance and df consumers.
-
-  if (as.character(algorithm) %in% c("gamm4", "gamm")) {
-    m$gam <- gam_obj
-  } else {
-    m <- gam_obj
+  if (pffr_is_binary_fit(m)) {
+    pffr_inform_once(
+      "binary_cl2",
+      paste0(
+        "Binary response: CL2 intervals for the functional intercept and for ",
+        "coefficient functions of scalar covariates can undercover, also with ",
+        "Satterthwaite critical values. Treat them as approximate."
+      )
+    )
   }
   m
 }
@@ -3313,8 +2057,6 @@ apply_sandwich_correction <- function(
 #' @param tensortype Tensor product type (symbol).
 #' @param bs_yindex Basis specification for y-index.
 #' @param bs_int Basis specification for functional intercept.
-#' @param sandwich Character sandwich type (`"none"`, `"cluster"`, `"cl2"`,
-#'   or `"hc"`).
 #' @param dots The list of additional arguments (...).
 #' @returns A list with preparation outputs, including `new_call` and
 #'   `pffr_data`.
@@ -3332,7 +2074,6 @@ pffr_prepare <- function(
   tensortype,
   bs_yindex,
   bs_int,
-  sandwich,
   dots
 ) {
   validated <- pffr_validate_dots(call, algorithm, dots, check_ar = TRUE)
@@ -3589,7 +2330,6 @@ pffr_prepare <- function(
     algorithm = algorithm,
     use_ar = use_ar,
     gaulss = gaulss,
-    sandwich = sandwich,
     is_sparse = is_sparse,
     nobs = nobs,
     nyindex = nyindex,

@@ -150,7 +150,7 @@ test_that("pffr builds AR.start for sparse responses", {
     algorithm = "bam",
     rho = 0.4,
     # sandwich estimators are unavailable with an AR(1) working correlation
-    sandwich = "none",
+    sandwich = FALSE,
     bs.int = list(bs = "ps", k = length(tgrid), m = c(2, 1))
   )
 
@@ -201,21 +201,14 @@ test_that("explicit sandwich requests with rho error before fitting", {
       bs.int = list(bs = "ps", k = length(tgrid), m = c(2, 1))
     )
   }
-  for (type in c("cluster", "cl2", "hc")) {
-    expect_error(
-      fit_ar(type),
-      paste0(
-        "sandwich = \"",
-        type,
-        "\" is not supported for fits with an AR\\(1\\) working correlation"
-      )
-    )
-  }
-  expect_error(fit_ar(TRUE), "sandwich = \"cluster\" is not supported")
-  expect_error(fit_ar("cluster"), "Use sandwich = \"none\"")
+  expect_error(
+    fit_ar(TRUE),
+    "sandwich = TRUE is not supported for fits with an AR\\(1\\) working correlation"
+  )
+  expect_error(fit_ar(TRUE), "Use sandwich = FALSE")
 })
 
-test_that("default sandwich resolves to none for AR(1) fits", {
+test_that("default sandwich resolves to model-based for AR(1) fits", {
   skip_on_cran()
 
   sim <- get_ar_data()
@@ -239,31 +232,25 @@ test_that("default sandwich resolves to none for AR(1) fits", {
       invokeRestart("muffleMessage")
     }
   )
-  expect_length(grep("resolved to \"none\"", msgs), 1)
-  expect_false(any(grepl("now defaults to sandwich", msgs)))
+  expect_length(grep("model-based intervals \\(sandwich = FALSE\\)", msgs), 1)
   expect_identical(fit$pffr$sandwich, "none")
   expect_null(fit$pffr[["Vsandwich"]])
   expect_equal(fit$AR1.rho, 0.3)
 
-  # explicit "auto" is a request for the policy, not a specific sandwich
-  fit_auto <- suppressMessages(fit_default(sandwich = "auto"))
-  expect_identical(fit_auto$pffr$sandwich, "none")
-
   # model-based inference works; post-hoc sandwich requests error
   cf <- coef(fit)
   expect_true(all(is.finite(cf$smterms[[1]]$coef$se)))
-  expect_error(coef(fit, sandwich = "cluster"), "AR\\(1\\) working correlation")
-  expect_error(coef(fit, sandwich = "cl2"), "AR\\(1\\) working correlation")
+  expect_error(coef(fit, sandwich = TRUE), "AR\\(1\\) working correlation")
   expect_error(vcov(fit, sandwich = TRUE), "AR\\(1\\) working correlation")
-  expect_equal(unname(vcov(fit)), unname(fit$Vp))
+  expect_equal(unname(vcov(fit)), unname(fit$Vc %||% fit$Vp))
 })
 
 test_that("the shared sandwich guard is a no-op without rho", {
-  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = NULL), "cluster"))
-  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = 0), "cl2"))
-  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = 0.5), "none"))
+  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = NULL), TRUE))
+  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = 0), TRUE))
+  expect_true(pffr_check_sandwich_ar1(list(AR1.rho = 0.5), FALSE))
   expect_error(
-    pffr_check_sandwich_ar1(list(AR1.rho = 0.5), "hc"),
-    "sandwich = \"hc\""
+    pffr_check_sandwich_ar1(list(AR1.rho = 0.5), TRUE),
+    "sandwich = TRUE"
   )
 })

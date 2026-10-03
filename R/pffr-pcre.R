@@ -17,18 +17,26 @@
 #' @importFrom stats as.formula model.matrix
 #' @importFrom MASS Null
 smooth.construct.pcre.smooth.spec <- function(object, data, knots) {
-  if (!is.null(object$id))
-    stop("random effects don't work with ids.")
-  form <- as.formula(paste("~", paste(object$term[1], ":",
-    paste("(",paste(object$term[-1], collapse="+"),")")), "-1"))
+  if (!is.null(object$id)) stop("random effects don't work with ids.")
+  form <- as.formula(paste(
+    "~",
+    paste(
+      object$term[1],
+      ":",
+      paste("(", paste(object$term[-1], collapse = "+"), ")")
+    ),
+    "-1"
+  ))
   X_id <- model.matrix(as.formula(paste("~ 0 +", object$term[1])), data)
   #absorb sum-to-zero constraint: sum_i b_i(t) = 0
   n_id <- nlevels(data[[object$term[1]]])
   Cr <- cbind(1, matrix(0, nrow = n_id, ncol = n_id - 1))
   D <- MASS::Null(Cr)
   X_id <- X_id %*% D
-  X_ef <- model.matrix(as.formula(paste("~ 0 +",
-    paste(object$term[-1], collapse="+"))), data)
+  X_ef <- model.matrix(
+    as.formula(paste("~ 0 +", paste(object$term[-1], collapse = "+"))),
+    data
+  )
   object$X <- tensor.prod.model.matrix(list(X_id, X_ef))
 
   object$bs.dim <- ncol(object$X)
@@ -54,14 +62,15 @@ smooth.construct.pcre.smooth.spec <- function(object, data, knots) {
 #' @export
 #' @importFrom stats model.matrix as.formula
 #' @importFrom mgcv tensor.prod.model.matrix Predict.matrix
-Predict.matrix.pcre.random.effect <- function(object, data){
+Predict.matrix.pcre.random.effect <- function(object, data) {
   X_id <- model.matrix(as.formula(paste("~ 0 +", object$term[1])), data)
   X_id <- X_id %*% MASS::Null(object$Cr)
-  X_ef <- model.matrix(as.formula(paste("~ 0 +",
-    paste(object$term[-1], collapse="+"))), data)
+  X_ef <- model.matrix(
+    as.formula(paste("~ 0 +", paste(object$term[-1], collapse = "+"))),
+    data
+  )
   tensor.prod.model.matrix(list(X_id, X_ef))
 }
-
 
 
 #' pffr-constructor for functional principal component-based functional random intercepts.
@@ -130,30 +139,37 @@ Predict.matrix.pcre.random.effect <- function(object, data){
 #' plot(m0, select=1, main="m0", ylim=range(Y))
 #' lines(t, int[1,], col=rgb(1,0,0,.5))
 #' }
-pcre <- function(id,
-  efunctions,
-  evalues,
-  yind,
-  ...
-){
+pcre <- function(id, efunctions, evalues, yind, ...) {
   # check args
-  stopifnot(is.factor(id), nrow(efunctions)==length(yind),
-    ncol(efunctions)==length(evalues), all(evalues>0))
+  stopifnot(
+    is.factor(id),
+    nrow(efunctions) == length(yind),
+    ncol(efunctions) == length(evalues),
+    all(evalues > 0)
+  )
 
   phiname <- deparse(substitute(efunctions))
-  idname <- paste(deparse(substitute(id)),".vec",sep="")
+  idname <- paste(deparse(substitute(id)), ".vec", sep = "")
 
   #scale eigenfunctions by their eigenvalues:
-  efunctions <- t(t(efunctions)*sqrt(evalues))
+  efunctions <- t(t(efunctions) * sqrt(evalues))
 
   #assign unique names based on the given args
-  colnames(efunctions) <- paste(phiname,".PC", 1:ncol(efunctions), sep="")
+  colnames(efunctions) <- paste(phiname, ".PC", 1:ncol(efunctions), sep = "")
 
-  call <- as.call(c(as.symbol("s"),
+  call <- as.call(c(
+    as.symbol("s"),
     as.symbol(substitute(idname)),
     sapply(colnames(efunctions), function(x) as.symbol(x)),
-    bs=c("pcre")))
+    bs = c("pcre")
+  ))
 
-  return(list(efunctions=efunctions, yind=yind, idname=idname,
-    id=id, call=call, ...))
-}#end pcre()
+  return(list(
+    efunctions = efunctions,
+    yind = yind,
+    idname = idname,
+    id = id,
+    call = call,
+    ...
+  ))
+} #end pcre()

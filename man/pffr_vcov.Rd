@@ -4,53 +4,25 @@
 \alias{pffr_vcov}
 \title{Resolve the covariance matrix for a pffr fit (single accessor)}
 \usage{
-pffr_vcov(
-  object,
-  sandwich = NULL,
-  freq = FALSE,
-  cluster = NULL,
-  dof_correction = NULL,
-  edf_type = NULL,
-  b2 = TRUE,
-  center_scores = FALSE,
-  cl2_adjustment = NULL
-)
+pffr_vcov(object, sandwich = NULL, cluster = NULL)
 }
 \arguments{
 \item{object}{A fitted pffr model.}
 
-\item{sandwich}{`NULL` (default) uses the fit-time choice; otherwise one of
-`"none"`/`"cluster"`/`"cl2"`/`"hc"` (or a legacy logical). `"none"` returns
-the genuinely model-based covariance; any other value that differs from the
-fit-time choice (or supplies a custom `cluster`) recomputes from the
-model-based bread.}
-
-\item{freq}{If `TRUE`, return the frequentist covariance.}
+\item{sandwich}{`NULL` (default) uses the fit-time choice; `TRUE` the CL2
+sandwich (exact leverage adjustment, Bayesian form); `FALSE` the
+model-based covariance ([pffr_model_based_cov()]).}
 
 \item{cluster}{Optional per-curve grouping forcing recomputation at a custom
 cluster level.}
-
-\item{dof_correction, edf_type}{CR1 dof options; `NULL` inherits the fit's.}
-
-\item{b2}{Internal ablation switch (default `TRUE` = current behavior). When
-`FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2} from the
-cluster/CL2 sandwich (X5). Non-default values always force a fresh
-recomputation and are never served from or written to the cache.}
-
-\item{center_scores}{Internal ablation switch (default `FALSE` = current
-behavior). When `TRUE`, center the per-cluster score sums before forming
-the cluster/CL2 meat (X6). Same cache semantics as `b2`.}
-
-\item{cl2_adjustment}{CL2 leverage adjustment. `NULL` (default) inherits
-the fitted choice; otherwise one of `"auto"`, `"exact"`, or `"shortcut"`.}
 }
 \value{
 A covariance matrix.
 }
 \description{
 The one internal accessor through which every refund consumer
-(`coef.pffr`, `plot.pffr`, `predict.pffr`, simultaneous bands) obtains a
-covariance matrix, so that `$Vp`/`$Vc`/`$Ve` stay model-based and robust
-matrices are never double-applied.
+(`coef.pffr`, `plot.pffr`, `predict.pffr`, `pffr_predict_ci`, simultaneous
+bands) obtains a covariance matrix, so that `$Vp`/`$Vc`/`$Ve` stay
+model-based and robust matrices are never double-applied.
 }
 \keyword{internal}

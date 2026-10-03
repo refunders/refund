@@ -14,7 +14,7 @@ The underlying gam object with model-based `Vp`/`Vc`/`Ve`.
 }
 \description{
 Strips the `"pffr"` class and guarantees `Vp`/`Vc`/`Ve` are the model-based
-matrices, so downstream mgcv machinery and the sandwich estimators use the
+matrices, so downstream mgcv machinery and the sandwich estimator use the
 penalized bread rather than an already-robustified matrix.
 }
 \keyword{internal}

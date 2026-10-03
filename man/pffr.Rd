@@ -14,10 +14,7 @@ pffr(
   tensortype = c("ti", "t2"),
   bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
   bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
-  sandwich = c("auto", "cluster", "cl2", "hc", "none"),
-  dof_correction = c("none", "edf"),
-  edf_type = c("trace", "edf2", "basis"),
-  cl2_adjustment = c("auto", "exact", "shortcut"),
+  sandwich = TRUE,
   cluster = NULL,
   ncv_blocks = c("cluster", "point"),
   ...
@@ -68,86 +65,24 @@ the global functional intercept. Defaults to \code{list(bs="ps", k=20,
 m=c(2, 1))}, i.e. 20 cubic B-splines bases with first order difference
 penalty.}
 
-\item{sandwich}{Type of sandwich correction for robust covariance
-  estimation.
-  \code{"auto"} (default): resolved at fit time by
-  \code{\link{pffr_sandwich_auto_policy}}
-  to \code{"cl2"} when the family has an exact/two-block cluster score path,
-  the number of curves/clusters is moderate (\eqn{2 \le G \le 150}) and the
-  largest
-  cluster is not too large (\eqn{\max_g D_g \le 500}), and to \code{"cluster"}
-  otherwise; the resolution is reported with a one-line \code{\link{message}}.
-  The thresholds are overridable via
-  \code{options(refund.pffr.autopolicy=)} (a replacement function or a named
-  list of thresholds).
-  \code{"cluster"}: cluster-robust sandwich clustering by curve, which
-  handles both heteroskedasticity and within-curve autocorrelation — the
-  recommended choice for functional data when a fixed estimator is wanted.
-  \code{"cl2"}: leverage-adjusted cluster-robust sandwich (Bell-McCaffrey
-  style CL2), mainly relevant in smaller samples. Within CL2, the exact
-  block calculation is used by default where feasible; see
-  \code{cl2_adjustment} below.
-  \code{"hc"}: observation-level HC sandwich via
-  \code{\link[mgcv]{vcov.gam}(sandwich = TRUE)}, which corrects for
-  heteroskedasticity but ignores within-curve correlation.
-  \code{"none"}: no sandwich correction.
+\item{sandwich}{Covariance for standard errors and confidence intervals.
+\code{TRUE} (default): the curve-clustered CL2 sandwich, computed at fit
+time; see the section \sQuote{Inference}. \code{FALSE}: the model-based
+(Bayesian posterior) covariance of the working-independence fit with
+Gaussian critical values. Model-based intervals assume independent errors
+within each curve and are too narrow under within-curve dependence, more
+so on dense grids; use them only if that dependence is known to be
+absent. The character values of refund 0.1-40 are deprecated:
+\code{"cl2"} means \code{TRUE}, \code{"none"} means \code{FALSE}, and
+\code{"cluster"} and \code{"hc"} are no longer available and give the CL2
+sandwich.}
 
-  The leave-one-cluster-out \code{\link{pffr_jackknife_se}} is an
-  experimental fitted-mean alternative. Its calibration and interval-width
-  stability require separate validation, particularly at small G.
-
-  Small-\eqn{G} warning: when \code{sandwich} resolves to \code{"cluster"}
-  or \code{"cl2"} and the number of clusters \eqn{G} is below 40 (the
-  threshold below which the paper benchmark recommends the refitting curve
-  bootstrap instead of a plug-in Wald interval), \code{pffr()} emits a
-  single \code{\link{warning}} of class \code{"pffr_small_G_warning"}. It
-  fires once, at fit time; \code{\link{coef.pffr}}, \code{\link{plot.pffr}}
-  and \code{\link{predict.pffr}} do not repeat it. Muffle it explicitly
-  with \code{withCallingHandlers()}/\code{suppressWarnings(classes =
-  "pffr_small_G_warning")} if warranted.
-
-  Storage contract: the fit's model-based (Bayesian posterior) covariance
-  matrices \code{$Vp}, \code{$Vc} and \code{$Ve} are \emph{always} left
-  exactly as \code{\link[mgcv]{gam}} produced them; the robust covariance is
-  stored separately in \code{$pffr$Vsandwich} (with metadata in
-  \code{$pffr$sandwich_info}). Consequently robust intervals are served by
-  refund's own methods (\code{\link{coef.pffr}}, \code{\link{plot.pffr}},
-  \code{\link{predict.pffr}} with \code{se.fit = TRUE}), while mgcv's generics
-  applied to the fit -- \code{\link[mgcv]{summary.gam}},
-  \code{\link[mgcv]{vcov.gam}}, \code{gam.check} -- report the model-based
-  uncertainty. Fits created by refund versions that overwrote \code{$Vp} can
-  be converted with \code{\link{pffr_upgrade_fit}}.}
-
-\item{dof_correction}{Optional small-sample degrees-of-freedom correction for
-the \code{sandwich = "cluster"} (CR1) covariance. \code{"none"} (default)
-reproduces the previous behaviour exactly. \code{"edf"} additionally
-multiplies the cluster-robust "meat" by the textbook CR1 factor
-\eqn{(N-1)/(N-\mathrm{EDF})}, where \eqn{N} is the number of fitted
-observations and EDF the model's effective degrees of freedom (selected by
-\code{edf_type}). This is OFF by default and is applied ONLY to
-\code{sandwich = "cluster"}: it is deliberately not combined with
-\code{sandwich = "cl2"}, whose per-cluster leverage adjustment already
-targets the same downward bias (combining them would double-correct).
-Ignored (with a warning) for other \code{sandwich} choices.}
-
-\item{edf_type}{Which effective degrees of freedom the \code{"edf"}
-correction uses: \code{"trace"} (default, \code{sum(model$edf)} = trace of
-the penalized hat), \code{"edf2"} (mgcv's bias-corrected EDF), or
-\code{"basis"} (the basis dimension). Only relevant when
-\code{dof_correction = "edf"}.}
-
-\item{cl2_adjustment}{Leverage adjustment within \code{sandwich = "cl2"}:
-\code{"auto"} (default) uses exact CL2 when \eqn{G \le 100} and the
-dense-block cost proxy \eqn{G\max_g D_g p^2} is at most \eqn{5\times
-10^9} (a measured sub-second marginal cost); it otherwise falls back to
-the historical shortcut. The exact block
-is \eqn{B_g = I - 2H_{gg} + (H_t^2)_{gg}}, with eigenvalues floored at
-\eqn{(1 - 0.999)^2}. \code{"exact"} and \code{"shortcut"} force either
-variant. Ignored unless the resolved sandwich is \code{"cl2"}.}
-
-\item{cluster}{Optional grouping with one nonmissing entry per curve.
-Evaluated in data; stored and inherited by covariance accessors. Use
-subject identifiers for repeated curves. Currently supports dense data.}
+\item{cluster}{Optional grouping with one nonmissing entry per curve,
+evaluated in \code{data}. With several curves per subject, cluster by
+subject: the CL2 sandwich (and, for \code{method = "NCV"}, the
+neighbourhoods) then treat subjects, not curves, as the independent units.
+This leaves fewer clusters and does not address dependence between
+subjects. Supported for densely observed responses only.}
 
 \item{ncv_blocks}{For \code{method = "NCV"}, \code{"cluster"} (default)
 leaves out each whole curve, or each group of curves defined by
@@ -274,11 +209,10 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
       explicitly supplies a different method)
     \item \code{discrete} is auto-set to \code{TRUE} for non-Gaussian families
       (errors if the user explicitly supplies \code{discrete = FALSE})
-    \item \code{sandwich} resolves to \code{"none"} when left at its
-      default (or \code{"auto"}): the sandwich estimators assume
-      working-independence scores and are not valid for the AR(1)-whitened
-      fit. An explicit \code{"cluster"}, \code{"cl2"} or \code{"hc"}
-      request errors.
+    \item \code{sandwich} resolves to \code{FALSE} (model-based
+      intervals, with a message) when left at its default: the sandwich
+      assumes working-independence scores and is not valid for the
+      AR(1)-whitened fit. An explicit \code{sandwich = TRUE} errors.
   }
   Explicit user overrides that conflict with these constraints will produce
   an informative error.\cr
@@ -311,11 +245,82 @@ necessarily continuous) response \eqn{Y(t)}, response function \eqn{g},
   variance function over $t$ for responses $Y(t)$.
 }
 
+\section{Inference}{
+
+By default (\code{sandwich = TRUE}) standard errors and intervals use the
+curve-clustered CL2 sandwich: per-curve (or per-\code{cluster}) score sums
+of the working-independence fit, each adjusted by the full block of the
+penalized hat matrix \eqn{H},
+\eqn{A_g = \{(I - H)^2\}_{gg}^{-1/2}}{A_g = ((I - H)^2)_gg^(-1/2)}
+(Bell and McCaffrey), in the Bayesian form that adds \eqn{V_p - V_e} to the
+sandwich. Pointwise intervals from \code{\link{coef.pffr}},
+\code{\link{predict.pffr}} and \code{\link{pffr_predict_ci}} use
+Satterthwaite critical values, i.e. \eqn{t_\nu}{t_nu} quantiles with a
+separate working-model moment df \eqn{\nu}{nu} for every evaluation point.
+Fit by REML (the default) for inference. In simulations with Gaussian, count
+and binary responses, dependent and independent errors and 20 to 100
+curves, these intervals covered the mean, coefficient surfaces and
+coefficient functions of scalar covariates close to the nominal level; they
+are wide for coefficient surfaces. Only pointwise intervals were evaluated.
+The following are exceptions or caveats:
+\itemize{
+  \item With fewer than 40 curves or clusters \code{pffr()} warns once at
+    fit time (class \code{"pffr_small_G_warning"}): the procedure was
+    evaluated down to 20 curves; treat intervals as approximate.
+  \item For binary responses a message (once per session) states that
+    intervals for the functional intercept and for coefficient functions of
+    scalar covariates can undercover, also with Satterthwaite critical
+    values. Intervals for count responses whose curves are misregistered
+    (observed on their own clocks) undercover as well.
+  \item Families: exponential-family responses (including quasi families)
+    use their exact scores, \code{gaulss} and \code{scat} exact
+    (two-block) scores. Other extended families (\code{nb}, \code{tw},
+    \code{betar}, \code{ocat}, ...) use the exponential-family
+    working-residual approximation to the score, with a warning once per
+    session. Families without a cluster score path (those defining their
+    own \code{family$sandwich}, e.g. \code{multinom}), the
+    \code{"gamm"}/\code{"gamm4"} algorithms and fits with a single curve
+    fall back to model-based intervals with a message (a warning if
+    \code{sandwich = TRUE} was given explicitly).
+  \item The full-block adjustment grows with the number of curves, the
+    curve length and the basis dimension, but stays well below the cost of
+    the fit (a few seconds for 100 or 300 curves of 60 points with 104
+    coefficients, against 15 and 60 seconds for the REML fit); there is no
+    upper limit on the number of curves.
+    \code{\link{predict.pffr}} and \code{\link{pffr_predict_ci}} compute
+    Satterthwaite df for at most
+    \code{getOption("refund.pffr_satterthwaite_max_points", 1e4)}
+    prediction points and use Gaussian critical values beyond that, with a
+    message. Where a df is undefined (a contrast with zero sampling
+    variance) the Gaussian critical value is used, with a message.
+  \item \code{\link{summary.pffr}} reports mgcv's model-based tests;
+    \code{\link{plot.pffr}} draws mgcv's bands of \eqn{\pm 2}{+/- 2} CL2
+    standard errors. Use \code{\link{coef.pffr}} with
+    \code{ci = "pointwise"} for the intervals described here.
+}
+Storage: the fit's model-based (Bayesian posterior) covariance matrices
+\code{$Vp}, \code{$Vc} and \code{$Ve} are left exactly as
+\code{\link[mgcv]{gam}} produced them; the CL2 covariance is stored in
+\code{$pffr$Vsandwich} (with metadata in \code{$pffr$sandwich_info}) and
+returned by \code{\link{vcov.pffr}}. mgcv's generics applied to the
+underlying gam report model-based uncertainty.
+}
+
 \section{Neighbourhood cross-validation}{
 
 With mgcv >= 1.9, \code{method = "NCV"} targets prediction of whole new
 curves (or clusters). Leaving out single points can undersmooth severely
-when errors within curves are dependent. Blocked NCV typically costs roughly
+when errors within curves are dependent. Under within-curve dependence REML
+undersmooths and its estimate of a coefficient surface is noisy, while
+curve-blocked NCV smooths more and estimates the surface's shape better.
+Use the NCV fit's estimate to describe the shape of coefficient surfaces,
+and a REML fit of the same model with the default CL2 intervals for
+inference: intervals centred at the NCV estimate undercover, so do not use
+the NCV fit's intervals for inference (\code{\link{coef.pffr}} and the
+prediction functions say so once per session). For the intercept, effects
+of scalar covariates and fitted means, the REML fit gives both estimate and
+intervals.
+Blocked NCV typically costs roughly
 3--5 times as much as REML, depending on the model and block sizes.
 Supported backends are \code{algorithm = "gam"} and \code{algorithm = "bam"}.
 An unspecified algorithm selects gam even for large data. For bam, pffr sets
@@ -348,8 +353,6 @@ installed mgcv honours blocks, cached separately for each backend. The fit
 records \code{blocks}, \code{n_blocks}
 and \code{nei} in \code{fit$pffr$ncv}. Model-based covariance falls back to
 \code{Vp} when smoothing-parameter uncertainty covariance is unavailable.
-If \code{edf_type = "edf2"} is requested for the sandwich correction and
-unavailable, NCV fits use trace EDF with a warning.
 }
 
 \examples{

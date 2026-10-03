@@ -11,21 +11,14 @@
   freq = FALSE,
   sandwich = NULL,
   cluster = NULL,
-  dof_correction = NULL,
-  edf_type = NULL,
-  cl2_adjustment = NULL,
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
-  ci_ref = c("t", "normal"),
-  crit = c("z", "auto", "tG1", "satterthwaite"),
-  df_gram = c("full", "diagonal"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
-  bias_ref = NULL,
   ...
 )
 }
@@ -36,59 +29,30 @@
 
 \item{se}{logical, defaults to TRUE. Return estimated standard error of the estimates?}
 
-\item{freq}{logical, defaults to FALSE. If FALSE, use Bayesian posterior covariance for
-variability estimates: \code{object$Vp} for NCV fits; otherwise \code{object$Vc} if
-available (includes correction for smoothing parameter uncertainty), with fallback to
-\code{object$Vp}. If TRUE, use frequentist
-covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.}
+\item{freq}{deprecated and ignored: model-based standard errors use the
+Bayesian posterior covariance, and the CL2 sandwich its Bayesian form.}
 
-\item{sandwich}{Type of sandwich-corrected covariance for standard errors.
-\code{NULL} (default) inherits the fit-time covariance choice.
-\code{"cluster"}: cluster-robust sandwich.
-\code{"cl2"}: leverage-adjusted cluster-robust sandwich (clustering by
-curve).
-\code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
-\code{"none"}: use model's default covariance.
-If the model was fitted with a matching sandwich type, the pre-computed
-covariance matrices are used directly.}
+\item{sandwich}{\code{NULL} (default) uses the fit's covariance (see
+\code{\link{pffr}}); \code{TRUE} the CL2 sandwich; \code{FALSE} the
+model-based covariance (\code{object$Vp} for NCV fits, otherwise
+\code{object$Vc}), which is invalid under within-curve dependence. The
+character values of refund 0.1-40 are deprecated, see \code{\link{pffr}}.}
 
-\item{cluster}{optional grouping for the cluster-robust sandwich
-(\code{sandwich = "cluster"} or \code{"cl2"}): a vector with one entry per
-curve (functional observation) mapping each curve to its independent unit.
-Defaults to \code{NULL}, inheriting the fit-time grouping (by curve
-if none was supplied). Supply this for
-nested / repeated-measures designs where several curves share a higher-level
-unit (e.g. a subject id with multiple visits), so the sandwich clusters at
-the correct level. Only supported for densely-observed responses. When
-supplied, the pre-computed-covariance shortcut is bypassed.
-A fit-time \code{cluster} grouping cannot be switched back off with
+\item{cluster}{optional grouping for the CL2 sandwich: a vector with one
+entry per curve (functional observation) mapping each curve to its
+independent unit. Defaults to \code{NULL}, inheriting the fit-time grouping
+(by curve if none was supplied). With several curves per subject, cluster
+by subject. Only supported for densely-observed responses. A fit-time
+\code{cluster} grouping cannot be switched back off with
 \code{cluster = NULL} (that inherits the fit); to force by-curve clustering
-on a fit that was given a coarser grouping, pass the explicit identity
-grouping \code{cluster = seq_len(<number of curves>)}.}
-
-\item{dof_correction}{Optional CR1 small-sample dof correction for
-\code{sandwich = "cluster"}: \code{"none"} or \code{"edf"} (see
-\code{\link{pffr}}). Defaults to \code{NULL}, i.e. inherit whatever the
-model was fitted with, so the stored covariance is reused. Supplying a value
-that differs from the fit forces recomputation with the requested option.
-Ignored (with a warning) for \code{sandwich} other than \code{"cluster"}.}
-
-\item{edf_type}{Which EDF the \code{"edf"} correction uses
-(\code{"trace"}/\code{"edf2"}/\code{"basis"}; see \code{\link{pffr}}).
-Defaults to \code{NULL} (inherit from the fit).}
-
-\item{cl2_adjustment}{Leverage adjustment within \code{sandwich = "cl2"}.
-\code{NULL} (default) inherits the fit-time choice; \code{"auto"}
-applies the documented feasibility rule, while \code{"exact"} and
-\code{"shortcut"} force either CL2 variant. Supplying a value forces a
-covariance recomputation.}
+on a fit that was given a coarser grouping, pass
+\code{cluster = seq_len(<number of curves>)}.}
 
 \item{seWithMean}{logical, defaults to TRUE. Include uncertainty about the
 intercept/overall mean in standard errors returned for smooth components?
 Acts only on terms with an identifiability constraint (e.g.
 \code{Intercept(yindex)}); \code{ff()} terms and varying coefficients of
-scalar covariates are unconstrained by-variable smooths and are unaffected.
-With \code{bias_ref}, \code{delta} uses the same linear map as the SE.}
+scalar covariates are unconstrained by-variable smooths and are unaffected.}
 
 \item{n1}{see below}
 
@@ -99,46 +63,11 @@ used in the marginal equidistant grids over the range of the covariates at which
 
 \item{ci}{Type of confidence intervals to return in addition to standard
 errors. One of \code{"none"} (default), \code{"pointwise"}, or
-\code{"simultaneous"}.}
-
-\item{ci_ref}{Reference distribution for \code{ci = "simultaneous"}.
-\code{"t"} (default) uses a finite-sample
-\eqn{t_{G-1}}{t_(G-1)} multiplier reference, where \eqn{G} is the number of
-independent curves or user-supplied clusters. This widens simultaneous
-bands at small \eqn{G} and converges to the Gaussian multiplier reference
-as \eqn{G} grows. \code{"normal"} restores the previous Gaussian
-multiplier reference. Pointwise intervals are governed instead by
-\code{crit} (below).}
-
-\item{crit}{Reference distribution for the \emph{pointwise} critical value
-(\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
-\code{"z"} (default) uses the Gaussian quantile. \code{"tG1"} uses
-\eqn{t_{G-1}}. Opt-in \code{"auto"} selects \code{"satterthwaite"} for
-cluster/CL2 covariance with \eqn{G<150}, and \code{"z"} otherwise.
-\code{"satterthwaite"} matches the first two moments of the sampling
-quadratic form using the full cross-cluster residualization Gram:
-\eqn{\nu(a)=\{\mathrm{tr}(\Gamma)\}^2/\mathrm{tr}(\Gamma^2)}.
-Covariance and df use the same resolved CL2 adjustment and grouping.
-This central Gaussian working-independence calculation fixes smoothing
-parameters and weights. It establishes neither an exact t pivot nor
-calibration for B2, smoothing bias, correlated errors or smoothing
-selection. Undefined df gives missing limits with a warning; requests
-on non-cluster covariance fall back to z with a warning. Simultaneous
-bands are unaffected.}
-
-\item{df_gram}{Gram matrix used by \code{crit = "satterthwaite"}:
-\code{"full"} (default) is the residualized
-\eqn{\Gamma_{gh}=1\{g=h\}\lVert q_g\rVert^2-t_g^\top C t_h}.
-\code{"diagonal"} drops the off-diagonal residualization and evaluates the
-working-iid shortcut
-\eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4} from
-\emph{the same} \eqn{q_g} \emph{as the covariance}, i.e. with the resolved
-\code{cl2_adjustment}. It is retained only for re-scoring comparisons with
-historical Satterthwaite results: it returns about \eqn{G} where the
-residualized df returns \eqn{G-1}. The historical (pre-2026-09) df always
-used the shortcut leverage weight \eqn{A_g=(I-H_{gg})^{-1/2}}, so
-\code{df_gram = "diagonal"} reproduces it exactly only together with
-\code{cl2_adjustment = "shortcut"}; on an exact-CL2 fit it differs.}
+\code{"simultaneous"}. Only pointwise intervals were evaluated in the
+simulation study behind the defaults. Simultaneous bands use a
+simulation-based multiplier with a finite-sample \eqn{t_{G-1}}{t_(G-1)}
+reference (\eqn{G} curves or clusters) for the CL2 sandwich and a Gaussian
+reference for the model-based covariance.}
 
 \item{level}{Confidence level for confidence intervals, defaults to
 \code{0.95}.}
@@ -147,24 +76,6 @@ used the shortcut leverage weight \eqn{A_g=(I-H_{gg})^{-1/2}}, so
 \code{2000}. Ignored unless \code{ci = "simultaneous"}.}
 
 \item{sim_seed}{Optional integer seed for simultaneous interval simulation.}
-
-\item{bias_ref}{Optional reference fit for bias-aware intervals: a
-\code{pffr} fit of the same model and data that differs from \code{object}
-only in how the smoothing parameters were chosen (typically the REML fit
-when \code{object} was fitted with \code{method = "NCV"}). If supplied,
-every returned coefficient table gets a column \code{delta}, the estimate
-of \code{object} minus that of \code{bias_ref} (evaluated through the same
-linear map as \code{se}, so with \code{seWithMean = TRUE} it includes the
-difference in the mean level), and pointwise intervals use
-\eqn{\sqrt{se^2 + delta^2}}{sqrt(se^2 + delta^2)} instead of \code{se};
-\code{se} itself stays the variance part. Only \code{ci = "none"} and
-\code{ci = "pointwise"} with \code{crit = "z"} are available. With
-\code{bias_ref}, \code{sandwich = NULL} and \code{cl2_adjustment = NULL}
-default to the exact CL2 sandwich (\code{"cl2"}, \code{"exact"}) instead
-of the fit-time choice; together with the default \code{freq = FALSE}
-(Bayesian form) this is the covariance the interval was evaluated with.
-Explicit values are respected. See the section
-\sQuote{Bias-aware intervals}.}
 
 \item{...}{other arguments, not used.}
 }
@@ -183,60 +94,53 @@ If \code{raw==FALSE}, a list containing \itemize{
 }}
 If \code{ci != "none"}, the returned matrices include columns \code{lower}
 and \code{upper}. For \code{ci = "pointwise"} they also include a \code{df}
-column giving the per-point reference degrees of freedom used for the
-critical value (\code{Inf} for \code{crit = "z"}, \eqn{G-1} for
-\code{crit = "tG1"}, and the per-point Satterthwaite df for
-\code{crit = "satterthwaite"}/\code{"auto"}). The returned list also includes
-\code{ci_meta} with CI settings (including \code{crit} and the resolved
-\code{crit_used}). With \code{bias_ref}, the matrices also include a column
-\code{delta} (placed after \code{se}) and \code{ci_meta$bias_ref_method}
-records the smoothing-parameter method of the reference fit.
+column giving the per-point reference degrees of freedom of the critical
+value (\code{Inf} for Gaussian critical values). The returned list also
+includes \code{ci_meta} with the interval settings: \code{type},
+\code{level}, \code{sandwich} (was the CL2 sandwich used?),
+\code{crit_used} (\code{"satterthwaite"} or \code{"z"} for pointwise
+intervals), and for simultaneous bands \code{n_sim}, \code{sim_seed},
+\code{ci_ref_used} and \code{ci_ref_df}.
 }
 \description{
 Returns estimated coefficient functions/surfaces \eqn{\beta(t), \beta(s,t)}
-and estimated smooth effects \eqn{f(z), f(x,z)} or \eqn{f(x, z, t)} and their point-wise estimated standard errors.
+and estimated smooth effects \eqn{f(z), f(x,z)} or \eqn{f(x, z, t)} and their
+point-wise estimated standard errors, optionally with confidence intervals.
 Not implemented for smooths in more than 3 dimensions.
 }
 \details{
-The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
-The \code{sandwich}-option computes robust standard errors. With
-\code{sandwich="cluster"}, a cluster-robust sandwich (clustering by curve)
-is used, which handles both heteroskedasticity and within-curve correlation.
-With \code{sandwich="cl2"}, a leverage-adjusted cluster-robust sandwich
-(Bell-McCaffrey style CL2) is used.
-With \code{sandwich="hc"}, mgcv's observation-level HC sandwich is used.
-If the model was fitted with a matching sandwich option in
-\code{\link{pffr}}, the pre-computed covariance matrices are used directly.
-}
-\section{Bias-aware intervals}{
+Standard errors and intervals use the fit's covariance by default: for fits
+with \code{sandwich = TRUE} (the default of \code{\link{pffr}}) the
+curve-clustered CL2 sandwich (full-block leverage adjustment, Bayesian
+form), with Satterthwaite critical values for pointwise intervals, i.e.
+\eqn{t_\nu}{t_nu} quantiles with a separate working-model moment df
+\eqn{\nu}{nu} for every evaluation point (returned in column \code{df});
+otherwise the model-based covariance with Gaussian critical values. See the
+section \sQuote{Inference} of \code{\link{pffr}} for the evidence and its
+limits. Where a df is undefined (an evaluation point with zero sampling
+variance) the Gaussian critical value is used, with a message. The df are
+conditional on the fitted smoothing parameters and weights.
 
-Smoothing-parameter selection by curve-blocked neighbourhood
-cross-validation (\code{pffr(method = "NCV")}) is robust to within-curve
-dependence but smooths more than REML, so its smoothing bias is no longer
-negligible and variance-only intervals undercover. The bias-aware pointwise
-interval for an estimate \eqn{L\hat\theta_{NCV}}{L theta_NCV} is
-\deqn{L\hat\theta_{NCV} \pm z_{(1+level)/2}\sqrt{se^2 + \delta^2},
-  \qquad \delta = L(\hat\theta_{NCV} - \hat\theta_{REML}),}{
-  L theta_NCV -/+ z * sqrt(se^2 + delta^2), delta = L (theta_NCV - theta_REML),}
-on the link scale. The recommended recipe fits the model twice with
-\code{sandwich = "none"}, by NCV with curve blocks (the default
-\code{ncv_blocks = "cluster"}) and by REML, and computes \code{se} from the
-exact CL2 sandwich in its Bayesian form of the NCV fit, which is the default
-covariance whenever \code{bias_ref} is supplied:
-\preformatted{coef(fit_ncv, ci = "pointwise", bias_ref = fit_reml)
-# same as
-coef(fit_ncv, sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE,
-     ci = "pointwise", bias_ref = fit_reml)}
+For fits with \code{method = "NCV"}, use the estimate to describe the shape
+of coefficient surfaces, and a REML fit of the same model for intervals:
+intervals centred at the NCV estimate undercover (a message says so once per
+session).
 
-Keep the default \code{seWithMean = TRUE} for bias-aware intervals. It
-changes only constrained terms, of which the functional intercept is the
-main one: in the simulation study behind this recipe (full intercept
-scored, dependent errors, Gaussian, Poisson and binary responses) the
-\code{seWithMean = TRUE} intervals were practically identical to those from
-the exact full-intercept rows below (root-mean-square undercoverage 0 to 3
-percentage points), while \code{seWithMean = FALSE} omits the level's
-uncertainty and undercovered by 7 to 15 points, with 11 to 22\% larger
-interval scores.
+For an \code{\link{ffpc}} term, which enters the model as one coefficient
+function \eqn{\tilde\beta_k(t)} per FPC of the covariate, \code{smterms}
+contains a single entry: the implied coefficient surface
+\eqn{\hat\beta(s,t) = \sum_k \hat\psi_k(s)\hat{\tilde\beta}_k(t)}, with
+\eqn{\int X^c_i(s)\hat\psi_k(s)ds} the FPC scores of the fit, evaluated on
+the covariate's index \code{xind} times \code{n2} equidistant points over
+the range of the response index. Its standard errors and intervals are
+computed like those of all other terms, but treat the estimated FPCs
+\eqn{\hat\psi_k} as fixed, i.e., they condition on the estimated
+eigenfunctions. Its \eqn{\tilde\beta_k(t)} are unconstrained, so
+\code{seWithMean} does not affect it. Use \code{\link{ffpcplot}} for the
+\eqn{\tilde\beta_k(t)}.
+
+The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in
+\code{\link[mgcv]{predict.gam}}.
 
 \strong{Functional intercept.} The \code{Intercept(yindex)} term is centred
 (sum-to-zero over the observed response grid); the level of
@@ -244,26 +148,19 @@ interval scores.
 \code{pterms}. The full intercept is their sum,
 \preformatted{alpha_hat <- cf$smterms[["Intercept(yindex)"]]$coef[, "value"] +
   cf$pterms["(Intercept)", "value"]}
-but the \code{se}, \code{delta} and interval of the centred term do not
-describe it: they omit the level (\code{seWithMean = FALSE}) or add the
-column means of all other terms (\code{seWithMean = TRUE}). For an interval
-for the full \eqn{\alpha(t)}{alpha(t)} use \code{\link{pffr_predict_ci}} at
-covariate values at which every other term vanishes (e.g. \code{X = 0} for
+but the \code{se} and interval of the centred term do not describe it: they
+omit the level (\code{seWithMean = FALSE}) or add the column means of all
+other terms (\code{seWithMean = TRUE}). For an interval for the full
+\eqn{\alpha(t)}{alpha(t)} use \code{\link{pffr_predict_ci}} at covariate
+values at which every other term vanishes (e.g. \code{X = 0} for
 \code{ff(X)} and \code{z = 0} for a linear effect of a scalar \code{z}); its
 prediction rows are then exactly the intercept rows
-\eqn{(1, B(t))}{(1, B(t))}. See the examples of
-\code{\link{pffr_predict_ci}}.
-\eqn{\delta}{delta} estimates only the part of the smoothing bias in which
-the two fits differ: bias that both fits share (a basis too small for the
-truth, or both fits oversmoothing a rough truth) is not covered. Any second
-fit of the same model is accepted as \code{bias_ref}; \eqn{\delta}{delta}
-is then the contrast between the two estimators. For fitted values and
-predictions see \code{\link{pffr_predict_ci}}.
+\eqn{(1, B(t))}{(1, B(t))}. See the examples of \code{\link{pffr_predict_ci}}.
 }
-
 \seealso{
-\code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
-  based on.
+\code{\link{pffr}} (section \sQuote{Inference}),
+  \code{\link{pffr_predict_ci}}, \code{\link[mgcv]{plot.gam}},
+  \code{\link[mgcv]{predict.gam}} which this routine is based on.
 }
 \author{
 Fabian Scheipl

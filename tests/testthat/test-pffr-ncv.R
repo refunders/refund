@@ -60,7 +60,7 @@ test_that("dense NCV aligns retained model-frame rows and curve clusters", {
     data = dat,
     method = "NCV",
     bs.int = list(k = 4, bs = "ps"),
-    sandwich = "none"
+    sandwich = FALSE
   )
   ncv_expect_alignment(fit, fit$model$z)
   expect_identical(fit$method, "NCV")
@@ -70,7 +70,7 @@ test_that("dense NCV aligns retained model-frame rows and curve clusters", {
     data = dat,
     method = "NCV",
     bs.int = list(k = 4, bs = "ps"),
-    sandwich = "none"
+    sandwich = FALSE
   )
   ncv_expect_alignment(missing, missing$model$z)
   expect_equal(nrow(missing$model), 117L)
@@ -80,7 +80,7 @@ test_that("dense NCV aligns retained model-frame rows and curve clusters", {
     cluster = subject,
     method = "NCV",
     bs.int = list(k = 4, bs = "ps"),
-    sandwich = "none"
+    sandwich = FALSE
   )
   ncv_expect_alignment(grouped, dat$subject[grouped$model$z])
   expect_equal(grouped$pffr$ncv$n_blocks, 4L)
@@ -92,7 +92,7 @@ test_that("dense NCV aligns retained model-frame rows and curve clusters", {
       method = "NCV",
       nei = missing$pffr$ncv$nei,
       bs.int = list(k = 4, bs = "ps"),
-      sandwich = "none"
+      sandwich = FALSE
     ),
     "user-supplied"
   )
@@ -116,7 +116,7 @@ test_that("irregular NCV follows supplied ydata order, not curve sorting", {
     ydata = yd,
     method = "NCV",
     bs.int = list(k = 4, bs = "ps"),
-    sandwich = "none"
+    sandwich = FALSE
   )
   ncv_expect_alignment(fit, fit$model$z)
   expect_equal(as.numeric(fit$model$Y), yd$.value)
@@ -132,7 +132,7 @@ test_that("NCV rejects unsafe backends and extra row omissions", {
         data = dat,
         method = "NCV",
         algorithm = backend,
-        sandwich = "none"
+        sandwich = FALSE
       ),
       "supports only algorithm"
     )
@@ -143,7 +143,7 @@ test_that("NCV rejects unsafe backends and extra row omissions", {
       data = dat,
       method = "NCV",
       discrete = TRUE,
-      sandwich = "none"
+      sandwich = FALSE
     ),
     "requires explicit algorithm"
   )
@@ -153,7 +153,7 @@ test_that("NCV rejects unsafe backends and extra row omissions", {
       data = dat,
       method = "NCV",
       discrete = 10,
-      sandwich = "none"
+      sandwich = FALSE
     ),
     "requires explicit algorithm"
   )
@@ -165,7 +165,7 @@ test_that("NCV rejects unsafe backends and extra row omissions", {
       method = "NCV",
       subset = 1:5,
       bs.int = list(k = 4),
-      sandwich = "none"
+      sandwich = FALSE
     ),
     "subset.*not supported"
   )
@@ -176,7 +176,7 @@ test_that("NCV rejects unsafe backends and extra row omissions", {
       data = dat,
       method = "NCV",
       bs.int = list(k = 4, bs = "ps"),
-      sandwich = "none"
+      sandwich = FALSE
     ),
     "cannot align the model frame"
   )
@@ -252,8 +252,7 @@ test_that("model-based covariance of NCV fits is Vp, not mgcv's Vc", {
   # NCV fits (far smaller than Vp); a fixed mgcv returns Vp plus that correction.
   # Either way Vc differs from Vp, and refund must return Vp.
   expect_false(isTRUE(all.equal(ncv$Vc, ncv$Vp)))
-  expect_identical(pffr_vcov(ncv, sandwich = "none"), ncv$Vp)
-  expect_identical(pffr_vcov(ncv, sandwich = "none", freq = TRUE), ncv$Ve)
+  expect_identical(pffr_vcov(ncv, sandwich = FALSE), ncv$Vp)
   reml <- pffr(
     Y ~
       ff(
@@ -263,9 +262,9 @@ test_that("model-based covariance of NCV fits is Vp, not mgcv's Vc", {
     data = dat,
     yind = seq(0, 1, length.out = ncol(dat$Y)),
     bs.int = list(bs = "ps", k = 4),
-    sandwich = "none"
+    sandwich = FALSE
   )
-  expect_identical(pffr_vcov(reml, sandwich = "none"), reml$Vc)
+  expect_identical(pffr_vcov(reml, sandwich = FALSE), reml$Vc)
 })
 
 test_that("Poisson and binomial NCV approximate fixed-penalty curve deletion", {
@@ -314,25 +313,14 @@ test_that("NCV supports CL2 coefficients and model covariance fallback", {
   skip_if_not_installed("mgcv", "1.9.0")
   set.seed(102)
   fit <- ncv_test_fit(ncv_test_data())
-  robust <- coef(fit, sandwich = "cl2", n1 = 4, n2 = 4)
-  model <- coef(fit, sandwich = "none", n1 = 4, n2 = 4)
+  robust <- coef(fit, sandwich = TRUE, n1 = 4, n2 = 4)
+  model <- coef(fit, sandwich = FALSE, n1 = 4, n2 = 4)
   rse <- unlist(lapply(robust$smterms, function(x) x$se))
   mse <- unlist(lapply(model$smterms, function(x) x$se))
   expect_true(length(rse) > 0L && all(is.finite(rse)))
   expect_gt(max(abs(rse - mse)), 1e-4)
   fit$Vc <- NULL
-  expect_equal(pffr_vcov(fit, sandwich = "none"), fit$Vp)
-  fit$edf2 <- NULL
-  expect_warning(
-    v <- pffr_vcov(
-      fit,
-      sandwich = "cluster",
-      dof_correction = "edf",
-      edf_type = "edf2"
-    ),
-    "edf2 is unavailable for NCV"
-  )
-  expect_true(all(is.finite(v)))
+  expect_equal(pffr_vcov(fit, sandwich = FALSE), fit$Vp)
 })
 
 
@@ -347,7 +335,7 @@ test_that("NCV rejects NA padding and missing weights and supports fit-time CL2"
       data = dat,
       method = "NCV",
       bs.int = list(bs = "ps", k = 4),
-      sandwich = "none",
+      sandwich = FALSE,
       na.action = na.exclude
     ),
     "requires na.action = na.omit"
@@ -360,7 +348,7 @@ test_that("NCV rejects NA padding and missing weights and supports fit-time CL2"
       data = dat,
       method = "NCV",
       bs.int = list(bs = "ps", k = 4),
-      sandwich = "none",
+      sandwich = FALSE,
       weights = weights
     ),
     "cannot align the model frame"
@@ -371,7 +359,7 @@ test_that("NCV rejects NA padding and missing weights and supports fit-time CL2"
       data = dat,
       method = "NCV",
       bs.int = list(bs = "ps", k = 4),
-      sandwich = "cl2"
+      sandwich = TRUE
     ),
     class = "pffr_small_G_warning"
   )
@@ -381,7 +369,7 @@ test_that("NCV rejects NA padding and missing weights and supports fit-time CL2"
     data = dat,
     method = "NCV",
     bs.int = list(bs = "ps", k = 4),
-    sandwich = "none",
+    sandwich = FALSE,
     sp = fit$sp
   )
   expect_equal(fixed$coefficients, fit$coefficients, tolerance = 1e-7)
@@ -407,8 +395,8 @@ test_that("bam NCV blocks affect smoothing and approximate gam, with CL2 SEs", {
     tolerance = .02
   )
   expect_equal(sum(blocked$edf), sum(exact$edf), tolerance = .02)
-  robust <- coef(blocked, sandwich = "cl2", n1 = 4, n2 = 4)
-  model <- coef(blocked, sandwich = "none", n1 = 4, n2 = 4)
+  robust <- coef(blocked, sandwich = TRUE, n1 = 4, n2 = 4)
+  model <- coef(blocked, sandwich = FALSE, n1 = 4, n2 = 4)
   rse <- unlist(lapply(robust$smterms, function(x) x$se))
   mse <- unlist(lapply(model$smterms, function(x) x$se))
   expect_true(length(rse) > 0L && all(is.finite(rse)))
@@ -435,7 +423,7 @@ test_that("bam NCV aligns dense and shuffled sparse data and rejects unsafe inpu
       method = "NCV",
       algorithm = "bam",
       bs.int = list(k = 4, bs = "ps"),
-      sandwich = "none",
+      sandwich = FALSE,
       weights = seq_len(12) / 12 + 1,
       offset = seq_len(12) / 20,
       ...
@@ -478,7 +466,7 @@ test_that("bam NCV aligns dense and shuffled sparse data and rejects unsafe inpu
     yind = tt,
     method = "NCV",
     bs.int = list(k = 4, bs = "ps"),
-    sandwich = "none"
+    sandwich = FALSE
   )
   expect_equal(nrow(gam_fit$model), 117L)
 })

@@ -29,7 +29,7 @@ Does not return; always errors with a deprecation message.
 \description{
 **Deprecated**
 
-`pffrGLS()` is deprecated. Use \code{\link{pffr}()} with
-\code{sandwich = "cluster"} or \code{sandwich = "cl2"} instead.
+`pffrGLS()` is deprecated and errors. Use \code{\link{pffr}()} and its
+default intervals instead.
 }
 \keyword{internal}

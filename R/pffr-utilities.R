@@ -12,6 +12,7 @@ safeDeparse <- function(expr) {
 
 # Normalize a stored pffr sandwich type (from $pffr metadata or a summary):
 # NULL -> "none", legacy logical encoding TRUE/FALSE -> "cluster"/"none".
+# Current fits store "cl2" or "none".
 normalize_sandwich_type <- function(sandwich) {
   sandwich <- sandwich %||% "none"
   if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
@@ -21,7 +22,7 @@ normalize_sandwich_type <- function(sandwich) {
 # Storage-format version for the pffr robust-covariance contract. Format 2
 # keeps $Vp/$Vc/$Ve model-based and stores the robust covariance in
 # $pffr$Vsandwich; format 1 (older) overwrote $Vp/$Vc/$Ve and stashed the
-# model-based matrices in $pffr$model_cov (see pffr_upgrade_fit()).
+# model-based matrices in $pffr$model_cov (see pffr_canonicalize_cov()).
 PFFR_COV_STORAGE_FORMAT <- 2L
 
 # Package-internal state for session-scoped one-time warnings (e.g. the
@@ -34,6 +35,15 @@ pffr_warn_once <- function(key, msg) {
   if (!isTRUE(get0(key, envir = .pffr_state, ifnotfound = FALSE))) {
     assign(key, TRUE, envir = .pffr_state)
     warning(msg, call. = FALSE)
+  }
+  invisible(NULL)
+}
+
+# Emit `msg` as a message at most once per R session, keyed by `key`.
+pffr_inform_once <- function(key, msg) {
+  if (!isTRUE(get0(key, envir = .pffr_state, ifnotfound = FALSE))) {
+    assign(key, TRUE, envir = .pffr_state)
+    message(msg)
   }
   invisible(NULL)
 }

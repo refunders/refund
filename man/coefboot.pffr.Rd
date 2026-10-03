@@ -55,9 +55,7 @@ A list with similar structure as the return value of
   with bootstrap CIs.
 }
 \description{
-**Deprecated**
-
-`coefboot.pffr()` was renamed to [pffr_coefboot()] for consistency with the
-package naming conventions.
+**Deprecated**, as is its successor [pffr_coefboot()]: use the default
+intervals of [pffr()] fits instead.
 }
 \keyword{internal}

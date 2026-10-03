@@ -17,9 +17,7 @@ coef_get_predictions(
   level = 0.95,
   coef_draws = NULL,
   t_scale = NULL,
-  crit_mode = "z",
-  crit_df_const = NA_real_,
-  df_ctx = NULL
+  crit_setup = NULL
 )
 }
 \arguments{
@@ -27,9 +25,7 @@ coef_get_predictions(
 
 \item{data_grid}{Data frame from coef_make_data_grid.}
 
-\item{object_info}{List with: coefficients, cmX, Vp, and optionally
-theta_diff (coefficient difference to a bias reference fit; see
-`bias_ref` in [coef.pffr()]).}
+\item{object_info}{List with: coefficients, cmX, Vp.}
 
 \item{pffr_info}{List with: yind_name.}
 
@@ -49,6 +45,8 @@ theta_diff (coefficient difference to a bias reference fit; see
 
 \item{t_scale}{Optional multiplier-t scaling, one positive value per
 simulation draw.}
+
+\item{crit_setup}{A [pffr_crit_setup()] result (pointwise intervals).}
 }
 \value{
 List with x, y, z coordinates, value, se, coef data frame, dim.

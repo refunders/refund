@@ -2,35 +2,16 @@
 % Please edit documentation in R/pffr-influence.R
 \name{pffr_influence}
 \alias{pffr_influence}
-\title{Cached fixed-fit influence object for a pffr model}
+\title{Cached fixed-fit CL2 influence object for a pffr model}
 \usage{
-pffr_influence(
-  object,
-  sandwich = NULL,
-  cluster = NULL,
-  cl2_adjustment = NULL,
-  leverage_cap = 0.999,
-  tol = 1e-08,
-  dof_correction = NULL,
-  edf_type = NULL
-)
+pffr_influence(object, cluster = NULL, leverage_cap = 0.999)
 }
 \arguments{
 \item{object}{Fitted pffr model.}
 
-\item{sandwich}{NULL inherits the fit; otherwise cluster or cl2.}
-
 \item{cluster}{Optional per-curve grouping override.}
 
-\item{cl2_adjustment}{NULL inherits the fit; otherwise auto, exact or shortcut.}
-
-\item{leverage_cap, tol}{Numerical adjustment settings.}
-
-\item{dof_correction, edf_type}{CR1 small-sample correction for
-`sandwich = "cluster"`; `NULL` inherits the fit. Both enter the cache key
-for `sandwich = "cluster"`, because there they scale the cached
-`correction`; for `sandwich = "cl2"` they are never applied and are keyed
-as `"none"` so the same object is reused whatever they are set to.}
+\item{leverage_cap}{Numerical floor setting, see [pffr_influence_core()].}
 }
 \value{
 A `pffr_influence` object: the symmetrized penalized bread `B`, the
@@ -38,15 +19,13 @@ A `pffr_influence` object: the symmetrized penalized bread `B`, the
   the compressed per-cluster geometry `blocks` (`T`, the leverage weight `A`
   and, when the df precompute applies, the residualization block `RT` =
   \eqn{R T_g^\top}), the cluster count `G` and labels `groups`,
-  the resolved `adjustment`,
-  the finite-sample `correction` (`G/(G-1)` times any CR1 dof factor), the
-  Bayesian smoothing-bias term `B2`, the per-cluster `diagnostics` (see
+  the finite-sample `correction` `G/(G-1)`, the Bayesian smoothing-bias term
+  `B2` \eqn{= V_p - V_e}, the per-cluster `diagnostics` (see
   [pffr_influence_core()]) and the numerical settings. Cached on the fit
-  unless a `cluster` override is supplied. Internal research prototype:
-  smoothing-selection uncertainty is absent and the object is conditional on
-  the fitted smoothing parameters and weights.
+  unless a `cluster` override is supplied. The object is conditional on the
+  fitted smoothing parameters and weights.
 }
 \description{
-Cached fixed-fit influence object for a pffr model
+Cached fixed-fit CL2 influence object for a pffr model
 }
 \keyword{internal}

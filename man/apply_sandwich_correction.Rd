@@ -2,44 +2,22 @@
 % Please edit documentation in R/pffr-core.R
 \name{apply_sandwich_correction}
 \alias{apply_sandwich_correction}
-\title{Store a robust sandwich covariance on a fitted pffr model}
+\title{Store the CL2 sandwich covariance on a fitted pffr model}
 \usage{
-apply_sandwich_correction(
-  m,
-  algorithm,
-  type = "cluster",
-  dof_correction = "none",
-  edf_type = "trace",
-  cl2_adjustment = "auto"
-)
+apply_sandwich_correction(m)
 }
 \arguments{
-\item{m}{Fitted model.}
-
-\item{algorithm}{Algorithm symbol.}
-
-\item{type}{`"cluster"` (default) for CR1 cluster-robust, `"cl2"` for
-leverage-adjusted cluster-robust CL2, or `"hc"` for observation-level HC.}
-
-\item{dof_correction}{Optional CR1 small-sample dof correction
-(`"none"`/`"edf"`); applied only when `type = "cluster"`. Ignored (with a
-warning) for `"cl2"`, which already corrects per-cluster leverage.}
-
-\item{edf_type}{Which EDF the `"edf"` correction uses (`"trace"`/`"edf2"`/
-`"basis"`).}
-
-\item{cl2_adjustment}{CL2 leverage adjustment (`"auto"` (default),
-`"exact"`, or `"shortcut"`), used only for `type = "cl2"`.}
+\item{m}{Fitted model (gam/bam with `$pffr` metadata).}
 }
 \value{
 Model with the robust covariance stored in `$pffr$Vsandwich`.
 }
 \description{
-Computes the requested robust covariance (observation-level HC via
-[mgcv::vcov.gam()], or cluster-robust CR1 via [gam_sandwich_cluster()] / CL2
-via [gam_sandwich_cluster_cl2()]) from the fit's model-based bread and stores
-it in `$pffr$Vsandwich` (+ `$pffr$Vsandwich_freq`) together with
-`$pffr$sandwich_info`. The model-based `$Vp`/`$Vc`/`$Ve` are left untouched,
-so recomputing a sandwich later never double-applies the correction.
+Computes the curve-clustered CL2 covariance (exact leverage adjustment,
+Bayesian form) from the fit's model-based bread and stores it in
+`$pffr$Vsandwich` together with `$pffr$sandwich_info`. The model-based
+`$Vp`/`$Vc`/`$Ve` are left untouched, so recomputing a sandwich later never
+double-applies the correction. Emits the small-\eqn{G} warning and the
+one-time message for binary responses.
 }
 \keyword{internal}

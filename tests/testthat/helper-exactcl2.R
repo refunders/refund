@@ -74,37 +74,28 @@ run_exactcl2_hardening <- function() {
       yind = fixture$yind,
       family = fixture$family,
       bs.yindex = list(bs = "ps", k = fixture$k, m = c(2, 1)),
-      sandwich = "none"
+      sandwich = FALSE
     )))
 
     # `1 - sqrt(tol)` makes the exact floor equal tol: Study EX's
     # cl2_exact_nocap comparator without duplicating the implementation.
     V_exact <- suppressWarnings(refund:::pffr_vcov(
       fit,
-      sandwich = "cl2",
-      cluster = fixture$cluster,
-      cl2_adjustment = "exact"
+      sandwich = TRUE,
+      cluster = fixture$cluster
     ))
     V_nocap <- suppressWarnings(refund:::gam_sandwich_cluster_cl2(
       refund:::pffr_model_based_gam(fit),
       refund:::build_cluster_id(fit$pffr, cluster = fixture$cluster),
-      cl2_adjustment = "exact",
       leverage_cap = 1 - sqrt(1e-8)
     ))
-    V_shortcut <- suppressWarnings(refund:::pffr_vcov(
-      fit,
-      sandwich = "cl2",
-      cluster = fixture$cluster,
-      cl2_adjustment = "shortcut"
-    ))
-
     se_exact <- sqrt(pmax(diag(V_exact), 0))
-    se_shortcut <- sqrt(pmax(diag(V_shortcut), 0))
+    se_model <- sqrt(pmax(diag(fit$Vp), 0))
     positive <- is.finite(se_exact) &
-      is.finite(se_shortcut) &
+      is.finite(se_model) &
       se_exact > 0 &
-      se_shortcut > 0
-    ratio <- se_exact[positive] / se_shortcut[positive]
+      se_model > 0
+    ratio <- se_exact[positive] / se_model[positive]
     rows[[i]] <- data.frame(
       family = case$family,
       k = case$k,
@@ -115,7 +106,7 @@ run_exactcl2_hardening <- function() {
       min_block_eig = attr(V_exact, "min_block_eig"),
       max_block_kappa = attr(V_exact, "max_block_kappa"),
       max_abs_exact_nocap = max(abs(V_exact - V_nocap)),
-      median_se_ratio_to_shortcut = stats::median(ratio),
+      median_se_ratio_to_model = stats::median(ratio),
       se_finite_positive = all(positive),
       se_ratio_sane = length(ratio) > 0 &&
         min(ratio) > 1e-3 &&
@@ -153,6 +144,6 @@ fit_lb5_fixture <- function(fixture) {
     yind = fixture$yind,
     family = stats::poisson(),
     bs.yindex = list(bs = "ps", k = fixture$k, m = c(2, 1)),
-    sandwich = "none"
+    sandwich = FALSE
   )))
 }

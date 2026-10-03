@@ -186,13 +186,13 @@ test_that("the ff() surface is rescaled by the old/new weight-sum ratio", {
     Y ~ ff(X1, xind = xind),
     yind = yind,
     data = dat,
-    sandwich = "none"
+    sandwich = FALSE
   )
   fit_old <- pffr(
     Y ~ ff(X1, xind = xind, integration = "simpson_legacy"),
     yind = yind,
     data = dat,
-    sandwich = "none"
+    sandwich = FALSE
   )
 
   # identical fits, only the parameterisation of beta(s, t) changes

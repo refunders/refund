@@ -4,27 +4,27 @@
 \alias{vcov.pffr}
 \title{Covariance matrix for a pffr fit}
 \usage{
-\method{vcov}{pffr}(object, sandwich = FALSE, ...)
+\method{vcov}{pffr}(object, sandwich = NULL, cluster = NULL, ...)
 }
 \arguments{
 \item{object}{a fitted \code{pffr}-object}
 
-\item{sandwich}{compute an observation-level HC sandwich covariance? See
-\code{\link[mgcv]{vcov.gam}()}.}
+\item{sandwich}{\code{NULL} (default) uses the fit's covariance;
+\code{TRUE} the CL2 sandwich; \code{FALSE} the model-based covariance
+(\code{object$Vp} for NCV fits, otherwise \code{object$Vc}).}
 
-\item{...}{see \code{\link[mgcv]{vcov.gam}()} for options.}
+\item{cluster}{optional per-curve grouping for the CL2 sandwich, as in
+\code{\link{coef.pffr}}.}
+
+\item{...}{not used.}
 }
 \value{
-A covariance matrix, see \code{\link[mgcv]{vcov.gam}()}.
+A covariance matrix.
 }
 \description{
-Dispatches to \code{\link[mgcv]{vcov.gam}()} on the fit's \emph{model-based}
-covariance. Since refund now keeps \code{$Vp}/\code{$Vc}/\code{$Ve}
-model-based on every fit (the robust covariance lives in
-\code{object$pffr$Vsandwich}), \code{vcov(object)} returns the Bayesian
-posterior (model-based) covariance even when the fit was created with a
-sandwich option. With \code{sandwich = TRUE}, mgcv recomputes an
-observation-level HC sandwich from that model-based bread. For the
-cluster-robust estimators (or to obtain the fit-time robust covariance) use
-\code{\link{coef.pffr}} with the \code{sandwich} argument.
+Returns the covariance of the coefficient estimates that refund's interval
+methods use: by default the fit's covariance, i.e. the CL2 sandwich for
+fits with \code{sandwich = TRUE} (the default of \code{\link{pffr}}) and the
+model-based covariance otherwise. The fit's \code{$Vp}, \code{$Vc} and
+\code{$Ve} always hold mgcv's model-based matrices.
 }

@@ -205,7 +205,7 @@ extract_boot_coefficients <- function(
     coef(
       model,
       se = FALSE,
-      sandwich = "none",
+      sandwich = FALSE,
       ci = "none",
       n1 = n1,
       n2 = n2,
@@ -331,7 +331,29 @@ compute_boot_cis <- function(
 # Main Exported Functions
 #--------------------------------------
 
-#' Simple bootstrap CIs for pffr
+PFFR_COEFBOOT_DEPRECATED <- paste0(
+  "pffr_coefboot() is deprecated. Use the default intervals of pffr() fits, ",
+  "coef(fit, ci = \"pointwise\"): the CL2 sandwich with Satterthwaite ",
+  "critical values (see ?pffr). The curve bootstrap gave valid but 1.4 to 1.6 ",
+  "times wider intervals at a much higher cost."
+)
+
+# pffr_coefboot() without its deprecation warning, for the deprecated alias.
+pffr_coefboot_quiet <- function(...) {
+  withCallingHandlers(
+    pffr_coefboot(...),
+    deprecatedWarning = function(w) invokeRestart("muffleWarning")
+  )
+}
+
+#' Simple bootstrap CIs for pffr (deprecated)
+#'
+#' @description
+#' **Deprecated.** Use the default intervals of [pffr()] fits instead
+#' (`coef(fit, ci = "pointwise")`: CL2 sandwich with Satterthwaite critical
+#' values, see the section \sQuote{Inference} of [pffr()]). In simulations the
+#' curve bootstrap gave valid but 1.4 to 1.6 times wider intervals, at a cost
+#' orders of magnitude higher.
 #'
 #' This function resamples observations in the data set to obtain approximate CIs for different
 #' terms and coefficient functions that correct for the effects of dependency and heteroskedasticity
@@ -374,6 +396,7 @@ pffr_coefboot <- function(
   showProgress = TRUE,
   ...
 ) {
+  .Deprecated(msg = PFFR_COEFBOOT_DEPRECATED)
   # Validate inputs
   method <- match.arg(method)
   parallel <- match.arg(parallel)
@@ -417,7 +440,7 @@ pffr_coefboot <- function(
   coef_template <- coef(
     object,
     se = FALSE,
-    sandwich = "none",
+    sandwich = FALSE,
     ci = "none",
     n1 = n1,
     n2 = n2,
@@ -527,10 +550,8 @@ pffr_coefboot <- function(
 #' Simple bootstrap CIs for pffr (deprecated)
 #'
 #' @description
-#' **Deprecated**
-#'
-#' `coefboot.pffr()` was renamed to [pffr_coefboot()] for consistency with the
-#' package naming conventions.
+#' **Deprecated**, as is its successor [pffr_coefboot()]: use the default
+#' intervals of [pffr()] fits instead.
 #'
 #' @inheritParams pffr_coefboot
 #' @return A list with similar structure as the return value of
@@ -553,8 +574,8 @@ coefboot.pffr <- function(
   showProgress = TRUE,
   ...
 ) {
-  .Deprecated("pffr_coefboot")
-  pffr_coefboot(
+  .Deprecated(msg = PFFR_COEFBOOT_DEPRECATED)
+  pffr_coefboot_quiet(
     object = object,
     n1 = n1,
     n2 = n2,
@@ -604,7 +625,7 @@ prepare_modcall_for_bootstrap <- function(object) {
   fit_fun <- safeDeparse(modcall[[1]])
   if (fit_fun %in% c("pffr", "refund::pffr")) {
     modcall[[1]] <- quote(refund::pffr)
-    modcall$sandwich <- "none"
+    modcall$sandwich <- FALSE
   }
   modcall$fit <- TRUE
   modcall
@@ -824,176 +845,23 @@ attach_bootstrap_cis <- function(
   coef_template
 }
 
-#--------------------------------------
-# GLS Decorrelation Helpers
-#--------------------------------------
-
-# Compute square root of inverse covariance matrix for GLS decorrelation
-# @param hat_sigma Estimated covariance matrix
-# @param cond_cutoff Condition number cutoff for positive definiteness correction
-# @returns Square root of inverse covariance matrix
-compute_sqrt_sigma_inv <- function(hat_sigma, cond_cutoff = 500) {
-  e_sigma <- eigen(hat_sigma, symmetric = TRUE)
-  cond <- max(e_sigma$values) / min(e_sigma$values)
-
-  if (cond > cond_cutoff) {
-    hat_sigma_pd <- Matrix::nearPD(
-      hat_sigma,
-      keepDiag = TRUE,
-      ensureSymmetry = TRUE,
-      do2eigen = TRUE,
-      posd.tol = 1 / cond_cutoff
-    )
-    warning(
-      "Supplied <hatSigma> had condition number ",
-      round(cond),
-      "\n   -- projected further into pos.-definite cone (new condition number: ",
-      cond_cutoff,
-      ")."
-    )
-    e_sigma <- eigen(as.matrix(hat_sigma_pd$mat), symmetric = TRUE)
-  }
-
-  e_sigma$vectors %*% diag(1 / sqrt(e_sigma$values)) %*% t(e_sigma$vectors)
-}
-
-# Decorrelate design matrix and response for GLS fitting
-# @param G GAM G object from gam(..., fit = FALSE)
-# @param sqrt_sigma_inv Square root of inverse covariance
-# @param nobs Number of observations
-# @param nyindex Number of time points per observation
-# @returns Modified G object with decorrelated X and y
-decorrelate_gam_matrices <- function(G, sqrt_sigma_inv, nobs, nyindex) {
-  # Decorrelate response (reshape, transform, flatten)
-  y_matrix <- matrix(G$y, nrow = nobs, ncol = nyindex, byrow = TRUE)
-  y_decorr <- t(sqrt_sigma_inv %*% t(y_matrix))
-  G$y <- as.vector(t(y_decorr))
-
-  # Decorrelate design matrix block-wise
-  for (i in seq_len(nobs)) {
-    rows <- ((i - 1) * nyindex + 1):(i * nyindex)
-    G$X[rows, ] <- sqrt_sigma_inv %*% G$X[rows, ]
-  }
-
-  G
-}
-
-#--------------------------------------
-# pffr Label Map Building Helpers
-#--------------------------------------
-
-# Build label map connecting original terms to mgcv smooth labels
-# Extracted from pffr/pffrGLS for reusability
-# @param term_map Named vector of transformed term strings
-# @param m_smooth List of smooth objects from fitted model
-# @param where_specials List of term indices by type
-# @param formula_env Environment with transformed variables
-# @param ffpc_terms List of ffpc term objects (or NULL)
-# @returns Named list mapping original terms to mgcv labels
-build_pffr_label_map <- function(
-  term_map,
-  m_smooth,
-  where_specials,
-  formula_env,
-  ffpc_terms = NULL
-) {
-  label_map <- as.list(term_map)
-  smooth_labels <- vapply(m_smooth, \(x) x$label, character(1))
-
-  has_par <- length(where_specials$par) > 0
-  has_ffpc <- length(where_specials$ffpc) > 0
-
-  if (has_par || has_ffpc) {
-    # Handle parametric terms
-    if (has_par) {
-      for (w in where_specials$par) {
-        var <- get(names(label_map)[w], envir = formula_env)
-        if (is.factor(var)) {
-          where <- vapply(m_smooth, \(x) x$by, character(1)) ==
-            names(label_map)[w]
-          label_map[[w]] <- vapply(m_smooth[where], \(x) x$label, character(1))
-        } else {
-          label_map[[w]] <- paste0(
-            "s(",
-            names(label_map)[w],
-            "):",
-            names(label_map)[w]
-          )
-        }
-      }
-    }
-
-    # Handle ffpc terms
-    if (has_ffpc && !is.null(ffpc_terms)) {
-      for (ind in seq_along(where_specials$ffpc)) {
-        w <- where_specials$ffpc[ind]
-        where <- vapply(m_smooth, \(x) x$id %||% NA_character_, character(1)) ==
-          ffpc_terms[[ind]]$id
-        label_map[[w]] <- vapply(m_smooth[where], \(x) x$label, character(1))
-      }
-    }
-
-    # Match remaining terms
-    other_indices <- setdiff(
-      seq_along(label_map),
-      c(where_specials$par, where_specials$ffpc)
-    )
-    if (length(other_indices) > 0) {
-      label_map[other_indices] <- smooth_labels[pmatch(
-        vapply(label_map[other_indices], extract_smooth_label, character(1)),
-        smooth_labels
-      )]
-    }
-  } else {
-    # Simple case: match all terms
-    label_map[seq_along(label_map)] <- smooth_labels[pmatch(
-      vapply(label_map, extract_smooth_label, character(1)),
-      smooth_labels
-    )]
-  }
-
-  # Fill in NA labels with original term map
-  na_labels <- vapply(
-    label_map,
-    \(x) any(is.null(x)) || any(is.na(x)),
-    logical(1)
-  )
-  if (any(na_labels)) {
-    label_map[na_labels] <- term_map[na_labels]
-  }
-
-  label_map
-}
-
-# Extract smooth label from term string or call
-# @param x Term string or evaluated call
-# @returns Label string
-extract_smooth_label <- function(x) {
-  parsed <- parse(text = x)[[1]]
-  if (length(parsed) != 1) {
-    evaled <- eval(parsed)
-    evaled$label
-  } else {
-    x
-  }
-}
-
 #' Penalized function-on-function regression with non-i.i.d. residuals
 #' (deprecated)
 #'
 #' @description
 #' **Deprecated**
 #'
-#' `pffr_gls()` is deprecated. Its GLS-based covariance correction produced
-#' poorly calibrated inference in practice. Use \code{\link{pffr}()} with
-#' \code{sandwich = "cluster"} (the new default) or \code{sandwich = "cl2"}
-#' for robust covariance estimation instead.
+#' `pffr_gls()` is deprecated and errors. Its GLS-based covariance correction
+#' produced poorly calibrated inference in practice. Fit the model with
+#' \code{\link{pffr}()} by REML and use its default intervals (CL2 sandwich with
+#' Satterthwaite critical values; see the section \sQuote{Inference} of
+#' \code{\link{pffr}}).
 #'
 #' @param formula,yind,hatSigma,data,ydata,algorithm,method,tensortype,bs.yindex,bs.int,cond.cutoff,...
 #'   Ignored. The function always errors.
 #'
 #' @return Does not return; always errors with a deprecation message.
-#' @seealso \code{\link{pffr}} for the recommended approach with sandwich CIs.
+#' @seealso \code{\link{pffr}} for the recommended procedure.
 #'
 #' @export
 #' @author Fabian Scheipl
@@ -1016,14 +884,13 @@ pffr_gls <- function(
     msg = paste(
       "pffr_gls() is deprecated and now errors.",
       "Its GLS-based covariance correction produced poorly calibrated inference.",
-      "Use pffr() with sandwich = \"cluster\" (the default) or",
-      "sandwich = \"cl2\" for robust covariance estimation instead.",
-      "See ?pffr for details."
+      "Fit the model with pffr() by REML and use its default intervals",
+      "(CL2 sandwich with Satterthwaite critical values). See ?pffr."
     )
   )
   stop(
     "pffr_gls() has been removed. ",
-    "Use pffr() with sandwich = \"cluster\" or sandwich = \"cl2\" instead.",
+    "Use pffr() and its default intervals instead.",
     call. = FALSE
   )
 }
@@ -1035,8 +902,8 @@ pffr_gls <- function(
 #' @description
 #' **Deprecated**
 #'
-#' `pffrGLS()` is deprecated. Use \code{\link{pffr}()} with
-#' \code{sandwich = "cluster"} or \code{sandwich = "cl2"} instead.
+#' `pffrGLS()` is deprecated and errors. Use \code{\link{pffr}()} and its
+#' default intervals instead.
 #'
 #' @inheritParams pffr_gls
 #' @return Does not return; always errors with a deprecation message.
