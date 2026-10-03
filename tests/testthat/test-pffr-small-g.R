@@ -1,9 +1,8 @@
 #--------------------------------------
 # Small-cluster-count warning (threshold G < 40; the text states that CL2
 # with Satterthwaite critical values was evaluated down to G = 20). pffr()
-# warns once, at fit time, when the
-# resolved sandwich is "cluster" or "cl2" and the number of clusters G is
-# below 40. The warning carries class "pffr_small_G_warning" so it can be
+# warns once, at fit time, when the CL2 sandwich is used and the number of
+# clusters G is below 40. The warning carries class "pffr_small_G_warning" so it can be
 # muffled by class.
 #--------------------------------------
 
@@ -25,7 +24,7 @@ test_that("cl2 at G < 40 emits exactly one pffr_small_G_warning", {
 
   warnings_seen <- character(0)
   fit <- withCallingHandlers(
-    pffr(Y ~ xlin, data = dat, yind = yind, sandwich = "cl2"),
+    pffr(Y ~ xlin, data = dat, yind = yind, sandwich = TRUE),
     pffr_small_G_warning = function(w) {
       warnings_seen <<- c(warnings_seen, conditionMessage(w))
       invokeRestart("muffleWarning")
@@ -37,13 +36,13 @@ test_that("cl2 at G < 40 emits exactly one pffr_small_G_warning", {
   expect_identical(fit$pffr$sandwich_info$G, 15L)
 })
 
-test_that("cluster (CR1) at G < 40 emits exactly one pffr_small_G_warning", {
+test_that("the default fit at G < 40 emits the pffr_small_G_warning", {
   skip_on_cran()
   dat <- make_smallg_dat(n = 12)
   yind <- attr(dat, "yindex")
 
   expect_warning(
-    fit <- pffr(Y ~ xlin, data = dat, yind = yind, sandwich = "cluster"),
+    fit <- pffr(Y ~ xlin, data = dat, yind = yind),
     class = "pffr_small_G_warning"
   )
   expect_identical(fit$pffr$sandwich_info$G, 12L)
@@ -56,7 +55,7 @@ test_that("cl2 at G >= 40 emits no pffr_small_G_warning", {
 
   fired <- FALSE
   withCallingHandlers(
-    pffr(Y ~ xlin, data = dat, yind = yind, sandwich = "cl2"),
+    pffr(Y ~ xlin, data = dat, yind = yind, sandwich = TRUE),
     pffr_small_G_warning = function(w) {
       fired <<- TRUE
       invokeRestart("muffleWarning")
@@ -65,14 +64,14 @@ test_that("cl2 at G >= 40 emits no pffr_small_G_warning", {
   expect_false(fired)
 })
 
-test_that("sandwich = 'none' at small G never warns", {
+test_that("sandwich = FALSE at small G never warns", {
   skip_on_cran()
   dat <- make_smallg_dat(n = 10)
   yind <- attr(dat, "yindex")
 
   fired <- FALSE
   withCallingHandlers(
-    pffr(Y ~ xlin, data = dat, yind = yind, sandwich = "none"),
+    pffr(Y ~ xlin, data = dat, yind = yind, sandwich = FALSE),
     pffr_small_G_warning = function(w) {
       fired <<- TRUE
       invokeRestart("muffleWarning")
@@ -87,7 +86,7 @@ test_that("coef() on an already-warned small-G fit does not repeat the warning",
   yind <- attr(dat, "yindex")
 
   fit <- withCallingHandlers(
-    pffr(Y ~ xlin, data = dat, yind = yind, sandwich = "cl2"),
+    pffr(Y ~ xlin, data = dat, yind = yind, sandwich = TRUE),
     pffr_small_G_warning = function(w) invokeRestart("muffleWarning")
   )
 

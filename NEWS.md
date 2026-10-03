@@ -1,32 +1,30 @@
 # refund 0.1-38
 
-* Pointwise critical values now default to `crit = "auto"`: Satterthwaite
-  critical values (a separate working-model moment df for every evaluation
-  point) for the exact CL2 sandwich, and Gaussian ones for every other
-  covariance (CR1 `"cluster"`, shortcut CL2, `"hc"`, model-based). Previously
-  the default was `crit = "z"`, and `"auto"` also switched CR1 to
-  Satterthwaite at `G < 150`. This applies to `coef.pffr()`,
-  `pffr_predict_ci()` and `predict.pffr()`. Both prediction functions gain
-  `crit`, and `predict()` also gains `level`; with `se.fit = TRUE` it now
-  returns `crit` and `df` alongside `se.fit`. The df of a prediction row equal
-  those that `coef()` gives for the same contrast. In predictions, `"auto"`
-  computes the df for at most
-  `getOption("refund.pffr_satterthwaite_max_points", 1e4)` points (about
-  0.5-1.5 ms per point) and otherwise falls back to `"z"` with a message. With
-  `bias_ref`, `"auto"` means `"z"`. The small-`G` warning now states what the
-  simulations cover: CL2 with Satterthwaite critical values was evaluated down
-  to `G = 20`.
-* Bias-aware pointwise intervals for NCV fits: `coef.pffr()` gains
-  `bias_ref`, and the new `pffr_predict_ci()` gives pointwise intervals for the
-  linear predictor or conditional mean (optionally bias-aware). Given a second
-  fit of the same model (typically REML for an NCV fit), the interval is
-  `est -/+ z * sqrt(se^2 + delta^2)` with `delta` the difference between the
-  two estimates, built on the link scale with transformed endpoints for the
-  response mean. Recommended: NCV with curve blocks, exact CL2 in Bayesian form
-  (`sandwich = "cl2", cl2_adjustment = "exact"`, the default covariance when
-  `bias_ref` is given), REML reference, default `seWithMean = TRUE`. `delta`
-  does not capture smoothing bias that both fits share. The docs show how to
-  get the full functional intercept (level included) and its interval.
+* **`pffr()` inference now implements one procedure.** By default
+  (`sandwich = TRUE`) standard errors and intervals use the curve-clustered
+  CL2 sandwich with the full-block leverage adjustment in its Bayesian form,
+  and pointwise intervals from `coef()`, `predict(se.fit = TRUE)` (which now
+  returns `crit` and `df`) and the new `pffr_predict_ci()` use Satterthwaite
+  critical values with a separate df for every point. `sandwich = FALSE`
+  gives the model-based intervals, which are invalid under within-curve
+  dependence. `cluster =` clusters several curves per subject; `vcov()`
+  returns the fit's covariance. The previous `G <= 150` / `max D_g <= 500`
+  limits are gone. pffr warns below 40 curves (the procedure was evaluated
+  down to 20), messages once per session that intervals for intercepts and
+  coefficient functions of scalar covariates of binary responses can
+  undercover, and messages once that intervals around NCV estimates are not
+  for inference (use NCV for the shape of coefficient surfaces, REML for
+  intervals). Families without a cluster score path, `gamm`/`gamm4` and AR(1)
+  fits fall back to model-based intervals with a message.
+  Removed (never released): `sandwich = "auto"`, `cl2_adjustment`,
+  `dof_correction`, `edf_type`, `crit`, `ci_ref`, `df_gram`, `bias_ref`,
+  `se_method`, `pffr_jackknife_se()`, `pffr_dependence_check()`,
+  `pffr_upgrade_fit()` and the `refund.pffr.autopolicy` option. Deprecated:
+  the character values `"cluster"`, `"hc"`, `"cl2"`, `"none"` of `sandwich`
+  (the first two now give CL2), `coef(freq = )`, and `pffr_coefboot()` /
+  `coefboot.pffr()` (valid but 1.4-1.6 times wider intervals at a much higher
+  cost). `ffpc()` now keeps the FPCs explaining 95% of the covariate's
+  variance (`pve = 0.95`, was 0.99, which gave very noisy estimates).
 * `pffr(method = "NCV")` now leaves out whole curves (or `cluster` groups)
   by default. `ncv_blocks = "point"` provides pointwise comparisons; explicit
   `nei` takes precedence. Dual mgcv neighbourhood names, a cached behavioural
@@ -101,21 +99,6 @@
   `ci = "simultaneous"` in addition to standard errors. Simultaneous intervals
   are computed with a coefficient-level Gaussian simulation and max-|t|
   calibration over each smooth term's evaluation grid.
-* `coef.pffr(ci = "simultaneous")` now uses a finite-sample
-  `t_{G-1}` multiplier reference by default via `ci_ref = "t"`, which widens
-  simultaneous bands at small numbers of independent curves or clusters. Set
-  `ci_ref = "normal"` for the previous Gaussian-multiplier behavior.
-* `pffr(..., sandwich = "cl2")` and `coef.pffr(..., sandwich = "cl2")` now
-  report CL2 leverage diagnostics: the returned covariance carries
-  `max_leverage` and `n_capped_clusters` attributes, and a warning is emitted
-  when one or more clusters hit the leverage cap.
-* CL2 now uses the exact Bell--McCaffrey leverage block by default when the
-  finite-sample correction is relevant and the dense-block calculation is
-  affordable (at most 100 clusters and cost proxy `G * max(D_g) * p^2 <=
-  5e9`, a measured sub-second marginal cost). At larger/prohibitive problems it uses the historical shortcut.
-  `cl2_adjustment = "exact"` or `"shortcut"` on `pffr()` and `coef.pffr()`
-  explicitly selects either variant. Exact-CL2 diagnostics include the number
-  of eigenvalue-floored blocks (`n_adjusted`).
 * The CL2 sandwich now checks the penalized hat matrix against its own bounds
   (`0 <= h_ii <= 1`, `0 <= eigen(H_gg) <= 1`, and positive semi-definiteness of
   the exact Bell--McCaffrey block) and **warns** when they are violated by more
@@ -126,21 +109,8 @@
   exploded standard errors (interval widths up to 1e133 were observed on
   degenerate Poisson fits, with nothing to distinguish them from a legitimately
   wide interval). The covariance is still returned, now carrying
-  `max_obs_leverage` and `hat_invariant_violation` attributes. The check runs
-  on the CL2 path only: `sandwich = "cluster"` (CR1) forms no per-cluster
-  leverage geometry, so it has nothing to monitor and stays silent. It is
-  built from the same bread, though, so switching to it is not a remedy --
-  it only removes the diagnostic. Inspect and refit the model.
-* `pffr()` now warns once, at fit time, when `sandwich` resolves to
-  `"cluster"` or `"cl2"` and the number of clusters `G` is below 40: "Only
-  G = <n> clusters: cluster-robust intervals undercover at this size (paper
-  benchmark: CL2 ~0.77-0.79 at G = 20 under dependence). Consider the
-  refitting curve bootstrap `pffr_coefboot()` or wider nominal levels." The
-  warning has class `"pffr_small_G_warning"` (via `warningCondition()`) so it
-  can be muffled with `withCallingHandlers()`/`suppressWarnings(classes =
-  "pffr_small_G_warning")`; it is not repeated by `coef.pffr()`,
-  `plot.pffr()`, or `predict.pffr()`, and never fires for `sandwich =
-  "none"`/`"hc"`.
+  `max_obs_leverage` and `hat_invariant_violation` attributes. Inspect and
+  refit the model.
 * `ff(..., check.ident = TRUE)` (the default) now also warns when the
   effective rank of the functional covariate's covariance is below
   `1.5 * k_s`, where `k_s` is the marginal basis dimension along `s`. The
@@ -159,78 +129,9 @@
   above. The formula interface was already well clear of the threshold
   (effective rank 13-22, depending on `nxgrid`) and is unchanged. Simulated
   data from the `scenario =` path therefore differ from earlier versions.
-* Fixed-fit inference core (research patch `fixed-fit-core-2026-09-09`):
-  exact and shortcut CL2 and the working-model moment df now share one
-  compressed per-cluster influence object (`pffr_influence()`); `pffr()`
-  accepts a fit-time `cluster =` grouping that the covariance accessors
-  inherit, `coef.pffr(sandwich = NULL)` inherits the fit's covariance,
-  pointwise critical values default to `crit = "z"`, and families without a
-  cluster-robust score now error instead of silently returning an
-  observation-level HC covariance. The hat-invariant check above is computed
-  inside the shared core, so it also covers the compressed exact path.
-  In detail, for users of the previous development versions:
-  - `coef.pffr()`'s pointwise critical value now defaults to `crit = "z"`
-    (previously `crit = "auto"`, which switched to the Satterthwaite reference
-    at `G < 150`). Pass `crit = "auto"` or `crit = "satterthwaite"` to opt in.
-  - When the working-model moment df is undefined for a contrast (a
-    zero-variance contrast), `coef(ci = "pointwise", crit = "satterthwaite")`
-    now returns `NA` interval limits with a warning instead of silently
-    substituting the Gaussian quantile. `summary()`/`print.summary.pffr()`
-    ignore non-finite df, and `plot.pffr()` shows standard-error bands and is
-    unaffected.
-  - Families with a custom `family$sandwich` (other than `gaulss`) now error at
-    fit time under `sandwich = "auto"` as well as in the accessors, instead of
-    silently falling back to an observation-level HC covariance.
-  - A fit-time `cluster =` grouping is inherited by the accessors and cannot be
-    switched back to by-curve clustering with `cluster = NULL` (which means
-    "inherit"). Pass the explicit identity grouping
-    `cluster = seq_len(<number of curves>)` to force by-curve clusters.
-  - Because both CL2 variants now share one geometry, `sandwich_info` and the
-    covariance attributes carry slots that used to be path-specific:
-    `max_leverage` is populated on the exact path and `min_block_eig` /
-    `max_block_kappa` on the shortcut path, alongside the hat-invariant
-    monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
-    `min_block_eig_rel`. These are CL2-only: a `sandwich = "cluster"` fit
-    builds no leverage geometry and leaves them `NA`.
-  - The hat-invariant check now also covers the *lower* bounds
-    (`h_ii >= 0` and `eigen(H_gg) >= 0`): an indefinite penalized bread is
-    detected instead of passing the upper-bound monitors unnoticed.
-  - At most one leverage-related warning is emitted per CL2 covariance call
-    (option-validation warnings, such as an ignored `dof_correction`, are
-    separate). Only the
-    shortcut path warns about the leverage cap (the exact path's
-    `(1 - leverage_cap)^2` residual-eigenvalue floor is a routine numerical
-    safeguard and stays silent, as before); when a hat invariant is violated,
-    only the invariant warning is raised.
-  - `coef.pffr(crit = "satterthwaite", df_gram = "diagonal")` drops the
-    off-diagonal residualization but uses the *same* `q_g` as the requested
-    covariance. The historical (pre-2026-09) Satterthwaite df always used the
-    shortcut leverage weight `(I - H_gg)^{-1/2}`, so `"diagonal"` reproduces
-    those historical numbers exactly only in combination with
-    `cl2_adjustment = "shortcut"`.
-  - The per-point moment df is about **twice as fast**, with results unchanged
-    (agreement to 6e-16 relative against the previous implementation, same
-    `NA` pattern, same chunk invariance). `C = 2 V_p - V_p X'X V_p` equals
-    `V_p + V_p S V_p` and is therefore positive definite for a genuine
-    penalized bread, so the influence object now caches `R T_g'` per cluster
-    with `C = R'R` and evaluates the residualized Gram as a symmetric rank-k
-    update instead of a general triple product. Measured on a Gaussian
-    `ff(X1) + xlin` fit (p = 176, n_y = 60, `bs.yindex` k = 12,
-    single-threaded): the coefficient grids (1801 contrasts) go from 6.4 s to
-    3.2 s at G = 100 and from 10.3 s to 4.8 s at G = 200; a full E(Y) grid goes
-    from 20.8 s to 12.3 s (6000 contrasts, G = 100) and from 76.2 s to 36.2 s
-    (12000 contrasts, G = 200). The cached blocks cost
-    `8 * p * sum_g rank_g` bytes (7.9 MB at G = 200) and are bounded by
-    `pffr_influence_core(df_precompute_bytes =)`; above that budget, or when
-    `C` is not usably positive definite, the df falls back to the previous
-    general path. See `inst/benchmarks/df-timing.R`.
 * AR(1) support improvements: `pffr()` now automatically switches to
   `algorithm = "bam"` and `method = "fREML"` when `rho` is supplied, and
   sets `discrete = TRUE` for non-Gaussian families.
-* New `vcov.pffr()` method. Plain `vcov()` returns the fit's stored
-  covariance (robust, for sandwich-corrected fits); `vcov(..., sandwich =
-  TRUE)` computes mgcv's HC sandwich from the model-based matrices.
-
 ## Bug fixes
 
 * **Fixed double application of sandwich corrections on recomputation.**
@@ -240,20 +141,18 @@
   `coef(fit, cluster = ...)` therefore applied the correction on top of
   itself (SEs inflated ~1.5-2x on a small test example), and
   `coef(fit, sandwich = "none")` silently returned robust instead of
-  model-based SEs. `pffr()` now stashes the model-based matrices in
-  `$pffr$model_cov` and all recomputation paths restore them first.
-  Objects fitted with earlier development versions lack the stash and now
-  warn; refit to get correct recomputed results.
-* The CR1 cluster sandwich (`sandwich = "cluster"`) now includes prior
-  weights in the standard-GLM score, matching the CL2 and gaulss paths;
-  CR1 SEs for weighted fits were wrong before.
+  model-based SEs. `pffr()` now keeps `$Vp`/`$Vc`/`$Ve` model-based and
+  stores the robust covariance in `$pffr$Vsandwich`. Objects fitted with
+  refund 0.1-40 lack the model-based matrices; their stored covariance is used
+  with Gaussian critical values and a warning; refit for the current
+  intervals.
 * `pffr_coefboot(type = "norm")` returned all-NA intervals because
   `boot::boot.ci()` names its result element `$normal`, not `$norm`; the
   element names are now mapped correctly. `type = "stud"` errors up front
   (the bootstrap statistic provides no replicate variances) instead of
   silently yielding all-NA intervals.
 * `coef.pffr(cluster = ...)` with a single cluster now errors cleanly
-  instead of dividing by zero in the CR1 small-sample factor.
+  instead of dividing by zero in the small-sample factor.
 
 # refund 0.1-37
 

@@ -2,42 +2,25 @@
 % Please edit documentation in R/pffr-core.R
 \name{pffr_crit_setup}
 \alias{pffr_crit_setup}
-\title{Set up the pointwise critical-value reference for a covariance}
+\title{Critical-value setup for pointwise intervals}
 \usage{
-pffr_crit_setup(
-  object,
-  crit,
-  sandwich,
-  covmat,
-  cluster = NULL,
-  cl2_adjustment = NULL,
-  df_gram = "full",
-  dof_correction = NULL,
-  edf_type = NULL
-)
+pffr_crit_setup(object, use_sandwich, cluster = NULL)
 }
 \arguments{
 \item{object}{Fitted pffr model.}
 
-\item{crit}{User's `crit` choice.}
+\item{use_sandwich}{Do the standard errors come from the CL2 sandwich?}
 
-\item{sandwich}{Resolved covariance type of `covmat`.}
-
-\item{covmat}{The covariance the SEs use (its `"cl2_adjustment"` attribute
-identifies exact CL2).}
-
-\item{cluster, cl2_adjustment, df_gram, dof_correction, edf_type}{As in
-[coef.pffr()].}
+\item{cluster}{Optional per-curve grouping, as in [coef.pffr()].}
 }
 \value{
-List with `mode` (`"z"`, `"tG1"` or `"satterthwaite"`),
-  `df_const` and `df_ctx`.
+List with `mode` (`"satterthwaite"` or `"z"`) and the influence
+  object `core` (or `NULL`).
 }
 \description{
-Shared by [coef.pffr()], [predict.pffr()] and [pffr_predict_ci()]: resolves
-`crit` for the covariance `covmat` (see [resolve_crit_reference()]) and
-builds what the per-point critical values need: the constant
-\eqn{G - 1} for `"tG1"`, or the cached df context for `"satterthwaite"`.
-Falls back to `"z"` (with a warning for `"tG1"`) where these are undefined.
+Intervals from the CL2 sandwich use Satterthwaite critical values, with a
+separate working-model moment df for every evaluation point (see
+[pffr_influence_df()]); model-based intervals, and fits of refund 0.1-40
+and earlier whose model-based bread is lost, use Gaussian ones.
 }
 \keyword{internal}

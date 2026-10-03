@@ -107,7 +107,7 @@ Collate:
     'pffr-ff.R'
     'pffr-ffpc.R'
     'pffr-methods.R'
-    'pffr-bias-aware.R'
+    'pffr-predict-ci.R'
     'pffr-pcre.R'
     'pffr-robust.R'
     'pffr-sff.R'

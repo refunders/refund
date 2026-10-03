@@ -4,65 +4,35 @@
 \alias{gam_sandwich_cluster_cl2}
 \title{Cluster-robust CL2 sandwich covariance estimator}
 \usage{
-gam_sandwich_cluster_cl2(
-  b,
-  cluster_id,
-  freq = FALSE,
-  tol = 1e-08,
-  leverage_cap = 0.999,
-  cl2_adjustment = c("auto", "exact", "shortcut"),
-  b2 = TRUE,
-  center_scores = FALSE,
-  influence = NULL
-)
+gam_sandwich_cluster_cl2(b, cluster_id, leverage_cap = 0.999, influence = NULL)
 }
 \arguments{
-\item{b}{Fitted GAM object (must not have class `"pffr"`).}
+\item{b}{Fitted GAM object (must not have class `"pffr"`) with model-based
+covariance matrices.}
 
-\item{cluster_id}{Integer vector mapping each vectorized observation to a
-curve.}
+\item{cluster_id}{Vector mapping each vectorized observation to a curve (or
+cluster). Ignored if `influence` is supplied.}
 
-\item{freq}{If `TRUE`, use frequentist sandwich (`B2 = 0`).
-If `FALSE` (default), use Bayesian sandwich (`B2 = Vp - Ve`).}
+\item{leverage_cap}{Eigenvalue floor setting, see [pffr_influence_core()].}
 
-\item{tol}{Eigenvalue floor for numerical stability.}
-
-\item{leverage_cap}{Cap for cluster leverage eigenvalues (< 1).}
-
-\item{cl2_adjustment}{CL2 leverage adjustment: `"auto"` (default) selects
-the exact Bell--McCaffrey block where it is relevant and affordable,
-`"exact"` forces that block, and `"shortcut"` uses the historical
-per-cluster shortcut `(I - H_gg)^(-1/2)`.}
-
-\item{b2}{Internal ablation switch (default `TRUE` = current behavior). When
-`FALSE`, drop the additive Bayesian smoothing-bias term \eqn{B_2 = V_p -
-V_e} (X5).}
-
-\item{center_scores}{Internal ablation switch (default `FALSE` = current
-behavior). When `TRUE`, center the leverage-adjusted per-cluster
-contributions \eqn{U_g^c = U_g - (\sum_g U_g)/G} before forming the meat
-(X6).}
-
-\item{influence}{Optional precomputed fixed-fit influence object.}
+\item{influence}{Optional precomputed influence object
+([pffr_influence()]).}
 }
 \value{
-A p x p covariance matrix with leverage diagnostics. Exact CL2
-  returns `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`),
-  `min_block_eig`, `max_block_kappa` and `min_block_eig_rel`; the shortcut
-  returns the legacy `n_capped_clusters` and `max_leverage` attributes.
-  Since the shared influence core computes the same geometry on both paths,
-  `max_leverage` is now also populated on the exact path and `min_block_eig`
-  / `max_block_kappa` on the shortcut path. Both return the hat-invariant
-  monitors `max_obs_leverage`, `min_obs_leverage`, `min_hat_eig` and
-  `hat_invariant_violation` (`NULL` when the penalized hat respects its
-  bounds, otherwise a description of the violation; see
-  [pffr_hat_invariant_violation()]). At most one leverage-related warning is
-  emitted per call: the invariant warning when an invariant is broken,
-  otherwise the shortcut leverage-cap warning. Option-validation warnings
-  (an ignored `dof_correction`, say) are separate and unaffected.
+A p x p covariance matrix with leverage diagnostics as attributes:
+  `n_adjusted` (blocks floored at `(1 - leverage_cap)^2`), `min_block_eig`,
+  `max_block_kappa`, `min_block_eig_rel`, `max_leverage`, and the
+  hat-invariant monitors `max_obs_leverage`, `min_obs_leverage`,
+  `min_hat_eig` and `hat_invariant_violation` (`NULL` when the penalized hat
+  respects its bounds, otherwise a description of the violation; see
+  [pffr_hat_invariant_violation()]). A violation is reported with one
+  warning.
 }
 \description{
-Computes a cluster-robust covariance matrix with a Bell-McCaffrey style
-leverage adjustment (`CL2` in this package), clustering by curve.
+Computes the curve-clustered CL2 covariance with the full-block ("exact")
+Bell--McCaffrey leverage adjustment
+\eqn{A_g = \{(I - H)^2\}_{gg}^{-1/2}}{A_g = ((I - H)^2)_gg^(-1/2)} in its
+Bayesian form, i.e. \eqn{G/(G-1)\,V_p \sum_g \tilde X_g^\top A_g z_g
+z_g^\top A_g \tilde X_g V_p + (V_p - V_e)}, see [pffr_influence_core()].
 }
 \keyword{internal}

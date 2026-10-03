@@ -4,10 +4,9 @@
 # Measures, on a realistic Gaussian pffr() fit (ff(X1) + xlin, n_y = 60,
 # ff basis 12 x 12, bs.yindex k = 12):
 #   (a) influence-core construction  (pffr_influence(), cold cache)
-#   (b) coef(sandwich = "cl2", cl2_adjustment = "exact",
-#           crit = "satterthwaite", ci = "pointwise")  -- coefficient grids
+#   (b) coef(ci = "pointwise") (CL2 + Satterthwaite) -- coefficient grids
 #   (c) df on an E(Y)-type contrast set: the working-design rows returned by
-#       predict(type = "lpmatrix"), through pffr_df_from_context()
+#       predict(type = "lpmatrix"), through pffr_influence_df()
 #
 # Run single-threaded; the timings are dominated by small dense BLAS calls.
 #
@@ -89,9 +88,7 @@ make_fit <- function(G) {
     Y ~ ff(X1, splinepars = list(bs = "ps", k = c(12, 12))) + xlin,
     yind = attr(dat, "yindex"),
     data = dat,
-    bs.yindex = list(bs = "ps", k = 12, m = c(2, 1)),
-    sandwich = "cl2",
-    cl2_adjustment = "exact"
+    bs.yindex = list(bs = "ps", k = 12, m = c(2, 1))
   )
 }
 
@@ -102,7 +99,7 @@ for (G in Gs) {
   message("=== G = ", G, " ===")
   fit <- make_fit(G)
   p <- length(fit$coefficients)
-  core <- refund:::pffr_influence(fit, "cl2", cl2_adjustment = "exact")
+  core <- refund:::pffr_influence(fit)
   ranks <- vapply(core$blocks, function(b) nrow(b$T), integer(1))
   message(
     "p = ",
@@ -121,7 +118,7 @@ for (G in Gs) {
   ta <- med_time(
     {
       fit <- clear_influence_cache(fit)
-      refund:::pffr_influence(fit, "cl2", cl2_adjustment = "exact")
+      refund:::pffr_influence(fit)
     },
     reps
   )
@@ -145,13 +142,7 @@ for (G in Gs) {
   # (b) coefficient grids through coef.pffr(); warm cache first, so the timing
   # is the repeated-use cost (df + interval assembly), not core construction.
   coef_call <- function() {
-    coef(
-      fit,
-      sandwich = "cl2",
-      cl2_adjustment = "exact",
-      crit = "satterthwaite",
-      ci = "pointwise"
-    )
+    coef(fit, ci = "pointwise")
   }
   invisible(coef_call())
   nb <- count_df_contrasts(invisible(coef_call()))
@@ -182,7 +173,6 @@ for (G in Gs) {
   )
 
   # (c) E(Y)-type contrasts: full working-design rows.
-  ctx <- refund:::pffr_df_context(fit, "cl2", cl2_adjustment = "exact")
   lp <- suppressWarnings(predict(fit, type = "lpmatrix"))
   n_all <- nrow(lp)
   take <- if (is.na(lp_rows) || lp_rows >= n_all) {
@@ -191,7 +181,7 @@ for (G in Gs) {
     unique(round(seq(1, n_all, length.out = lp_rows)))
   }
   lp_sub <- lp[take, , drop = FALSE]
-  tc <- med_time(refund:::pffr_df_from_context(ctx, lp_sub), reps)
+  tc <- med_time(refund:::pffr_influence_df(core, lp_sub), reps)
   add_row(
     label = label,
     G = G,
@@ -230,15 +220,15 @@ for (G in Gs) {
       ,
       drop = FALSE
     ]
-    gen <- ctx
-    gen$core$df_precompute <- FALSE
+    gen <- core
+    gen$df_precompute <- FALSE
     el <- matrix(NA_real_, reps, 2L, dimnames = list(NULL, c("gen", "fac")))
     for (i in seq_len(reps)) {
       el[i, "gen"] <- system.time(
-        refund:::pffr_df_from_context(gen, ab_rows)
+        refund:::pffr_influence_df(gen, ab_rows)
       )[["elapsed"]]
       el[i, "fac"] <- system.time(
-        refund:::pffr_df_from_context(ctx, ab_rows)
+        refund:::pffr_influence_df(core, ab_rows)
       )[["elapsed"]]
     }
     mg <- stats::median(el[, "gen"])
@@ -272,7 +262,7 @@ for (G in Gs) {
       "x"
     )
   }
-  rm(fit, core, ctx, lp, lp_sub)
+  rm(fit, core, lp, lp_sub)
   gc()
 }
 

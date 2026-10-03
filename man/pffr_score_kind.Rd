@@ -14,17 +14,16 @@ general family).}
 One of `"gaulss"`, `"scat"`, `"exact"`, `"approx"`, `"custom"`.
 }
 \description{
-Determines how the cluster-robust sandwich builds per-observation scores for
-a given family. The returned label drives the dispatch in
-[gam_sandwich_cluster()], [gam_sandwich_cluster_cl2()] and
-[pffr_df_context()].
+Determines how the CL2 sandwich builds per-observation scores for a given
+family. The returned label drives the dispatch in
+[gam_sandwich_cluster_cl2()] and [pffr_influence()].
 }
 \details{
 \describe{
   \item{`"gaulss"`}{Gaussian location-scale; exact two-block Fisher-whitened
-    score ([compute_gaulss_scores()] / [build_cl2_working_gaulss()]).}
+    score ([build_cl2_working_gaulss()]).}
   \item{`"scat"`}{Scaled-t (`mgcv::scat`); exact single-block score
-    ([compute_scat_scores()] / [build_cl2_working_scat()]).}
+    ([build_cl2_working_scat()]).}
   \item{`"exact"`}{An ordinary exponential-dispersion family (`gaussian`,
     `poisson`, `binomial`, `Gamma`, `inverse.gaussian`, quasi-families).
     Their generic working-residual score
@@ -42,8 +41,8 @@ a given family. The returned label drives the dispatch in
     working-residual score is only an exponential-family approximation to the
     true score; the sandwich builders emit [pffr_warn_approx_score()].}
   \item{`"custom"`}{A family defining its own `family$sandwich` (other than
-    gaulss, e.g. `multinom`); no cluster score factorization is implemented,
-    so the builders fall back to [mgcv::vcov.gam()].}
+    gaulss, e.g. `multinom`); no cluster score factorization is
+    implemented, so [pffr()] falls back to model-based intervals.}
 }
 }
 \keyword{internal}

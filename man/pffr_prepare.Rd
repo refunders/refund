@@ -17,7 +17,6 @@ pffr_prepare(
   tensortype,
   bs_yindex,
   bs_int,
-  sandwich,
   dots
 )
 }
@@ -45,9 +44,6 @@ pffr_prepare(
 \item{bs_yindex}{Basis specification for y-index.}
 
 \item{bs_int}{Basis specification for functional intercept.}
-
-\item{sandwich}{Character sandwich type (`"none"`, `"cluster"`, `"cl2"`,
-or `"hc"`).}
 
 \item{dots}{The list of additional arguments (...).}
 }

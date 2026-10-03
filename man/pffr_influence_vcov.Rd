@@ -2,23 +2,17 @@
 % Please edit documentation in R/pffr-influence.R
 \name{pffr_influence_vcov}
 \alias{pffr_influence_vcov}
-\title{Assemble covariance from fixed-fit influence columns}
+\title{Assemble the CL2 covariance from fixed-fit influence columns}
 \usage{
-pffr_influence_vcov(core, freq = FALSE, b2 = TRUE, center_scores = FALSE)
+pffr_influence_vcov(core)
 }
 \arguments{
 \item{core}{Influence object with residual columns K.}
-
-\item{freq}{TRUE excludes B2.}
-
-\item{b2}{Include B2 when freq is FALSE.}
-
-\item{center_scores}{Centre influence columns before forming covariance.}
 }
 \value{
 Covariance with raw numerical diagnostics.
 }
 \description{
-Assemble covariance from fixed-fit influence columns
+Returns the Bayesian form \eqn{G/(G-1) K K^\top + (V_p - V_e)}.
 }
 \keyword{internal}

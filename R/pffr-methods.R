@@ -37,43 +37,30 @@
 #' in the long vector shape returned by \code{predict.gam()}?
 #' @param type see \code{\link[mgcv]{predict.gam}()} for details.
 #'  Note that \code{type == "lpmatrix"} will force \code{reformat} to FALSE.
-#' @param se.fit see \code{\link[mgcv]{predict.gam}()}
-#' @param se_method how standard errors are computed when \code{se.fit = TRUE}
-#'  and \code{type} is \code{"link"} or \code{"response"}. \code{"normal"}
-#'  (default, unchanged behavior) uses the fit-time (model-based or robust
-#'  sandwich) covariance via \code{\link{pffr_vcov}}. \code{"jackknife"} instead
-#'  replaces the standard errors with the leave-one-cluster-out jackknife SEs of
-#'  \code{\link{pffr_jackknife_se}}, an experimental alternative for
-#'  fitted-mean/response-scale (\eqn{E(Y)}) intervals. Calibration and
-#'  interval-width stability require separate validation. The point predictions \code{fit} are unaffected. See
-#'  \code{\link{pffr_jackknife_se}} for its calibration caveat. This argument
-#'  comes after \code{...} and must be given by name. Custom jackknife
-#'  groupings are not accepted here (the \code{cluster} dot is
-#'  \code{\link[mgcv]{predict.bam}}'s parallel cluster); use
-#'  \code{\link{pffr_jackknife_se}(object, cluster = )} for that.
-#' @param crit reference distribution for the critical values returned with
-#'  standard errors (\code{se.fit = TRUE}, \code{type} \code{"link"} or
-#'  \code{"response"}, \code{se_method = "normal"}), as in
-#'  \code{\link{coef.pffr}}: \code{"auto"} (default) uses Satterthwaite
-#'  critical values with a separate df for every prediction point when the
-#'  fit's covariance is the exact CL2 sandwich, and Gaussian ones otherwise;
-#'  \code{"z"}, \code{"tG1"} and \code{"satterthwaite"} force a reference.
-#'  Satterthwaite df cost about 0.5 to 1.5 ms per prediction point (growing
-#'  with the number of clusters), so \code{"auto"} uses Gaussian values with a
-#'  message for more than \code{getOption("refund.pffr_satterthwaite_max_points",
-#'  1e4)} points; an explicit \code{"satterthwaite"} is always computed. Must
-#'  be given by name.
-#' @param level confidence level of the returned critical values, defaults to
-#'  0.95. Must be given by name.
+#' @param se.fit see \code{\link[mgcv]{predict.gam}()}. Standard errors use
+#'  the fit's covariance: the CL2 sandwich for fits with \code{sandwich = TRUE}
+#'  (the default), the model-based covariance otherwise (see
+#'  \code{\link{pffr}}).
+#' @param level confidence level of the critical values returned with standard
+#'  errors (\code{se.fit = TRUE} and \code{type} \code{"link"} or
+#'  \code{"response"}), defaults to 0.95. Must be given by name.
 #' @param ...  additional arguments passed on to \code{\link[mgcv]{predict.gam}()}
-#' @seealso \code{\link[mgcv]{predict.gam}()}, \code{\link{pffr_jackknife_se}}
+#' @seealso \code{\link[mgcv]{predict.gam}()}, \code{\link{pffr_predict_ci}}
+#'  for pointwise intervals in one data frame.
 #' @return If \code{type == "lpmatrix"}, the design matrix for the supplied covariate values in long format.
 #'  If \code{se == TRUE}, a list with entries \code{fit} and \code{se.fit} containing fits and standard errors, respectively.
-#'  For \code{type} \code{"link"} or \code{"response"} with
-#'  \code{se_method = "normal"}, the list also contains \code{crit} and
-#'  \code{df}, the pointwise critical values for \code{level} and their
-#'  reference df (\code{Inf} for Gaussian), so that \code{fit -/+ crit * se.fit}
-#'  are pointwise confidence intervals (see \code{crit}).
+#'  For \code{type} \code{"link"} or \code{"response"} the list also contains
+#'  \code{crit} and \code{df}, the pointwise critical values for \code{level}
+#'  and their reference df, so that \code{fit -/+ crit * se.fit} are pointwise
+#'  confidence intervals. For CL2 standard errors these are Satterthwaite
+#'  critical values with a separate df for every prediction point, as in
+#'  \code{\link{coef.pffr}}; for model-based ones Gaussian critical values
+#'  (\code{df = Inf}). Satterthwaite df cost about 0.5 to 1.5 ms per
+#'  prediction point (growing with the number of clusters); for more than
+#'  \code{getOption("refund.pffr_satterthwaite_max_points", 1e4)} points
+#'  Gaussian critical values are used, with a message. On the response scale,
+#'  \code{fit -/+ crit * se.fit} is the delta-method interval; for intervals
+#'  with transformed link-scale endpoints use \code{\link{pffr_predict_ci}}.
 #'  If \code{type == "terms"} or \code{"iterms"} each of these lists is a list of matrices of the same dimension as the response for \code{newdata}
 #'  containing the linear predictor and its se for each term.
 #' @export
@@ -87,36 +74,13 @@ predict.pffr <- function(
   type = "link",
   se.fit = FALSE,
   ...,
-  se_method = c("normal", "jackknife"),
-  crit = c("auto", "z", "tG1", "satterthwaite"),
   level = 0.95
 ) {
-  #browser()
-
-  # `se_method` sits AFTER ... so it can only be matched by name -- a value
-  # intended for a predict.gam dot can never bind to it positionally.
-  se_method <- match.arg(se_method)
-  crit <- match.arg(crit)
-  # `se_method`, `crit` and `level` are pffr-only arguments (not predict.gam
-  # formals); strip them from the reconstructed predict.gam call below.
+  # `level` is a pffr-only argument (not a predict.gam formal); strip it from
+  # the reconstructed predict.gam call below.
   call <- match.call()
-  call$se_method <- NULL
-  call$crit <- NULL
   call$level <- NULL
-  if (
-    identical(se_method, "jackknife") &&
-      isTRUE(se.fit) &&
-      !(type %in% c("link", "response"))
-  ) {
-    stop(
-      "se_method = \"jackknife\" only supports type = \"link\" or ",
-      "\"response\" (not \"",
-      type,
-      "\").",
-      call. = FALSE
-    )
-  }
-  jk_newdata <- if (missing(newdata)) NULL else newdata
+  pffr_check_removed_args(list(...), "predict.pffr")
   nyindex <- object$pffr$nyindex
 
   ## warn if any entries in ... are not arguments for predict.gam
@@ -135,19 +99,6 @@ predict.pffr <- function(
         "> supplied but not used."
       )
   }
-  # The `cluster` dot is predict.bam's PARALLEL cluster (a socket cluster), not
-  # a jackknife grouping; forwarding it to the jackknife would be wrong, and
-  # silently ignoring it would mislead. Reject the combination explicitly.
-  if (identical(se_method, "jackknife") && !is.null(dots$cluster)) {
-    stop(
-      "se_method = \"jackknife\" does not accept a `cluster` argument here: ",
-      "`cluster` in predict.pffr()/predict.bam() is a parallel (socket) ",
-      "cluster, not a grouping. For a custom leave-one-cluster-out grouping ",
-      "call pffr_jackknife_se(object, cluster = <grouping>) directly.",
-      call. = FALSE
-    )
-  }
-
   if (!missing(newdata)) {
     nobs <- nrow(as.matrix(newdata[[1]]))
 
@@ -374,23 +325,14 @@ predict.pffr <- function(
   }
   isIrregular <- missing(newdata) & object$pffr$is_sparse
 
-  # Honor the fit-time sandwich choice for standard errors: resolve the robust
+  # Honor the fit-time covariance for standard errors: resolve the CL2
   # covariance through the accessor and inject it into the local `object` so
   # predict.gam's se.fit uses it (the caller's object is not modified).
-  # sandwich = "none" fits are left untouched so predict.gam sees the fit's
-  # own model-based matrices exactly as mgcv produced them.
-  fit_sandwich_type <- normalize_sandwich_type(
-    object$pffr$sandwich_info$type %||% object$pffr$sandwich
-  )
-  se_cov <- NULL
-  if (
-    isTRUE(se.fit) &&
-      identical(se_method, "normal") &&
-      !identical(type, "lpmatrix") &&
-      !identical(fit_sandwich_type, "none")
-  ) {
-    vsw <- pffr_vcov(object, sandwich = NULL)
-    se_cov <- vsw
+  # Model-based fits are left untouched so predict.gam sees the fit's own
+  # matrices exactly as mgcv produced them.
+  use_sandwich <- !identical(pffr_canonicalize_cov(object)$fit_type, "none")
+  if (isTRUE(se.fit) && !identical(type, "lpmatrix") && use_sandwich) {
+    vsw <- pffr_vcov(object)
     object$Vp <- vsw
     object$Vc <- vsw
   }
@@ -402,41 +344,11 @@ predict.pffr <- function(
   call$object <- as.name("object")
   ret <- eval(call)
 
-  # Opt-in: replace the model/sandwich SEs with the leave-one-cluster-out
-  # jackknife SEs (recommended small-G path for fitted-mean/response-scale
-  # intervals; see pffr_jackknife_se()). Only the SE is overridden; `$fit` is
-  # exactly predict.gam's. Default se_method = "normal" leaves behavior
-  # unchanged.
-  if (isTRUE(se.fit) && identical(se_method, "jackknife")) {
-    jk_core <- pffr_jackknife_core(object, newdata = jk_newdata)
-    se_link <- sqrt(pmax(jk_core$var_link, 0))
-    jk_se <- if (identical(type, "response")) {
-      se_link * abs(as.vector(object$family$mu.eta(jk_core$eta_hat)))
-    } else {
-      se_link
-    }
-    if (length(jk_se) != length(ret$se.fit)) {
-      stop(
-        "se_method = \"jackknife\": jackknife SE length (",
-        length(jk_se),
-        ") does not match predict.gam's SE length (",
-        length(ret$se.fit),
-        "). This can happen with missing/irregular responses; use ",
-        "pffr_jackknife_se() directly.",
-        call. = FALSE
-      )
-    }
-    ret$se.fit <- jk_se
-  }
-
   # Critical values for pointwise intervals fit +/- crit * se.fit, with the
   # same reference as coef.pffr() for the same contrasts (rows of the
   # prediction matrix).
-  if (
-    isTRUE(se.fit) &&
-      identical(se_method, "normal") &&
-      type %in% c("link", "response")
-  ) {
+  if (isTRUE(se.fit) && type %in% c("link", "response")) {
+    pffr_inform_ncv_intervals(object)
     lp_call <- call
     lp_call$type <- "lpmatrix"
     lp_call$se.fit <- FALSE
@@ -444,10 +356,7 @@ predict.pffr <- function(
       object,
       X = eval(lp_call),
       level = level,
-      crit = crit,
-      sandwich = fit_sandwich_type,
-      covmat = se_cov %||% object$Vp,
-      max_auto_points = getOption("refund.pffr_satterthwaite_max_points", 1e4)
+      use_sandwich = use_sandwich
     )
     ret$crit <- rep_len(cv$crit, length(ret$fit))
     ret$df <- cv$df
@@ -717,6 +626,12 @@ fitted.pffr <- function(
 #' Plot a pffr fit
 #'
 #' Plot a fitted pffr-object. Simply dispatches to \code{\link[mgcv]{plot.gam}}.
+#' Its standard-error bands use the fit's covariance: the CL2 sandwich for
+#' fits with \code{sandwich = TRUE} (the default), the model-based covariance
+#' otherwise. They are mgcv's bands of \eqn{\pm 2}{+/- 2} standard errors (see
+#' argument \code{se} of \code{\link[mgcv]{plot.gam}}), not intervals with
+#' Satterthwaite critical values; use \code{\link{coef.pffr}} with
+#' \code{ci = "pointwise"} for those.
 #'
 #' @param x a fitted \code{pffr}-object
 #' @param ... arguments handed over to \code{\link[mgcv]{plot.gam}}
@@ -730,14 +645,11 @@ fitted.pffr <- function(
 plot.pffr <- function(x, ...) {
   call <- match.call()
   call[[1]] <- mgcv::plot.gam
-  # Honor the fit-time sandwich choice: inject the resolved robust covariance
-  # into the local `x` so plot.gam's standard-error bands use it. sandwich =
-  # "none" fits keep their model-based matrices untouched.
-  fit_sandwich_type <- normalize_sandwich_type(
-    x$pffr$sandwich_info$type %||% x$pffr$sandwich
-  )
-  if (!identical(fit_sandwich_type, "none")) {
-    vsw <- pffr_vcov(x, sandwich = NULL)
+  # Honor the fit-time covariance: inject the CL2 covariance into the local
+  # `x` so plot.gam's standard-error bands use it. Model-based fits keep their
+  # matrices untouched.
+  if (!identical(pffr_canonicalize_cov(x)$fit_type, "none")) {
+    vsw <- pffr_vcov(x)
     x$Vp <- vsw
     x$Vc <- vsw
   }
@@ -928,9 +840,7 @@ ensure_grid_axis_attributes <- function(d, trm, is_pcre, pffr_info) {
 #'
 #' @param trm Smooth term object.
 #' @param data_grid Data frame from coef_make_data_grid.
-#' @param object_info List with: coefficients, cmX, Vp, and optionally
-#'   theta_diff (coefficient difference to a bias reference fit; see
-#'   `bias_ref` in [coef.pffr()]).
+#' @param object_info List with: coefficients, cmX, Vp.
 #' @param pffr_info List with: yind_name.
 #' @param covmat Covariance matrix for SE computation.
 #' @param se Logical, compute standard errors?
@@ -941,6 +851,7 @@ ensure_grid_axis_attributes <- function(d, trm, is_pcre, pffr_info) {
 #' @param coef_draws Simulated coefficient perturbations (for simultaneous CIs).
 #' @param t_scale Optional multiplier-t scaling, one positive value per
 #'   simulation draw.
+#' @param crit_setup A [pffr_crit_setup()] result (pointwise intervals).
 #' @returns List with x, y, z coordinates, value, se, coef data frame, dim.
 #' @keywords internal
 #' @importFrom mgcv PredictMat
@@ -957,9 +868,7 @@ coef_get_predictions <- function(
   level = 0.95,
   coef_draws = NULL,
   t_scale = NULL,
-  crit_mode = "z",
-  crit_df_const = NA_real_,
-  df_ctx = NULL
+  crit_setup = NULL
 ) {
   X <- PredictMat(trm, data_grid)
 
@@ -977,11 +886,8 @@ coef_get_predictions <- function(
   P$value <- X %*% object_info$coefficients[trmind]
   P$coef <- cbind(data_grid, value = P$value)
 
-  # Bias estimate of a bias-aware interval: the reference-fit contrast through
-  # the same linear map as the standard error (so it includes the mean-level
-  # columns when seWithMean applies).
   linear_map <- NULL
-  if (se || !is.null(object_info$theta_diff)) {
+  if (se) {
     linear_map <- build_coef_linear_map(
       X = X,
       trmind = trmind,
@@ -993,100 +899,74 @@ coef_get_predictions <- function(
   P <- coef_add_inference(
     P,
     linear_map = linear_map,
-    theta_diff = object_info$theta_diff,
     covmat = covmat,
     se = se,
     ci = ci,
     level = level,
     coef_draws = coef_draws,
     t_scale = t_scale,
-    crit_mode = crit_mode,
-    crit_df_const = crit_df_const,
-    df_ctx = df_ctx
+    crit_setup = crit_setup
   )
 
   P$dim <- trm$dim
   P
 }
 
-#' Add standard errors, bias estimates and intervals to coefficient values
+#' Add standard errors and intervals to coefficient values
 #'
 #' @param P List with the estimated values in \code{P$value} and the table
 #'   \code{P$coef}.
 #' @param linear_map List returned by \code{\link{build_coef_linear_map}}, or
-#'   \code{NULL} if neither \code{se} nor \code{theta_diff} is requested.
-#' @param theta_diff Optional full-length coefficient difference to a bias
-#'   reference fit.
+#'   \code{NULL} if \code{se} is not requested.
 #' @inheritParams coef_get_predictions
-#' @returns \code{P} with \code{se}, \code{delta}, \code{crit} and the columns
-#'   \code{se}, \code{delta}, \code{lower}, \code{upper}, \code{df} in
-#'   \code{P$coef} as requested.
+#' @returns \code{P} with \code{se}, \code{crit} and the columns \code{se},
+#'   \code{lower}, \code{upper}, \code{df} in \code{P$coef} as requested.
 #' @keywords internal
 coef_add_inference <- function(
   P,
   linear_map,
-  theta_diff,
   covmat,
   se,
   ci = "none",
   level = 0.95,
   coef_draws = NULL,
   t_scale = NULL,
-  crit_mode = "z",
-  crit_df_const = NA_real_,
-  df_ctx = NULL
+  crit_setup = NULL
 ) {
-  if (se) {
-    P$se <- compute_coef_se(linear_map = linear_map, covmat = covmat)
-    P$coef <- cbind(P$coef, se = P$se)
+  if (!se) return(P)
+  P$se <- compute_coef_se(linear_map = linear_map, covmat = covmat)
+  P$coef <- cbind(P$coef, se = P$se)
+  if (ci == "simultaneous") {
+    P$crit <- compute_ci_critical(
+      ci = ci,
+      level = level,
+      se_vec = P$se,
+      linear_map = linear_map,
+      coef_draws = coef_draws,
+      t_scale = t_scale
+    )
+    ci_half <- P$crit * P$se
+    P$coef <- cbind(
+      P$coef,
+      lower = P$value - ci_half,
+      upper = P$value + ci_half
+    )
+  } else if (ci == "pointwise") {
+    # Per-point critical values: a vector for Satterthwaite critical values.
+    pw <- pffr_pointwise_crit_values(
+      crit_setup,
+      level = level,
+      Xp = pointwise_full_contrasts(linear_map, p = ncol(covmat))
+    )
+    P$crit <- pw$crit
+    ci_half <- pw$crit * P$se
+    P$coef <- cbind(
+      P$coef,
+      lower = P$value - ci_half,
+      upper = P$value + ci_half,
+      df = pw$df
+    )
   }
-  if (!is.null(theta_diff)) {
-    P$delta <- compute_coef_delta(linear_map, theta_diff)
-    P$coef <- cbind(P$coef, delta = P$delta)
-  }
-  if (se) {
-    if (ci == "simultaneous") {
-      crit <- compute_ci_critical(
-        ci = ci,
-        level = level,
-        se_vec = P$se,
-        linear_map = linear_map,
-        coef_draws = coef_draws,
-        t_scale = t_scale
-      )
-      P$crit <- crit
-      ci_half <- crit * P$se
-      P$coef <- cbind(
-        P$coef,
-        lower = P$value - ci_half,
-        upper = P$value + ci_half
-      )
-    } else if (ci == "pointwise") {
-      # Per-point pointwise reference (S3): crit may be a vector when
-      # crit_mode = "satterthwaite" (a per-point Bell-McCaffrey df).
-      pw <- compute_pointwise_ci(
-        crit_mode = crit_mode,
-        level = level,
-        linear_map = linear_map,
-        df_ctx = df_ctx,
-        crit_df_const = crit_df_const
-      )
-      P$crit <- pw$crit
-      ci_se <- if (is.null(theta_diff)) {
-        P$se
-      } else {
-        pffr_bias_aware_se(P$se, P$delta)
-      }
-      ci_half <- pw$crit * ci_se
-      P$coef <- cbind(
-        P$coef,
-        lower = P$value - ci_half,
-        upper = P$value + ci_half,
-        df = pw$df
-      )
-    }
-  }
-
   P
 }
 
@@ -1094,16 +974,15 @@ coef_add_inference <- function(
 #'
 #' Evaluates the surface \eqn{\beta(s,t) = \sum_k \psi_k(s)\tilde\beta_k(t)}
 #' implied by an \code{\link{ffpc}} term on the covariate's index \code{xind}
-#' times \code{t}, with the same standard errors, bias estimates and intervals
-#' as other terms. The estimated FPCs are treated as fixed, so the surface is a
-#' fixed linear map of the coefficients (see \code{\link{ffpc_surface_map}}).
+#' times \code{t}, with the same standard errors and intervals as other terms.
+#' The estimated FPCs are treated as fixed, so the surface is a fixed linear map
+#' of the coefficients (see \code{\link{ffpc_surface_map}}).
 #'
 #' @param object A fitted \code{pffr} object.
 #' @param which Index of the ffpc term in \code{object$pffr$ffpc}.
 #' @param t Evaluation points along the response index.
 #' @inheritParams coef_add_inference
-#' @param object_info List with \code{coefficients} and optionally
-#'   \code{theta_diff}.
+#' @param object_info List with \code{coefficients}.
 #' @returns A list structured like the other entries of
 #'   \code{coef.pffr()$smterms}, with \code{dim = 2}.
 #' @keywords internal
@@ -1118,9 +997,7 @@ coef_ffpc_surface <- function(
   level = 0.95,
   coef_draws = NULL,
   t_scale = NULL,
-  crit_mode = "z",
-  crit_df_const = NA_real_,
-  df_ctx = NULL
+  crit_setup = NULL
 ) {
   map <- ffpc_surface_map(object, which, t)
   trm_name <- names(object$pffr$ffpc)[which]
@@ -1146,16 +1023,13 @@ coef_ffpc_surface <- function(
   P <- coef_add_inference(
     P,
     linear_map = linear_map,
-    theta_diff = object_info$theta_diff,
     covmat = covmat,
     se = se,
     ci = ci,
     level = level,
     coef_draws = coef_draws,
     t_scale = t_scale,
-    crit_mode = crit_mode,
-    crit_df_const = crit_df_const,
-    df_ctx = df_ctx
+    crit_setup = crit_setup
   )
   P$dim <- 2
   P$main <- paste0(
@@ -1242,17 +1116,6 @@ compute_coef_se <- function(linear_map, covmat) {
   }
   trmind <- linear_map$trmind
   sqrt(rowSums((linear_map$X %*% covmat[trmind, trmind]) * linear_map$X))
-}
-
-#' Evaluate a coefficient difference through a coefficient linear map
-#'
-#' @param linear_map List returned by build_coef_linear_map().
-#' @param theta_diff Full-length coefficient difference vector.
-#' @returns Numeric vector, one value per evaluation point.
-#' @keywords internal
-compute_coef_delta <- function(linear_map, theta_diff) {
-  d <- if (linear_map$use_full) theta_diff else theta_diff[linear_map$trmind]
-  as.vector(linear_map$X %*% d)
 }
 
 #' Draw coefficient perturbations for simultaneous intervals
@@ -1390,129 +1253,29 @@ pointwise_full_contrasts <- function(linear_map, p) {
   Xp
 }
 
-#' Per-point pointwise critical value and reference df
-#'
-#' Computes the pointwise interval half-width multiplier for one term under the
-#' chosen reference (S3): `"z"` (Gaussian, reported df `Inf`), `"tG1"`
-#' (\eqn{t_{G-1}}, constant df), or `"satterthwaite"` (per-point Bell-McCaffrey
-#' working-model moment df from `df_ctx`; undefined df yields missing limits
-#' with a warning).
-#'
-#' @param crit_mode One of `"z"`, `"tG1"`, `"satterthwaite"`.
-#' @param level Confidence level.
-#' @param linear_map List returned by [build_coef_linear_map()] (only needed for
-#'   `"satterthwaite"`).
-#' @param df_ctx A [pffr_df_context()] result (only needed for
-#'   `"satterthwaite"`).
-#' @param crit_df_const Constant df for `"tG1"` (\eqn{G-1}).
-#' @returns A list with `crit` (scalar or per-point vector) and `df` (per-point
-#'   vector; `Inf` for `"z"`).
-#' @keywords internal
-compute_pointwise_ci <- function(
-  crit_mode,
-  level,
-  linear_map,
-  df_ctx = NULL,
-  crit_df_const = NA_real_
-) {
-  prob <- (1 + level) / 2
-  n <- nrow(linear_map$X)
-  if (crit_mode == "z" || is.null(df_ctx) && crit_mode == "satterthwaite") {
-    return(list(crit = stats::qnorm(prob), df = rep(Inf, n)))
-  }
-  if (crit_mode == "tG1") {
-    return(list(
-      crit = stats::qt(prob, crit_df_const),
-      df = rep(crit_df_const, n)
-    ))
-  }
-  # satterthwaite: per-point df from the full-space contrasts and df context.
-  Xp <- pointwise_full_contrasts(linear_map, p = ncol(df_ctx$Vp))
-  df <- pffr_df_from_context(df_ctx, Xp)
-  crit <- ifelse(
-    is.finite(df),
-    stats::qt(prob, pmax(df, 1)),
-    NA_real_
-  )
-  if (any(!is.finite(df))) pffr_warn_undefined_df()
-  list(crit = crit, df = df)
-}
-
-
-# Undefined working-model moment df is detected in two independent places per
-# coef.pffr() call -- once per smooth term inside compute_pointwise_ci(), and
-# once for the parametric coefficients -- so warning at each site produced one
-# warning per affected block. pffr_begin_undefined_df() opens a collection
-# window for the duration of one coef() call; inside it the sites only record
-# the fact and pffr_end_undefined_df() emits a single warning on exit. Outside
-# a window (direct internal calls) the warning fires immediately, as before.
-pffr_df_warn_state <- new.env(parent = emptyenv())
-pffr_df_warn_state$active <- FALSE
-pffr_df_warn_state$seen <- FALSE
-
-PFFR_UNDEFINED_DF_MSG <- paste0(
-  "Undefined working-model moment df; corresponding interval limits are ",
-  "missing."
-)
-
-#' Warn (or record) that a working-model moment df was undefined
-#'
-#' Inside a [pffr_begin_undefined_df()] window the call is recorded and the
-#' warning deferred, so one `coef()` call warns at most once however many
-#' blocks are affected. Outside a window it warns immediately.
-#'
-#' @returns `NULL`, invisibly. Called for the side effect.
-#' @keywords internal
-pffr_warn_undefined_df <- function() {
-  if (isTRUE(pffr_df_warn_state$active)) {
-    pffr_df_warn_state$seen <- TRUE
-    return(invisible(NULL))
-  }
-  warning(PFFR_UNDEFINED_DF_MSG, call. = FALSE)
-  invisible(NULL)
-}
-
-#' Open an undefined-df collection window
-#'
-#' Pair with [pffr_end_undefined_df()] via `on.exit()` so every return path of
-#' the calling function closes the window. Nested windows keep the outermost
-#' one in charge: an inner [pffr_begin_undefined_df()] is a no-op and reports
-#' `FALSE`, so its `on.exit()` handler leaves the outer window alone.
-#'
-#' @returns `TRUE` if this call opened the window, `FALSE` if one was already
-#'   open.
-#' @keywords internal
-pffr_begin_undefined_df <- function() {
-  if (isTRUE(pffr_df_warn_state$active)) {
-    return(FALSE)
-  }
-  pffr_df_warn_state$active <- TRUE
-  pffr_df_warn_state$seen <- FALSE
-  TRUE
-}
-
-#' Close an undefined-df collection window, warning at most once
-#'
-#' @param opened The value returned by the matching [pffr_begin_undefined_df()].
-#' @returns `NULL`, invisibly. Called for the side effect.
-#' @keywords internal
-pffr_end_undefined_df <- function(opened) {
-  if (!isTRUE(opened)) {
-    return(invisible(NULL))
-  }
-  seen <- isTRUE(pffr_df_warn_state$seen)
-  pffr_df_warn_state$active <- FALSE
-  pffr_df_warn_state$seen <- FALSE
-  if (seen) warning(PFFR_UNDEFINED_DF_MSG, call. = FALSE)
-  invisible(NULL)
-}
-
-
 #' Get estimated coefficients from a pffr fit
 #'
 #' Returns estimated coefficient functions/surfaces \eqn{\beta(t), \beta(s,t)}
-#' and estimated smooth effects \eqn{f(z), f(x,z)} or \eqn{f(x, z, t)} and their point-wise estimated standard errors.
+#' and estimated smooth effects \eqn{f(z), f(x,z)} or \eqn{f(x, z, t)} and their
+#' point-wise estimated standard errors, optionally with confidence intervals.
 #' Not implemented for smooths in more than 3 dimensions.
+#'
+#' Standard errors and intervals use the fit's covariance by default: for fits
+#' with \code{sandwich = TRUE} (the default of \code{\link{pffr}}) the
+#' curve-clustered CL2 sandwich (full-block leverage adjustment, Bayesian
+#' form), with Satterthwaite critical values for pointwise intervals, i.e.
+#' \eqn{t_\nu}{t_nu} quantiles with a separate working-model moment df
+#' \eqn{\nu}{nu} for every evaluation point (returned in column \code{df});
+#' otherwise the model-based covariance with Gaussian critical values. See the
+#' section \sQuote{Inference} of \code{\link{pffr}} for the evidence and its
+#' limits. Where a df is undefined (an evaluation point with zero sampling
+#' variance) the Gaussian critical value is used, with a message. The df are
+#' conditional on the fitted smoothing parameters and weights.
+#'
+#' For fits with \code{method = "NCV"}, use the estimate to describe the shape
+#' of coefficient surfaces, and a REML fit of the same model for intervals:
+#' intervals centred at the NCV estimate undercover (a message says so once per
+#' session).
 #'
 #' For an \code{\link{ffpc}} term, which enters the model as one coefficient
 #' function \eqn{\tilde\beta_k(t)} per FPC of the covariate, \code{smterms}
@@ -1520,150 +1283,71 @@ pffr_end_undefined_df <- function(opened) {
 #' \eqn{\hat\beta(s,t) = \sum_k \hat\psi_k(s)\hat{\tilde\beta}_k(t)}, with
 #' \eqn{\int X^c_i(s)\hat\psi_k(s)ds} the FPC scores of the fit, evaluated on
 #' the covariate's index \code{xind} times \code{n2} equidistant points over
-#' the range of the response index. Its standard errors and intervals use the
-#' same covariance options as all other terms (\code{sandwich}, \code{freq},
-#' \code{ci}, \code{crit}, \code{bias_ref}), but treat the estimated FPCs
+#' the range of the response index. Its standard errors and intervals are
+#' computed like those of all other terms, but treat the estimated FPCs
 #' \eqn{\hat\psi_k} as fixed, i.e., they condition on the estimated
 #' eigenfunctions. Its \eqn{\tilde\beta_k(t)} are unconstrained, so
 #' \code{seWithMean} does not affect it. Use \code{\link{ffpcplot}} for the
 #' \eqn{\tilde\beta_k(t)}.
 #'
-#' The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
-#' The \code{sandwich}-option computes robust standard errors. With
-#' \code{sandwich="cluster"}, a cluster-robust sandwich (clustering by curve)
-#' is used, which handles both heteroskedasticity and within-curve correlation.
-#' With \code{sandwich="cl2"}, a leverage-adjusted cluster-robust sandwich
-#' (Bell-McCaffrey style CL2) is used.
-#' With \code{sandwich="hc"}, mgcv's observation-level HC sandwich is used.
-#' If the model was fitted with a matching sandwich option in
-#' \code{\link{pffr}}, the pre-computed covariance matrices are used directly.
+#' The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in
+#' \code{\link[mgcv]{predict.gam}}.
 #'
+#' \strong{Functional intercept.} The \code{Intercept(yindex)} term is centred
+#' (sum-to-zero over the observed response grid); the level of
+#' \eqn{\alpha(t)}{alpha(t)} is the scalar \code{"(Intercept)"} in
+#' \code{pterms}. The full intercept is their sum,
+#' \preformatted{alpha_hat <- cf$smterms[["Intercept(yindex)"]]$coef[, "value"] +
+#'   cf$pterms["(Intercept)", "value"]}
+#' but the \code{se} and interval of the centred term do not describe it: they
+#' omit the level (\code{seWithMean = FALSE}) or add the column means of all
+#' other terms (\code{seWithMean = TRUE}). For an interval for the full
+#' \eqn{\alpha(t)}{alpha(t)} use \code{\link{pffr_predict_ci}} at covariate
+#' values at which every other term vanishes (e.g. \code{X = 0} for
+#' \code{ff(X)} and \code{z = 0} for a linear effect of a scalar \code{z}); its
+#' prediction rows are then exactly the intercept rows
+#' \eqn{(1, B(t))}{(1, B(t))}. See the examples of \code{\link{pffr_predict_ci}}.
 #'
 #' @param object a fitted \code{pffr}-object
 #' @param raw logical, defaults to FALSE. If TRUE, the function simply returns \code{object$coefficients}
 #' @param se logical, defaults to TRUE. Return estimated standard error of the estimates?
-#' @param freq logical, defaults to FALSE. If FALSE, use Bayesian posterior covariance for
-#'   variability estimates: \code{object$Vp} for NCV fits; otherwise \code{object$Vc} if
-#'   available (includes correction for smoothing parameter uncertainty), with fallback to
-#'   \code{object$Vp}. If TRUE, use frequentist
-#'   covariance \code{object$Ve}. See \code{\link[mgcv]{gamObject}}.
-#' @param sandwich Type of sandwich-corrected covariance for standard errors.
-#'   \code{NULL} (default) inherits the fit-time covariance choice.
-#'   \code{"cluster"}: cluster-robust sandwich.
-#'   \code{"cl2"}: leverage-adjusted cluster-robust sandwich (clustering by
-#'   curve).
-#'   \code{"hc"}: observation-level HC sandwich via \code{\link[mgcv]{vcov.gam}}.
-#'   \code{"none"}: use model's default covariance.
-#'   If the model was fitted with a matching sandwich type, the pre-computed
-#'   covariance matrices are used directly.
-#' @param cluster optional grouping for the cluster-robust sandwich
-#'   (\code{sandwich = "cluster"} or \code{"cl2"}): a vector with one entry per
-#'   curve (functional observation) mapping each curve to its independent unit.
-#'   Defaults to \code{NULL}, inheriting the fit-time grouping (by curve
-#'   if none was supplied). Supply this for
-#'   nested / repeated-measures designs where several curves share a higher-level
-#'   unit (e.g. a subject id with multiple visits), so the sandwich clusters at
-#'   the correct level. Only supported for densely-observed responses. When
-#'   supplied, the pre-computed-covariance shortcut is bypassed.
-#'   A fit-time \code{cluster} grouping cannot be switched back off with
+#' @param freq deprecated and ignored: model-based standard errors use the
+#'   Bayesian posterior covariance, and the CL2 sandwich its Bayesian form.
+#' @param sandwich \code{NULL} (default) uses the fit's covariance (see
+#'   \code{\link{pffr}}); \code{TRUE} the CL2 sandwich; \code{FALSE} the
+#'   model-based covariance (\code{object$Vp} for NCV fits, otherwise
+#'   \code{object$Vc}), which is invalid under within-curve dependence. The
+#'   character values of refund 0.1-40 are deprecated, see \code{\link{pffr}}.
+#' @param cluster optional grouping for the CL2 sandwich: a vector with one
+#'   entry per curve (functional observation) mapping each curve to its
+#'   independent unit. Defaults to \code{NULL}, inheriting the fit-time grouping
+#'   (by curve if none was supplied). With several curves per subject, cluster
+#'   by subject. Only supported for densely-observed responses. A fit-time
+#'   \code{cluster} grouping cannot be switched back off with
 #'   \code{cluster = NULL} (that inherits the fit); to force by-curve clustering
-#'   on a fit that was given a coarser grouping, pass the explicit identity
-#'   grouping \code{cluster = seq_len(<number of curves>)}.
-#' @param dof_correction Optional CR1 small-sample dof correction for
-#'   \code{sandwich = "cluster"}: \code{"none"} or \code{"edf"} (see
-#'   \code{\link{pffr}}). Defaults to \code{NULL}, i.e. inherit whatever the
-#'   model was fitted with, so the stored covariance is reused. Supplying a value
-#'   that differs from the fit forces recomputation with the requested option.
-#'   Ignored (with a warning) for \code{sandwich} other than \code{"cluster"}.
-#' @param edf_type Which EDF the \code{"edf"} correction uses
-#'   (\code{"trace"}/\code{"edf2"}/\code{"basis"}; see \code{\link{pffr}}).
-#'   Defaults to \code{NULL} (inherit from the fit).
-#' @param cl2_adjustment Leverage adjustment within \code{sandwich = "cl2"}.
-#'   \code{NULL} (default) inherits the fit-time choice; \code{"auto"}
-#'   applies the documented feasibility rule, while \code{"exact"} and
-#'   \code{"shortcut"} force either CL2 variant. Supplying a value forces a
-#'   covariance recomputation.
+#'   on a fit that was given a coarser grouping, pass
+#'   \code{cluster = seq_len(<number of curves>)}.
 #' @param seWithMean logical, defaults to TRUE. Include uncertainty about the
 #'   intercept/overall mean in standard errors returned for smooth components?
 #'   Acts only on terms with an identifiability constraint (e.g.
 #'   \code{Intercept(yindex)}); \code{ff()} terms and varying coefficients of
 #'   scalar covariates are unconstrained by-variable smooths and are unaffected.
-#'   With \code{bias_ref}, \code{delta} uses the same linear map as the SE.
 #' @param n1 see below
 #' @param n2 see below
 #' @param n3 \code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
 #' used in the marginal equidistant grids over the range of the covariates at which the estimated effects are evaluated.
 #' @param ci Type of confidence intervals to return in addition to standard
 #'   errors. One of \code{"none"} (default), \code{"pointwise"}, or
-#'   \code{"simultaneous"}.
-#' @param ci_ref Reference distribution for \code{ci = "simultaneous"}.
-#'   \code{"t"} (default) uses a finite-sample
-#'   \eqn{t_{G-1}}{t_(G-1)} multiplier reference, where \eqn{G} is the number of
-#'   independent curves or user-supplied clusters. This widens simultaneous
-#'   bands at small \eqn{G} and converges to the Gaussian multiplier reference
-#'   as \eqn{G} grows. \code{"normal"} restores the previous Gaussian
-#'   multiplier reference. Pointwise intervals are governed instead by
-#'   \code{crit} (below).
-#' @param crit Reference distribution for the \emph{pointwise} critical value
-#'   (\code{ci = "pointwise"}); the pointwise counterpart of \code{ci_ref}.
-#'   \code{"auto"} (default) uses \code{"satterthwaite"} when the standard
-#'   errors come from the exact CL2 sandwich (\code{sandwich = "cl2"} with the
-#'   exact leverage adjustment, which \code{cl2_adjustment = "auto"} selects
-#'   wherever it is feasible), and \code{"z"} for all other covariances (CR1
-#'   \code{"cluster"}, shortcut CL2, \code{"hc"}, model-based): Satterthwaite
-#'   critical values were evaluated only with exact CL2, where they bring
-#'   pointwise coverage of coefficient surfaces and fitted means close to
-#'   nominal at small \eqn{G}, at the cost of wider intervals.
-#'   \code{"z"} uses the Gaussian quantile. \code{"tG1"} uses
-#'   \eqn{t_{G-1}}.
-#'   \code{"satterthwaite"} uses \eqn{t_\nu} with a separate df \eqn{\nu} for
-#'   every evaluation point (returned in column \code{df}), matching the first
-#'   two moments of the sampling quadratic form using the full cross-cluster
-#'   residualization Gram:
-#'   \eqn{\nu(a)=\{\mathrm{tr}(\Gamma)\}^2/\mathrm{tr}(\Gamma^2)}.
-#'   Covariance and df use the same resolved CL2 adjustment and grouping.
-#'   This central Gaussian working-independence calculation fixes smoothing
-#'   parameters and weights. It establishes neither an exact t pivot nor
-#'   calibration for B2, smoothing bias, correlated errors or smoothing
-#'   selection. Undefined df gives missing limits with a warning; requests
-#'   on non-cluster covariance fall back to z with a warning. Simultaneous
-#'   bands are unaffected. With \code{bias_ref}, \code{"auto"} uses
-#'   \code{"z"}.
-#' @param df_gram Gram matrix used by \code{crit = "satterthwaite"}:
-#'   \code{"full"} (default) is the residualized
-#'   \eqn{\Gamma_{gh}=1\{g=h\}\lVert q_g\rVert^2-t_g^\top C t_h}.
-#'   \code{"diagonal"} drops the off-diagonal residualization and evaluates the
-#'   working-iid shortcut
-#'   \eqn{(\sum_g\lVert q_g\rVert^2)^2/\sum_g\lVert q_g\rVert^4} from
-#'   \emph{the same} \eqn{q_g} \emph{as the covariance}, i.e. with the resolved
-#'   \code{cl2_adjustment}. It is retained only for re-scoring comparisons with
-#'   historical Satterthwaite results: it returns about \eqn{G} where the
-#'   residualized df returns \eqn{G-1}. The historical (pre-2026-09) df always
-#'   used the shortcut leverage weight \eqn{A_g=(I-H_{gg})^{-1/2}}, so
-#'   \code{df_gram = "diagonal"} reproduces it exactly only together with
-#'   \code{cl2_adjustment = "shortcut"}; on an exact-CL2 fit it differs.
+#'   \code{"simultaneous"}. Only pointwise intervals were evaluated in the
+#'   simulation study behind the defaults. Simultaneous bands use a
+#'   simulation-based multiplier with a finite-sample \eqn{t_{G-1}}{t_(G-1)}
+#'   reference (\eqn{G} curves or clusters) for the CL2 sandwich and a Gaussian
+#'   reference for the model-based covariance.
 #' @param level Confidence level for confidence intervals, defaults to
 #'   \code{0.95}.
 #' @param n_sim Number of simulations for simultaneous intervals, defaults to
 #'   \code{2000}. Ignored unless \code{ci = "simultaneous"}.
 #' @param sim_seed Optional integer seed for simultaneous interval simulation.
-#' @param bias_ref Optional reference fit for bias-aware intervals: a
-#'   \code{pffr} fit of the same model and data that differs from \code{object}
-#'   only in how the smoothing parameters were chosen (typically the REML fit
-#'   when \code{object} was fitted with \code{method = "NCV"}). If supplied,
-#'   every returned coefficient table gets a column \code{delta}, the estimate
-#'   of \code{object} minus that of \code{bias_ref} (evaluated through the same
-#'   linear map as \code{se}, so with \code{seWithMean = TRUE} it includes the
-#'   difference in the mean level), and pointwise intervals use
-#'   \eqn{\sqrt{se^2 + delta^2}}{sqrt(se^2 + delta^2)} instead of \code{se};
-#'   \code{se} itself stays the variance part. Only \code{ci = "none"} and
-#'   \code{ci = "pointwise"} with \code{crit = "z"} are available. With
-#'   \code{bias_ref}, \code{sandwich = NULL} and \code{cl2_adjustment = NULL}
-#'   default to the exact CL2 sandwich (\code{"cl2"}, \code{"exact"}) instead
-#'   of the fit-time choice; together with the default \code{freq = FALSE}
-#'   (Bayesian form) this is the covariance the interval was evaluated with.
-#'   Explicit values are respected. See the section
-#'   \sQuote{Bias-aware intervals}.
 #' @param ... other arguments, not used.
 #'
 #' @return If \code{raw==FALSE}, a list containing \itemize{
@@ -1680,70 +1364,20 @@ pffr_end_undefined_df <- function(opened) {
 #' }}
 #' If \code{ci != "none"}, the returned matrices include columns \code{lower}
 #' and \code{upper}. For \code{ci = "pointwise"} they also include a \code{df}
-#' column giving the per-point reference degrees of freedom used for the
-#' critical value (\code{Inf} for \code{crit = "z"}, \eqn{G-1} for
-#' \code{crit = "tG1"}, and the per-point Satterthwaite df for
-#' \code{crit = "satterthwaite"}/\code{"auto"}). The returned list also includes
-#' \code{ci_meta} with CI settings (including \code{crit} and the resolved
-#' \code{crit_used}). With \code{bias_ref}, the matrices also include a column
-#' \code{delta} (placed after \code{se}) and \code{ci_meta$bias_ref_method}
-#' records the smoothing-parameter method of the reference fit.
-#' @section Bias-aware intervals:
-#' Smoothing-parameter selection by curve-blocked neighbourhood
-#' cross-validation (\code{pffr(method = "NCV")}) is robust to within-curve
-#' dependence but smooths more than REML, so its smoothing bias is no longer
-#' negligible and variance-only intervals undercover. The bias-aware pointwise
-#' interval for an estimate \eqn{L\hat\theta_{NCV}}{L theta_NCV} is
-#' \deqn{L\hat\theta_{NCV} \pm z_{(1+level)/2}\sqrt{se^2 + \delta^2},
-#'   \qquad \delta = L(\hat\theta_{NCV} - \hat\theta_{REML}),}{
-#'   L theta_NCV -/+ z * sqrt(se^2 + delta^2), delta = L (theta_NCV - theta_REML),}
-#' on the link scale. The recommended recipe fits the model twice with
-#' \code{sandwich = "none"}, by NCV with curve blocks (the default
-#' \code{ncv_blocks = "cluster"}) and by REML, and computes \code{se} from the
-#' exact CL2 sandwich in its Bayesian form of the NCV fit, which is the default
-#' covariance whenever \code{bias_ref} is supplied:
-#' \preformatted{coef(fit_ncv, ci = "pointwise", bias_ref = fit_reml)
-#' # same as
-#' coef(fit_ncv, sandwich = "cl2", cl2_adjustment = "exact", freq = FALSE,
-#'      ci = "pointwise", bias_ref = fit_reml)}
-#'
-#' Keep the default \code{seWithMean = TRUE} for bias-aware intervals. It
-#' changes only constrained terms, of which the functional intercept is the
-#' main one: in the simulation study behind this recipe (full intercept
-#' scored, dependent errors, Gaussian, Poisson and binary responses) the
-#' \code{seWithMean = TRUE} intervals were practically identical to those from
-#' the exact full-intercept rows below (root-mean-square undercoverage 0 to 3
-#' percentage points), while \code{seWithMean = FALSE} omits the level's
-#' uncertainty and undercovered by 7 to 15 points, with 11 to 22\% larger
-#' interval scores.
-#'
-#' \strong{Functional intercept.} The \code{Intercept(yindex)} term is centred
-#' (sum-to-zero over the observed response grid); the level of
-#' \eqn{\alpha(t)}{alpha(t)} is the scalar \code{"(Intercept)"} in
-#' \code{pterms}. The full intercept is their sum,
-#' \preformatted{alpha_hat <- cf$smterms[["Intercept(yindex)"]]$coef[, "value"] +
-#'   cf$pterms["(Intercept)", "value"]}
-#' but the \code{se}, \code{delta} and interval of the centred term do not
-#' describe it: they omit the level (\code{seWithMean = FALSE}) or add the
-#' column means of all other terms (\code{seWithMean = TRUE}). For an interval
-#' for the full \eqn{\alpha(t)}{alpha(t)} use \code{\link{pffr_predict_ci}} at
-#' covariate values at which every other term vanishes (e.g. \code{X = 0} for
-#' \code{ff(X)} and \code{z = 0} for a linear effect of a scalar \code{z}); its
-#' prediction rows are then exactly the intercept rows
-#' \eqn{(1, B(t))}{(1, B(t))}. See the examples of
-#' \code{\link{pffr_predict_ci}}.
-#' \eqn{\delta}{delta} estimates only the part of the smoothing bias in which
-#' the two fits differ: bias that both fits share (a basis too small for the
-#' truth, or both fits oversmoothing a rough truth) is not covered. Any second
-#' fit of the same model is accepted as \code{bias_ref}; \eqn{\delta}{delta}
-#' is then the contrast between the two estimators. For fitted values and
-#' predictions see \code{\link{pffr_predict_ci}}.
+#' column giving the per-point reference degrees of freedom of the critical
+#' value (\code{Inf} for Gaussian critical values). The returned list also
+#' includes \code{ci_meta} with the interval settings: \code{type},
+#' \code{level}, \code{sandwich} (was the CL2 sandwich used?),
+#' \code{crit_used} (\code{"satterthwaite"} or \code{"z"} for pointwise
+#' intervals), and for simultaneous bands \code{n_sim}, \code{sim_seed},
+#' \code{ci_ref_used} and \code{ci_ref_df}.
 #'
 #' @method coef pffr
 #' @export
 #' @importFrom mgcv PredictMat get.var
-#' @seealso \code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
-#'   based on.
+#' @seealso \code{\link{pffr}} (section \sQuote{Inference}),
+#'   \code{\link{pffr_predict_ci}}, \code{\link[mgcv]{plot.gam}},
+#'   \code{\link[mgcv]{predict.gam}} which this routine is based on.
 #' @author Fabian Scheipl
 coef.pffr <- function(
   object,
@@ -1752,89 +1386,46 @@ coef.pffr <- function(
   freq = FALSE,
   sandwich = NULL,
   cluster = NULL,
-  dof_correction = NULL,
-  edf_type = NULL,
-  cl2_adjustment = NULL,
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
   n3 = 20,
   ci = c("none", "pointwise", "simultaneous"),
-  ci_ref = c("t", "normal"),
-  crit = c("auto", "z", "tG1", "satterthwaite"),
-  df_gram = c("full", "diagonal"),
   level = 0.95,
   n_sim = 2000,
   sim_seed = NULL,
-  bias_ref = NULL,
   ...
 ) {
-  # One coef() call warns at most once about undefined moment df, however many
-  # smooth terms and parametric coefficients are affected (review round 2).
-  df_warn_window <- pffr_begin_undefined_df()
-  on.exit(pffr_end_undefined_df(df_warn_window), add = TRUE)
+  # One coef() call notes at most once about undefined moment df, however many
+  # smooth terms and parametric coefficients are affected.
+  df_note_window <- pffr_begin_undefined_df()
+  on.exit(pffr_end_undefined_df(df_note_window), add = TRUE)
 
-  sandwich_missing <- missing(sandwich)
-  if (!is.null(bias_ref)) {
-    cov_defaults <- pffr_bias_aware_cov_defaults(sandwich, cl2_adjustment)
-    sandwich <- cov_defaults$sandwich
-    cl2_adjustment <- cov_defaults$cl2_adjustment
+  dots <- list(...)
+  pffr_check_removed_args(dots, "coef.pffr")
+  if (!missing(freq)) {
+    .Deprecated(
+      msg = paste0(
+        "`freq` is deprecated and ignored: standard errors use the Bayesian ",
+        "form of the covariance."
+      )
+    )
   }
-  # Backward compat: TRUE -> "cluster", FALSE -> "none"
-  if (is.logical(sandwich)) sandwich <- if (sandwich) "cluster" else "none"
-  if (is.null(sandwich)) sandwich <- pffr_canonicalize_cov(object)$fit_type
-  sandwich <- match.arg(sandwich, c("cluster", "cl2", "hc", "none"))
   ci <- match.arg(ci)
-  ci_ref <- match.arg(ci_ref)
-  crit <- match.arg(crit)
-  df_gram <- match.arg(df_gram)
-
-  # dof_correction / edf_type default to inheriting whatever the model was
-  # fitted with (so coef() with no override returns the stored covariance);
-  # an explicit value triggers recomputation (see cache logic below).
-  dof_explicitly_set <- !is.null(dof_correction)
-  model_dof_correction <- object$pffr$dof_correction %||% "none"
-  model_edf_type <- object$pffr$edf_type %||% "trace"
-  if (is.null(dof_correction)) dof_correction <- model_dof_correction
-  if (is.null(edf_type)) edf_type <- model_edf_type
-  dof_correction <- match.arg(dof_correction, c("none", "edf"))
-  edf_type <- match.arg(edf_type, c("trace", "edf2", "basis"))
-  if (!is.null(cl2_adjustment)) {
-    cl2_adjustment <- match.arg(
-      cl2_adjustment,
-      c("auto", "exact", "shortcut")
-    )
-  }
-  # Only warn when the user *explicitly* asked for a dof correction on a
-  # non-cluster sandwich; an inherited "edf" (from the fit) stays silent.
-  if (dof_explicitly_set && dof_correction != "none" && sandwich != "cluster") {
-    warning(
-      "dof_correction = \"",
-      dof_correction,
-      "\" only applies to sandwich = \"cluster\" and is ignored for ",
-      "sandwich = \"",
-      sandwich,
-      "\".",
-      call. = FALSE
-    )
-  }
-
-  is_gls_fit <- !is.null(object$pffr$hatSigma)
-  if (is_gls_fit) {
-    if (sandwich_missing) {
-      sandwich <- "none"
-    } else if (sandwich != "none") {
+  sandwich <- pffr_sandwich_arg(sandwich)
+  # Legacy pffr_gls() fits carry a GLS-whitened covariance; no sandwich.
+  if (!is.null(object$pffr$hatSigma)) {
+    if (isTRUE(sandwich)) {
       warning(
-        "sandwich = \"",
-        sandwich,
-        "\" is not supported for legacy pffr_gls fits. ",
-        "Use pffr() with sandwich CIs instead. ",
-        "Using sandwich = \"none\".",
+        "The CL2 sandwich is not available for legacy pffr_gls() fits; ",
+        "using their model-based covariance.",
         call. = FALSE
       )
-      sandwich <- "none"
     }
+    sandwich <- FALSE
   }
+  use_sandwich <- sandwich %||%
+    !identical(pffr_canonicalize_cov(object)$fit_type, "none")
 
   if (
     !is.numeric(level) ||
@@ -1858,498 +1449,303 @@ coef.pffr <- function(
     stop("'sim_seed' must be NULL or a single integer value.")
   }
   if (!is.null(sim_seed)) sim_seed <- as.integer(sim_seed)
+  if (ci != "none") pffr_inform_ncv_intervals(object)
 
-  theta_diff <- NULL
-  if (!is.null(bias_ref)) {
-    if (raw) {
-      stop("`bias_ref` cannot be combined with raw = TRUE.", call. = FALSE)
-    }
-    if (ci == "simultaneous") {
-      stop(
-        "Bias-aware intervals (`bias_ref`) are pointwise only; use ",
-        "ci = \"pointwise\".",
-        call. = FALSE
-      )
-    }
-    if (crit == "auto") crit <- "z"
-    if (crit != "z") {
-      stop(
-        "Bias-aware intervals (`bias_ref`) use crit = \"z\"; the reference ",
-        "df of the other choices describe only the variance part.",
-        call. = FALSE
-      )
-    }
-    theta_diff <- pffr_bias_ref_difference(object, bias_ref)
-  }
-
-  dots <- list(...)
   eval_grid <- dots$eval_grid %||% NULL
-
-  # Internal, non-user-facing sandwich ablation switches (X5/X6), reachable
-  # through `...` so the public coef() signature is unchanged. `b2 = FALSE`
-  # drops the additive B2 term; `center_scores = TRUE` centers the per-cluster
-  # score sums before the meat. Both default to the shipped behavior.
-  b2 <- dots$b2 %||% TRUE
-  center_scores <- dots$center_scores %||% FALSE
 
   # Warn if deprecated Ktt argument is passed
   if ("Ktt" %in% names(dots)) {
     warning(
       "The 'Ktt' argument is deprecated and ignored. ",
-      "Use sandwich=\"cluster\" for robust standard errors.",
+      "Robust standard errors are the default (sandwich = TRUE in pffr()).",
       call. = FALSE
     )
   }
   if (raw) {
     return(object$coefficients)
-  } else {
-    # Prepare info structures for helper functions
-    pffr_info <- list(
-      yind_name = object$pffr$yind_name,
-      pcre_terms = object$pffr$pcre_terms
-    )
-    grid_sizes <- list(n1 = n1, n2 = n2, n3 = n3)
-    object_info <- list(
-      coefficients = object$coefficients,
-      cmX = object$cmX,
-      Vp = object$Vp,
-      theta_diff = theta_diff
-    )
-
-    getCoefs <- function(i) {
-      ## Constructs a grid over the range of the covariates
-      ## and returns estimated values on this grid, with
-      ## by-variables set to 1.
-      ## Uses extracted helper functions for modularity.
-      trm <- object$smooth[[i]]
-      is_pcre <- "pcre.random.effect" %in% class(trm)
-
-      # Check for unsupported dimensions
-      if (trm$dim > 3 && !is_pcre) {
-        warning(
-          "can't deal with smooths with more than 3 dimensions, returning NULL for ",
-          shrtlbls[names(object$smooth)[i] == unlist(object$pffr$label_map)]
-        )
-        return(NULL)
-      }
-
-      # Generate evaluation grid and compute predictions
-      d <- resolve_eval_grid_for_term(
-        eval_grid = eval_grid,
-        smooth_names = names(object$smooth),
-        i = i
-      )
-      if (is.null(d)) {
-        d <- coef_make_data_grid(
-          trm,
-          object$model,
-          pffr_info,
-          grid_sizes,
-          is_pcre
-        )
-      } else {
-        d <- ensure_grid_axis_attributes(
-          d = d,
-          trm = trm,
-          is_pcre = is_pcre,
-          pffr_info = pffr_info
-        )
-      }
-      P <- coef_get_predictions(
-        trm,
-        d,
-        object_info,
-        pffr_info,
-        covmat,
-        se,
-        seWithMean,
-        is_pcre,
-        ci = ci,
-        level = level,
-        coef_draws = coef_draws,
-        t_scale = t_scale,
-        crit_mode = crit_mode,
-        crit_df_const = crit_df_const,
-        df_ctx = df_ctx
-      )
-
-      # Add proper labeling
-      P$main <- shrtlbls[
-        names(object$smooth)[i] == unlist(object$pffr$label_map)
-      ]
-
-      # Fix axis labels for ff and sff terms
-      which <- match(names(object$smooth)[i], object$pffr$label_map)
-      if (which %in% object$pffr$where$ff) {
-        which_ff <- which(object$pffr$where$ff == which)
-        P$ylab <- object$pffr$yind_name
-        xlab <- deparse(
-          as.call(formula(paste("~", names(object$pffr$ff)[which_ff]))[[
-            2
-          ]])$xind
-        )
-        P$xlab <- if (xlab == "NULL") "xindex" else xlab
-      }
-      if (which %in% object$pffr$where$sff) {
-        which_sff <- which(object$pffr$where$sff == which)
-        P$ylab <- object$pffr$yind_name
-        xlab <- deparse(
-          as.call(formula(paste("~", names(object$pffr$ff)[which_sff]))[[
-            2
-          ]])$xind
-        )
-        P$xlab <- if (xlab == "NULL") "xindex" else xlab
-        P$zlab <- gsub(".mat$", "", object$pffr$ff[[which_sff]]$xname)
-      }
-
-      P
-    }
-
-    # Resolve the covariance through the single pffr accessor: $Vp/$Vc/$Ve are
-    # model-based, so recomputing a sandwich here never double-applies it.
-    # sandwich = "none" returns the genuinely model-based covariance; any other
-    # value (or a custom `cluster`) recomputes from the model-based bread.
-    covmat <- pffr_vcov(
-      object,
-      sandwich = sandwich,
-      freq = freq,
-      cluster = cluster,
-      dof_correction = dof_correction,
-      edf_type = edf_type,
-      b2 = b2,
-      center_scores = center_scores,
-      cl2_adjustment = cl2_adjustment
-    )
-
-    # Pointwise critical-value reference (S3). `crit` selects the pointwise
-    # reference distribution (independent of the simultaneous-band `ci_ref`):
-    # "z" (Gaussian), "tG1" (t_{G-1}, the pointwise counterpart of the
-    # simultaneous ci_ref = "t"), "satterthwaite" (per-point Bell-McCaffrey df),
-    # or "auto" (the default: satterthwaite for exact CL2 SEs, else z). df is a
-    # pointwise concept, so this only engages for ci = "pointwise"; simultaneous
-    # bands keep their existing multiplier machinery.
-    crit_mode <- "z"
-    crit_df_const <- NA_real_
-    df_ctx <- NULL
-    if (ci == "pointwise") {
-      crit_setup <- pffr_crit_setup(
-        object,
-        crit = crit,
-        sandwich = sandwich,
-        covmat = covmat,
-        cluster = cluster,
-        cl2_adjustment = cl2_adjustment,
-        df_gram = df_gram,
-        dof_correction = dof_correction,
-        edf_type = edf_type
-      )
-      crit_mode <- crit_setup$mode
-      crit_df_const <- crit_setup$df_const
-      df_ctx <- crit_setup$df_ctx
-    }
-
-    coef_draws <- NULL
-    t_scale <- NULL
-    ci_ref_n_clusters <- NA_integer_
-    ci_ref_df <- NA_real_
-    ci_ref_used <- NA_character_
-    if (ci == "simultaneous") {
-      ci_cluster_id <- build_cluster_id(object$pffr, cluster = cluster)
-      ci_ref_n_clusters <- length(unique(ci_cluster_id))
-      ci_ref_df <- ci_ref_n_clusters - 1
-      draw_df <- NULL
-      ci_ref_used <- "normal"
-      if (ci_ref == "t") {
-        if (ci_ref_df >= 1) {
-          draw_df <- ci_ref_df
-          ci_ref_used <- "t"
-        } else {
-          warning(
-            "ci_ref = \"t\" requires at least two independent curves or clusters; ",
-            "using ci_ref = \"normal\" for this simultaneous band.",
-            call. = FALSE
-          )
-        }
-      }
-      coef_draws <- draw_coef_perturbations(
-        covmat = covmat,
-        n_sim = n_sim,
-        sim_seed = sim_seed,
-        df = draw_df
-      )
-      if (is.list(coef_draws)) {
-        t_scale <- coef_draws$t_scale
-        coef_draws <- coef_draws$draws
-      }
-    }
-
-    ret <- list()
-    smind <- unlist(sapply(object$smooth, function(x) {
-      seq(x$first.para, x$last.para)
-    }))
-    ret$pterms <- cbind(value = object$coefficients[-smind])
-    if (se) ret$pterms <- cbind(ret$pterms, se = sqrt(diag(covmat)[-smind]))
-    if (!is.null(theta_diff)) {
-      ret$pterms <- cbind(ret$pterms, delta = theta_diff[-smind])
-    }
-
-    if (se && ci != "none") {
-      p_se <- ret$pterms[, "se"]
-      if (!is.null(theta_diff)) {
-        p_se <- pffr_bias_aware_se(p_se, ret$pterms[, "delta"])
-      }
-      p_df <- NULL
-      if (ci == "pointwise") {
-        prob <- (1 + level) / 2
-        if (crit_mode == "tG1") {
-          p_crit <- stats::qt(prob, crit_df_const)
-          p_df <- rep(crit_df_const, length(p_se))
-        } else if (crit_mode == "satterthwaite") {
-          # Per-parametric-coefficient df: contrasts are unit vectors e_j at the
-          # non-smooth coefficient indices (same order as ret$pterms rows).
-          pind <- seq_along(object$coefficients)[-smind]
-          if (length(pind) > 0) {
-            Xp_p <- matrix(0, length(pind), length(object$coefficients))
-            Xp_p[cbind(seq_along(pind), pind)] <- 1
-            p_df <- pffr_df_from_context(df_ctx, Xp_p)
-          } else {
-            p_df <- numeric(0)
-          }
-          # Same rule as compute_pointwise_ci(): an undefined moment df gives
-          # missing limits, not a silent Gaussian substitute.
-          p_crit <- ifelse(
-            is.finite(p_df),
-            stats::qt(prob, pmax(p_df, 1)),
-            NA_real_
-          )
-          if (any(!is.finite(p_df))) pffr_warn_undefined_df()
-        } else {
-          p_crit <- stats::qnorm(prob)
-          p_df <- rep(Inf, length(p_se))
-        }
-      } else if (
-        length(p_se) == 0 ||
-          (length(p_se) <= 1 && is.null(t_scale))
-      ) {
-        p_crit <- stats::qnorm((1 + level) / 2)
-      } else {
-        eps <- sqrt(.Machine$double.eps)
-        valid <- is.finite(p_se) & (p_se > eps)
-        if (!any(valid)) {
-          p_crit <- 0
-        } else {
-          p_draws <- coef_draws[-smind, , drop = FALSE]
-          max_stat <- apply(
-            abs(p_draws[valid, , drop = FALSE] / p_se[valid]),
-            2,
-            max
-          )
-          if (!is.null(t_scale)) max_stat <- max_stat * t_scale
-          p_crit <- as.numeric(stats::quantile(
-            max_stat,
-            probs = level,
-            names = FALSE,
-            type = 8,
-            na.rm = TRUE
-          ))
-        }
-      }
-      p_half <- p_crit * p_se
-      ret$pterms <- cbind(
-        ret$pterms,
-        lower = ret$pterms[, "value"] - p_half,
-        upper = ret$pterms[, "value"] + p_half
-      )
-      if (!is.null(p_df)) {
-        ret$pterms <- cbind(ret$pterms, df = p_df)
-      }
-    }
-
-    shrtlbls <- object$pffr$short_labels
-
-    # An ffpc term enters the model as one smooth per FPC; its entry is the
-    # implied coefficient surface (on the covariate's index times an n2-point
-    # grid over the response index), at the position of its first FPC.
-    ffpc_smooths <- if (length(object$pffr$ffpc)) {
-      ffpc_smooth_indices(object)
-    } else {
-      list()
-    }
-    ffpc_first <- vapply(ffpc_smooths, min, integer(1))
-    ffpc_t <- seq(
-      min(object$pffr$yind),
-      max(object$pffr$yind),
-      length = n2
-    )
-    ret$smterms <- lapply(seq_along(object$smooth), \(i) {
-      if (i %in% unlist(ffpc_smooths) && !(i %in% ffpc_first)) {
-        return(NULL)
-      }
-      if (!(i %in% ffpc_first)) {
-        return(getCoefs(i))
-      }
-      coef_ffpc_surface(
-        object,
-        which = match(i, ffpc_first),
-        t = ffpc_t,
-        object_info = object_info,
-        covmat = covmat,
-        se = se,
-        ci = ci,
-        level = level,
-        coef_draws = coef_draws,
-        t_scale = t_scale,
-        crit_mode = crit_mode,
-        crit_df_const = crit_df_const,
-        df_ctx = df_ctx
-      )
-    })
-    ffpc_rest <- setdiff(unlist(ffpc_smooths), ffpc_first)
-    if (length(ffpc_rest)) ret$smterms <- ret$smterms[-ffpc_rest]
-    names(ret$smterms) <- sapply(seq_along(ret$smterms), function(i) {
-      ret$smterms[[i]]$main
-    })
-    ret$ci_meta <- list(
-      type = ci,
-      level = level,
-      n_sim = if (ci == "simultaneous") n_sim else NA_integer_,
-      sim_seed = sim_seed,
-      ci_ref = if (ci == "simultaneous") ci_ref else NA_character_,
-      ci_ref_used = ci_ref_used,
-      ci_ref_n_clusters = ci_ref_n_clusters,
-      ci_ref_df = ci_ref_df,
-      crit = crit,
-      crit_used = if (ci == "pointwise") crit_mode else NA_character_,
-      bias_ref_method = if (is.null(bias_ref)) {
-        NA_character_
-      } else {
-        bias_ref$method %||% NA_character_
-      }
-    )
-    return(ret)
   }
+  # Prepare info structures for helper functions
+  pffr_info <- list(
+    yind_name = object$pffr$yind_name,
+    pcre_terms = object$pffr$pcre_terms
+  )
+  grid_sizes <- list(n1 = n1, n2 = n2, n3 = n3)
+  object_info <- list(
+    coefficients = object$coefficients,
+    cmX = object$cmX,
+    Vp = object$Vp
+  )
+
+  getCoefs <- function(i) {
+    ## Constructs a grid over the range of the covariates
+    ## and returns estimated values on this grid, with
+    ## by-variables set to 1.
+    ## Uses extracted helper functions for modularity.
+    trm <- object$smooth[[i]]
+    is_pcre <- "pcre.random.effect" %in% class(trm)
+
+    # Check for unsupported dimensions
+    if (trm$dim > 3 && !is_pcre) {
+      warning(
+        "can't deal with smooths with more than 3 dimensions, returning NULL for ",
+        shrtlbls[names(object$smooth)[i] == unlist(object$pffr$label_map)]
+      )
+      return(NULL)
+    }
+
+    # Generate evaluation grid and compute predictions
+    d <- resolve_eval_grid_for_term(
+      eval_grid = eval_grid,
+      smooth_names = names(object$smooth),
+      i = i
+    )
+    if (is.null(d)) {
+      d <- coef_make_data_grid(
+        trm,
+        object$model,
+        pffr_info,
+        grid_sizes,
+        is_pcre
+      )
+    } else {
+      d <- ensure_grid_axis_attributes(
+        d = d,
+        trm = trm,
+        is_pcre = is_pcre,
+        pffr_info = pffr_info
+      )
+    }
+    P <- coef_get_predictions(
+      trm,
+      d,
+      object_info,
+      pffr_info,
+      covmat,
+      se,
+      seWithMean,
+      is_pcre,
+      ci = ci,
+      level = level,
+      coef_draws = coef_draws,
+      t_scale = t_scale,
+      crit_setup = crit_setup
+    )
+
+    # Add proper labeling
+    P$main <- shrtlbls[
+      names(object$smooth)[i] == unlist(object$pffr$label_map)
+    ]
+
+    # Fix axis labels for ff and sff terms
+    which <- match(names(object$smooth)[i], object$pffr$label_map)
+    if (which %in% object$pffr$where$ff) {
+      which_ff <- which(object$pffr$where$ff == which)
+      P$ylab <- object$pffr$yind_name
+      xlab <- deparse(
+        as.call(formula(paste("~", names(object$pffr$ff)[which_ff]))[[
+          2
+        ]])$xind
+      )
+      P$xlab <- if (xlab == "NULL") "xindex" else xlab
+    }
+    if (which %in% object$pffr$where$sff) {
+      which_sff <- which(object$pffr$where$sff == which)
+      P$ylab <- object$pffr$yind_name
+      xlab <- deparse(
+        as.call(formula(paste("~", names(object$pffr$ff)[which_sff]))[[
+          2
+        ]])$xind
+      )
+      P$xlab <- if (xlab == "NULL") "xindex" else xlab
+      P$zlab <- gsub(".mat$", "", object$pffr$ff[[which_sff]]$xname)
+    }
+
+    P
+  }
+
+  # Resolve the covariance through the single pffr accessor: $Vp/$Vc/$Ve are
+  # model-based, so recomputing a sandwich here never double-applies it.
+  covmat <- if (se) {
+    pffr_vcov(object, sandwich = use_sandwich, cluster = cluster)
+  } else {
+    NULL
+  }
+
+  # Pointwise critical values: Satterthwaite for the CL2 sandwich, Gaussian
+  # for the model-based covariance.
+  crit_setup <- if (ci == "pointwise") {
+    pffr_crit_setup(object, use_sandwich, cluster = cluster)
+  } else {
+    NULL
+  }
+
+  coef_draws <- NULL
+  t_scale <- NULL
+  ci_ref_df <- NA_real_
+  ci_ref_used <- NA_character_
+  if (ci == "simultaneous") {
+    ci_ref_used <- "normal"
+    draw_df <- NULL
+    if (use_sandwich) {
+      ci_ref_df <- length(unique(build_cluster_id(object$pffr, cluster))) - 1
+      draw_df <- ci_ref_df
+      ci_ref_used <- "t"
+    }
+    coef_draws <- draw_coef_perturbations(
+      covmat = covmat,
+      n_sim = n_sim,
+      sim_seed = sim_seed,
+      df = draw_df
+    )
+    if (is.list(coef_draws)) {
+      t_scale <- coef_draws$t_scale
+      coef_draws <- coef_draws$draws
+    }
+  }
+
+  ret <- list()
+  smind <- unlist(sapply(object$smooth, function(x) {
+    seq(x$first.para, x$last.para)
+  }))
+  ret$pterms <- cbind(value = object$coefficients[-smind])
+  if (se) ret$pterms <- cbind(ret$pterms, se = sqrt(diag(covmat)[-smind]))
+
+  if (se && ci != "none") {
+    p_se <- ret$pterms[, "se"]
+    p_df <- NULL
+    if (ci == "pointwise") {
+      # Contrasts of the parametric coefficients are unit vectors e_j (same
+      # order as ret$pterms rows).
+      pind <- seq_along(object$coefficients)[-smind]
+      Xp_p <- matrix(0, length(pind), length(object$coefficients))
+      Xp_p[cbind(seq_along(pind), pind)] <- 1
+      pw <- pffr_pointwise_crit_values(crit_setup, level = level, Xp = Xp_p)
+      p_crit <- pw$crit
+      p_df <- pw$df
+    } else if (
+      length(p_se) == 0 ||
+        (length(p_se) <= 1 && is.null(t_scale))
+    ) {
+      p_crit <- stats::qnorm((1 + level) / 2)
+    } else {
+      eps <- sqrt(.Machine$double.eps)
+      valid <- is.finite(p_se) & (p_se > eps)
+      if (!any(valid)) {
+        p_crit <- 0
+      } else {
+        p_draws <- coef_draws[-smind, , drop = FALSE]
+        max_stat <- apply(
+          abs(p_draws[valid, , drop = FALSE] / p_se[valid]),
+          2,
+          max
+        )
+        if (!is.null(t_scale)) max_stat <- max_stat * t_scale
+        p_crit <- as.numeric(stats::quantile(
+          max_stat,
+          probs = level,
+          names = FALSE,
+          type = 8,
+          na.rm = TRUE
+        ))
+      }
+    }
+    p_half <- p_crit * p_se
+    ret$pterms <- cbind(
+      ret$pterms,
+      lower = ret$pterms[, "value"] - p_half,
+      upper = ret$pterms[, "value"] + p_half
+    )
+    if (!is.null(p_df)) {
+      ret$pterms <- cbind(ret$pterms, df = p_df)
+    }
+  }
+
+  shrtlbls <- object$pffr$short_labels
+
+  # An ffpc term enters the model as one smooth per FPC; its entry is the
+  # implied coefficient surface (on the covariate's index times an n2-point
+  # grid over the response index), at the position of its first FPC.
+  ffpc_smooths <- if (length(object$pffr$ffpc)) {
+    ffpc_smooth_indices(object)
+  } else {
+    list()
+  }
+  ffpc_first <- vapply(ffpc_smooths, min, integer(1))
+  ffpc_t <- seq(
+    min(object$pffr$yind),
+    max(object$pffr$yind),
+    length = n2
+  )
+  ret$smterms <- lapply(seq_along(object$smooth), \(i) {
+    if (i %in% unlist(ffpc_smooths) && !(i %in% ffpc_first)) {
+      return(NULL)
+    }
+    if (!(i %in% ffpc_first)) {
+      return(getCoefs(i))
+    }
+    coef_ffpc_surface(
+      object,
+      which = match(i, ffpc_first),
+      t = ffpc_t,
+      object_info = object_info,
+      covmat = covmat,
+      se = se,
+      ci = ci,
+      level = level,
+      coef_draws = coef_draws,
+      t_scale = t_scale,
+      crit_setup = crit_setup
+    )
+  })
+  ffpc_rest <- setdiff(unlist(ffpc_smooths), ffpc_first)
+  if (length(ffpc_rest)) ret$smterms <- ret$smterms[-ffpc_rest]
+  names(ret$smterms) <- sapply(seq_along(ret$smterms), function(i) {
+    ret$smterms[[i]]$main
+  })
+  ret$ci_meta <- list(
+    type = ci,
+    level = level,
+    sandwich = use_sandwich,
+    crit_used = if (ci == "pointwise") crit_setup$mode else NA_character_,
+    n_sim = if (ci == "simultaneous") n_sim else NA_integer_,
+    sim_seed = sim_seed,
+    ci_ref_used = ci_ref_used,
+    ci_ref_df = ci_ref_df
+  )
+  ret
 }
 
 #' Covariance matrix for a pffr fit
 #'
-#' Dispatches to \code{\link[mgcv]{vcov.gam}()} on the fit's \emph{model-based}
-#' covariance. Since refund now keeps \code{$Vp}/\code{$Vc}/\code{$Ve}
-#' model-based on every fit (the robust covariance lives in
-#' \code{object$pffr$Vsandwich}), \code{vcov(object)} returns the Bayesian
-#' posterior (model-based) covariance even when the fit was created with a
-#' sandwich option. With \code{sandwich = TRUE}, mgcv recomputes an
-#' observation-level HC sandwich from that model-based bread. For the
-#' cluster-robust estimators (or to obtain the fit-time robust covariance) use
-#' \code{\link{coef.pffr}} with the \code{sandwich} argument.
+#' Returns the covariance of the coefficient estimates that refund's interval
+#' methods use: by default the fit's covariance, i.e. the CL2 sandwich for
+#' fits with \code{sandwich = TRUE} (the default of \code{\link{pffr}}) and the
+#' model-based covariance otherwise. The fit's \code{$Vp}, \code{$Vc} and
+#' \code{$Ve} always hold mgcv's model-based matrices.
 #'
 #' @param object a fitted \code{pffr}-object
-#' @param sandwich compute an observation-level HC sandwich covariance? See
-#'   \code{\link[mgcv]{vcov.gam}()}.
-#' @param ... see \code{\link[mgcv]{vcov.gam}()} for options.
+#' @param sandwich \code{NULL} (default) uses the fit's covariance;
+#'   \code{TRUE} the CL2 sandwich; \code{FALSE} the model-based covariance
+#'   (\code{object$Vp} for NCV fits, otherwise \code{object$Vc}).
+#' @param cluster optional per-curve grouping for the CL2 sandwich, as in
+#'   \code{\link{coef.pffr}}.
+#' @param ... not used.
 #'
-#' @return A covariance matrix, see \code{\link[mgcv]{vcov.gam}()}.
+#' @return A covariance matrix.
 #' @export
 #' @method vcov pffr
-vcov.pffr <- function(object, sandwich = FALSE, ...) {
-  if (isTRUE(sandwich)) pffr_check_sandwich_ar1(object, "hc")
-  object <- pffr_model_based_gam(object)
-  stats::vcov(object, sandwich = sandwich, ...)
-}
-
-#' Summarize the Satterthwaite pointwise-CI df of a pffr fit
-#'
-#' For a fit whose sandwich type is cluster-robust (`"cluster"`/`"cl2"`) and
-#' whose curve/cluster count is moderate (\eqn{G < 150}), computes the per-point
-#' Bell-McCaffrey df over a coarse coefficient grid and returns its median and
-#' minimum. Returns `NULL` (so [print.summary.pffr()] prints nothing) for
-#' non-cluster fits, large \eqn{G}, families without a whitened score path, or
-#' any error. Uses a coarse grid to stay cheap.
-#'
-#' @param object A fitted pffr model.
-#' @returns `NULL`, or a list with `type`, `G`, `default` (is Satterthwaite
-#'   the default `crit` for this fit, i.e. exact CL2?), `median`, `min`,
-#'   `n_points`.
-#' @keywords internal
-pffr_summary_df <- function(object) {
-  type <- normalize_sandwich_type(
-    object$pffr$sandwich_info$type %||% object$pffr$sandwich
-  )
-  if (!type %in% c("cluster", "cl2")) {
-    return(NULL)
-  }
-  G <- tryCatch(
-    length(unique(build_cluster_id(object$pffr))),
-    error = function(e) NA_integer_
-  )
-  if (!is.finite(G) || G >= 150) {
-    return(NULL)
-  }
-  # The suppressWarnings() below would otherwise silently consume the
-  # once-per-session approx-score disclosure (pffr_warn_approx_score, fired via
-  # pffr_df_context) before the user ever saw it: the warn-once key is set even
-  # when the warning is muffled. Snapshot the approx_score_* keys and drop any
-  # that appear during the suppressed call, so a later user-facing computation
-  # still discloses.
-  keys_before <- grep(
-    "^approx_score_",
-    ls(envir = .pffr_state),
-    value = TRUE
-  )
-  df_vals <- tryCatch(
-    {
-      # Call coef.pffr() directly: summary.pffr() strips the "pffr" class from
-      # `object` before this runs, so the generic would dispatch elsewhere.
-      co <- suppressMessages(suppressWarnings(coef.pffr(
-        object,
-        se = TRUE,
-        ci = "pointwise",
-        crit = "satterthwaite",
-        sandwich = type,
-        n1 = 20,
-        n2 = 12,
-        n3 = 8
-      )))
-      vals <- unlist(lapply(co$smterms, function(tm) tm$coef$df))
-      if (!is.null(co$pterms) && "df" %in% colnames(co$pterms)) {
-        vals <- c(vals, co$pterms[, "df"])
-      }
-      vals[is.finite(vals)]
-    },
-    error = function(e) numeric(0)
-  )
-  keys_new <- setdiff(
-    grep("^approx_score_", ls(envir = .pffr_state), value = TRUE),
-    keys_before
-  )
-  if (length(keys_new) > 0) {
-    rm(list = keys_new, envir = .pffr_state)
-  }
-  if (length(df_vals) == 0) {
-    return(NULL)
-  }
-  list(
-    type = type,
-    G = G,
-    # Satterthwaite is the default crit only for exact CL2
-    default = identical(
-      resolve_crit_reference(
-        "auto",
-        type,
-        G,
-        pffr_fit_cl2_adjustment(object, type, NULL)
-      ),
-      "satterthwaite"
-    ),
-    median = stats::median(df_vals),
-    min = min(df_vals),
-    n_points = length(df_vals)
-  )
+vcov.pffr <- function(object, sandwich = NULL, cluster = NULL, ...) {
+  pffr_vcov(object, sandwich = pffr_sandwich_arg(sandwich), cluster = cluster)
 }
 
 #' Summary for a pffr fit
 #'
 #' Take a fitted \code{pffr}-object and produce summaries from it.
-#' See \code{\link[mgcv]{summary.gam}()} for details.
+#' See \code{\link[mgcv]{summary.gam}()} for details. The standard errors and
+#' tests are mgcv's model-based ones, which assume independent errors within
+#' curves; for fits with \code{sandwich = TRUE} (the default) the printed
+#' summary says so. Use \code{\link{coef.pffr}} with \code{ci = "pointwise"}
+#' for CL2 intervals.
 #'
 #' @param object a fitted \code{pffr}-object
 #' @param ... see \code{\link[mgcv]{summary.gam}()} for options.
@@ -2435,13 +1831,7 @@ summary.pffr <- function(object, ...) {
   } else {
     ret$n <- paste(ret$n, " (in ", object$pffr$nobs, " curves)", sep = "")
   }
-  ret$sandwich <- object$pffr$sandwich
-  ret$satterthwaite_df <- pffr_summary_df(object)
-  # Descriptive within-curve dependence flag (S5); never fatal to summary().
-  ret$dependence <- tryCatch(
-    pffr_dependence_check(object),
-    error = function(e) NULL
-  )
+  ret$sandwich <- normalize_sandwich_type(object$pffr$sandwich) != "none"
   if (!is.null(ar1rho)) {
     ret$AR1.rho <- ar1rho
   }
@@ -2523,279 +1913,15 @@ print.summary.pffr <- function(
     "\n",
     sep = ""
   )
-  sw <- normalize_sandwich_type(x$sandwich)
-  if (sw != "none") {
+  if (isTRUE(x$sandwich)) {
     cat(
-      "Model fitted with sandwich = \"",
-      sw,
-      "\"; this summary reports model-based uncertainty. ",
-      "Use coef(., sandwich = \"",
-      sw,
-      "\") for robust intervals.\n",
+      "Standard errors and tests above are model-based, which is invalid ",
+      "under within-curve dependence.\nUse coef(<fit>, ci = \"pointwise\") ",
+      "for CL2 intervals with Satterthwaite critical values.\n",
       sep = ""
     )
   }
-  if (!is.null(x$satterthwaite_df)) {
-    st <- x$satterthwaite_df
-    cat(sprintf(
-      paste0(
-        "Working-model Satterthwaite df for %s pointwise CIs (%s): ",
-        "median %s, min %s (G = %d).\n"
-      ),
-      st$type,
-      if (isTRUE(st$default)) "default" else "opt-in",
-      formatC(st$median, digits = digits, format = "fg"),
-      formatC(st$min, digits = digits, format = "fg"),
-      st$G
-    ))
-  }
-  if (!is.null(x$dependence)) {
-    print_dependence_line(x$dependence, digits = digits)
-  }
   invisible(x)
-}
-
-#' Within-curve dependence diagnostic for a pffr fit
-#'
-#' @description
-#' A quick, DESCRIPTIVE flag for how strongly the working residuals are
-#' correlated \emph{within} each functional response curve. It is \strong{not a
-#' test and not an estimator}: it exists only to tell users which inference
-#' regime they are in, since the model-based vs. robust interval trade-off
-#' hinges on within-curve dependence. When dependence is weak, model-based
-#' intervals are broadly valid and the robust (cluster/CL2) sandwich costs a few
-#' points of coverage; when it is strong, model-based intervals are
-#' anti-conservative and the robust path is needed.
-#'
-#' @details
-#' For each curve the working residuals are ordered by the functional index
-#' \eqn{t} (irregular grids are sorted; the sandwich's own curve alignment is
-#' reused) and their lag-1..\code{max(lags)} sample autocorrelations are
-#' computed. Reported summaries:
-#' \itemize{
-#'   \item \code{rho1_mean}, \code{rho1_iqr}: across-curve mean and IQR of the
-#'     per-curve lag-1 autocorrelation.
-#'   \item \code{Dbar}: mean number of residual points per curve.
-#'   \item \code{DE}: a crude plug-in design effect
-#'     \eqn{DE = 1 + (\bar D - 1)\,\max(\bar{\bar\rho}, 0)}, where
-#'     \eqn{\bar{\bar\rho}} is the across-curve mean of each curve's mean SIGNED
-#'     autocorrelation over \code{lags}. This deviates from the brief's literal
-#'     "mean ABSOLUTE autocorrelation": \eqn{|\rho|} has a positive sampling-noise
-#'     floor \eqn{\sim\sqrt{2/(\pi D)}} per lag that grows with the grid, so the
-#'     absolute version never approaches 1 under independence; averaging the
-#'     signed autocorrelations across curves cancels that mean-zero noise and a
-#'     single clip at 0 handles alternating dependence. It is a deliberately
-#'     crude flag (a working-independence effective-sample-size heuristic), NOT a
-#'     variance estimate.
-#'   \item \code{N_eff}: implied effective sample size \eqn{N / DE}, shown next
-#'     to the number of curves \eqn{G}.
-#' }
-#' The advisory follows a two-regime rule: \code{DE < 1.5} ("dependence looks
-#' weak") vs. \code{DE >= 1.5} ("dependence detected"). Caveat: because the
-#' across-curve average uses SIGNED autocorrelations, opposite-sign per-curve
-#' autocorrelations can cancel each other in \code{DE} --- consistent with its
-#' role as a crude descriptive flag, not an estimator. For a single-curve fit
-#' (\eqn{G < 2}) the design effect is meaningless; \code{DE}/\code{N_eff} are
-#' \code{NA} and the advisory says so.
-#'
-#' @param fit A fitted \code{\link{pffr}} model.
-#' @param lags Integer lags whose per-curve SIGNED autocorrelations are averaged
-#'   (then averaged across curves and clipped at 0) in \code{DE} (default
-#'   \code{1:3}). The lag-1 summaries always use lag 1.
-#' @returns An object of class \code{"pffr_dependence_check"}: a list with
-#'   \code{rho1_mean}, \code{rho1_iqr}, per-curve lag-1 \code{rho1}, per-curve
-#'   over-lag mean \code{rho_avg}, the across-curve mean \code{rhobar_avg},
-#'   \code{Dbar}, \code{DE}, \code{G}, \code{N}, \code{N_eff}, \code{lags},
-#'   \code{regime} (\code{"weak"}/\code{"detected"}/\code{"undetermined"}),
-#'   \code{advisory}, and \code{n_curves_used}.
-#' @seealso \code{\link{pffr}}, \code{\link{coef.pffr}}
-#' @export
-#' @author Fabian Scheipl
-pffr_dependence_check <- function(fit, lags = 1:3) {
-  if (is.null(fit$pffr)) {
-    stop("`fit` must be a fitted pffr model.", call. = FALSE)
-  }
-  lags <- sort(unique(as.integer(lags)))
-  if (length(lags) < 1L || any(!is.finite(lags)) || any(lags < 1L)) {
-    stop("`lags` must be positive integers.", call. = FALSE)
-  }
-  meta <- fit$pffr
-
-  # Working residuals as a plain vector (bypass residuals.pffr dispatch so this
-  # also works on the class-stripped object summary.pffr passes internally).
-  gamobj <- fit
-  class(gamobj) <- setdiff(class(gamobj), "pffr")
-  wr <- as.numeric(stats::residuals(gamobj, type = "working"))
-
-  # Map each residual to its curve and functional index, reusing the sandwich's
-  # curve alignment (build_cluster_id) so the ordering is guaranteed consistent.
-  cid <- build_cluster_id(meta)
-  if (isTRUE(meta$is_sparse)) {
-    tval <- meta$ydata$.index
-    # Sparse fits record no missing_indices, but mgcv silently drops rows with
-    # NA response (na.omit) while ydata keeps them; filter those rows so
-    # cid/tval align with the fitted residuals (verified empirically:
-    # fit$y == ydata$.value[!is.na(.value)] on a sparse fit with NA .value).
-    na_y <- is.na(meta$ydata$.value)
-    if (any(na_y)) {
-      cid <- cid[!na_y]
-      tval <- tval[!na_y]
-    }
-  } else {
-    tval <- rep(meta$yind, times = meta$nobs)
-    if (!is.null(meta$missing_indices)) {
-      tval <- tval[-meta$missing_indices]
-    }
-  }
-  if (length(wr) != length(cid) || length(tval) != length(cid)) {
-    stop(
-      "could not align working residuals to curves (length mismatch); ",
-      "the dependence diagnostic is unavailable for this fit.",
-      call. = FALSE
-    )
-  }
-
-  # per-curve residual series, sorted by t within curve
-  ord <- order(cid, tval)
-  series <- split(wr[ord], cid[ord])
-
-  Lmax <- max(lags)
-  per_curve <- lapply(series, function(x) {
-    x <- x[is.finite(x)]
-    D <- length(x)
-    ac <- rep(NA_real_, Lmax)
-    if (D >= 2L && stats::sd(x) > 0) {
-      k <- min(Lmax, D - 1L)
-      acf_vals <- tryCatch(
-        stats::acf(x, lag.max = k, plot = FALSE, demean = TRUE)$acf[-1L],
-        error = function(e) rep(NA_real_, k)
-      )
-      ac[seq_len(k)] <- acf_vals
-    }
-    list(D = D, acf = ac)
-  })
-
-  D_vec <- vapply(per_curve, function(z) z$D, numeric(1))
-  rho1 <- vapply(per_curve, function(z) z$acf[1L], numeric(1)) # lag-1 (signed)
-  # Per-curve mean SIGNED autocorrelation over `lags`. Deviation from the
-  # brief's literal "mean ABSOLUTE autocorrelation": |rho| has expectation
-  # ~sqrt(2/(pi D)) per lag under independence, a positive noise floor that
-  # grows with the grid so the absolute-value DE never approaches 1 for iid
-  # data (and its pmax(., 0) is vacuous on non-negative values). Averaging the
-  # SIGNED autocorrelations ACROSS curves cancels that mean-zero noise, and a
-  # single pmax(., 0) at the end clips net negative (alternating) dependence to
-  # DE = 1. It is a deliberately crude regime flag, not a variance estimate.
-  rho_avg <- vapply(
-    per_curve,
-    function(z) {
-      a <- z$acf[lags]
-      if (all(is.na(a))) NA_real_ else mean(a, na.rm = TRUE)
-    },
-    numeric(1)
-  )
-
-  Dbar <- mean(D_vec)
-  N <- sum(D_vec)
-  G <- length(series)
-  rhobar_avg <- mean(rho_avg, na.rm = TRUE)
-  if (!is.finite(rhobar_avg)) rhobar_avg <- 0
-
-  if (G < 2) {
-    # Single curve: an across-curve design effect and cluster-robust intervals
-    # are both meaningless here; NA the derived quantities and say so instead
-    # of printing a misleading "dependence looks weak" line.
-    DE <- NA_real_
-    N_eff <- NA_real_
-    regime <- "undetermined"
-    advisory <- paste0(
-      "only one curve: the dependence diagnostic and cluster-robust ",
-      "intervals are not meaningful"
-    )
-  } else {
-    DE <- 1 + (Dbar - 1) * max(rhobar_avg, 0)
-    N_eff <- if (is.finite(DE) && DE > 0) N / DE else NA_real_
-    regime <- if (is.finite(DE) && DE >= 1.5) "detected" else "weak"
-    advisory <- if (regime == "detected") {
-      paste0(
-        "within-curve dependence detected; model-based intervals would be ",
-        # TODO(S7): point at ?pffr_inference once that help topic/vignette
-        # ships with the release task; it does not exist yet.
-        "anti-conservative (see ?pffr_dependence_check)"
-      )
-    } else {
-      paste0(
-        "within-curve dependence looks weak; model-based and robust ",
-        "intervals should broadly agree (robust costs a few points of ",
-        "coverage here)"
-      )
-    }
-  }
-
-  structure(
-    list(
-      rho1_mean = mean(rho1, na.rm = TRUE),
-      rho1_iqr = stats::IQR(rho1, na.rm = TRUE),
-      rho1 = rho1,
-      rho_avg = rho_avg,
-      rhobar_avg = rhobar_avg,
-      Dbar = Dbar,
-      DE = DE,
-      G = G,
-      N = N,
-      N_eff = N_eff,
-      lags = lags,
-      regime = regime,
-      advisory = advisory,
-      n_curves_used = sum(!is.na(rho1))
-    ),
-    class = "pffr_dependence_check"
-  )
-}
-
-# Shared one-line + advisory printer, used by both print.pffr_dependence_check
-# and print.summary.pffr.
-print_dependence_line <- function(x, digits = 3) {
-  if (!is.finite(x$DE)) {
-    # Single-curve (or otherwise undetermined) case: only the advisory.
-    cat(
-      "Within-curve dependence (descriptive flag): ",
-      x$advisory,
-      ".\n",
-      sep = ""
-    )
-    return(invisible(x))
-  }
-  fmt <- function(v) formatC(v, digits = digits, format = "fg")
-  cat(sprintf(
-    paste0(
-      "Within-curve dependence (descriptive flag): mean rho1 = %s ",
-      "(IQR %s); design effect DE = %s, implied N_eff = %s vs G = %d.\n"
-    ),
-    fmt(x$rho1_mean),
-    fmt(x$rho1_iqr),
-    fmt(x$DE),
-    formatC(x$N_eff, digits = 0, format = "f"),
-    x$G
-  ))
-  cat("  ", x$advisory, "\n", sep = "")
-  invisible(x)
-}
-
-#' Print method for a pffr within-curve dependence diagnostic
-#'
-#' @param x A \code{"pffr_dependence_check"} object from
-#'   \code{\link{pffr_dependence_check}}.
-#' @param digits Number of significant digits for the printed summaries.
-#' @param ... Not used.
-#' @returns \code{x}, invisibly.
-#' @method print pffr_dependence_check
-#' @export
-print.pffr_dependence_check <- function(
-  x,
-  digits = max(3, getOption("digits") - 3),
-  ...
-) {
-  print_dependence_line(x, digits = digits)
 }
 
 #' QQ plots for pffr model residuals

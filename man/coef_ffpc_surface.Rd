@@ -15,9 +15,7 @@ coef_ffpc_surface(
   level = 0.95,
   coef_draws = NULL,
   t_scale = NULL,
-  crit_mode = "z",
-  crit_df_const = NA_real_,
-  df_ctx = NULL
+  crit_setup = NULL
 )
 }
 \arguments{
@@ -27,8 +25,7 @@ coef_ffpc_surface(
 
 \item{t}{Evaluation points along the response index.}
 
-\item{object_info}{List with \code{coefficients} and optionally
-\code{theta_diff}.}
+\item{object_info}{List with \code{coefficients}.}
 
 \item{covmat}{Covariance matrix for SE computation.}
 
@@ -42,6 +39,8 @@ coef_ffpc_surface(
 
 \item{t_scale}{Optional multiplier-t scaling, one positive value per
 simulation draw.}
+
+\item{crit_setup}{A [pffr_crit_setup()] result (pointwise intervals).}
 }
 \value{
 A list structured like the other entries of
@@ -50,8 +49,8 @@ A list structured like the other entries of
 \description{
 Evaluates the surface \eqn{\beta(s,t) = \sum_k \psi_k(s)\tilde\beta_k(t)}
 implied by an \code{\link{ffpc}} term on the covariate's index \code{xind}
-times \code{t}, with the same standard errors, bias estimates and intervals
-as other terms. The estimated FPCs are treated as fixed, so the surface is a
-fixed linear map of the coefficients (see \code{\link{ffpc_surface_map}}).
+times \code{t}, with the same standard errors and intervals as other terms.
+The estimated FPCs are treated as fixed, so the surface is a fixed linear map
+of the coefficients (see \code{\link{ffpc_surface_map}}).
 }
 \keyword{internal}

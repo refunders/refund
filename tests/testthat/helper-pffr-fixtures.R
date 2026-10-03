@@ -178,7 +178,7 @@ get_basic_pffr_model <- function() {
       Y ~ ff(X1, xind = s) + xlin,
       yind = t,
       data = dat,
-      sandwich = "none"
+      sandwich = FALSE
     )
   }
   pffr_test_env$basic_model
@@ -198,7 +198,7 @@ get_xlin_model <- function() {
       Y ~ xlin,
       yind = t,
       data = dat,
-      sandwich = "none"
+      sandwich = FALSE
     )
   }
   pffr_test_env$xlin_model
@@ -218,7 +218,7 @@ get_multiterm_model <- function() {
       Y ~ ff(X1, xind = s) + xlin + s(xsmoo) + c(xconst),
       yind = t,
       data = dat,
-      sandwich = "none"
+      sandwich = FALSE
     )
   }
   pffr_test_env$multiterm_model
@@ -238,7 +238,7 @@ get_sparse_model <- function() {
       data = dat$data,
       ydata = dat$ydata,
       yind = t,
-      sandwich = "none"
+      sandwich = FALSE
     )
   }
   pffr_test_env$sparse_model
@@ -258,7 +258,7 @@ get_all_scenario_model <- function() {
       Y ~ ff(X1, xind = s) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst),
       yind = t,
       data = dat,
-      sandwich = "none"
+      sandwich = FALSE
     )
   }
   pffr_test_env$all_scenario_model
@@ -278,7 +278,7 @@ get_gaulss_model <- function() {
       yind = t,
       data = dat,
       family = mgcv::gaulss(),
-      sandwich = "none"
+      sandwich = FALSE
     )
   }
   pffr_test_env$gaulss_model

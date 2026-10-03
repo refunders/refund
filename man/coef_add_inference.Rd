@@ -2,21 +2,18 @@
 % Please edit documentation in R/pffr-methods.R
 \name{coef_add_inference}
 \alias{coef_add_inference}
-\title{Add standard errors, bias estimates and intervals to coefficient values}
+\title{Add standard errors and intervals to coefficient values}
 \usage{
 coef_add_inference(
   P,
   linear_map,
-  theta_diff,
   covmat,
   se,
   ci = "none",
   level = 0.95,
   coef_draws = NULL,
   t_scale = NULL,
-  crit_mode = "z",
-  crit_df_const = NA_real_,
-  df_ctx = NULL
+  crit_setup = NULL
 )
 }
 \arguments{
@@ -24,10 +21,7 @@ coef_add_inference(
 \code{P$coef}.}
 
 \item{linear_map}{List returned by \code{\link{build_coef_linear_map}}, or
-\code{NULL} if neither \code{se} nor \code{theta_diff} is requested.}
-
-\item{theta_diff}{Optional full-length coefficient difference to a bias
-reference fit.}
+\code{NULL} if \code{se} is not requested.}
 
 \item{covmat}{Covariance matrix for SE computation.}
 
@@ -41,13 +35,14 @@ reference fit.}
 
 \item{t_scale}{Optional multiplier-t scaling, one positive value per
 simulation draw.}
+
+\item{crit_setup}{A [pffr_crit_setup()] result (pointwise intervals).}
 }
 \value{
-\code{P} with \code{se}, \code{delta}, \code{crit} and the columns
-  \code{se}, \code{delta}, \code{lower}, \code{upper}, \code{df} in
-  \code{P$coef} as requested.
+\code{P} with \code{se}, \code{crit} and the columns \code{se},
+  \code{lower}, \code{upper}, \code{df} in \code{P$coef} as requested.
 }
 \description{
-Add standard errors, bias estimates and intervals to coefficient values
+Add standard errors and intervals to coefficient values
 }
 \keyword{internal}

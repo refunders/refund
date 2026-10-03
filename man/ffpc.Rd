@@ -9,7 +9,7 @@ ffpc(
   yind = NULL,
   xind = seq(0, 1, length = ncol(X)),
   splinepars = list(bs = "ps", m = c(2, 1), k = 8),
-  decomppars = list(pve = 0.99, useSymm = TRUE),
+  decomppars = list(pve = 0.95, useSymm = TRUE),
   npc.max = 15
 )
 }
@@ -24,6 +24,12 @@ ffpc(
 B-spline with first difference penalties and 8 basis functions for each \eqn{\tilde \beta_k(t)}.}
 
 \item{decomppars}{parameters for the FPCA performed with \code{\link{fpca.sc}}.
+The default keeps the FPCs that explain 95\% of the covariate's variance
+(\code{pve = 0.95}; refund 0.1-40 and earlier used 0.99, which in
+simulations gave unstable, very noisy estimates). Use \code{ffpc()} for
+covariates whose variation is concentrated in a few FPCs; for covariates
+with a richer spectrum use \code{\link{ff}}: few FPCs truncate the
+coefficient surface and its intervals undercover.
 Unless they include \code{argvals}, the FPCA uses \code{argvals = xind},
 so the FPCs are orthonormal and the scores are integrals over the domain
 of \code{xind}. The coefficient surface implied by the fit is returned by

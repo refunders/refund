@@ -17,6 +17,16 @@ scat_logdens <- function(y, mu, sig, nu) {
 }
 scat_score <- function(r, nu, sig) (nu + 1) * r / (nu * sig^2 + r^2)
 
+# Per-observation exact scat scores in coefficient space (reference for the
+# Fisher-whitened factorization in build_cl2_working_scat()).
+scat_reference_scores <- function(b, X) {
+  th <- b$family$getTheta(TRUE)
+  r <- as.vector(b$y) - as.vector(b$fitted.values)
+  mu_eta <- as.vector(b$family$mu.eta(b$linear.predictors))
+  pw <- as.vector(b$prior.weights %||% rep(1, length(r)))
+  pw * scat_score(r, th[1], th[2]) * mu_eta * X
+}
+
 # inline central difference (fallback when numDeriv is unavailable)
 central_diff <- function(f, x, h = 1e-5) (f(x + h) - f(x - h)) / (2 * h)
 
@@ -69,7 +79,7 @@ get_scat_test_model <- function() {
       data = dat,
       family = mgcv::scat(),
       bs.yindex = list(bs = "ps", k = 12, m = c(2, 1)),
-      sandwich = "none"
+      sandwich = FALSE
     )
   }
   scat_test_env$model
@@ -125,7 +135,7 @@ test_that("(iii) scat CL2 whitened hat trace equals model EDF (within 1%)", {
   # (a) exact-score reconstruction: Xw^T z reproduces the scat score
   X <- model.matrix(b)
   work <- refund:::build_cl2_working_scat(b, cluster_id)
-  score_total <- colSums(refund:::compute_scat_scores(b, X))
+  score_total <- colSums(scat_reference_scores(b, X))
   reconstructed <- as.vector(crossprod(work$Xw, work$z))
   expect_equal(reconstructed, unname(score_total), tolerance = 1e-8)
 
@@ -141,14 +151,14 @@ test_that("(iii) scat CL2 whitened hat trace equals model EDF (within 1%)", {
   expect_equal(trace_H, edf_total, tolerance = 0.01 * edf_total)
 
   # (c) resulting CL2 covariance is finite and symmetric
-  V_cl2 <- gam_sandwich_cluster_cl2(b, cluster_id, freq = FALSE)
+  V_cl2 <- gam_sandwich_cluster_cl2(b, cluster_id)
   expect_equal(V_cl2, t(V_cl2), tolerance = 1e-10)
   expect_true(all(is.finite(V_cl2)))
   expect_true(all(diag(V_cl2) >= 0))
 
   # (d) coef.pffr() with the scat robust path returns finite SEs, no approx warn
   warn <- captured_warnings(
-    co <- coef(m, se = TRUE, sandwich = "cl2", n1 = 20)
+    co <- coef(m, se = TRUE, sandwich = TRUE, n1 = 20)
   )
   expect_false(any(grepl(approx_msg, warn)))
 })
@@ -221,31 +231,27 @@ test_that("(iv) approx-score warning fires only for families without exact/two-b
   cid0 <- build_cluster_id(m0$pffr)
 
   # exact gaussian path: silent
-  warn_exact <- captured_warnings(V_exact <- gam_sandwich_cluster(b0, cid0))
+  warn_exact <- captured_warnings(
+    V_exact <- gam_sandwich_cluster_cl2(b0, cid0)
+  )
   expect_false(any(grepl(approx_msg, warn_exact)))
 
   # relabelled as extended.family -> "approx" -> warns; covariance identical
   b_ext <- b0
   class(b_ext$family) <- c("extended.family", class(b_ext$family))
   expect_identical(refund:::pffr_score_kind(b_ext$family), "approx")
-  warn_ext <- captured_warnings(V_ext <- gam_sandwich_cluster(b_ext, cid0))
+  warn_ext <- captured_warnings(V_ext <- gam_sandwich_cluster_cl2(b_ext, cid0))
   expect_true(any(grepl(approx_msg, warn_ext)))
   expect_equal(V_ext, V_exact, tolerance = 1e-12)
 
   # EVERY approximate-score consumer discloses, not just the sandwich
-  # builders: the Satterthwaite df context and the X5/X6 shares diagnostic.
+  # builders: the influence object behind the Satterthwaite df too.
   m_ext <- m0
   class(m_ext$family) <- c("extended.family", class(m_ext$family))
   clear_approx_score_warnings()
-  warn_ctx <- captured_warnings(
-    ctx <- refund:::pffr_df_context(m_ext, "cluster")
-  )
-  expect_true(any(grepl(approx_msg, warn_ctx)))
-  expect_true(ctx$ok)
-  clear_approx_score_warnings()
-  warn_sh <- captured_warnings(sh <- refund:::pffr_sandwich_shares(m_ext))
-  expect_true(any(grepl(approx_msg, warn_sh)))
-  expect_true(is.finite(sh$pen_share))
+  warn_core <- captured_warnings(core <- refund:::pffr_influence(m_ext))
+  expect_true(any(grepl(approx_msg, warn_core)))
+  expect_identical(core$score_kind, "approx")
 })
 
 
@@ -269,7 +275,7 @@ test_that("(v) scat with log link: exact score and EDF-consistent whitened hat",
     data = dat,
     family = mgcv::scat(link = "log"),
     bs.yindex = list(bs = "ps", k = 12, m = c(2, 1)),
-    sandwich = "none"
+    sandwich = FALSE
   )
   b <- m
   class(b) <- setdiff(class(b), "pffr")
@@ -281,7 +287,7 @@ test_that("(v) scat with log link: exact score and EDF-consistent whitened hat",
   expect_gt(diff(range(mu_eta)), 0.5)
 
   # exact score matches mgcv's own Dd()$Dmu on the eta scale
-  scores <- refund:::compute_scat_scores(b, X)
+  scores <- scat_reference_scores(b, X)
   th_raw <- b$family$getTheta(FALSE)
   Dd <- b$family$Dd(
     as.vector(b$y),
@@ -307,7 +313,7 @@ test_that("(v) scat with log link: exact score and EDF-consistent whitened hat",
 })
 
 
-test_that("(vi) scat CR1 end-to-end via fit-time sandwich='cluster'", {
+test_that("(vi) scat CL2 end-to-end via the default fit", {
   skip_on_cran()
 
   set.seed(50006)
@@ -326,29 +332,22 @@ test_that("(vi) scat CR1 end-to-end via fit-time sandwich='cluster'", {
     yind = t,
     data = dat,
     family = mgcv::scat(),
-    bs.yindex = list(bs = "ps", k = 12, m = c(2, 1)),
-    sandwich = "cluster"
+    bs.yindex = list(bs = "ps", k = 12, m = c(2, 1))
   )
+  expect_identical(m$pffr$sandwich, "cl2")
 
-  # fit-time CR1 went through the exact scat branch: robust SEs are usable and
+  # fit-time CL2 went through the exact scat branch: robust SEs are usable and
   # no approximation disclosure fired
   warn <- captured_warnings(
-    co <- coef(m, se = TRUE, n1 = 20)
+    co <- coef(m, se = TRUE, ci = "pointwise", n1 = 20)
   )
   expect_false(any(grepl(approx_msg, warn)))
   ses <- unlist(lapply(co$smterms, function(tm) tm$coef$se))
   expect_true(length(ses) > 0)
   expect_true(all(is.finite(ses)))
   expect_true(all(ses > 0))
-
-  # smoke: the Satterthwaite context and the shares diagnostic run on scat
-  ctx <- refund:::pffr_df_context(m, "cl2")
-  expect_true(ctx$ok)
-  expect_identical(ctx$G, 40L)
-  sh <- refund:::pffr_sandwich_shares(m)
-  expect_true(is.finite(sh$pen_share))
-  expect_gte(sh$pen_share, 0)
-  expect_true(is.finite(sh$fro_ratio))
+  expect_identical(co$ci_meta$crit_used, "satterthwaite")
+  expect_identical(refund:::pffr_influence(m)$G, 40L)
 })
 
 
@@ -376,7 +375,7 @@ test_that("(vii) scat with non-unit prior weights: score exact, hat EDF-consiste
     family = mgcv::scat(),
     weights = W,
     bs.yindex = list(bs = "ps", k = 12, m = c(2, 1)),
-    sandwich = "none"
+    sandwich = FALSE
   )
   b <- m
   class(b) <- setdiff(class(b), "pffr")
@@ -386,7 +385,7 @@ test_that("(vii) scat with non-unit prior weights: score exact, hat EDF-consiste
   expect_true(any(pw != 1)) # weights actually reached the fit
 
   # prior-weighted exact score matches mgcv's Dd()$Dmu (which includes wt)
-  scores <- refund:::compute_scat_scores(b, X)
+  scores <- scat_reference_scores(b, X)
   th_raw <- b$family$getTheta(FALSE)
   Dd <- b$family$Dd(
     as.vector(b$y),

@@ -6,7 +6,6 @@
 \usage{
 pffr_hat_invariant_violation(
   max_obs_leverage = NA_real_,
-  max_leverage = NA_real_,
   min_block_eig_rel = 0,
   min_obs_leverage = NA_real_,
   min_hat_eig = NA_real_,
@@ -17,18 +16,13 @@ pffr_hat_invariant_violation(
 \item{max_obs_leverage}{Largest per-observation leverage \eqn{h_{ii}} seen,
 or `NA`.}
 
-\item{max_leverage}{Largest eigenvalue of any \eqn{H_{gg}} (shortcut path
-only; `NA` otherwise).}
-
 \item{min_block_eig_rel}{Smallest eigenvalue of any \eqn{B_g} relative to
-that block's largest eigenvalue (exact path only; `0` otherwise).}
+that block's largest eigenvalue.}
 
 \item{min_obs_leverage}{Smallest per-observation leverage \eqn{h_{ii}} seen,
 or `NA`. A negative value means the penalized hat is indefinite.}
 
-\item{min_hat_eig}{Smallest eigenvalue of any \eqn{H_{gg}}, or `NA`. Checked
-on every adjustment: the lower bound \eqn{0 \le \mathrm{eigen}(H_{gg})}
-holds whatever leverage weight is used.}
+\item{min_hat_eig}{Smallest eigenvalue of any \eqn{H_{gg}}, or `NA`.}
 
 \item{tol}{Relative slack allowed before an invariant counts as violated.}
 }
@@ -45,19 +39,6 @@ for the same reason. When a fit is numerically degenerate --- an
 ill-conditioned or barely converged fit, e.g. a Poisson fit whose fitted
 means span many orders of magnitude --- the bread \eqn{V_p} stops being the
 inverse of the same weighted cross-product, and these invariants break by
-orders of magnitude rather than by round-off. This was the mechanism behind
-the numerically exploded interval widths observed on hard Poisson
-replicates in the locked benchmark (study LB, claim P-LB5).
-}
-\details{
-Detection is deliberately separate from the leverage cap. Capping
-\eqn{H_{gg}} at `leverage_cap` silently converts an impossible leverage into
-the *largest legitimate* one, so the shortcut adjustment responds to garbage
-with its maximal variance inflation; the exact block, being a squared
-operator, instead deflates. Both are bounded, neither is meaningful, and
-only a diagnostic can tell the user which situation they are in. We
-therefore warn and keep going rather than substituting a differently wrong
-number: the CR1 covariance is built from the same bread and is no more
-trustworthy here.
+orders of magnitude rather than by round-off (study LB, claim P-LB5).
 }
 \keyword{internal}

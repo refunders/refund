@@ -2,27 +2,26 @@
 % Please edit documentation in R/pffr-core.R
 \name{pffr_check_sandwich_ar1}
 \alias{pffr_check_sandwich_ar1}
-\title{Refuse sandwich covariances for AR(1) working-correlation fits}
+\title{Refuse the sandwich covariance for AR(1) working-correlation fits}
 \usage{
-pffr_check_sandwich_ar1(object, type, rho = object$AR1.rho)
+pffr_check_sandwich_ar1(object, sandwich, rho = object$AR1.rho)
 }
 \arguments{
 \item{object}{A fitted pffr model or its stripped gam version, or `NULL`
 when `rho` is given directly.}
 
-\item{type}{Requested sandwich type.}
+\item{sandwich}{Is the sandwich requested?}
 
 \item{rho}{Optional AR(1) coefficient; defaults to the fit's `$AR1.rho`.}
 }
 \value{
-`invisible(TRUE)`; errors for a non-`"none"` type on an AR(1) fit.
+`invisible(TRUE)`; errors for a sandwich request on an AR(1) fit.
 }
 \description{
-The sandwich estimators (`"cluster"`, `"cl2"`, `"hc"`) build their scores
-from the working-independence design and residuals. On a fit with an AR(1)
-working correlation (`rho` in [pffr()]) the estimating equations are the
-AR-whitened ones, so these sandwiches would be silently wrong. This is the
-single guard shared by every sandwich path ([pffr_compute_sandwich()],
-[pffr_influence()], [vcov.pffr()] and the fit-time check in [pffr()]).
+The CL2 sandwich builds its scores from the working-independence design and
+residuals. On a fit with an AR(1) working correlation (`rho` in [pffr()])
+the estimating equations are the AR-whitened ones, so the sandwich would be
+silently wrong. This is the single guard shared by every sandwich path
+([pffr_influence()], [pffr_vcov()] and the fit-time check in [pffr()]).
 }
 \keyword{internal}

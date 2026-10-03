@@ -29,13 +29,14 @@ Does not return; always errors with a deprecation message.
 \description{
 **Deprecated**
 
-`pffr_gls()` is deprecated. Its GLS-based covariance correction produced
-poorly calibrated inference in practice. Use \code{\link{pffr}()} with
-\code{sandwich = "cluster"} (the new default) or \code{sandwich = "cl2"}
-for robust covariance estimation instead.
+`pffr_gls()` is deprecated and errors. Its GLS-based covariance correction
+produced poorly calibrated inference in practice. Fit the model with
+\code{\link{pffr}()} by REML and use its default intervals (CL2 sandwich with
+Satterthwaite critical values; see the section \sQuote{Inference} of
+\code{\link{pffr}}).
 }
 \seealso{
-\code{\link{pffr}} for the recommended approach with sandwich CIs.
+\code{\link{pffr}} for the recommended procedure.
 }
 \author{
 Fabian Scheipl

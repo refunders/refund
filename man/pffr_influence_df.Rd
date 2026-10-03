@@ -4,7 +4,7 @@
 \alias{pffr_influence_df}
 \title{Central Gaussian sampling-variance moment degrees of freedom}
 \usage{
-pffr_influence_df(core, Xp, chunk_size = 32L, df_gram = c("full", "diagonal"))
+pffr_influence_df(core, Xp, chunk_size = 32L)
 }
 \arguments{
 \item{core}{Fixed-fit influence object.}
@@ -12,39 +12,25 @@ pffr_influence_df(core, Xp, chunk_size = 32L, df_gram = c("full", "diagonal"))
 \item{Xp}{Finite full-coefficient contrasts, one per row.}
 
 \item{chunk_size}{Positive number of contrasts per batch.}
-
-\item{df_gram}{Full residualized Gram (default) or the historical diagonal
-shortcut.}
 }
 \value{
 df (NA if undefined), G, and expected sampling variance.
 }
 \description{
-Gamma_gh = 1(g=h)||q_g||^2 - t_g' C t_h retains fit residualization.
+Gamma_gh = 1(g=h)||q_g||^2 - t_g' C t_h retains fit residualization, and
+\eqn{\nu(a) = \{\mathrm{tr}(\Gamma)\}^2/\mathrm{tr}(\Gamma^2)}.
 This is conditional on weights and smoothing parameters, and is not an
 exact t law. Noncentral means, B2 and smoothing selection are not covered.
 }
 \details{
-`df_gram = "diagonal"` drops the off-diagonal residualization and evaluates
-the working-iid shortcut `(sum_g ||q_g||^2)^2 / sum_g ||q_g||^4` from **the
-same `q_g` as the covariance**, i.e. with the resolved `adjustment` of this
-influence object. It is retained only for re-scoring comparisons against
-historical Satterthwaite results; it returns about `G` where the residualized
-moment df returns `G - 1`.
-
-The historical (pre-2026-09) df additionally *always* used the shortcut
-leverage weight \eqn{A_g = (I - H_{gg})^{-1/2}}, whatever covariance was
-requested. `"diagonal"` therefore reproduces the historical df **exactly only
-in combination with `cl2_adjustment = "shortcut"`**; on an exact-CL2 fit it
-is the diagonal moment df of the exact geometry and differs from the
-historical number (2e-5 to 2e-2 relative on the package fixtures; there is no
-bound on the difference in general).
-
 Per contrast the residualized Gram \eqn{T^\top C\,T} dominates the cost. When
 the core carries the cached blocks \eqn{R T_g^\top} with \eqn{C = R^\top R}
-(see [pffr_influence_core()]'s `df_precompute_bytes`) it is evaluated as
-`crossprod(R T)`, a symmetric rank-k update at half the flops and without the
-\eqn{O(p^2 G)} product `C %*% T`. Cores without the cached blocks use the
-general path and return the same numbers.
+(see [pffr_influence_core()]'s `df_precompute_bytes`), the Gram is
+\eqn{V^\top V} for a \eqn{p \times G} matrix \eqn{V}, and
+\eqn{\mathrm{tr}(\Gamma^2)} needs only \eqn{\lVert V^\top V\rVert_F^2 =
+\lVert V V^\top\rVert_F^2}, computed from the smaller of the two products
+(\eqn{G \times G} or \eqn{p \times p}), so the cost per contrast grows
+with \eqn{\min(G, p)\,G\,p} rather than \eqn{G^2 p}. Cores without the
+cached blocks use the general product and return the same numbers.
 }
 \keyword{internal}

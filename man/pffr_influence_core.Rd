@@ -9,9 +9,7 @@ pffr_influence_core(
   Vp,
   cluster_id,
   z = NULL,
-  adjustment = c("exact", "shortcut", "none"),
   leverage_cap = 0.999,
-  tol = 1e-08,
   rank_tol = NULL,
   df_precompute_bytes = 2^28
 )
@@ -25,11 +23,8 @@ pffr_influence_core(
 
 \item{z}{Optional finite working residuals.}
 
-\item{adjustment}{Exact CL2, historical shortcut, or none.}
-
-\item{leverage_cap}{Numerical cap strictly between zero and one.}
-
-\item{tol}{Positive shortcut eigenvalue floor.}
+\item{leverage_cap}{Numerical cap strictly between zero and one; the
+eigenvalues of the residual blocks are floored at `(1 - leverage_cap)^2`.}
 
 \item{rank_tol}{Relative SVD tolerance; NULL uses dimension times machine epsilon.}
 
@@ -48,7 +43,9 @@ Influence object with separate sampling columns, B2 and geometry.
   `min_block_eig_rel`.
 }
 \description{
-Uses Z_g = Q_g T_g and R_g = I - Z_g C Z_g', C = 2B - B Z'Z B.
+Uses Z_g = Q_g T_g and R_g = I - Z_g C Z_g', C = 2B - B Z'Z B, i.e. the
+full-block ("exact") CL2 leverage adjustment
+\eqn{A_g = \{(I - H)^2\}_{gg}^{-1/2}}{A_g = ((I - H)^2)_gg^(-1/2)}.
 Numerical rank is measured; no universal response-basis rank bound is used.
 }
 \keyword{internal}

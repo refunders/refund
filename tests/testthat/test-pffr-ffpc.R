@@ -31,7 +31,7 @@ test_that("ffpcplot works and its surface equals the coef.pffr surface", {
     y ~ c(1) + 0 + ffpc(X, xind = s, decomppars = list(npc = 5)),
     data = sim$data,
     yind = sim$t,
-    sandwich = "none"
+    sandwich = FALSE
   )
 
   pdf(NULL)
@@ -68,7 +68,7 @@ test_that("the integrated ffpc surface reproduces the fitted ffpc term", {
     y ~ c(1) + 0 + ffpc(X, xind = s, decomppars = list(npc = 5)),
     data = sim$data,
     yind = sim$t,
-    sandwich = "none"
+    sandwich = FALSE
   )
   trm <- m$pffr$ffpc[[1]]
   fp <- ffpcplot(m, plot = FALSE)
@@ -102,13 +102,13 @@ test_that("the ffpc surface does not depend on the units of xind", {
     y ~ ffpc(X, xind = s1, decomppars = list(npc = 5)),
     data = sim$data,
     yind = sim$t,
-    sandwich = "none"
+    sandwich = FALSE
   )
   m10 <- pffr(
     y ~ ffpc(X, xind = s10, decomppars = list(npc = 5)),
     data = sim$data,
     yind = sim$t,
-    sandwich = "none"
+    sandwich = FALSE
   )
   expect_equal(fitted(m1), fitted(m10), tolerance = 1e-5)
   b1 <- coef(m1, se = FALSE)$smterms[["ffpc(X)"]]$coef[, "value"]
@@ -130,7 +130,7 @@ test_that("coef.pffr SEs of the ffpc surface are sqrt(diag(L V L'))", {
     y ~ ffpc(X, xind = s, decomppars = list(npc = 4)),
     data = sim$data,
     yind = sim$t,
-    sandwich = "none"
+    sandwich = FALSE
   )
   trm <- m$pffr$ffpc[[1]]
   n2 <- 12
@@ -153,27 +153,20 @@ test_that("coef.pffr SEs of the ffpc surface are sqrt(diag(L V L'))", {
       trm$PCMat[rep(seq_len(ns), times = n2), k]
   }
 
-  for (sw in c("none", "cl2")) {
-    V <- pffr_vcov(m, sandwich = sw, freq = FALSE)
-    cf <- coef(m, sandwich = sw, n2 = n2, ci = "pointwise")
+  for (sw in c(FALSE, TRUE)) {
+    V <- pffr_vcov(m, sandwich = sw)
+    cf <- suppressMessages(coef(m, sandwich = sw, n2 = n2, ci = "pointwise"))
     surf <- cf$smterms[["ffpc(X)"]]
     expect_equal(surf$coef[, "value"], drop(L %*% m$coefficients))
     expect_equal(surf$coef[, "se"], sqrt(rowSums((L %*% V) * L)))
+    df <- if (sw) pffr_influence_df(pffr_influence(m), L)$df else Inf
+    expect_equal(surf$coef[, "df"], rep_len(df, nrow(L)))
     expect_equal(
       surf$coef[, "upper"] - surf$coef[, "value"],
-      stats::qnorm(0.975) * surf$coef[, "se"]
+      stats::qt(0.975, surf$coef[, "df"]) * surf$coef[, "se"]
     )
   }
-
-  cf_satt <- coef(
-    m,
-    sandwich = "cl2",
-    n2 = n2,
-    ci = "pointwise",
-    crit = "satterthwaite"
-  )
-  df_satt <- cf_satt$smterms[["ffpc(X)"]]$coef[, "df"]
-  expect_true(all(is.finite(df_satt) & df_satt > 0 & df_satt < 50))
+  expect_true(all(is.finite(df) & df > 0 & df < 50))
 
   cf_sim <- coef(m, n2 = n2, ci = "simultaneous", n_sim = 200, sim_seed = 1)
   surf <- cf_sim$smterms[["ffpc(X)"]]
@@ -190,7 +183,7 @@ test_that("predict.pffr uses the fitted FPC scores for new curves", {
     y ~ ffpc(X, decomppars = list(npc = 5), npc.max = 3),
     data = sim$data,
     yind = sim$t,
-    sandwich = "none"
+    sandwich = FALSE
   )
   trm <- m$pffr$ffpc[[1]]
   expect_gt(ncol(trm$score_pars$efunctions), 3)

@@ -530,15 +530,17 @@ test_that("algorithm='gamm' produces valid output", {
   dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
   t <- attr(dat, "yindex")
 
-  m_gamm <- expect_warning(
+  # The default falls back to model-based intervals with a message.
+  m_gamm <- expect_message(
     pffr(
       Y ~ xlin,
       yind = t,
       data = dat,
       algorithm = "gamm"
     ),
-    regexp = "sandwich = .* not supported for algorithm = \"gamm\""
+    regexp = "sandwich is not available for algorithm = \"gamm\""
   )
+  expect_identical(m_gamm$gam$pffr$sandwich, "none")
 
   # gamm returns list with $gam component
   expect_true(inherits(m_gamm, "pffr") || inherits(m_gamm, "list"))
@@ -558,9 +560,9 @@ test_that("algorithm='gamm4' produces valid output", {
   dat <- sim_xlin_data(n = n, nygrid = nygrid, SNR = 50)
   t <- attr(dat, "yindex")
 
-  m_gamm4 <- expect_warning(
+  m_gamm4 <- expect_message(
     pffr(Y ~ xlin, yind = t, data = dat, algorithm = "gamm4"),
-    regexp = "sandwich = .* not supported for algorithm = \"gamm4\""
+    regexp = "sandwich is not available for algorithm = \"gamm4\""
   )
 
   expect_true(inherits(m_gamm4, "pffr") || inherits(m_gamm4, "list"))
@@ -1421,6 +1423,10 @@ test_that("pffr_gls errors with deprecation message", {
     suppressWarnings(pffr_gls(Y ~ xlin)),
     "pffr_gls.*has been removed"
   )
+  expect_warning(
+    try(pffr_gls(Y ~ xlin), silent = TRUE),
+    "default intervals"
+  )
 })
 
 test_that("pffrGLS errors with deprecation message", {
@@ -1435,13 +1441,33 @@ test_that("pffrGLS errors with deprecation message", {
 # coefboot.pffr Tests
 ###############################################################################
 
+# pffr_coefboot() is deprecated; the tests below exercise it without the
+# deprecation warning, which is tested once here.
+quiet_coefboot <- function(...) {
+  withCallingHandlers(
+    pffr_coefboot(...),
+    deprecatedWarning = function(w) invokeRestart("muffleWarning")
+  )
+}
+
+test_that("pffr_coefboot and coefboot.pffr are deprecated", {
+  skip_on_cran()
+  m <- get_xlin_model()
+  expect_warning(
+    pffr_coefboot(m, B = 2, showProgress = FALSE),
+    "pffr_coefboot\\(\\) is deprecated"
+  )
+  w <- capture_warnings(coefboot.pffr(m, B = 2, showProgress = FALSE))
+  expect_length(grep("deprecated", w), 1L)
+})
+
 test_that("coefboot.pffr runs on simple pffr model", {
   skip_on_cran()
 
   m <- get_xlin_model()
 
   # Run bootstrap with small B for speed
-  boot_ci <- pffr_coefboot(m, B = 5, showProgress = FALSE)
+  boot_ci <- quiet_coefboot(m, B = 5, showProgress = FALSE)
 
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
@@ -1475,9 +1501,9 @@ test_that("coefboot.pffr handles family objects from local scope", {
       yind = t,
       data = dat,
       family = fam,
-      sandwich = "none"
+      sandwich = FALSE
     )
-    pffr_coefboot(m, B = 3, showProgress = FALSE)
+    quiet_coefboot(m, B = 3, showProgress = FALSE)
   })()
 
   expect_true(is.list(boot_ci))
@@ -1491,12 +1517,12 @@ test_that("coefboot.pffr residual resampling method works", {
   m <- get_xlin_model()
 
   # Test residual method
-  boot_ci <- pffr_coefboot(m, B = 5, method = "residual", showProgress = FALSE)
+  boot_ci <- quiet_coefboot(m, B = 5, method = "residual", showProgress = FALSE)
   expect_true(is.list(boot_ci))
   expect_lt(boot_ci$ci_meta$n_failed, boot_ci$ci_meta$B_requested)
 
   # Test centered residual method
-  boot_ci_c <- pffr_coefboot(
+  boot_ci_c <- quiet_coefboot(
     m,
     B = 5,
     method = "residual.c",
@@ -1512,7 +1538,7 @@ test_that("coefboot.pffr works with sparse/irregular data", {
   m_sparse <- get_sparse_model()
 
   # Run bootstrap with sparse data
-  boot_ci <- pffr_coefboot(m_sparse, B = 5, showProgress = FALSE)
+  boot_ci <- quiet_coefboot(m_sparse, B = 5, showProgress = FALSE)
 
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
@@ -1528,7 +1554,7 @@ test_that("coefboot.pffr works with gaulss family", {
   expect_s3_class(m_gaulss, "pffr")
 
   # Run bootstrap
-  boot_ci <- pffr_coefboot(m_gaulss, B = 5, showProgress = FALSE)
+  boot_ci <- quiet_coefboot(m_gaulss, B = 5, showProgress = FALSE)
 
   expect_true(is.list(boot_ci))
   expect_true("pterms" %in% names(boot_ci))
@@ -1569,7 +1595,7 @@ test_that("coefboot uses first confidence level as primary level", {
   skip_on_cran()
 
   m <- get_xlin_model()
-  boot_ci <- pffr_coefboot(
+  boot_ci <- quiet_coefboot(
     m,
     B = 5,
     conf = c(0.9, 0.95),
@@ -1622,7 +1648,7 @@ test_that("coef supports fixed eval_grid for term-aligned extraction", {
   template <- coef(
     m,
     se = FALSE,
-    sandwich = "none",
+    sandwich = FALSE,
     ci = "none",
     n1 = 40,
     n2 = 40,
@@ -1646,7 +1672,7 @@ test_that("coef supports fixed eval_grid for term-aligned extraction", {
   co_default <- coef(
     m_b,
     se = FALSE,
-    sandwich = "none",
+    sandwich = FALSE,
     ci = "none",
     n1 = 40,
     n2 = 40,
@@ -1655,7 +1681,7 @@ test_that("coef supports fixed eval_grid for term-aligned extraction", {
   co_fixed <- coef(
     m_b,
     se = FALSE,
-    sandwich = "none",
+    sandwich = FALSE,
     ci = "none",
     n1 = 40,
     n2 = 40,
@@ -1687,47 +1713,55 @@ test_that("coef supports fixed eval_grid for term-aligned extraction", {
 # Sandwich Correction Tests
 ###############################################################################
 
-test_that("pffr with sandwich='cluster' yields cluster-robust covariance", {
+# Reference gaulss scores in coefficient space (location and scale blocks).
+gaulss_reference_scores <- function(b, X) {
+  lpi <- attr(X, "lpi")
+  n <- length(b$y)
+  tau <- b$fitted.values[n + seq_len(n)]
+  eta1 <- b$linear.predictors[seq_len(n)]
+  eta2 <- b$linear.predictors[n + seq_len(n)]
+  r <- b$y - b$fitted.values[seq_len(n)]
+  pw <- b$prior.weights %||% rep(1, n)
+  w1 <- pw * (tau^2 * r) * b$family$linfo[[1]]$mu.eta(eta1)
+  w2 <- pw * (1 / tau - tau * r^2) * b$family$linfo[[2]]$mu.eta(eta2)
+  S <- matrix(0, n, ncol(X))
+  S[, lpi[[1]]] <- S[, lpi[[1]]] + w1 * X[, lpi[[1]], drop = FALSE]
+  S[, lpi[[2]]] <- S[, lpi[[2]]] + w2 * X[, lpi[[2]], drop = FALSE]
+  S
+}
+
+test_that("the default fit stores the CL2 covariance separately", {
   skip_on_cran()
 
   dat <- get_xlin_data()
   t <- attr(dat, "yindex")
   m_std <- get_xlin_model()
+  m_cl2 <- quiet_pffr(Y ~ xlin, yind = t, data = dat)
 
-  m_cl <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
-
-  # Sandwich type stored as character
   expect_identical(m_std$pffr$sandwich, "none")
-  expect_identical(m_cl$pffr$sandwich, "cluster")
+  expect_identical(m_cl2$pffr$sandwich, "cl2")
+  expect_identical(m_cl2$pffr$sandwich_info$cl2_adjustment, "exact")
 
   # $Vp/$Ve stay model-based (inviolate); the robust covariance is stored
   # separately in $pffr$Vsandwich and differs from the model-based one.
-  expect_identical(m_std$Vp, m_cl$Vp)
-  expect_identical(m_std$Ve, m_cl$Ve)
-  expect_false(is.null(m_cl$pffr$Vsandwich))
-  expect_gt(max(abs(m_cl$pffr$Vsandwich - m_cl$Vp)), 0)
-  expect_identical(m_cl$pffr$sandwich_info$type, "cluster")
-
-  # Cluster-robust differs from HC sandwich
-  m_std_stripped <- m_std
-  class(m_std_stripped) <- setdiff(class(m_std_stripped), "pffr")
-  hc_Vp <- vcov(m_std_stripped, sandwich = TRUE)
-  expect_false(identical(m_cl$pffr$Vsandwich, hc_Vp))
+  expect_identical(m_std$Vp, m_cl2$Vp)
+  expect_identical(m_std$Ve, m_cl2$Ve)
+  expect_false(is.null(m_cl2$pffr[["Vsandwich"]]))
+  expect_gt(max(abs(m_cl2$pffr$Vsandwich - m_cl2$Vp)), 0)
 
   # Coefficients identical (only covariance changes)
-  expect_equal(coef(m_std, raw = TRUE), coef(m_cl, raw = TRUE))
+  expect_equal(coef(m_std, raw = TRUE), coef(m_cl2, raw = TRUE))
 
-  # Summary shows sandwich type
-  summ_std <- summary(m_std)
-  summ_cl <- summary(m_cl)
-  expect_identical(summ_std$sandwich, "none")
-  expect_identical(summ_cl$sandwich, "cluster")
+  # Summary records whether the fit carries the sandwich
+  expect_false(summary(m_std)$sandwich)
+  expect_true(summary(m_cl2)$sandwich)
 
-  # coef.pffr on fitted model uses stored matrices
-  coef_cl <- coef(m_cl, sandwich = "cluster")
-  # coef.pffr on un-sandwiched model computes on the fly
-  coef_std_cl <- coef(m_std, sandwich = "cluster")
-  expect_equal(coef_cl$pterms[, "se"], coef_std_cl$pterms[, "se"])
+  # coef.pffr on the fitted model uses the stored matrix; on the model-based
+  # fit it computes the same CL2 covariance on the fly.
+  expect_equal(
+    coef(m_cl2)$pterms[, "se"],
+    coef(m_std, sandwich = TRUE)$pterms[, "se"]
+  )
 })
 
 test_that("coef.pffr `cluster` argument clusters at a custom (subject) level", {
@@ -1754,98 +1788,22 @@ test_that("coef.pffr `cluster` argument clusters at a custom (subject) level", {
 
   subj <- as.integer(dat$id) # one entry per curve
 
-  co_curve <- coef(fit, sandwich = "cluster") # default: cluster by curve
-  co_subj <- coef(fit, sandwich = "cluster", cluster = subj) # by subject
+  co_curve <- coef(fit) # default: cluster by curve
+  co_subj <- suppressWarnings(coef(fit, cluster = subj)) # by subject
 
   se_curve <- unlist(lapply(co_curve$smterms, function(s) s$coef$se))
   se_subj <- unlist(lapply(co_subj$smterms, function(s) s$coef$se))
 
   # Clustering at the subject level changes the standard errors.
   expect_false(isTRUE(all.equal(se_curve, se_subj)))
-  # cl2 with a custom cluster also runs.
-  expect_type(
-    suppressWarnings(coef(fit, sandwich = "cl2", cluster = subj)),
-    "list"
-  )
   # A wrong-length cluster errors cleanly.
   expect_error(
-    coef(fit, sandwich = "cluster", cluster = 1:3),
+    coef(fit, cluster = 1:3),
     "one entry per curve"
   )
 })
 
-test_that("pffr with sandwich='hc' yields observation-level HC sandwich", {
-  skip_on_cran()
-
-  dat <- get_xlin_data()
-  t <- attr(dat, "yindex")
-  m_std <- get_xlin_model()
-
-  m_hc <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "hc")
-
-  expect_identical(m_hc$pffr$sandwich, "hc")
-
-  # $Vp/$Vc stay model-based; the stored robust covariance matches
-  # mgcv::vcov.gam(sandwich=TRUE) computed on the uncorrected model.
-  m_std_stripped <- m_std
-  class(m_std_stripped) <- setdiff(class(m_std_stripped), "pffr")
-  expected_Vp <- vcov(m_std_stripped, sandwich = TRUE)
-  expect_identical(m_hc$Vp, m_std$Vp)
-  expect_equal(m_hc$pffr$Vsandwich, expected_Vp)
-})
-
-test_that("pffr default sandwich is auto, resolving per the policy", {
-  skip_on_cran()
-
-  # S2 default (PI decision 2026-07-08): the factory default is "auto". On
-  # this Gaussian fixture (exact score, small G, small D_g) the policy
-  # promotes to cl2; the resolution is messaged and the auto-default fit is
-  # identical to an explicit sandwich = "cl2" fit.
-  dat <- get_xlin_data()
-  t <- attr(dat, "yindex")
-  expect_message(
-    m_default <- quiet_pffr(Y ~ xlin, yind = t, data = dat),
-    "sandwich='auto' resolved to"
-  )
-  G <- length(unique(refund:::build_cluster_id(m_default$pffr)))
-  expect_identical(
-    m_default$pffr$sandwich,
-    refund:::pffr_sandwich_auto_policy(
-      G = G,
-      maxDg = max(table(refund:::build_cluster_id(m_default$pffr))),
-      family = m_default$family
-    )
-  )
-  m_cl2 <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
-  expect_equal(m_default$pffr$Vsandwich, m_cl2$pffr$Vsandwich)
-})
-
-test_that("pffr with sandwich='cl2' yields leverage-adjusted covariance", {
-  skip_on_cran()
-
-  dat <- get_xlin_data()
-  t <- attr(dat, "yindex")
-  m_std <- get_xlin_model()
-
-  m_cl <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
-  m_cl2 <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
-
-  expect_identical(m_cl2$pffr$sandwich, "cl2")
-  expect_equal(coef(m_std, raw = TRUE), coef(m_cl2, raw = TRUE))
-
-  # $Vp stays model-based; the stored CL2 covariance differs from both the
-  # model-based and the stored CR1 covariance.
-  expect_identical(m_cl2$Vp, m_std$Vp)
-  expect_gt(max(abs(m_cl2$pffr$Vsandwich - m_std$Vp)), 0)
-  expect_gt(max(abs(m_cl2$pffr$Vsandwich - m_cl$pffr$Vsandwich)), 0)
-
-  # coef.pffr on fitted model uses stored CL2 covariance.
-  coef_cl2 <- coef(m_cl2, sandwich = "cl2")
-  coef_std_cl2 <- coef(m_std, sandwich = "cl2")
-  expect_equal(coef_cl2$pterms[, "se"], coef_std_cl2$pterms[, "se"])
-})
-
-test_that("CL2 reports leverage diagnostics and warns when the cap is hit", {
+test_that("CL2 reports leverage diagnostics", {
   skip_on_cran()
 
   m <- get_xlin_model()
@@ -1854,39 +1812,14 @@ test_that("CL2 reports leverage diagnostics and warns when the cap is hit", {
   cluster_id <- build_cluster_id(m$pffr)
 
   expect_warning(
-    V_benign <- gam_sandwich_cluster_cl2(b, cluster_id, freq = FALSE),
+    V_benign <- gam_sandwich_cluster_cl2(b, cluster_id),
     NA
   )
   expect_identical(attr(V_benign, "cl2_adjustment"), "exact")
   expect_identical(attr(V_benign, "n_adjusted"), 0L)
   expect_true(is.finite(attr(V_benign, "min_block_eig")))
   expect_gt(attr(V_benign, "min_block_eig"), 0)
-
-  expect_warning(
-    V_capped <- gam_sandwich_cluster_cl2(
-      b,
-      cluster_id,
-      freq = FALSE,
-      leverage_cap = 0.001,
-      cl2_adjustment = "shortcut"
-    ),
-    "CL2 leverage adjustment hit the leverage cap"
-  )
-  expect_gt(attr(V_capped, "n_capped_clusters"), 0L)
-  expect_gt(attr(V_capped, "max_leverage"), 0.001)
-
-  V_capped_repeat <- suppressWarnings(gam_sandwich_cluster_cl2(
-    b,
-    cluster_id,
-    freq = FALSE,
-    leverage_cap = 0.001,
-    cl2_adjustment = "shortcut"
-  ))
-  expect_equal(
-    as.matrix(V_capped),
-    as.matrix(V_capped_repeat),
-    tolerance = 1e-12
-  )
+  expect_lte(attr(V_benign, "max_leverage"), 1)
 })
 
 test_that("gam_sandwich_cluster_cl2 works for poisson and binomial", {
@@ -1898,124 +1831,48 @@ test_that("gam_sandwich_cluster_cl2 works for poisson and binomial", {
     dat <- sim_xlin_data(n = 40, nygrid = 25, SNR = 10, family = fam)
     t <- attr(dat, "yindex")
 
-    m <- pffr(Y ~ xlin, yind = t, data = dat, family = fam)
+    m <- suppressMessages(pffr(Y ~ xlin, yind = t, data = dat, family = fam))
+    expect_identical(m$pffr$sandwich, "cl2")
     m_stripped <- m
     class(m_stripped) <- setdiff(class(m_stripped), "pffr")
     cluster_id <- build_cluster_id(m$pffr)
 
-    V_cl <- gam_sandwich_cluster(m_stripped, cluster_id, freq = FALSE)
-    V_cl2 <- suppressWarnings(gam_sandwich_cluster_cl2(
-      m_stripped,
-      cluster_id,
-      freq = FALSE
-    ))
+    V_cl2 <- gam_sandwich_cluster_cl2(m_stripped, cluster_id)
 
     expect_equal(V_cl2, t(V_cl2), tolerance = 1e-10)
     expect_true(all(is.finite(diag(V_cl2))))
     expect_true(all(diag(V_cl2) >= 0))
-    expect_gt(max(abs(V_cl2 - V_cl)), 0)
+    expect_gt(max(abs(V_cl2 - m$Vp)), 0)
+    expect_equal(matrix(V_cl2, nrow(V_cl2)), matrix(vcov(m), nrow(V_cl2)))
 
-    coef_cl2 <- suppressWarnings(coef(m, sandwich = "cl2"))
+    coef_cl2 <- coef(m, ci = "pointwise")
     expect_true(all(is.finite(coef_cl2$pterms[, "se"])))
+    expect_identical(coef_cl2$ci_meta$crit_used, "satterthwaite")
   }
 })
 
-test_that("sandwich backward compat: TRUE/FALSE still work", {
+test_that("sandwich = TRUE/FALSE select CL2 or model-based covariance", {
   skip_on_cran()
 
   dat <- get_xlin_data()
   t <- attr(dat, "yindex")
 
-  # TRUE -> "cluster"
   m_true <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = TRUE)
-  expect_identical(m_true$pffr$sandwich, "cluster")
+  expect_identical(m_true$pffr$sandwich, "cl2")
 
-  # FALSE -> "none"
   m_false <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = FALSE)
   expect_identical(m_false$pffr$sandwich, "none")
 
-  # coef.pffr also accepts TRUE/FALSE
-  coef_true <- coef(m_false, sandwich = TRUE)
-  coef_cluster <- coef(m_false, sandwich = "cluster")
-  expect_equal(coef_true$pterms[, "se"], coef_cluster$pterms[, "se"])
-})
-
-test_that("coef.pffr recomputes when sandwich type differs from fit", {
-  skip_on_cran()
-
-  dat <- get_xlin_data()
-  t <- attr(dat, "yindex")
-
-  # Fit with HC, request cluster — should NOT reuse HC matrices
-  m_hc <- pffr(Y ~ xlin, yind = t, data = dat, sandwich = "hc")
-  coef_hc_stored <- coef(m_hc, sandwich = "hc")
-  coef_cl_from_hc <- coef(m_hc, sandwich = "cluster")
-
-  # Cluster SEs should differ from stored HC SEs
-  expect_false(identical(
-    coef_hc_stored$pterms[, "se"],
-    coef_cl_from_hc$pterms[, "se"]
-  ))
-
-  # Fit without sandwich, request cluster on the fly
-  m_none <- get_xlin_model()
-  coef_cl_from_none <- coef(m_none, sandwich = "cluster")
-  expect_true(all(is.finite(coef_cl_from_none$pterms[, "se"])))
-
-  # Fit with CL2, request cluster and HC to force recomputation paths.
-  m_cl2 <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cl2")
-  coef_cl2_stored <- coef(m_cl2, sandwich = "cl2")
-  coef_cl_from_cl2 <- coef(m_cl2, sandwich = "cluster")
-  coef_hc_from_cl2 <- coef(m_cl2, sandwich = "hc")
-
-  expect_false(identical(
-    coef_cl2_stored$pterms[, "se"],
-    coef_cl_from_cl2$pterms[, "se"]
-  ))
-  expect_false(identical(
-    coef_cl2_stored$pterms[, "se"],
-    coef_hc_from_cl2$pterms[, "se"]
-  ))
-})
-
-test_that("gam_sandwich_cluster works for gaulss family", {
-  skip_on_cran()
-
-  set.seed(42)
-  n <- 60
-  T_grid <- 20
-  t_grid <- seq(0, 1, length.out = T_grid)
-  x <- rnorm(n)
-  beta1 <- cos(2 * pi * t_grid)
-  signal <- outer(rep(1, n), sin(2 * pi * t_grid)) + outer(x, beta1)
-  Y <- signal + matrix(rnorm(n * T_grid, sd = 0.5), n, T_grid)
-
-  dat <- data.frame(Y = I(Y), x = x)
-  m <- pffr(Y ~ x, yind = t_grid, data = dat, family = mgcv::gaulss())
-
-  # Covariance matrix should be symmetric and positive semi-definite
-  m_stripped <- m
-  class(m_stripped) <- setdiff(class(m_stripped), "pffr")
-  cluster_id <- build_cluster_id(m$pffr)
-  V <- gam_sandwich_cluster(m_stripped, cluster_id, freq = FALSE)
-  expect_equal(V, t(V), tolerance = 1e-12)
-  expect_true(all(diag(V) >= 0))
-
-  # Cluster sandwich should differ from HC sandwich
-  V_hc <- mgcv::vcov.gam(m_stripped, sandwich = TRUE, freq = FALSE)
-  expect_false(identical(V, V_hc))
-
-  # Cluster sandwich should work via coef.pffr without error
-  coef_cl <- coef(m, sandwich = "cluster")
-  expect_true(length(coef_cl$smterms) > 0)
-
-  # All SEs in all terms should be positive and finite
-  for (sm in coef_cl$smterms) {
-    if (!is.null(sm$coef$se)) {
-      expect_true(all(is.finite(sm$coef$se)))
-      expect_true(all(sm$coef$se > 0))
-    }
-  }
+  # coef.pffr switches between the two on either fit
+  expect_equal(
+    coef(m_false, sandwich = TRUE)$pterms[, "se"],
+    coef(m_true)$pterms[, "se"]
+  )
+  expect_equal(
+    coef(m_true, sandwich = FALSE)$pterms[, "se"],
+    coef(m_false)$pterms[, "se"]
+  )
+  expect_error(coef(m_true, sandwich = "robust"), "must be TRUE")
 })
 
 test_that("gam_sandwich_cluster_cl2 works for gaulss family", {
@@ -2026,13 +1883,12 @@ test_that("gam_sandwich_cluster_cl2 works for gaulss family", {
   class(m_stripped) <- setdiff(class(m_stripped), "pffr")
   cluster_id <- build_cluster_id(m$pffr)
 
-  V_cl <- gam_sandwich_cluster(m_stripped, cluster_id, freq = FALSE)
-  V_cl2 <- gam_sandwich_cluster_cl2(m_stripped, cluster_id, freq = FALSE)
+  V_cl2 <- gam_sandwich_cluster_cl2(m_stripped, cluster_id)
 
   expect_equal(V_cl2, t(V_cl2), tolerance = 1e-10)
   expect_true(all(is.finite(diag(V_cl2))))
   expect_true(all(diag(V_cl2) >= 0))
-  expect_gt(max(abs(V_cl2 - V_cl)), 0)
+  expect_gt(max(abs(V_cl2 - m$Vp)), 0)
 
   dat <- get_xlin_data()
   t <- attr(dat, "yindex")
@@ -2040,12 +1896,11 @@ test_that("gam_sandwich_cluster_cl2 works for gaulss family", {
     Y ~ xlin,
     yind = t,
     data = dat,
-    family = mgcv::gaulss(),
-    sandwich = "cl2"
+    family = mgcv::gaulss()
   )
   expect_identical(m_fit_cl2$pffr$sandwich, "cl2")
 
-  coef_cl2 <- coef(m, sandwich = "cl2")
+  coef_cl2 <- coef(m, sandwich = TRUE)
   expect_true(length(coef_cl2$smterms) > 0)
   for (sm in coef_cl2$smterms) {
     if (!is.null(sm$coef$se)) {
@@ -2068,34 +1923,24 @@ test_that("gaulss CL2 uses Fisher two-block whitening (trace(H) = EDF)", {
 
   # (1) Score reconstruction is exact: Xw^T z reproduces the gaulss score.
   X <- model.matrix(b)
-  score_total <- colSums(refund:::compute_gaulss_scores(b, X))
+  score_total <- colSums(gaulss_reference_scores(b, X))
   reconstructed <- as.vector(crossprod(work$Xw, work$z))
   expect_equal(reconstructed, unname(score_total), tolerance = 1e-9)
 
   # (2) Per-cluster hat trace equals the model EDF (defining property of the
-  #     penalized hat — the old sign-split gave trace ~5x too small).
+  #     penalized hat -- the old sign-split gave trace ~5x too small).
   groups <- unique(work$cluster_id)
   trace_H <- 0
-  infl <- numeric(length(groups))
   for (k in seq_along(groups)) {
-    idx <- which(work$cluster_id == groups[k])
-    Xwg <- work$Xw[idx, , drop = FALSE]
-    zg <- work$z[idx]
-    Hgg <- Xwg %*% Vp %*% t(Xwg)
-    Hgg <- 0.5 * (Hgg + t(Hgg))
-    trace_H <- trace_H + sum(diag(Hgg))
-    Ag <- refund:::sym_inv_sqrt(diag(length(idx)) - Hgg)
-    ug_raw <- crossprod(Xwg, zg)
-    ug <- crossprod(Xwg, Ag %*% zg)
-    infl[k] <- sqrt(sum(ug^2)) / max(sqrt(sum(ug_raw^2)), 1e-12)
+    Xwg <- work$Xw[work$cluster_id == groups[k], , drop = FALSE]
+    trace_H <- trace_H + sum(diag(Xwg %*% Vp %*% t(Xwg)))
   }
   edf_total <- sum(b$edf)
   expect_equal(trace_H, edf_total, tolerance = 0.05 * edf_total)
 
   # (3) Discriminate against the OLD sign-split factorization, whose hat block
   #     scaled with |r| instead of leverage: its total trace is several times
-  #     smaller than the EDF. Reconstruct it here and confirm the Fisher hat is
-  #     far larger (the definitive regression guard for the fix).
+  #     smaller than the EDF.
   eta1 <- b$linear.predictors[seq_len(length(b$y))]
   eta2 <- b$linear.predictors[length(b$y) + seq_len(length(b$y))]
   tau <- b$fitted.values[length(b$y) + seq_len(length(b$y))]
@@ -2119,181 +1964,11 @@ test_that("gaulss CL2 uses Fisher two-block whitening (trace(H) = EDF)", {
   expect_lt(trace_ss, 0.5 * edf_total) # old behaviour: trace << EDF
   expect_gt(trace_H, 2 * trace_ss) # Fisher hat is the genuine, larger one
 
-  # The leverage adjustment inflates cluster contributions (magnitude depends
-  # on the per-cluster leverage of this fixture; just confirm it is > 1).
-  expect_gt(median(infl), 1)
-
-  # (4) Resulting covariance is finite, symmetric, PSD-ish, and the typical SE
-  #     is inflated relative to CR1 (aggregate criterion, not componentwise).
-  V_cl2 <- gam_sandwich_cluster_cl2(b, cluster_id, freq = FALSE)
-  V_cr1 <- gam_sandwich_cluster(b, cluster_id, freq = FALSE)
+  # (4) Resulting covariance is finite, symmetric, PSD-ish.
+  V_cl2 <- gam_sandwich_cluster_cl2(b, cluster_id)
   expect_equal(V_cl2, t(V_cl2), tolerance = 1e-10)
   expect_true(all(is.finite(V_cl2)))
   expect_true(all(diag(V_cl2) >= 0))
-  se_cl2 <- sqrt(pmax(diag(V_cl2), 0))
-  se_cr1 <- sqrt(pmax(diag(V_cr1), 0))
-  keep <- se_cr1 > 1e-10
-  expect_gt(median(se_cl2[keep] / se_cr1[keep]), 1)
-})
-
-test_that("CR1 dof_correction is off by default and CL2 never applies it", {
-  skip_on_cran()
-
-  m <- get_gaulss_model()
-  b <- m
-  class(b) <- setdiff(class(b), "pffr")
-  cluster_id <- build_cluster_id(m$pffr)
-
-  # (a) Default (= "none") regression-locks the current output, byte-for-byte.
-  V_default <- gam_sandwich_cluster(b, cluster_id, freq = TRUE)
-  V_none <- gam_sandwich_cluster(
-    b,
-    cluster_id,
-    freq = TRUE,
-    dof_correction = "none"
-  )
-  expect_identical(V_default, V_none)
-
-  # (b) "edf" multiplies the meat by the expected (N-1)/(N-EDF) scalar.
-  #     With freq = TRUE (B2 = 0) the whole covariance scales by the factor.
-  N <- length(cluster_id)
-  edf <- sum(b$edf)
-  factor <- (N - 1) / (N - edf)
-  expect_gt(factor, 1)
-  V_edf <- gam_sandwich_cluster(
-    b,
-    cluster_id,
-    freq = TRUE,
-    dof_correction = "edf",
-    edf_type = "trace"
-  )
-  expect_equal(V_edf, factor * V_none, tolerance = 1e-10)
-
-  # With freq = FALSE the factor scales ONLY the meat, not the Bayesian B2 term.
-  B2 <- b$Vp - b$Ve
-  V_edf_b <- gam_sandwich_cluster(
-    b,
-    cluster_id,
-    freq = FALSE,
-    dof_correction = "edf"
-  )
-  V_none_b <- gam_sandwich_cluster(b, cluster_id, freq = FALSE)
-  expect_equal(V_edf_b - B2, factor * (V_none_b - B2), tolerance = 1e-9)
-
-  # compute_dof_factor agrees and guards bad EDF.
-  expect_equal(
-    refund:::compute_dof_factor(b, cluster_id, "edf", "trace"),
-    factor
-  )
-  expect_identical(
-    refund:::compute_dof_factor(b, cluster_id, "none", "trace"),
-    1
-  )
-
-  # (c) The CL2 path does NOT apply the dof factor (it has no such argument and
-  #     requesting one via the fitting surface warns).
-  dat <- get_xlin_data()
-  t <- attr(dat, "yindex")
-  expect_warning(
-    m_cl2 <- pffr(
-      Y ~ xlin,
-      yind = t,
-      data = dat,
-      sandwich = "cl2",
-      dof_correction = "edf"
-    ),
-    "ignored for sandwich = \"cl2\""
-  )
-})
-
-test_that("dof_correction is stored and invalidates the coef.pffr cache", {
-  skip_on_cran()
-
-  dat <- get_xlin_data()
-  t <- attr(dat, "yindex")
-
-  # The dof factor and its effect on the recomputed covariance are locked
-  # exactly at the gam_sandwich_cluster level in the test above; here we check
-  # the public surface: storage, cache reuse, and cache invalidation.
-
-  # (a) Default fit stores dof_correction = "none".
-  m0 <- quiet_pffr(Y ~ xlin, yind = t, data = dat, sandwich = "cluster")
-  expect_identical(m0$pffr$dof_correction, "none")
-  expect_identical(m0$pffr$edf_type, "trace")
-
-  # Requesting "edf" invalidates the cache and changes the SEs.
-  se_none <- coef(m0, sandwich = "cluster")$pterms[, "se"]
-  se_edf <- coef(
-    m0,
-    sandwich = "cluster",
-    dof_correction = "edf"
-  )$pterms[, "se"]
-  expect_false(isTRUE(all.equal(unname(se_none), unname(se_edf))))
-
-  # (b) Fit with dof = "edf": stored as metadata.
-  m1 <- quiet_pffr(
-    Y ~ xlin,
-    yind = t,
-    data = dat,
-    sandwich = "cluster",
-    dof_correction = "edf"
-  )
-  expect_identical(m1$pffr$dof_correction, "edf")
-
-  # Default coef() inherits the stored "edf" and reuses the cached covariance;
-  # an explicit matching request returns the identical cached matrix.
-  se_inherit <- coef(m1, sandwich = "cluster")$pterms[, "se"]
-  se_explicit <- coef(
-    m1,
-    sandwich = "cluster",
-    dof_correction = "edf"
-  )$pterms[, "se"]
-  expect_identical(unname(se_inherit), unname(se_explicit))
-
-  # Overriding to "none" differs from the inherited "edf" (cache invalidated).
-  se_override <- coef(
-    m1,
-    sandwich = "cluster",
-    dof_correction = "none"
-  )$pterms[, "se"]
-  expect_false(isTRUE(all.equal(unname(se_inherit), unname(se_override))))
-})
-
-test_that("compute_dof_factor guards against invalid EDF / N / G", {
-  skip_on_cran()
-
-  cid <- rep(1:4, each = 5) # N = 20, G = 4
-
-  # "none" always returns the scalar 1, regardless of (missing) edf.
-  expect_identical(refund:::compute_dof_factor(list(), cid, "none", "trace"), 1)
-
-  # EDF >= N is rejected.
-  expect_error(
-    refund:::compute_dof_factor(list(edf = rep(1, 20)), cid, "edf", "trace"),
-    "must be finite and in"
-  )
-  # edf2 unavailable -> NA -> rejected with an informative message.
-  expect_error(
-    refund:::compute_dof_factor(list(edf = rep(0.1, 5)), cid, "edf", "edf2"),
-    "must be finite and in"
-  )
-  # N < 2 is rejected.
-  expect_error(
-    refund:::compute_dof_factor(list(edf = 0.5), 1L, "edf", "trace"),
-    "at least N = 2"
-  )
-  # G < 2 is rejected.
-  expect_error(
-    refund:::compute_dof_factor(list(edf = 0.5), rep(1L, 10), "edf", "trace"),
-    "at least two clusters"
-  )
-
-  # "edf2" and "basis" produce valid, finite factors when available.
-  b <- list(edf = rep(0.4, 5), edf2 = rep(0.5, 5), coefficients = rep(0, 6))
-  f_edf2 <- refund:::compute_dof_factor(b, cid, "edf", "edf2")
-  f_basis <- refund:::compute_dof_factor(b, cid, "edf", "basis")
-  expect_equal(f_edf2, (20 - 1) / (20 - sum(b$edf2)))
-  expect_equal(f_basis, (20 - 1) / (20 - length(b$coefficients)))
 })
 
 test_that("gaulss CL2 whitening preserves the score under prior weights", {
@@ -2305,7 +1980,7 @@ test_that("gaulss CL2 whitening preserves the score under prior weights", {
   cluster_id <- build_cluster_id(m$pffr)
 
   # Inject non-unit positive prior weights and confirm the whitened working
-  # object still reconstructs the (prior-weighted) gaulss score exactly — i.e.
+  # object still reconstructs the (prior-weighted) gaulss score exactly -- i.e.
   # the prior weight cancels correctly in z_k = w_k / s_k.
   set.seed(11)
   b$prior.weights <- runif(length(b$y), 0.5, 2)
@@ -2313,11 +1988,11 @@ test_that("gaulss CL2 whitening preserves the score under prior weights", {
 
   work <- refund:::build_cl2_working_gaulss(b, cluster_id)
   recon <- as.vector(crossprod(work$Xw, work$z))
-  score <- colSums(refund:::compute_gaulss_scores(b, X))
+  score <- colSums(gaulss_reference_scores(b, X))
   expect_equal(recon, unname(score), tolerance = 1e-9)
 
   # And the resulting CL2 covariance is still finite, symmetric, PSD-ish.
-  V <- gam_sandwich_cluster_cl2(b, cluster_id, freq = FALSE)
+  V <- gam_sandwich_cluster_cl2(b, cluster_id)
   expect_equal(V, t(V), tolerance = 1e-10)
   expect_true(all(is.finite(V)))
   expect_true(all(diag(V) >= 0))
@@ -2328,7 +2003,13 @@ test_that("CL2 errors for unsupported custom family$sandwich", {
 
   dat <- sim_xlin_data(n = 40, nygrid = 25, SNR = 10, family = mgcv::gaulss())
   t <- attr(dat, "yindex")
-  m <- pffr(Y ~ xlin, yind = t, data = dat, family = mgcv::gaulss())
+  m <- pffr(
+    Y ~ xlin,
+    yind = t,
+    data = dat,
+    family = mgcv::gaulss(),
+    sandwich = FALSE
+  )
 
   m_stripped <- m
   class(m_stripped) <- setdiff(class(m_stripped), "pffr")
@@ -2337,7 +2018,7 @@ test_that("CL2 errors for unsupported custom family$sandwich", {
 
   cluster_id <- build_cluster_id(m$pffr)
   expect_error(
-    gam_sandwich_cluster_cl2(m_custom, cluster_id, freq = FALSE),
+    gam_sandwich_cluster_cl2(m_custom, cluster_id),
     "No cluster-robust covariance"
   )
 })
@@ -2376,153 +2057,45 @@ test_that("coef.pffr adds pointwise and simultaneous CIs", {
   expect_gte(median(width_sim), median(width_pw))
 })
 
-test_that("coef.pffr simultaneous CI uses finite-G t reference by default", {
+test_that("simultaneous bands use a t_{G-1} reference with the CL2 sandwich", {
   skip_on_cran()
 
   m <- get_xlin_model()
-
-  coef_t <- coef(
-    m,
-    sandwich = "none",
-    ci = "simultaneous",
-    ci_ref = "t",
-    level = 0.95,
-    n_sim = 800,
-    sim_seed = 1701,
-    n1 = 40
-  )
-  coef_t_repeat <- coef(
-    m,
-    sandwich = "none",
-    ci = "simultaneous",
-    ci_ref = "t",
-    level = 0.95,
-    n_sim = 800,
-    sim_seed = 1701,
-    n1 = 40
-  )
-  coef_normal <- coef(
-    m,
-    sandwich = "none",
-    ci = "simultaneous",
-    ci_ref = "normal",
-    level = 0.95,
-    n_sim = 800,
-    sim_seed = 1701,
-    n1 = 40
-  )
-
-  crit_t <- coef_t$smterms[[1]]$crit
-  crit_normal <- coef_normal$smterms[[1]]$crit
-  expect_gt(crit_t, crit_normal)
-  expect_identical(crit_t, coef_t_repeat$smterms[[1]]$crit)
-  expect_identical(coef_t$ci_meta$ci_ref, "t")
-  expect_identical(coef_t$ci_meta$ci_ref_used, "t")
-  expect_identical(coef_t$ci_meta$ci_ref_n_clusters, m$pffr$nobs)
-  expect_equal(coef_t$ci_meta$ci_ref_df, m$pffr$nobs - 1)
-
-  cluster <- rep(seq_len(10), each = 3)
-  coef_t_clustered <- coef(
-    m,
-    sandwich = "none",
-    cluster = cluster,
-    ci = "simultaneous",
-    ci_ref = "t",
-    level = 0.95,
-    n_sim = 800,
-    sim_seed = 1701,
-    n1 = 40
-  )
-  expect_identical(coef_t_clustered$ci_meta$ci_ref_n_clusters, 10L)
-  expect_equal(coef_t_clustered$ci_meta$ci_ref_df, 9)
-  expect_gt(coef_t_clustered$smterms[[1]]$crit, crit_t)
-  expect_error(
+  sim_coef <- function(...) {
     coef(
       m,
-      sandwich = "none",
-      cluster = cluster[-1],
       ci = "simultaneous",
-      ci_ref = "t",
-      n_sim = 50,
+      level = 0.95,
+      n_sim = 800,
       sim_seed = 1701,
-      n1 = 20
-    ),
+      n1 = 40,
+      ...
+    )
+  }
+  coef_t <- sim_coef(sandwich = TRUE)
+  expect_identical(coef_t$ci_meta$ci_ref_used, "t")
+  expect_equal(coef_t$ci_meta$ci_ref_df, m$pffr$nobs - 1)
+  expect_identical(
+    coef_t$smterms[[1]]$crit,
+    sim_coef(sandwich = TRUE)$smterms[[1]]$crit
+  )
+  expect_gt(coef_t$smterms[[1]]$crit, stats::qnorm(.975))
+
+  coef_clustered <- sim_coef(
+    sandwich = TRUE,
+    cluster = rep(seq_len(10), each = 3)
+  )
+  expect_equal(coef_clustered$ci_meta$ci_ref_df, 9)
+  expect_error(
+    sim_coef(sandwich = TRUE, cluster = rep(seq_len(10), each = 3)[-1]),
     "one entry per curve"
   )
 
-  # Legacy Gaussian multiplier path is unchanged when ci_ref = "normal".
-  # Numeric eigenspace choices vary with mgcv/BLAS. Check the actual contract.
-  repeated_normal <- coef(
-    m,
-    sandwich = "none",
-    ci = "simultaneous",
-    ci_ref = "normal",
-    level = .95,
-    n_sim = 800,
-    sim_seed = 1701,
-    n1 = 40
-  )
-  expect_identical(crit_normal, repeated_normal$smterms[[1]]$crit)
-  expect_gt(crit_normal, stats::qnorm(.975))
-
-  # At large G the t scale is close to one, so the critical values converge.
-  m_large <- m
-  m_large$pffr$nobs <- 2000L
-  coef_t_large <- coef(
-    m_large,
-    sandwich = "none",
-    ci = "simultaneous",
-    ci_ref = "t",
-    level = 0.95,
-    n_sim = 800,
-    sim_seed = 1701,
-    n1 = 40
-  )
-  coef_normal_large <- coef(
-    m_large,
-    sandwich = "none",
-    ci = "simultaneous",
-    ci_ref = "normal",
-    level = 0.95,
-    n_sim = 800,
-    sim_seed = 1701,
-    n1 = 40
-  )
-  large_ratio <- coef_t_large$smterms[[1]]$crit /
-    coef_normal_large$smterms[[1]]$crit
-  expect_lt(abs(large_ratio - 1), 0.03)
-
-  # G <= 1 falls back to the Gaussian multiplier without failing.
-  m_one <- m
-  m_one$pffr$nobs <- 1L
-  coef_one_t <- expect_warning(
-    coef(
-      m_one,
-      sandwich = "none",
-      ci = "simultaneous",
-      ci_ref = "t",
-      level = 0.95,
-      n_sim = 200,
-      sim_seed = 1701,
-      n1 = 20
-    ),
-    "requires at least two independent curves or clusters"
-  )
-  coef_one_normal <- coef(
-    m_one,
-    sandwich = "none",
-    ci = "simultaneous",
-    ci_ref = "normal",
-    level = 0.95,
-    n_sim = 200,
-    sim_seed = 1701,
-    n1 = 20
-  )
-  expect_identical(coef_one_t$ci_meta$ci_ref_used, "normal")
-  expect_identical(
-    coef_one_t$smterms[[1]]$crit,
-    coef_one_normal$smterms[[1]]$crit
-  )
+  # Model-based covariance: Gaussian multiplier reference.
+  coef_normal <- sim_coef(sandwich = FALSE)
+  expect_identical(coef_normal$ci_meta$ci_ref_used, "normal")
+  expect_true(is.na(coef_normal$ci_meta$ci_ref_df))
+  expect_gt(coef_normal$smterms[[1]]$crit, stats::qnorm(.975))
 })
 
 test_that("coef.pffr simultaneous CI works for poisson family", {
@@ -2535,12 +2108,12 @@ test_that("coef.pffr simultaneous CI works for poisson family", {
     yind = t,
     data = dat,
     family = poisson(),
-    sandwich = "none"
+    sandwich = FALSE
   )
 
   coef_sim <- coef(
     m,
-    sandwich = "cluster",
+    sandwich = TRUE,
     ci = "simultaneous",
     n_sim = 250,
     sim_seed = 42,
@@ -2559,7 +2132,7 @@ test_that("coef.pffr simultaneous CI works for gaulss", {
   m <- get_gaulss_model()
   coef_sim <- coef(
     m,
-    sandwich = "none",
+    sandwich = FALSE,
     ci = "simultaneous",
     n_sim = 250,
     sim_seed = 99,

@@ -27,13 +27,12 @@ make_storage_fits <- local({
           Y ~ ff(X1),
           data = dat,
           yind = yind,
-          sandwich = "none"
+          sandwich = FALSE
         ),
         fit_cluster = quiet_pffr(
           Y ~ ff(X1),
           data = dat,
-          yind = yind,
-          sandwich = "cluster"
+          yind = yind
         )
       )
     }
@@ -49,9 +48,8 @@ make_old_format <- function(fit) {
   old$pffr$model_cov <- list(Vp = fit$Vp, Ve = fit$Ve, Vc = fit$Vc)
   old$Vp <- fit$pffr$Vsandwich
   old$Vc <- fit$pffr$Vsandwich
-  old$Ve <- fit$pffr$Vsandwich_freq
+  old$Ve <- fit$pffr$Vsandwich
   old$pffr$Vsandwich <- NULL
-  old$pffr$Vsandwich_freq <- NULL
   old$pffr$sandwich_info <- NULL
   old$pffr$Vsandwich_cache <- NULL
   old$pffr$cov_format <- NULL
@@ -74,7 +72,7 @@ test_that("(a) $Vp/$Vc/$Ve on a sandwich fit are bitwise the model-based ones", 
   fit_none <- fits$fit_none
   fit_cluster <- fits$fit_cluster
 
-  # bitwise identical to the sandwich = "none" fit on the same data/seed
+  # bitwise identical to the sandwich = FALSE fit on the same data/seed
   expect_identical(fit_cluster$Vp, fit_none$Vp)
   expect_identical(fit_cluster$Vc, fit_none$Vc)
   expect_identical(fit_cluster$Ve, fit_none$Ve)
@@ -83,25 +81,26 @@ test_that("(a) $Vp/$Vc/$Ve on a sandwich fit are bitwise the model-based ones", 
   expect_true(is.matrix(fit_cluster$pffr$Vsandwich))
   expect_gt(max(abs(fit_cluster$pffr$Vsandwich - fit_cluster$Vp)), 0)
   info <- fit_cluster$pffr$sandwich_info
-  expect_identical(info$type, "cluster")
+  expect_identical(info$type, "cl2")
+  expect_identical(info$cl2_adjustment, "exact")
   expect_identical(info$G, 25L)
-  expect_true(is.numeric(info$n_capped) || is.integer(info$n_capped))
+  expect_true(is.numeric(info$n_adjusted))
   expect_true(!is.null(info$version))
   # no legacy stash on new fits
   expect_null(fit_cluster$pffr$model_cov)
 })
 
-test_that("(b) coef(fit, sandwich='none') equals the sandwich-free fit", {
+test_that("(b) coef(fit, sandwich = FALSE) equals the sandwich-free fit", {
   skip_on_cran()
 
   fits <- make_storage_fits()
   # this exact call silently returned robust SEs pre-fix
-  se_robustfit_none <- ff_se(fits$fit_cluster, sandwich = "none")
-  se_cleanfit_none <- ff_se(fits$fit_none, sandwich = "none")
+  se_robustfit_none <- ff_se(fits$fit_cluster, sandwich = FALSE)
+  se_cleanfit_none <- ff_se(fits$fit_none, sandwich = FALSE)
   expect_equal(se_robustfit_none, se_cleanfit_none, tolerance = 1e-12)
 
   # and they must differ from the fit-time robust SEs
-  se_robust <- ff_se(fits$fit_cluster, sandwich = "cluster")
+  se_robust <- ff_se(fits$fit_cluster)
   expect_false(isTRUE(all.equal(se_robustfit_none, se_robust)))
 })
 
@@ -110,23 +109,23 @@ test_that("(c) recompute-on-robust-fit equals compute-on-clean-fit", {
 
   fits <- make_storage_fits()
   # kills the double-sandwich class of bug forever
-  se_cl2_on_robust <- ff_se(fits$fit_cluster, sandwich = "cl2")
-  se_cl2_on_clean <- ff_se(fits$fit_none, sandwich = "cl2")
+  se_cl2_on_robust <- ff_se(fits$fit_cluster, sandwich = TRUE)
+  se_cl2_on_clean <- ff_se(fits$fit_none, sandwich = TRUE)
   expect_equal(se_cl2_on_robust, se_cl2_on_clean, tolerance = 1e-10)
 
-  # same for hc and for the pterm SEs
-  co_hc_robust <- coef(fits$fit_cluster, sandwich = "hc", n1 = 20, n2 = 8)
-  co_hc_clean <- coef(fits$fit_none, sandwich = "hc", n1 = 20, n2 = 8)
+  # same for the pterm SEs
+  co_robust <- coef(fits$fit_cluster, sandwich = TRUE, n1 = 20, n2 = 8)
+  co_clean <- coef(fits$fit_none, sandwich = TRUE, n1 = 20, n2 = 8)
   expect_equal(
-    co_hc_robust$pterms[, "se"],
-    co_hc_clean$pterms[, "se"],
+    co_robust$pterms[, "se"],
+    co_clean$pterms[, "se"],
     tolerance = 1e-10
   )
 
   # recomputation caches: repeated identical requests reuse the cached matrix
-  V1 <- refund:::pffr_vcov(fits$fit_cluster, sandwich = "cl2")
-  expect_true(!is.null(fits$fit_cluster$pffr$Vsandwich_cache[["cl2"]]))
-  V2 <- refund:::pffr_vcov(fits$fit_cluster, sandwich = "cl2")
+  V1 <- refund:::pffr_vcov(fits$fit_none, sandwich = TRUE)
+  expect_true(!is.null(fits$fit_none$pffr$Vsandwich_cache[["cl2"]]))
+  V2 <- refund:::pffr_vcov(fits$fit_none, sandwich = TRUE)
   expect_identical(V1, V2)
 })
 
@@ -179,58 +178,36 @@ test_that("(e) old-format objects load with a warning and correct numbers", {
   # one-time warning on first read; correct model-based numbers from the stash
   reset_pffr_warn_once()
   expect_warning(
-    se_none_old <- ff_se(fit_old, sandwich = "none"),
+    se_none_old <- ff_se(fit_old, sandwich = FALSE),
     "older refund version"
   )
   expect_equal(
     se_none_old,
-    ff_se(fit_none, sandwich = "none"),
+    ff_se(fit_none, sandwich = FALSE),
     tolerance = 1e-10
   )
 
-  # second read in the same session: no repeated warning
-  expect_no_warning(se_cl_old <- ff_se(fit_old, sandwich = "cluster"))
-  expect_equal(
-    se_cl_old,
-    ff_se(fit_cluster, sandwich = "cluster"),
-    tolerance = 1e-10
-  )
+  # second read in the same session: no repeated warning; the CL2 sandwich
+  # is recomputed from the stashed model-based bread
+  expect_no_warning(se_cl_old <- ff_se(fit_old))
+  expect_equal(se_cl_old, ff_se(fit_cluster), tolerance = 1e-10)
+  co_old <- coef(fit_old, ci = "pointwise", n1 = 20, n2 = 8)
+  expect_identical(co_old$ci_meta$crit_used, "satterthwaite")
 
-  # recomputation on the old-format fit uses the stashed model-based bread
-  reset_pffr_warn_once()
-  se_cl2_old <- suppressWarnings(ff_se(fit_old, sandwich = "cl2"))
-  expect_equal(
-    se_cl2_old,
-    ff_se(fit_none, sandwich = "cl2"),
-    tolerance = 1e-10
-  )
-
-  # upgrade path: pffr_upgrade_fit() converts to the current contract
-  reset_pffr_warn_once()
-  expect_message(up <- pffr_upgrade_fit(fit_old), "Upgraded pffr fit")
-  expect_identical(up$Vp, fit_none$Vp)
-  expect_identical(up$Ve, fit_none$Ve)
-  expect_equal(up$pffr$Vsandwich, fit_cluster$pffr$Vsandwich, tolerance = 1e-12)
-  expect_identical(up$pffr$sandwich_info$type, "cluster")
-  expect_null(up$pffr$model_cov)
-  # upgraded fit reads without any back-compat warning
-  expect_no_warning(se_up <- ff_se(up, sandwich = "none"))
-  expect_equal(se_up, ff_se(fit_none, sandwich = "none"), tolerance = 1e-10)
-  # idempotent
-  expect_message(pffr_upgrade_fit(up), "already in the current storage format")
-
-  # ancient objects (no stash at all) warn that recovery is impossible
+  # objects of refund <= 0.1-40 (no stash at all) warn that recovery is
+  # impossible and use their stored covariance with Gaussian critical values
   fit_ancient <- fit_old
   fit_ancient$pffr$model_cov <- NULL
   reset_pffr_warn_once()
   expect_warning(
-    ff_se(fit_ancient, sandwich = "none"),
-    "very old refund version"
+    co_anc <- coef(fit_ancient, ci = "pointwise", n1 = 20, n2 = 8),
+    "refund 0.1-40 or earlier"
   )
-  reset_pffr_warn_once()
-  expect_warning(
-    pffr_upgrade_fit(fit_ancient),
-    "Cannot upgrade"
+  expect_identical(co_anc$ci_meta$crit_used, "z")
+  expect_equal(
+    co_anc$smterms[[2]]$coef$se,
+    ff_se(fit_cluster),
+    tolerance = 1e-10
   )
   reset_pffr_warn_once()
 })

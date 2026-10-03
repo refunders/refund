@@ -3,7 +3,7 @@
 #--------------------------------------
 #
 # quasipoisson()/quasibinomial() carry an estimated dispersion phi-hat
-# (`fit$sig2`). The cluster-robust sandwich must use it exactly once, and these
+# (`fit$sig2`). The CL2 sandwich must use it exactly once, and these
 # tests pin the resulting known answer.
 #
 # Write W = diag(omega_i (dmu/deta)_i^2 / V(mu_i)) (dispersion-free) and
@@ -11,12 +11,12 @@
 #     V_p = phi (X'WX + S)^{-1} = (X'WX/phi + S/phi)^{-1},
 # i.e. the Fisher information X'WX/phi penalized by S/phi, so
 #     V_p(quasi) = phi-hat * V_p(fixed-dispersion fit)     [at the same lambda]
-# and likewise for V_e. The per-observation score used by both cluster paths
-# (gam_sandwich_cluster() and build_cl2_working_standard()) is
+# and likewise for V_e. The per-observation score used by the CL2 path
+# (build_cl2_working_standard()) is
 #     s_i = x_i omega_i (y_i - mu_i) (dmu/deta)_i / (phi V(mu_i)),
 # so the meat M = sum_g U_g U_g' scales as phi^-2. Hence the sampling core
 #     c V_p M V_p  ~  phi^2 * phi^-2 = phi^0
-# is DISPERSION-FREE: the quasi fit's CR1/CL2 sampling core is *identical* to
+# is DISPERSION-FREE: the quasi fit's CL2 sampling core is *identical* to
 # the fixed-dispersion fit's at the same smoothing parameters. The additive
 # Bayesian smoothing-bias allowance B_2 = V_p - V_e is a model-based quantity
 # and scales with phi-hat, consistently with the penalty convention S/phi
@@ -99,7 +99,7 @@ fit_quasi_fixture <- function(fx, family, sp = NULL) {
     data = fx$data,
     yind = fx$tgrid,
     family = family,
-    sandwich = "none",
+    sandwich = FALSE,
     bs.yindex = list(bs = "ps", k = 5, m = c(2, 1))
   )
   if (!is.null(sp)) {
@@ -136,33 +136,17 @@ get_quasi_pair <- function(which = c("count", "binary")) {
 
 rel_diff <- function(a, b) max(abs(a - b)) / max(abs(b))
 
+# Sampling part of the CL2 covariance (without the Bayesian B2 term).
+cl2_sampling <- function(fit) {
+  core <- refund:::pffr_influence(fit)
+  core$correction * tcrossprod(core$K)
+}
+
 test_that("quasi families are classified as an exact GLM score path", {
   expect_identical(refund:::pffr_score_kind(quasipoisson()), "exact")
   expect_identical(refund:::pffr_score_kind(quasibinomial()), "exact")
-  expect_true(refund:::family_has_exact_score(quasipoisson()))
-  expect_true(refund:::family_has_exact_score(quasibinomial()))
-})
-
-test_that("sandwich = 'auto' routes quasi families through the exact path", {
-  # (c): quasi families are promoted to CL2 exactly like their fixed-dispersion
-  # counterparts, and are NOT lumped in with the "approx" extended families.
-  expect_identical(
-    refund:::pffr_sandwich_auto_policy(12, 12, quasipoisson()),
-    refund:::pffr_sandwich_auto_policy(12, 12, poisson())
-  )
-  expect_identical(
-    refund:::pffr_sandwich_auto_policy(12, 12, quasipoisson()),
-    "cl2"
-  )
-  expect_identical(
-    refund:::pffr_sandwich_auto_policy(12, 12, quasibinomial()),
-    "cl2"
-  )
   # contrast: an extended family with only the working-residual APPROXIMATION
-  expect_identical(
-    refund:::pffr_sandwich_auto_policy(12, 12, mgcv::nb()),
-    "cluster"
-  )
+  expect_identical(refund:::pffr_score_kind(mgcv::nb()), "approx")
 })
 
 test_that("the quasi score carries phi-hat exactly once", {
@@ -184,7 +168,7 @@ test_that("the quasi score carries phi-hat exactly once", {
   cid <- refund:::build_cluster_id(pair$fixed$pffr)
   # the exact score path is taken: no working-residual disclosure fires
   expect_no_warning(
-    refund:::gam_sandwich_cluster(strip(pair$quasi), cid)
+    refund:::gam_sandwich_cluster_cl2(strip(pair$quasi), cid)
   )
   wq <- refund:::build_cl2_working_standard(strip(pair$quasi), cid)
   wf <- refund:::build_cl2_working_standard(strip(pair$fixed), cid)
@@ -197,59 +181,42 @@ test_that("the quasi score carries phi-hat exactly once", {
   expect_lt(rel_diff(pair$quasi$Ve, phi * pair$fixed$Ve), 1e-8)
 })
 
-test_that("quasipoisson CR1 sampling core equals the Poisson CR1 core", {
-  # (a): B M B with B ~ phi and M ~ phi^-2 => the core is phi^0, i.e. the two
-  # covariances are IDENTICAL, not rescaled.
-  pair <- get_quasi_pair("count")
-  phi <- pair$quasi$sig2
-  Vq <- refund:::pffr_vcov(pair$quasi, sandwich = "cluster", freq = TRUE)
-  Vf <- refund:::pffr_vcov(pair$fixed, sandwich = "cluster", freq = TRUE)
-  expect_lt(rel_diff(Vq, Vf), 1e-8)
-
-  # the full Bayesian sandwich differs only through the phi-scaled B2 term
-  Bq <- refund:::pffr_vcov(pair$quasi, sandwich = "cluster")
-  Bf <- refund:::pffr_vcov(pair$fixed, sandwich = "cluster")
-  B2_fixed <- pair$fixed$Vp - pair$fixed$Ve
-  expect_lt(rel_diff(Bq - Bf, (phi - 1) * B2_fixed), 1e-8)
-  expect_lt(rel_diff(Bq, Vf + phi * B2_fixed), 1e-8)
+test_that("quasi CL2 sampling cores equal the fixed-dispersion ones", {
+  # B M B with B ~ phi and M ~ phi^-2 => the core is phi^0, i.e. the two
+  # covariances are IDENTICAL, not rescaled; the full Bayesian sandwich
+  # differs only through the phi-scaled B2 term.
+  for (which in c("count", "binary")) {
+    pair <- get_quasi_pair(which)
+    phi <- pair$quasi$sig2
+    expect_false(isTRUE(all.equal(phi, 1, tolerance = 1e-3)))
+    expect_lt(
+      rel_diff(cl2_sampling(pair$quasi), cl2_sampling(pair$fixed)),
+      1e-8
+    )
+    Bq <- refund:::pffr_vcov(pair$quasi, sandwich = TRUE)
+    Bf <- refund:::pffr_vcov(pair$fixed, sandwich = TRUE)
+    B2_fixed <- pair$fixed$Vp - pair$fixed$Ve
+    expect_lt(rel_diff(Bq - Bf, (phi - 1) * B2_fixed), 1e-8)
+  }
 })
 
-test_that("quasibinomial CR1 sampling core equals the binomial CR1 core", {
-  # (b)
-  pair <- get_quasi_pair("binary")
-  phi <- pair$quasi$sig2
-  expect_false(isTRUE(all.equal(phi, 1, tolerance = 1e-3)))
-  Vq <- refund:::pffr_vcov(pair$quasi, sandwich = "cluster", freq = TRUE)
-  Vf <- refund:::pffr_vcov(pair$fixed, sandwich = "cluster", freq = TRUE)
-  expect_lt(rel_diff(Vq, Vf), 1e-8)
-
-  Bq <- refund:::pffr_vcov(pair$quasi, sandwich = "cluster")
-  Bf <- refund:::pffr_vcov(pair$fixed, sandwich = "cluster")
-  B2_fixed <- pair$fixed$Vp - pair$fixed$Ve
-  expect_lt(rel_diff(Bq - Bf, (phi - 1) * B2_fixed), 1e-8)
-})
-
-test_that("CL2 works for quasi fits and its leverage is dispersion-free", {
-  # (d)
+test_that("CL2 leverage of quasi fits is dispersion-free", {
   pair <- get_quasi_pair("count")
-  cl_q <- refund:::pffr_vcov(pair$quasi, sandwich = "cl2", freq = TRUE)
-  cl_f <- refund:::pffr_vcov(pair$fixed, sandwich = "cl2", freq = TRUE)
-  cr_q <- refund:::pffr_vcov(pair$quasi, sandwich = "cluster", freq = TRUE)
-  cr_f <- refund:::pffr_vcov(pair$fixed, sandwich = "cluster", freq = TRUE)
-  # leverage H_gg = Xw_g Vp Xw_g' is phi-free, so the CL2 inflation matches
-  expect_lt(rel_diff(cl_q, cl_f), 1e-8)
-  expect_lt(
-    max(abs(sqrt(diag(cl_q) / diag(cr_q)) - sqrt(diag(cl_f) / diag(cr_f)))),
-    1e-8
-  )
+  cl_q <- refund:::pffr_vcov(pair$quasi, sandwich = TRUE)
+  cl_f <- refund:::pffr_vcov(pair$fixed, sandwich = TRUE)
   expect_equal(
     attr(cl_q, "max_obs_leverage"),
     attr(cl_f, "max_obs_leverage"),
     tolerance = 1e-8
   )
+  expect_equal(
+    attr(cl_q, "min_block_eig"),
+    attr(cl_f, "min_block_eig"),
+    tolerance = 1e-8
+  )
 
-  # coef(fit, sandwich = "cl2") returns finite SEs on a quasipoisson fit
-  cf <- suppressWarnings(coef(pair$quasi, sandwich = "cl2"))
+  # coef(fit, sandwich = TRUE) returns finite SEs on a quasipoisson fit
+  cf <- suppressWarnings(coef(pair$quasi, sandwich = TRUE))
   ses <- unlist(lapply(cf$smterms, function(s) s$coef$se))
   expect_gt(length(ses), 0)
   expect_true(all(is.finite(ses)))

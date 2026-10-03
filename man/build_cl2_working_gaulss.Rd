@@ -25,7 +25,7 @@ and each score block factorizes as (Fisher weight) times (residual). The two
 blocks therefore decouple: each pseudo-row is whitened with its own Fisher
 working weight \eqn{W_k}, putting `Xtilde_k = sqrt(W_k) X_k` into the design
 and `z_k = w_k / sqrt(W_k)` into the residual, where `w_k` are the
-(prior-weighted) score weights from [compute_gaulss_scores()]. Both blocks
+(prior-weighted) gaulss score weights. Both blocks
 reconstruct the exact gaulss score (`Xtilde_k^T z_k = w_k X_k`), but because
 `Xtilde` carries the Fisher weight, the per-cluster hat block
 `H_gg = Xtilde_g Vp Xtilde_g^T` is the genuine penalized hat: its total trace

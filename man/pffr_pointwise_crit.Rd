@@ -4,19 +4,7 @@
 \alias{pffr_pointwise_crit}
 \title{Pointwise critical values for prediction contrasts}
 \usage{
-pffr_pointwise_crit(
-  object,
-  X,
-  level,
-  crit,
-  sandwich,
-  covmat,
-  cluster = NULL,
-  cl2_adjustment = NULL,
-  dof_correction = NULL,
-  edf_type = NULL,
-  max_auto_points = Inf
-)
+pffr_pointwise_crit(object, X, level, use_sandwich, cluster = NULL)
 }
 \arguments{
 \item{object}{Fitted pffr model.}
@@ -25,26 +13,21 @@ pffr_pointwise_crit(
 
 \item{level}{Confidence level.}
 
-\item{crit}{User's `crit` choice.}
+\item{use_sandwich}{Do the standard errors come from the CL2 sandwich?}
 
-\item{sandwich}{Resolved covariance type of `covmat`.}
-
-\item{covmat}{The covariance the SEs use (its `"cl2_adjustment"` attribute
-identifies exact CL2).}
-
-\item{max_auto_points}{Largest number of rows for which `crit = "auto"`
-computes Satterthwaite df. The df cost grows with the number of rows and
-with \eqn{G^2} (about 1 ms per row at \eqn{G = 100}); above this many
-rows `"auto"` uses `"z"` with a message. An explicit
-`crit = "satterthwaite"` is always honoured.}
+\item{cluster}{Optional per-curve grouping.}
 }
 \value{
-List with `mode`, `crit` (scalar, or one per row for
-  `"satterthwaite"`) and `df` (one per row; `Inf` for `"z"`).
+List with `mode`, `crit` (scalar, or one per row) and `df` (one
+  per row; `Inf` for Gaussian critical values).
 }
 \description{
-Applies [pffr_crit_setup()] and [compute_pointwise_ci()] to the rows of a
-prediction matrix, so predictions get the same critical values as
-[coef.pffr()] gives for the same contrasts.
+Applies [pffr_crit_setup()] and [pffr_pointwise_crit_values()] to the rows
+of a prediction matrix, so predictions get the same critical values as
+[coef.pffr()] gives for the same contrasts. The df cost grows with the
+number of rows and with the number of clusters (about 1 ms per row at
+\eqn{G = 100}); for more than
+`getOption("refund.pffr_satterthwaite_max_points", 1e4)` rows Gaussian
+critical values are used, with a message.
 }
 \keyword{internal}
