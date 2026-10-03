@@ -23,7 +23,11 @@ ffpc(
 \item{splinepars}{optional arguments supplied to the \code{basistype}-term. Defaults to a cubic
 B-spline with first difference penalties and 8 basis functions for each \eqn{\tilde \beta_k(t)}.}
 
-\item{decomppars}{parameters for the FPCA performed with \code{\link{fpca.sc}}.}
+\item{decomppars}{parameters for the FPCA performed with \code{\link{fpca.sc}}.
+Unless they include \code{argvals}, the FPCA uses \code{argvals = xind},
+so the FPCs are orthonormal and the scores are integrals over the domain
+of \code{xind}. The coefficient surface implied by the fit is returned by
+\code{\link{coef.pffr}} and plotted by \code{\link{ffpcplot}}.}
 
 \item{npc.max}{maximal number \eqn{K} of FPCs to use, regardless of \code{decomppars}; defaults to 15}
 }

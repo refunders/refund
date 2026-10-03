@@ -316,9 +316,8 @@ predict.pffr <- function(
                 paste(cov, "[,\\)]", sep = ""),
                 names(object$pffr$ffpc)
               )]]
-              # Xc' = Phi xi' + error --> get loadings for new data:
-              Xct <- t(newdata[[cov]]) - as.vector(ffpc$meanX)
-              xiMat <- t(qr.coef(qr(ffpc$PCMat), Xct))
+              # scores of the new curves, computed as for the fitted ones:
+              xiMat <- ffpc_scores(ffpc, newdata[[cov]])
               colnames(xiMat) <- paste(
                 make.names(cov),
                 ".PC",
@@ -931,8 +930,8 @@ coef_get_predictions <- function(
   # Bias estimate of a bias-aware interval: the reference-fit contrast through
   # the same linear map as the standard error (so it includes the mean-level
   # columns when seWithMean applies).
-  theta_diff <- object_info$theta_diff
-  if (se || !is.null(theta_diff)) {
+  linear_map <- NULL
+  if (se || !is.null(object_info$theta_diff)) {
     linear_map <- build_coef_linear_map(
       X = X,
       trmind = trmind,
@@ -941,6 +940,52 @@ coef_get_predictions <- function(
       seWithMean = seWithMean
     )
   }
+  P <- coef_add_inference(
+    P,
+    linear_map = linear_map,
+    theta_diff = object_info$theta_diff,
+    covmat = covmat,
+    se = se,
+    ci = ci,
+    level = level,
+    coef_draws = coef_draws,
+    t_scale = t_scale,
+    crit_mode = crit_mode,
+    crit_df_const = crit_df_const,
+    df_ctx = df_ctx
+  )
+
+  P$dim <- trm$dim
+  P
+}
+
+#' Add standard errors, bias estimates and intervals to coefficient values
+#'
+#' @param P List with the estimated values in \code{P$value} and the table
+#'   \code{P$coef}.
+#' @param linear_map List returned by \code{\link{build_coef_linear_map}}, or
+#'   \code{NULL} if neither \code{se} nor \code{theta_diff} is requested.
+#' @param theta_diff Optional full-length coefficient difference to a bias
+#'   reference fit.
+#' @inheritParams coef_get_predictions
+#' @returns \code{P} with \code{se}, \code{delta}, \code{crit} and the columns
+#'   \code{se}, \code{delta}, \code{lower}, \code{upper}, \code{df} in
+#'   \code{P$coef} as requested.
+#' @keywords internal
+coef_add_inference <- function(
+  P,
+  linear_map,
+  theta_diff,
+  covmat,
+  se,
+  ci = "none",
+  level = 0.95,
+  coef_draws = NULL,
+  t_scale = NULL,
+  crit_mode = "z",
+  crit_df_const = NA_real_,
+  df_ctx = NULL
+) {
   if (se) {
     P$se <- compute_coef_se(linear_map = linear_map, covmat = covmat)
     P$coef <- cbind(P$coef, se = P$se)
@@ -992,7 +1037,82 @@ coef_get_predictions <- function(
     }
   }
 
-  P$dim <- trm$dim
+  P
+}
+
+#' Coefficient surface of an ffpc term for coef.pffr
+#'
+#' Evaluates the surface \eqn{\beta(s,t) = \sum_k \psi_k(s)\tilde\beta_k(t)}
+#' implied by an \code{\link{ffpc}} term on the covariate's index \code{xind}
+#' times \code{t}, with the same standard errors, bias estimates and intervals
+#' as other terms. The estimated FPCs are treated as fixed, so the surface is a
+#' fixed linear map of the coefficients (see \code{\link{ffpc_surface_map}}).
+#'
+#' @param object A fitted \code{pffr} object.
+#' @param which Index of the ffpc term in \code{object$pffr$ffpc}.
+#' @param t Evaluation points along the response index.
+#' @inheritParams coef_add_inference
+#' @param object_info List with \code{coefficients} and optionally
+#'   \code{theta_diff}.
+#' @returns A list structured like the other entries of
+#'   \code{coef.pffr()$smterms}, with \code{dim = 2}.
+#' @keywords internal
+coef_ffpc_surface <- function(
+  object,
+  which,
+  t,
+  object_info,
+  covmat,
+  se,
+  ci = "none",
+  level = 0.95,
+  coef_draws = NULL,
+  t_scale = NULL,
+  crit_mode = "z",
+  crit_df_const = NA_real_,
+  df_ctx = NULL
+) {
+  map <- ffpc_surface_map(object, which, t)
+  trm_name <- names(object$pffr$ffpc)[which]
+  xlab <- deparse(as.call(formula(paste("~", trm_name))[[2]])$xind)
+  xlab <- if (xlab == "NULL") "xindex" else xlab
+  ylab <- object$pffr$yind_name
+  grid <- data.frame(
+    rep(map$s, times = length(map$t)),
+    rep(map$t, each = length(map$s))
+  )
+  colnames(grid) <- c(xlab, paste0(ylab, ".vec"))
+  P <- list(
+    x = map$s,
+    y = map$t,
+    xlab = xlab,
+    ylab = ylab,
+    xlim = range(map$s),
+    ylim = range(map$t)
+  )
+  P$value <- map$L %*% object_info$coefficients
+  P$coef <- cbind(grid, value = P$value)
+  linear_map <- list(X = map$L, use_full = TRUE, trmind = NULL)
+  P <- coef_add_inference(
+    P,
+    linear_map = linear_map,
+    theta_diff = object_info$theta_diff,
+    covmat = covmat,
+    se = se,
+    ci = ci,
+    level = level,
+    coef_draws = coef_draws,
+    t_scale = t_scale,
+    crit_mode = crit_mode,
+    crit_df_const = crit_df_const,
+    df_ctx = df_ctx
+  )
+  P$dim <- 2
+  P$main <- paste0(
+    "ffpc(",
+    sub("\\.ffpc$", "", object$pffr$ffpc[[which]]$id),
+    ")"
+  )
   P
 }
 
@@ -1343,6 +1463,20 @@ pffr_end_undefined_df <- function(opened) {
 #' Returns estimated coefficient functions/surfaces \eqn{\beta(t), \beta(s,t)}
 #' and estimated smooth effects \eqn{f(z), f(x,z)} or \eqn{f(x, z, t)} and their point-wise estimated standard errors.
 #' Not implemented for smooths in more than 3 dimensions.
+#'
+#' For an \code{\link{ffpc}} term, which enters the model as one coefficient
+#' function \eqn{\tilde\beta_k(t)} per FPC of the covariate, \code{smterms}
+#' contains a single entry: the implied coefficient surface
+#' \eqn{\hat\beta(s,t) = \sum_k \hat\psi_k(s)\hat{\tilde\beta}_k(t)}, with
+#' \eqn{\int X^c_i(s)\hat\psi_k(s)ds} the FPC scores of the fit, evaluated on
+#' the covariate's index \code{xind} times \code{n2} equidistant points over
+#' the range of the response index. Its standard errors and intervals use the
+#' same covariance options as all other terms (\code{sandwich}, \code{freq},
+#' \code{ci}, \code{crit}, \code{bias_ref}), but treat the estimated FPCs
+#' \eqn{\hat\psi_k} as fixed, i.e., they condition on the estimated
+#' eigenfunctions. Its \eqn{\tilde\beta_k(t)} are unconstrained, so
+#' \code{seWithMean} does not affect it. Use \code{\link{ffpcplot}} for the
+#' \eqn{\tilde\beta_k(t)}.
 #'
 #' The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
 #' The \code{sandwich}-option computes robust standard errors. With
@@ -1987,7 +2121,45 @@ coef.pffr <- function(
 
     shrtlbls <- object$pffr$short_labels
 
-    ret$smterms <- lapply(1:length(object$smooth), getCoefs)
+    # An ffpc term enters the model as one smooth per FPC; its entry is the
+    # implied coefficient surface (on the covariate's index times an n2-point
+    # grid over the response index), at the position of its first FPC.
+    ffpc_smooths <- if (length(object$pffr$ffpc)) {
+      ffpc_smooth_indices(object)
+    } else {
+      list()
+    }
+    ffpc_first <- vapply(ffpc_smooths, min, integer(1))
+    ffpc_t <- seq(
+      min(object$pffr$yind),
+      max(object$pffr$yind),
+      length = n2
+    )
+    ret$smterms <- lapply(seq_along(object$smooth), \(i) {
+      if (i %in% unlist(ffpc_smooths) && !(i %in% ffpc_first)) {
+        return(NULL)
+      }
+      if (!(i %in% ffpc_first)) {
+        return(getCoefs(i))
+      }
+      coef_ffpc_surface(
+        object,
+        which = match(i, ffpc_first),
+        t = ffpc_t,
+        object_info = object_info,
+        covmat = covmat,
+        se = se,
+        ci = ci,
+        level = level,
+        coef_draws = coef_draws,
+        t_scale = t_scale,
+        crit_mode = crit_mode,
+        crit_df_const = crit_df_const,
+        df_ctx = df_ctx
+      )
+    })
+    ffpc_rest <- setdiff(unlist(ffpc_smooths), ffpc_first)
+    if (length(ffpc_rest)) ret$smterms <- ret$smterms[-ffpc_rest]
     names(ret$smterms) <- sapply(seq_along(ret$smterms), function(i) {
       ret$smterms[[i]]$main
     })

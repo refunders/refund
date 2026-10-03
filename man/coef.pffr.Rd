@@ -198,6 +198,20 @@ and estimated smooth effects \eqn{f(z), f(x,z)} or \eqn{f(x, z, t)} and their po
 Not implemented for smooths in more than 3 dimensions.
 }
 \details{
+For an \code{\link{ffpc}} term, which enters the model as one coefficient
+function \eqn{\tilde\beta_k(t)} per FPC of the covariate, \code{smterms}
+contains a single entry: the implied coefficient surface
+\eqn{\hat\beta(s,t) = \sum_k \hat\psi_k(s)\hat{\tilde\beta}_k(t)}, with
+\eqn{\int X^c_i(s)\hat\psi_k(s)ds} the FPC scores of the fit, evaluated on
+the covariate's index \code{xind} times \code{n2} equidistant points over
+the range of the response index. Its standard errors and intervals use the
+same covariance options as all other terms (\code{sandwich}, \code{freq},
+\code{ci}, \code{crit}, \code{bias_ref}), but treat the estimated FPCs
+\eqn{\hat\psi_k} as fixed, i.e., they condition on the estimated
+eigenfunctions. Its \eqn{\tilde\beta_k(t)} are unconstrained, so
+\code{seWithMean} does not affect it. Use \code{\link{ffpcplot}} for the
+\eqn{\tilde\beta_k(t)}.
+
 The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
 The \code{sandwich}-option computes robust standard errors. With
 \code{sandwich="cluster"}, a cluster-robust sandwich (clustering by curve)
