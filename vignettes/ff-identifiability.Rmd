@@ -54,7 +54,7 @@ energy was unreachable by any method.
   usually the right response: a basis the curves cannot support is not buying
   flexibility, only penalty-driven fill-in.
 * **Use more, or more varied, curves.** The effective rank can never exceed
-  `min(nrow(X), ncol(X))`, so with few curves the warning may be impossible to
+  `min(nrow(X) - 1, ncol(X))`, so with few curves the warning may be impossible to
   satisfy at the requested `k_s` — the design, not the code, is the binding
   constraint.
 * **Switch to `ffpc()`**, which parameterizes the effect in the leading
