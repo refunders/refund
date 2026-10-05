@@ -655,6 +655,24 @@ get_smooth_label_from_term <- function(x) {
 
 #' Build the pffr metadata list
 #'
+#' @param call The matched call to `pffr()`.
+#' @param formula The model formula.
+#' @param term_map Mapping of formula terms to their internal term strings.
+#' @param label_map Mapping of formula terms to fitted smooth labels.
+#' @param short_labels Short labels for fitted smooths.
+#' @param response_name Name of the response variable.
+#' @param nobs Number of observations.
+#' @param nyindex Number of response-index values per observation.
+#' @param yind_name Name of the response-index variable.
+#' @param yind Response-index values.
+#' @param where_specials Locations of special terms in the formula.
+#' @param ff_terms Evaluated function-on-function terms.
+#' @param ffpc_terms Evaluated function-on-principal-components terms.
+#' @param pcre_terms Evaluated principal-component regression terms.
+#' @param missing_indices Indices of missing response values.
+#' @param is_sparse Whether the response data use the sparse format.
+#' @param ydata Sparse response data, or `NULL` for dense data.
+#' @param sandwich Sandwich covariance option used for the fit.
 #' @keywords internal
 pffr_build_metadata <- function(
   call,

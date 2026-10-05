@@ -28,4 +28,41 @@ pffr_build_metadata(
 \description{
 Build the pffr metadata list
 }
+\arguments{
+\item{call}{The matched call to \code{pffr()}.}
+
+\item{formula}{The model formula.}
+
+\item{term_map}{Mapping of formula terms to their internal term strings.}
+
+\item{label_map}{Mapping of formula terms to fitted smooth labels.}
+
+\item{short_labels}{Short labels for fitted smooths.}
+
+\item{response_name}{Name of the response variable.}
+
+\item{nobs}{Number of observations.}
+
+\item{nyindex}{Number of response-index values per observation.}
+
+\item{yind_name}{Name of the response-index variable.}
+
+\item{yind}{Response-index values.}
+
+\item{where_specials}{Locations of special terms in the formula.}
+
+\item{ff_terms}{Evaluated function-on-function terms.}
+
+\item{ffpc_terms}{Evaluated function-on-principal-components terms.}
+
+\item{pcre_terms}{Evaluated principal-component regression terms.}
+
+\item{missing_indices}{Indices of missing response values.}
+
+\item{is_sparse}{Whether the response data use the sparse format.}
+
+\item{ydata}{Sparse response data, or \code{NULL} for dense data.}
+
+\item{sandwich}{Sandwich covariance option used for the fit.}
+}
 \keyword{internal}
