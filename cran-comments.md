@@ -2,11 +2,10 @@
 
 ### Breaking changes
 
-* Default `sandwich` option for `pffr()` changed from `"none"` to `"cluster"`.
-  An informational `message()` is printed when `sandwich` is not explicitly
-  supplied.
+* Default `sandwich` option for `pffr()` changed from `FALSE` to `TRUE`, which
+  selects the CL2 cluster-robust covariance.
 * `pffrGLS()` / `pffr_gls()` now error with a deprecation message. Users are
-  directed to `pffr()` with `sandwich = "cluster"` or `sandwich = "cl2"`.
+  directed to `pffr()` and its default intervals (`sandwich = TRUE`).
 
 ### Major changes
 
