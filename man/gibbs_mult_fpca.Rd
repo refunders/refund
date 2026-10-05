@@ -24,9 +24,9 @@ gibbs_mult_fpca(
 
 \item{Kp}{number of FPCA basis functions to be estimated}
 
-\item{data}{an optional data frame, list or environment containing the 
-variables in the model. If not found in data, the variables are taken from 
-environment(formula), typically the environment from which the function is 
+\item{data}{an optional data frame, list or environment containing the
+variables in the model. If not found in data, the variables are taken from
+environment(formula), typically the environment from which the function is
 called.}
 
 \item{verbose}{logical defaulting to \code{TRUE} -- should updates on progress be printed?}
@@ -42,6 +42,12 @@ zeroth-derivative penalty (alpha = 0 is all second-derivative penalty)}
 
 \item{SEED}{seed value to start the sampler; ensures reproducibility}
 }
+\value{
+A list of class \code{"fosr"} containing posterior mean estimates
+  (\code{beta.hat}), credible bounds (\code{beta.UB}, \code{beta.LB}),
+  fitted values (\code{Yhat}), random effects (\code{ranef}), and FPC
+  basis functions (\code{psi.pm}).
+}
 \description{
 Fitting function for function-on-scalar regression for longitudinal data.
 This function estimates model parameters using a Gibbs sampler and estimates
@@ -49,7 +55,7 @@ the residual covariance surface using FPCA.
 }
 \references{
 Goldsmith, J., Kitago, T. (2016).
-Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
+Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 Series C}, 65 215-236.
 }

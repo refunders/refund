@@ -1,13 +1,13 @@
 Package: refund
 Type: Package
 Title: Regression with Functional Data
-Version: 0.1-38
-Date: 2024-11-08
+Version: 0.1-40.9000
+Date: 2026-03-17
 Authors@R: c(
     person("Jeff", "Goldsmith", role = "aut", email = "jeff.goldsmith@columbia.edu"),
     person("Fabian", "Scheipl", role = "aut", email = "fabian.scheipl@stat.uni-muenchen.de"),
     person("Lei", "Huang", role = "aut", email = "huangracer@gmail.com"),
-    person("Julia", "Wrobel", role = c("aut","cre"), email="julia.wrobel@emory.edu"),
+    person("Julia", "Wrobel", role = c("aut","cre","cph"), email="julia.wrobel@emory.edu"),
     person("Chongzhi", "Di", role = "aut", email = "cdi@fredhutch.org"),
     person("Jonathan", "Gellar", role="aut",email="jgellar1@jhu.edu"),
     person("Jaroslaw", "Harezlak", role="aut"),
@@ -27,7 +27,7 @@ Authors@R: c(
     person("Ruonan", "Li", role="ctb", email="rli20@ncsu.edu"),
     person("Zheyuan", "Li", role="ctb"))
 Depends:
-    R (>= 3.5.0)
+    R (>= 4.1.0)
 Imports:
     fda,
     Matrix,
@@ -47,9 +47,16 @@ Imports:
     pbs,
     methods
 Suggests:
+    knitr,
+    numDeriv,
     RColorBrewer,
+    clubSandwich,
     reshape2,
-    testthat
+    rmarkdown,
+    sandwich,
+    testthat,
+    withr
+VignetteBuilder: knitr
 Description: Methods for regression for functional
     data, including function-on-scalar, scalar-on-function, and
     function-on-function regression. Some of the functions are applicable to
@@ -100,10 +107,16 @@ Collate:
     'pffr-ff.R'
     'pffr-ffpc.R'
     'pffr-methods.R'
+    'pffr-predict-ci.R'
     'pffr-pcre.R'
     'pffr-robust.R'
     'pffr-sff.R'
+    'pffr-formula.R'
+    'pffr-core.R'
+    'pffr-ncv.R'
+    'pffr-influence.R'
     'pffr-utilities.R'
+    'pffr-simulate.R'
     'pffr.R'
     'pfr.R'
     'pfr_old.R'
@@ -159,5 +172,8 @@ Collate:
     'fpca.lfda.R'
     'predict.fbps.R'
     'select_knots.R'
-RoxygenNote: 7.3.2
 Encoding: UTF-8
+Config/roxygen2/version: 8.1.0
+PffrInferenceCore: fixed-fit-core-2026-09-09
+PffrBaseCommit: 07e09fffff08b1014068c2e948e2c2eb05a655b0
+PffrInferenceCoreRevision: 2026-09-18-precompute

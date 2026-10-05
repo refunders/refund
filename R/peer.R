@@ -66,6 +66,8 @@
 #' Kundu, M. G., Harezlak, J., and Randolph, T. W. (2012). Longitudinal
 #' functional models with structured penalties (arXiv:1211.4763 [stat.AP]).
 #'
+#' @return A list suitable for use as a term in a \code{\link{pfr}} formula,
+#'   produced by \code{\link{lf}} with the PEER basis and penalty.
 #' @seealso \code{{pfr}}, \code{{.smooth.spec}}
 #' @export
 #' @examples
@@ -96,39 +98,55 @@
 #'
 #'
 
-peer <- function(X, argvals=NULL, pentype="RIDGE",
-                 Q=NULL, phia=10^3, L=NULL,  ...) {
-
+peer <- function(
+  X,
+  argvals = NULL,
+  pentype = "RIDGE",
+  Q = NULL,
+  phia = 10^3,
+  L = NULL,
+  ...
+) {
   # Catch if peer_old syntax is used
   dots <- list(...)
-  dots.unmatched <- names(dots)[!(names(dots) %in% c(names(formals(lf)),
-                                                     names(formals(s))))]
+  dots.unmatched <- names(dots)[
+    !(names(dots) %in% c(names(formals(lf)), names(formals(s))))
+  ]
   if (any(dots.unmatched %in% names(formals(peer_old)))) {
-    warning(paste0("The interface for peer() has changed, see ?peer and ?pfr ",
-                   "for details. This interface will not be supported in the ",
-                   "next refund release."))
+    warning(paste0(
+      "The interface for peer() has changed, see ?peer and ?pfr ",
+      "for details. This interface will not be supported in the ",
+      "next refund release."
+    ))
     # Call peer_old()
     call <- sys.call()
     call[[1]] <- as.symbol("peer_old")
-    ret <- eval(call, envir=parent.frame())
+    ret <- eval(call, envir = parent.frame())
     return(ret)
   }
 
   if (is(X, "fd")) {
     # If X is an fd object, turn it back into a (possibly pre-smoothed) matrix
     if (is.null(argvals))
-      argvals <- argvals <- seq(X$basis$rangeval[1], X$basis$rangeval[2],
-                                length = length(X$fdnames[[1]]))
+      argvals <- argvals <- seq(
+        X$basis$rangeval[1],
+        X$basis$rangeval[2],
+        length = length(X$fdnames[[1]])
+      )
     X <- t(eval.fd(argvals, X))
-  } else if (is.null(argvals))
-    argvals <- seq(0, 1, l = ncol(X))
+  } else if (is.null(argvals)) argvals <- seq(0, 1, l = ncol(X))
 
-  if("xt" %in% names(dots)) stop("peer() does not accept an xt-argument.")
-  xt <- call("list", pentype=pentype, W=substitute(X), phia=phia, L=L,
-    Q=substitute(Q))
-  lf(X=X, argvals=argvals, bs="peer", xt=xt, ...)
+  if ("xt" %in% names(dots)) stop("peer() does not accept an xt-argument.")
+  xt <- call(
+    "list",
+    pentype = pentype,
+    W = substitute(X),
+    phia = phia,
+    L = L,
+    Q = substitute(Q)
+  )
+  lf(X = X, argvals = argvals, bs = "peer", xt = xt, ...)
 }
-
 
 
 #' Basis constructor for PEER terms
@@ -186,71 +204,72 @@ peer <- function(X, argvals=NULL, pentype="RIDGE",
   m <- object$p.order
   xt <- object$xt
   pentype <- xt$pentype
-  if (is.null(pentype)) pentype="RIDGE"
+  if (is.null(pentype)) pentype = "RIDGE"
 
-  L <- if (toupper(pentype)=='DECOMP' | toupper(pentype)=='DECOMPOSITION') {
+  L <- if (toupper(pentype) == 'DECOMP' | toupper(pentype) == 'DECOMPOSITION') {
     # Decomposition Penalty
 
     Q <- xt$Q
     phia <- xt$phia
     if (is.null(Q)) stop("Must enter a non-null Q matrix for DECOMP penalty")
-    if (is.null(phia)) phia <- 10^3
-    else if (!is.numeric(phia)|is.matrix(phia))
+    if (is.null(phia)) phia <- 10^3 else if (
+      !is.numeric(phia) | is.matrix(phia)
+    )
       stop("Invalid entry for phia")
     if (ncol(Q) != K) stop("Width of Q matrix must match width of functions")
 
     # Check singularity of Q matrix
-    Q <- Q[complete.cases(Q),]
-    Q.eig<- abs(eigen(Q %*% t(Q))$values)
-    if(any(Q.eig<1e-12)) stop("Q matrix is singular or near singular")
+    Q <- Q[complete.cases(Q), ]
+    Q.eig <- abs(eigen(Q %*% t(Q))$values)
+    if (any(Q.eig < 1e-12)) stop("Q matrix is singular or near singular")
 
     P_Q <- t(Q) %*% solve(Q %*% t(Q)) %*% Q
-    phia*(diag(K)- P_Q) + 1*P_Q
+    phia * (diag(K) - P_Q) + 1 * P_Q
   } else if (toupper(pentype) %in% c("RIDGE", "NONE")) {
     diag(K)
-  } else if (toupper(pentype)=="D") {
+  } else if (toupper(pentype) == "D") {
     # Difference Penalty
     if (is.na(m)) m <- 2
     L <- diag(K)
     for (i in 1:m) L <- diff(L)
-    L1 <- L[nrow(L),]
+    L1 <- L[nrow(L), ]
     for (i in 1:m) {
       L1 <- c(0, L1[-K])
       L <- rbind(L, L1)
     }
     rownames(L) <- NULL
     L
-  } else if (toupper(pentype)=="USER") {
+  } else if (toupper(pentype) == "USER") {
     L <- xt$L
     if (is.null(L)) stop("Must enter a non-null L matrix for USER penalty")
     if (ncol(L) != K) stop("Width of L matrix must match width of functions")
 
     # Check singularity of L matrix
-    L <- L[complete.cases(L),]
-    LL<- t(L)%*%L
-    LL.eig<- abs(eigen(LL %*% t(LL))$values)
-    if(any(LL.eig<1e-12)) stop("L'L matrix is singular or near singular")
+    L <- L[complete.cases(L), ]
+    LL <- t(L) %*% L
+    LL.eig <- abs(eigen(LL %*% t(LL))$values)
+    if (any(LL.eig < 1e-12)) stop("L'L matrix is singular or near singular")
     L
   } else {
     stop("Invalid pentype entry for PEER smooth")
   }
 
   # Default k
-  if (k<0) k <- K
-  if (k==K) {
+  if (k < 0) k <- K
+  if (k == K) {
     v <- diag(K)
   } else {
     W <- xt$W
-    v <- svd(data.matrix(W) %*% solve(L))$v[,1:k]
+    v <- svd(data.matrix(W) %*% solve(L))$v[, 1:k]
   }
 
   D <- L %*% v
   D <- t(D) %*% D
-  D <- (D + t(D))/2
+  D <- (D + t(D)) / 2
 
   # Return object
   object$X <- v
-  object$S <- if (toupper(pentype)=="NONE") list() else list(D)
+  object$S <- if (toupper(pentype) == "NONE") list() else list(D)
   ## numerically determine null space dim -- seems safer than relying on m,
   ## for pentype DECOMP and USER
   object$null.space.dim <- k - qr(D)$rank
@@ -273,6 +292,9 @@ peer <- function(X, argvals=NULL, pentype="RIDGE",
 #' @export
 
 Predict.matrix.peer.smooth <- function(object, data) {
-  apply(object$v, 2, function(x)
-    approx(object$argvals, x, data[[object$term]])$y)
+  apply(
+    object$v,
+    2,
+    function(x) approx(object$argvals, x, data[[object$term]])$y
+  )
 }

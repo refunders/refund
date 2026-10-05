@@ -82,6 +82,30 @@
 #'   matrix is number of observations times number of evaluations of \eqn{Y(t)}
 #'   per observation.\cr
 #'
+#'   When a \code{rho} argument (as defined in \code{\link[mgcv]{bam}}) is supplied,
+#'   \code{pffr} automatically constructs the required \code{AR.start} indicator
+#'   so that residuals can follow an AR(1) process along the functional response.
+#'   This facility is available for \code{algorithm = "bam"} fits that use
+#'   \code{method = "fREML"}. For non-Gaussian families, \code{discrete = TRUE}
+#'   is required; \code{pffr} will set this automatically if needed, mirroring
+#'   the constraints documented in \code{\link[mgcv]{bam}}.\cr
+#'
+#'   The following automatic defaults apply when \code{rho} is supplied:
+#'   \itemize{
+#'     \item \code{algorithm} auto-switches to \code{"bam"} (errors if the user
+#'       explicitly requests a non-\code{bam} algorithm)
+#'     \item \code{method} auto-switches to \code{"fREML"} (errors if the user
+#'       explicitly supplies a different method)
+#'     \item \code{discrete} is auto-set to \code{TRUE} for non-Gaussian families
+#'       (errors if the user explicitly supplies \code{discrete = FALSE})
+#'     \item \code{sandwich} resolves to \code{FALSE} (model-based
+#'       intervals, with a message) when left at its default: the sandwich
+#'       assumes working-independence scores and is not valid for the
+#'       AR(1)-whitened fit. An explicit \code{sandwich = TRUE} errors.
+#'   }
+#'   Explicit user overrides that conflict with these constraints will produce
+#'   an informative error.\cr
+#'
 #'   Note that \code{pffr} does not use \code{mgcv}'s default identifiability
 #'   constraints (i.e., \eqn{\sum_{i,t} \hat f(z_i, x_i, t) = 0} or
 #'   \eqn{\sum_{i,t} \hat f(x_i, t) = 0}) for tensor product terms whose
@@ -144,6 +168,132 @@
 #'   "\code{\link[mgcv]{ti}}" or "\code{\link[mgcv]{t2}}", defaults to
 #'   \code{ti}. \code{t2}-type terms do not enforce the more suitable special
 #'   constraints for functional regression, see Details.
+#' @param sandwich Covariance for standard errors and confidence intervals.
+#'   \code{TRUE} (default): the curve-clustered CL2 sandwich, computed at fit
+#'   time; see the section \sQuote{Inference}. \code{FALSE}: the model-based
+#'   (Bayesian posterior) covariance of the working-independence fit with
+#'   Gaussian critical values. Model-based intervals assume independent errors
+#'   within each curve and are too narrow under within-curve dependence, more
+#'   so on dense grids; use them only if that dependence is known to be
+#'   absent. The character values of refund 0.1-40 are deprecated:
+#'   \code{"cl2"} means \code{TRUE}, \code{"none"} means \code{FALSE}, and
+#'   \code{"cluster"} and \code{"hc"} are no longer available and give the CL2
+#'   sandwich.
+#' @param cluster Optional grouping with one nonmissing entry per curve,
+#'   evaluated in \code{data}. With several curves per subject, cluster by
+#'   subject: the CL2 sandwich (and, for \code{method = "NCV"}, the
+#'   neighbourhoods) then treat subjects, not curves, as the independent units.
+#'   This leaves fewer clusters and does not address dependence between
+#'   subjects. Supported for densely observed responses only.
+#' @param ncv_blocks For \code{method = "NCV"}, \code{"cluster"} (default)
+#'   leaves out each whole curve, or each group of curves defined by
+#'   \code{cluster}. \code{"point"} uses leave-one-point-out NCV for comparisons.
+#'   A supplied \code{nei} in \code{...} takes precedence; its indices
+#'   must refer to retained model-frame rows, after response omissions.
+#' @section Inference:
+#' By default (\code{sandwich = TRUE}) standard errors and intervals use the
+#' curve-clustered CL2 sandwich: per-curve (or per-\code{cluster}) score sums
+#' of the working-independence fit, each adjusted by the full block of the
+#' penalized hat matrix \eqn{H},
+#' \eqn{A_g = \{(I - H)^2\}_{gg}^{-1/2}}{A_g = ((I - H)^2)_gg^(-1/2)}
+#' (Bell and McCaffrey), in the Bayesian form that adds \eqn{V_p - V_e} to the
+#' sandwich. Pointwise intervals from \code{\link{coef.pffr}},
+#' \code{\link{predict.pffr}} and \code{\link{pffr_predict_ci}} use
+#' Satterthwaite critical values, i.e. \eqn{t_\nu}{t_nu} quantiles with a
+#' separate working-model moment df \eqn{\nu}{nu} for every evaluation point.
+#' Fit by REML (the default) for inference. In simulations with Gaussian, count
+#' and binary responses, dependent and independent errors and 20 to 100
+#' curves, these intervals covered the mean, coefficient surfaces and
+#' coefficient functions of scalar covariates close to the nominal level; they
+#' are wide for coefficient surfaces. Only pointwise intervals were evaluated.
+#' The following are exceptions or caveats:
+#' \itemize{
+#'   \item With fewer than 40 curves or clusters \code{pffr()} warns once at
+#'     fit time (class \code{"pffr_small_G_warning"}): the procedure was
+#'     evaluated down to 20 curves; treat intervals as approximate.
+#'   \item For binary responses a message (once per session) states that
+#'     intervals for the functional intercept and for coefficient functions of
+#'     scalar covariates can undercover, also with Satterthwaite critical
+#'     values. Intervals for count responses whose curves are misregistered
+#'     (observed on their own clocks) undercover as well.
+#'   \item Families: exponential-family responses (including quasi families)
+#'     use their exact scores, \code{gaulss} and \code{scat} exact
+#'     (two-block) scores. Other extended families (\code{nb}, \code{tw},
+#'     \code{betar}, \code{ocat}, ...) use the exponential-family
+#'     working-residual approximation to the score, with a warning once per
+#'     session. Families without a cluster score path (those defining their
+#'     own \code{family$sandwich}, e.g. \code{multinom}), the
+#'     \code{"gamm"}/\code{"gamm4"} algorithms and fits with a single curve
+#'     fall back to model-based intervals with a message (a warning if
+#'     \code{sandwich = TRUE} was given explicitly).
+#'   \item The full-block adjustment grows with the number of curves, the
+#'     curve length and the basis dimension, but stays well below the cost of
+#'     the fit (a few seconds for 100 or 300 curves of 60 points with 104
+#'     coefficients, against 15 and 60 seconds for the REML fit); there is no
+#'     upper limit on the number of curves.
+#'     \code{\link{predict.pffr}} and \code{\link{pffr_predict_ci}} compute
+#'     Satterthwaite df for at most
+#'     \code{getOption("refund.pffr_satterthwaite_max_points", 1e4)}
+#'     prediction points and use Gaussian critical values beyond that, with a
+#'     message. Where a df is undefined (a contrast with zero sampling
+#'     variance) the Gaussian critical value is used, with a message.
+#'   \item \code{\link{summary.pffr}} reports mgcv's model-based tests;
+#'     \code{\link{plot.pffr}} draws mgcv's bands of \eqn{\pm 2}{+/- 2} CL2
+#'     standard errors. Use \code{\link{coef.pffr}} with
+#'     \code{ci = "pointwise"} for the intervals described here.
+#' }
+#' Storage: the fit's model-based (Bayesian posterior) covariance matrices
+#' \code{$Vp}, \code{$Vc} and \code{$Ve} are left exactly as
+#' \code{\link[mgcv]{gam}} produced them; the CL2 covariance is stored in
+#' \code{$pffr$Vsandwich} (with metadata in \code{$pffr$sandwich_info}) and
+#' returned by \code{\link{vcov.pffr}}. mgcv's generics applied to the
+#' underlying gam report model-based uncertainty.
+#' @section Neighbourhood cross-validation:
+#' With mgcv >= 1.9, \code{method = "NCV"} targets prediction of whole new
+#' curves (or clusters). Leaving out single points can undersmooth severely
+#' when errors within curves are dependent. Under within-curve dependence REML
+#' undersmooths and its estimate of a coefficient surface is noisy, while
+#' curve-blocked NCV smooths more and estimates the surface's shape better.
+#' Use the NCV fit's estimate to describe the shape of coefficient surfaces,
+#' and a REML fit of the same model with the default CL2 intervals for
+#' inference: intervals centred at the NCV estimate undercover, so do not use
+#' the NCV fit's intervals for inference (\code{\link{coef.pffr}} and the
+#' prediction functions say so once per session). For the intercept, effects
+#' of scalar covariates and fitted means, the REML fit gives both estimate and
+#' intervals.
+#' Blocked NCV typically costs roughly
+#' 3--5 times as much as REML, depending on the model and block sizes.
+#' Supported backends are \code{algorithm = "gam"} and \code{algorithm = "bam"}.
+#' An unspecified algorithm selects gam even for large data. For bam, pffr sets
+#' \code{discrete = TRUE}; explicitly supplying \code{discrete = FALSE} errors.
+#' Discrete NCV inverts a matrix of side equal to the neighbourhood size for
+#' each neighbourhood. It is usually slower than gam for whole-curve blocks;
+#' \code{nei$sample} can reduce the cost (see \code{\link[mgcv]{bam}}).
+#' Nonzero \code{rho} (AR1 residuals) is unavailable with NCV and errors.
+#' With bam, all neighbourhoods must have the same size: mgcv's discrete NCV
+#' (checked for 1.9-3 and 1.9-4) corrupts memory when they differ, so curves
+#' with missing responses or irregular grids stop with an error; use
+#' \code{algorithm = "gam"} for those.
+#' gamm and gamm4 do not provide this NCV selector. \code{subset} is unsupported.
+#' Missing dense response values are allowed with \code{na.action = na.omit};
+#' \code{na.exclude} padding and additional model-frame omissions cause an
+#' error. Sparse responses use the supplied \code{ydata} row order; custom
+#' \code{cluster} grouping for sparse responses remains unsupported.
+#' For both backends, user-supplied \code{nei} indices refer to retained
+#' model-frame rows. Bam requires the \code{a/ma/d/md} neighbourhood names
+#' (not the older gam names \code{k/m/i/mi}); its documented defaults for
+#' omitted prediction indices apply. Pffr removes missing response rows before
+#' bam's fresh setup, including corresponding weights and offsets, so bam
+#' receives these retained-row indices without a second NA translation.
+#' Smoothing parameters supplied via \code{sp} must be either all fixed or all
+#' free: mgcv (up to at least 1.9-4) fails in its NCV optimizer when only some
+#' are fixed.
+#' Generated neighbourhoods use \code{jackknife = FALSE}, retaining model-based
+#' covariance for the sandwich machinery. The first NCV call checks that the
+#' installed mgcv honours blocks, cached separately for each backend. The fit
+#' records \code{blocks}, \code{n_blocks}
+#' and \code{nei} in \code{fit$pffr$ncv}. Model-based covariance falls back to
+#' \code{Vp} when smoothing-parameter uncertainty covariance is unavailable.
 #' @param ... additional arguments that are valid for \code{\link[mgcv]{gam}},
 #'   \code{\link[mgcv]{bam}}, \code{'\link[gamm4]{gamm4}'} or
 #'   \code{'\link[mgcv]{jagam}'}. \code{subset} is not implemented.
@@ -183,7 +333,7 @@
 #' # univariate model:
 #' # Y(t) = f(t)  + \int X1(s)\beta(s,t)ds + eps
 #' set.seed(2121)
-#' data1 <- pffrSim(scenario="ff", n=40)
+#' data1 <- pffr_simulate(Y ~ ff(X1), n=40)
 #' t <- attr(data1, "yindex")
 #' s <- attr(data1, "xindex")
 #' m1 <- pffr(Y ~ ff(X1, xind=s), yind=t, data=data1)
@@ -195,7 +345,7 @@
 #' # multivariate model:
 #' # E(Y(t)) = \beta_0(t)  + \int X1(s)\beta_1(s,t)ds + xlin \beta_3(t) +
 #' #        f_1(xte1, xte2) + f_2(xsmoo, t) + \beta_4 xconst
-#' data2 <- pffrSim(scenario="all", n=200)
+#' data2 <- pffr_simulate(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=200)
 #' t <- attr(data2, "yindex")
 #' s <- attr(data2, "xindex")
 #' m2 <- pffr(Y ~  ff(X1, xind=s) + #linear function-on-function
@@ -209,7 +359,7 @@
 #' plot(m2)
 #' str(coef(m2))
 #' # convenience functions:
-#' preddata <- pffrSim(scenario="all", n=20)
+#' preddata <- pffr_simulate(Y ~ ff(X1) + xlin + c(te(xte1, xte2)) + s(xsmoo) + c(xconst), n=20)
 #' str(predict(m2, newdata=preddata))
 #' str(predict(m2, type="terms"))
 #' cm2 <- coef(m2)
@@ -220,712 +370,212 @@
 #' #############################################################################
 #' # sparse data (80% missing on a regular grid):
 #' set.seed(88182004)
-#' data3 <- pffrSim(scenario=c("int", "smoo"), n=100, propmissing=0.8)
+#' data3 <- pffr_simulate(Y ~ 1 + s(xsmoo), n=100, propmissing=0.8)
 #' t <- attr(data3, "yindex")
 #' m3.sparse <- pffr(Y ~ s(xsmoo), data=data3$data, ydata=data3$ydata, yind=t)
 #' summary(m3.sparse)
 #' plot(m3.sparse,pages=1)
 #' }
 pffr <- function(
-    formula,
-    yind,
-    data=NULL,
-    ydata=NULL,
-    algorithm = NA,
-    method="REML",
-    tensortype = c("ti", "t2"),
-    bs.yindex = list(bs="ps", k=5, m=c(2, 1)), # only bs, k, m are propagated...
-    bs.int = list(bs="ps", k=20, m=c(2, 1)), # only bs, k, m are propagated...
-    ...
-){
-  # TODO: subset args!
-
+  formula,
+  yind,
+  data = NULL,
+  ydata = NULL,
+  algorithm = NA,
+  method = "REML",
+  tensortype = c("ti", "t2"),
+  bs.yindex = list(bs = "ps", k = 5, m = c(2, 1)),
+  bs.int = list(bs = "ps", k = 20, m = c(2, 1)),
+  sandwich = TRUE,
+  cluster = NULL,
+  ncv_blocks = c("cluster", "point"),
+  ...
+) {
   call <- match.call()
+  pffr_check_removed_args(list(...), "pffr")
+  ncv_blocks <- match.arg(ncv_blocks)
+  if (identical(method, "NCV")) {
+    dots <- list(...)
+    if (is.na(algorithm)) algorithm <- "gam"
+    if (!algorithm %in% c("gam", "bam")) {
+      stop('pffr NCV supports only algorithm = "gam" or "bam".', call. = FALSE)
+    }
+    if (!is.null(dots$rho) && !identical(as.numeric(dots$rho), 0)) {
+      stop(
+        "Nonzero `rho` (AR1 residuals) is unavailable with NCV.",
+        call. = FALSE
+      )
+    }
+    if (algorithm == "bam") {
+      if ("discrete" %in% names(dots) && !isTRUE(dots$discrete)) {
+        stop(
+          'pffr NCV with algorithm = "bam" requires discrete = TRUE.',
+          call. = FALSE
+        )
+      }
+      call$discrete <- TRUE
+    } else if (!is.null(dots$discrete) && !identical(dots$discrete, FALSE)) {
+      stop(
+        'pffr NCV with discrete = TRUE requires explicit algorithm = "bam".',
+        call. = FALSE
+      )
+    }
+  }
+  cluster_value <- if (missing(cluster)) NULL else
+    eval(
+      substitute(cluster),
+      envir = data %||% parent.frame(),
+      enclos = parent.frame()
+    )
   tensortype <- as.symbol(match.arg(tensortype))
-  # make sure we use values for the args that were defined as close to the
-  #  actual function call as possible:
-  lapply(names(head(call, -1))[-1], function(nm)
-    try(assign(nm, eval(nm, parent.frame()))))
-  ## TODO: does this make sense? useful if pffr is called from a function that
-  ## supplies args as variables that are also defined differently in GlobalEnv:
-  ## this should then ensure that the args as defined in the calling function,
-  ## and not in GlobalEnv get used....
+  sandwich_missing <- missing(sandwich)
+  use_sandwich <- pffr_sandwich_arg(sandwich)
+  yind_missing <- missing(yind)
 
-  ## warn if entries in ... aren't arguments for gam/gam.fit3/jagam or gamm4/lmer
-  ## check for special case of gaulss family
-  dots <- list(...)
-  gaulss <- FALSE
-  if(length(dots)){
-    validDots <- if(!is.na(algorithm) && algorithm=="gamm4"){
-      c(names(formals(gamm4)), names(formals(lmer)))
+  prep <- pffr_prepare(
+    call = call,
+    formula = formula,
+    yind = if (yind_missing) NULL else yind,
+    yind_missing = yind_missing,
+    yind_expr = if (yind_missing) NULL else substitute(yind),
+    data = data,
+    ydata = ydata,
+    algorithm = algorithm,
+    method = method,
+    tensortype = tensortype,
+    bs_yindex = bs.yindex,
+    bs_int = bs.int,
+    dots = list(...)
+  )
+  algorithm_chr <- as.character(prep$algorithm)
+
+  # AR(1) working correlation: the sandwich assumes working-independence
+  # scores, so the default resolves to model-based intervals and an explicit
+  # sandwich request errors before anything is fitted.
+  if (prep$use_ar && use_sandwich) {
+    if (sandwich_missing) {
+      message(
+        "pffr inference: model-based intervals (sandwich = FALSE) because ",
+        "an AR(1) working correlation (rho) is used; the CL2 sandwich ",
+        "assumes working-independence scores."
+      )
+      use_sandwich <- FALSE
     } else {
-      c(names(formals(gam)), names(formals(bam)), names(formals(gam.fit3)),
-        names(formals(jagam)))
+      pffr_check_sandwich_ar1(NULL, TRUE, rho = prep$dots$rho)
     }
-    if (!is.null(dots$family)) {
-      if ( (is.character(dots$family) && dots$family == "gaulss") |
-          (is.list(dots$family) && dots$family$family == "gaulss")) {
-        validDots <- c(validDots, "varformula")
-        gaulss <- TRUE
-      }
-    }
-
-    notUsed <- names(dots)[!(names(dots) %in% validDots)]
-    if (length(notUsed))
-      warning("Arguments <", paste(notUsed, collapse=", "), "> supplied but not used." )
   }
 
-  sparseOrNongrid <- !is.null(ydata)
-  if(sparseOrNongrid){
-    stopifnot(ncol(ydata)==3)
-    stopifnot(c(".obs", ".index", ".value") == colnames(ydata))
-  }
+  meta_dims <- list(
+    nobs = prep$nobs,
+    nyindex = prep$nyindex,
+    is_sparse = prep$is_sparse,
+    missing_indices = prep$missing_indices,
+    ydata = prep$ydata
+  )
+  # Validates a user-supplied grouping before anything is fitted.
+  if (!is.null(cluster_value)) build_cluster_id(meta_dims, cluster_value)
 
-  pffrspecials <- c("s", "te", "ti", "t2", "ff", "c", "sff", "ffpc", "pcre")
-  tf <- terms.formula(formula, specials=pffrspecials)
-  trmstrings <- attr(tf, "term.labels")
-  terms <- sapply(trmstrings, function(trm) as.call(parse(text=trm))[[1]], simplify=FALSE)
-  #ugly, but getTerms(formula)[-1] does not work for terms like I(x1:x2)
-  frmlenv <- environment(formula)
-
-  #which terms are which type:
-  where.specials <- sapply(pffrspecials, function(sp) attr(tf, "specials")[[sp]]-1)
-  if(length(trmstrings)) {
-    where.specials$par <- which(!(1:length(trmstrings) %in%
-                                    (unlist(attr(tf, "specials")) - 1)))
-    # indices of linear/factor terms with functional coefficients over yind
-  } else where.specials$par <- numeric(0)
-
-  responsename <- attr(tf,"variables")[2][[1]]
-
-  #start new formula
-  newfrml <- paste(responsename, "~", sep="")
-  newfrmlenv <- new.env()
-  evalenv <- if("data" %in% names(call)) eval.parent(call$data) else NULL
-
-  if(sparseOrNongrid){
-    nobs <- length(unique(ydata$.obs))
-    stopifnot(all(ydata$.obs %in% rownames(data)))
-    # FIXME: allow for non-1:nobs .obs-formats!
-    stopifnot(all(ydata$.obs %in% 1:nobs))
-
-
-    #works for data-lists or matrix-valued covariates as well:
-    nobs.data <- nrow(as.matrix(data[[1]]))
-    stopifnot(nobs == nobs.data)
-    ntotal <- nrow(ydata)
-
-    #generate yind for estimates/predictions etc
-    yind <- if(length(unique(ydata$.index))>100){
-      seq(min(ydata$.index), max(ydata$.index), l=100)
+  # Fit the model
+  ncv <- NULL
+  if (identical(method, "NCV")) {
+    ncv <- pffr_ncv_setup(prep, cluster_value, ncv_blocks, environment())
+    if (algorithm_chr == "gam") {
+      ncv_setup <- ncv$setup
+      prep$new_call$G <- quote(ncv_setup)
+      prep$new_call$sp <- NULL # fixed sp already incorporated by gam(fit = FALSE)
     } else {
-      sort(unique(ydata$.index))
+      prep$new_call <- ncv$fit_call
     }
-    nyindex <- length(yind)
-  } else {
-    nobs <- nrow(eval(responsename,  envir=evalenv, enclos=frmlenv))
-    nyindex <- ncol(eval(responsename,  envir=evalenv, enclos=frmlenv))
-    ntotal <- nobs*nyindex
+    prep$new_call$nei <- ncv$info$nei
   }
-
-  if(missing(algorithm)||is.na(algorithm)){
-    algorithm <- ifelse(ntotal > 1e5, "bam", "gam")
-  }
-  if(algorithm == "bam" & missing(method)){
-    call$method <- "fREML"
-  }
-  algorithm <- as.symbol(algorithm)
-  if(as.character(algorithm)=="bam" && !("chunk.size" %in% names(call))){
-    call$chunk.size <- 10000
-    #same default as in bam
-  }
-  ## no te-terms possible in gamm4:
-  if(as.character(algorithm)=="gamm4"){
-    stopifnot(length(unlist(where.specials[c("te","ti")]))<1)
-  }
-
-
-  if(!sparseOrNongrid){
-    #if missing, define y-index or get it from first ff/sff-term, then assign expanded versions to newfrmlenv
-    if(missing(yind)){
-      if(length(c(where.specials$ff, where.specials$sff))){
-        if(length(where.specials$ff)){
-          ffcall <- expand.call(ff, as.call(terms[where.specials$ff][1])[[1]])
-        }  else ffcall <- expand.call(sff, as.call(terms[where.specials$sff][1])[[1]])
-        if(!is.null(ffcall$yind)){
-          yind <- eval(ffcall$yind, envir=evalenv, enclos=frmlenv)
-          yindname <- deparse(ffcall$yind)
-        } else {
-          yind <- 1:nyindex
-          yindname <- "yindex"
-        }
-      } else {
-        yind <- 1:nyindex
-        yindname <- "yindex"
-      }
-    } else {
-      if (is.symbol(substitute(yind)) | is.character(yind)) {
-        yindname <- deparse(substitute(yind))
-        if(!is.null(data) && !is.null(data[[yindname]])){
-          yind <- data[[yindname]]
-        }
-      } else {
-        yindname <- "yindex"
-      }
-      stopifnot(is.vector(yind), is.numeric(yind),
-                length(yind) == nyindex)
-    }
-    #make sure it's a valid name
-    if(length(yindname)>1) yindname <- "yindex"
-    # make sure yind is sorted
-    stopifnot(all.equal(order(yind), 1:nyindex))
-
-
-    yindvec <- rep(yind, times = nobs)
-    yindvecname <- as.symbol(paste(yindname,".vec",sep=""))
-    assign(x=deparse(yindvecname), value=yindvec, envir=newfrmlenv)
-
-    #assign response in _long_ format to newfrmlenv
-    assign(x=deparse(responsename), value=as.vector(t(eval(responsename, envir=evalenv,
-                                                           enclos=frmlenv))),
-           envir=newfrmlenv)
-
-
-    missingind <-  if(any(is.na(get(as.character(responsename), newfrmlenv)))){
-      which(is.na(get(as.character(responsename), newfrmlenv)))
-    } else NULL
-
-    # repeat which row in <data> how many times
-    stackpattern <- rep(1:nobs, each=nyindex)
-
-  } else {
-    # sparseOrNongrid:
-    yindname <- "yindex"
-    yindvec <- ydata$.index
-    yindvecname <- as.symbol(paste(yindname,".vec",sep=""))
-    assign(x=deparse(yindvecname), value=ydata$.index, envir=newfrmlenv)
-
-    #assign response in _long_ format to newfrmlenv
-    assign(x=deparse(responsename), value=ydata$.value, envir=newfrmlenv)
-
-    missingind <- NULL
-
-    # repeat which row in <data> how many times:
-    stackpattern <- ydata$.obs
-  }
-
-
-  ##################################################################################
-  #modify formula terms....
-  newtrmstrings <- attr(tf, "term.labels")
-
-  #if intercept, add \mu(yindex)
-  if(attr(tf, "intercept")){
-    # have to jump thru some hoops to get bs.yindex handed over properly
-    # without having yind evaluated within the call
-    arglist <- c(name="s", x = as.symbol(yindvecname), bs.int)
-    intcall <- NULL
-    assign(x= "intcall", value= do.call("call", arglist, envir=newfrmlenv), envir=newfrmlenv)
-    newfrmlenv$intcall$x <- as.symbol(yindvecname)
-
-    intstring <- deparse(newfrmlenv$intcall)
-    rm(intcall, envir=newfrmlenv)
-
-    newfrml <- paste(newfrml, intstring, sep=" ")
-    addFint <- TRUE
-    names(intstring) <- paste("Intercept(",yindname,")",sep="")
-  } else{
-    newfrml <-paste(newfrml, "0", sep="")
-    addFint <- FALSE
-  }
-
-  #transform: c(foo) --> foo
-  if(length(where.specials$c)){
-    newtrmstrings[where.specials$c] <- sapply(trmstrings[where.specials$c], function(x){
-      sub("\\)$", "", sub("^c\\(", "", x)) #c(BLA) --> BLA
-    })
-  }
-
-  #prep function-on-function-terms
-  if(length(c(where.specials$ff, where.specials$sff))){
-    ffterms <- lapply(terms[c(where.specials$ff, where.specials$sff)], function(x){
-      eval(x, envir=evalenv, enclos=frmlenv)
-    })
-
-    newtrmstrings[c(where.specials$ff, where.specials$sff)] <- sapply(ffterms, function(x) {
-      safeDeparse(x$call)
-    })
-
-    #apply limits function and assign stacked data to newfrmlenv
-    makeff <- function(x){
-      tmat <- matrix(yindvec, nrow=length(yindvec), ncol=length(x$xind))
-      smat <- matrix(x$xind, nrow=length(yindvec), ncol=length(x$xind),
-                     byrow=TRUE)
-      if(!is.null(x[["LX"]])){
-        # for ff: stack weights * covariate
-        LStacked <- x$LX[stackpattern,]
-      } else {
-        # for sff: stack weights, X separately
-        LStacked <- x$L[stackpattern,]
-        XStacked <- x$X[stackpattern, ]
-      }
-      if(!is.null(x$limits)){
-        # find int-limits and set weights to 0 outside
-        use <- x$limits(smat, tmat)
-        LStacked <- LStacked * use
-
-        # find indices for row-wise int-range & maximal occuring width:
-        windows <- t(apply(use, 1, function(x){
-          use_this <- which(x)
-          # edge case: no integration
-          if(!any(use_this)) return(c(1,1))
-          range(use_this)
-        }))
-        windows <- cbind(windows, windows[,2]-windows[,1]+1)
-        maxwidth <- max(windows[,3])
-        # reduce size of matrix-covariates if possible:
-        if(maxwidth < ncol(smat)){
-          # all windows have to have same length, so modify windows:
-          eff.windows <- t(apply(windows, 1, function(window,
-                                                      maxw=maxwidth,
-                                                      maxind=ncol(smat)){
-            width <- window[3]
-            if((window[2] + maxw - width) <= maxind){
-              window[1] : (window[2] + maxw -width)
-            } else {
-              (window[1] + width - maxw) : window[2]
-            }
-          }))
-
-          # extract relevant parts of each row and stack'em
-          shift_and_shorten <- function(X, eff.windows){
-            t(sapply(1:(nrow(X)),
-                     function(i) X[i, eff.windows[i,]]))
-          }
-          smat <- shift_and_shorten(smat, eff.windows)
-          tmat <- shift_and_shorten(tmat, eff.windows)
-          LStacked <- shift_and_shorten(LStacked, eff.windows)
-          if(is.null(x$LX)){ # sff
-            XStacked <- shift_and_shorten(XStacked, eff.windows)
-          }
-        }
-      }
-      assign(x=x$yindname,
-             value=tmat,
-             envir=newfrmlenv)
-      assign(x=x$xindname,
-             value=smat,
-             envir=newfrmlenv)
-
-      assign(x=x$LXname,
-             value=LStacked,
-             envir=newfrmlenv)
-      if(is.null(x[["LX"]])){ # sff
-        assign(x=x$xname,
-               value=XStacked,
-               envir=newfrmlenv)
-      }
-      invisible(NULL)
-    }
-    lapply(ffterms, makeff)
-  } else ffterms <- NULL
-
-  if(length(where.specials$ffpc)){ ##TODO for sparse
-    ffpcterms <- lapply(terms[where.specials$ffpc], function(x){
-      eval(x, envir=evalenv, enclos=frmlenv)
-    })
-
-    lapply(ffpcterms, function(trm){
-      lapply(colnames(trm$data), function(nm){
-        assign(x=nm, value=trm$data[stackpattern, nm], envir=newfrmlenv)
-        invisible(NULL)
-      })
-      invisible(NULL)
-    })
-
-
-    getFfpcFormula <- function(trm) {
-      frmls <- lapply(colnames(trm$data), function(pc) {
-        arglist <- c(name="s", x = as.symbol(yindvecname), by= as.symbol(pc),
-                     id=trm$id, trm$splinepars)
-        call <- do.call("call", arglist, envir=newfrmlenv)
-        call$x <- as.symbol(yindvecname)
-        call$by <- as.symbol(pc)
-        safeDeparse(call)
-      })
-      return(paste(unlist(frmls), collapse=" + "))
-    }
-    newtrmstrings[where.specials$ffpc] <- sapply(ffpcterms, getFfpcFormula)
-
-    ffpcterms <- lapply(ffpcterms, function(x) x[names(x)!="data"])
-  } else ffpcterms <- NULL
-
-  #prep PC-based random effects
-  if(length(where.specials$pcre)){
-    pcreterms <- lapply(terms[where.specials$pcre], function(x){
-      eval(x, envir=evalenv, enclos=frmlenv)
-    })
-    #assign newly created data to newfrmlenv
-    lapply(pcreterms, function(trm){
-      if(!sparseOrNongrid && all(trm$yind==yind)){
-        lapply(colnames(trm$efunctions), function(nm){
-          assign(x=nm, value=trm$efunctions[rep(1:nyindex, times=nobs), nm],
-                 envir=newfrmlenv)
-          invisible(NULL)
-        })
-      } else {
-        # don't ever extrapolate eigenfunctions:
-        stopifnot(min(trm$yind)<=min(yind))
-        stopifnot(max(trm$yind)>=max(yind))
-
-        # interpolate given eigenfunctions to observed index values:
-        lapply(colnames(trm$efunctions), function(nm){
-          tmp <- approx(x=trm$yind,
-                        y=trm$efunctions[, nm],
-                        xout=yindvec,
-                        method = "linear")$y
-          assign(x=nm, value=tmp,
-                 envir=newfrmlenv)
-          invisible(NULL)
-        })
-      }
-      assign(x=trm$idname, value=trm$id[stackpattern], envir=newfrmlenv)
-      invisible(NULL)
-    })
-
-    newtrmstrings[where.specials$pcre] <- sapply(pcreterms, function(x) {
-      safeDeparse(x$call)
-    })
-  }else pcreterms <- NULL
-
-
-  #transform: s(x, ...), te(x, z,...), t2(x, z, ...) --> <ti|t2>(x, <z,> yindex, ..., <bs.yindex>)
-  makeSTeT2 <- function(x){
-
-    xnew <- x
-    if(deparse(x[[1]]) %in%  c("te", "ti") && as.character(algorithm) == "gamm4") xnew[[1]] <- quote(t2)
-    if(deparse(x[[1]]) == "s"){
-      xnew[[1]] <- if(as.character(algorithm) != "gamm4") {
-        tensortype
-      } else quote(t2)
-      #accomodate multivariate s()-terms
-      xnew$d <- if(!is.null(names(xnew))){
-        c(length(all.vars(xnew[names(xnew)==""])), 1)
-      } else c(length(all.vars(xnew)), 1)
-    } else {
-      if("d" %in% names(x)){ #either expand given d...
-        xnew$d <- c(eval(x$d), 1)
-      } else {#.. or default to univariate marginal bases
-        xnew$d <- rep(1, length(all.vars(x))+1)
-      }
-    }
-    xnew[[length(xnew)+1]] <- yindvecname
-    this.bs.yindex <- if("bs.yindex" %in% names(x)){
-      eval(x$bs.yindex)
-    } else bs.yindex
-    xnew <- xnew[names(xnew) != "bs.yindex"]
-
-    if(deparse(xnew[[1]]) == "ti"){
-      # apply sum-to-zero constraints to marginal bases for covariate(s),
-      #  but not to <yindex> to get terms with sum-to-zero-for-each-t constraints
-      xnew$mc <- c(rep(TRUE, length(xnew$d)-1), FALSE)
-    }
-
-    xnew$bs <- if("bs" %in% names(x)){
-      if("bs" %in% names(this.bs.yindex)){
-        c(eval(x$bs), this.bs.yindex$bs)
-      } else {
-        c(xnew$bs, "tp")
-      }
-    } else {
-      if("bs" %in% names(this.bs.yindex)){
-        c(rep("tp", length(xnew$d)-1), this.bs.yindex$bs)
-      } else {
-        rep("tp", length(all.vars(x))+1)
-      }
-    }
-    xnew$m <- if("m" %in% names(x)){
-      if("m" %in% names(this.bs.yindex)){
-        warning("overriding bs.yindex for m in ", deparse(x))
-      }
-      #TODO: adjust length if necessary, m can be a list for bs="ps","cp","ds"!
-      x$m
-    } else {
-      if("m" %in% names(this.bs.yindex)){
-        this.bs.yindex$m
-      } else {
-        NA
-      }
-    }
-    #defaults to 8 basis functions
-    xnew$k <- if("k" %in% names(x)){
-      if("k" %in% names(this.bs.yindex)){
-        c(eval(xnew$k), eval(this.bs.yindex$k))
-      } else {
-        c(eval(xnew$k), 8)
-      }
-    } else {
-      if("k" %in% names(this.bs.yindex)){
-        c(pmax(8, 5^head(eval(xnew$d), -1)), eval(this.bs.yindex$k))
-      } else {
-        pmax(8, 5^eval(xnew$d))
-      }
-    }
-    xnew$k <- unlist(xnew$k)
-
-    if("xt" %in% names(x)){
-      #       # xt has to be supplied as a list, with length(x$d) entries,
-      #       # each of which is a list or NULL:
-      #       stopifnot(x$xt[[1]]==as.symbol("list") &&
-      #                   # =length(x$d)+1, since first element in parse tree is 'list'
-      #                   all(sapply(2:length(x$xt), function(i)
-      #                     x$xt[[i]][[1]] == as.symbol("list") ||
-      #                       is.null(eval(x$xt[[i]][[1]])))))
-      xnew$xt <- x$xt
-    }
-
-    ret <- safeDeparse(xnew)
-    return(ret)
-  }
-
-  if(length(c(where.specials$s, where.specials$te, where.specials$t2))){
-    newtrmstrings[c(where.specials$s, where.specials$te, where.specials$t2)] <-
-      sapply(terms[c(where.specials$s, where.specials$te, where.specials$t2)],
-             makeSTeT2)
-  }
-
-  #transform: x --> s(YINDEX, by=x)
-  if(length(where.specials$par)){
-    newtrmstrings[where.specials$par] <- sapply(terms[where.specials$par], function(x){
-      xnew <- bs.yindex
-      xnew <- as.call(c(quote(s), yindvecname, by=x, xnew))
-      safeDeparse(xnew)
-    })
-
-  }
-
-  #... & assign expanded/additional variables to newfrmlenv
-  where.specials$notff <- c(where.specials$c, where.specials$par,
-                            where.specials$s, where.specials$te, where.specials$t2)
-  if(length(where.specials$notff)){
-    # evalenv below used to be list2env(eval.parent(call$data)), frmlenv),
-    # but that assigned everything in <data> to the global workspace if frmlenv was the global
-    # workspace.
-    evalenv <- if("data" %in% names(call))  {
-      list2env(eval.parent(call$data))
-    } else frmlenv
-    lapply(terms[where.specials$notff],
-           function(x){
-             #nms <- all.vars(x)
-             isC <- safeDeparse(x) %in% sapply(terms[where.specials$c], safeDeparse)
-             if(isC) {
-               # drop c()
-               # FIXME: FUGLY!
-               x <- formula(paste("~", gsub("\\)$", "",
-                                            gsub("^c\\(", "", deparse(x)))))[[2]]
-             }
-             ## remove names in xt, k, bs,  information (such as variable names for MRF penalties etc)
-             nms <- if(!is.null(names(x))){
-               all.vars(x[names(x) %in% c("", "by")])
-             }  else all.vars(x)
-
-
-             sapply(nms, function(nm){
-               var <- get(nm, envir=evalenv)
-               if(is.matrix(var)){
-                 stopifnot(!sparseOrNongrid || ncol(var) == nyindex)
-                 assign(x=nm,
-                        value=as.vector(t(var)),
-                        envir=newfrmlenv)
-               } else {
-                 stopifnot(length(var) == nobs)
-                 assign(x=nm,
-                        value=var[stackpattern],
-                        envir=newfrmlenv)
-               }
-               invisible(NULL)
-             })
-             invisible(NULL)
-           })
-  }
-
-  newfrml <- formula(paste(c(newfrml, newtrmstrings), collapse="+"))
-  environment(newfrml) <- newfrmlenv
-
-  # variance formula for gaulss
-  if(gaulss) {
-    if(is.null(dots$varformula)) {
-      dots$varformula <- formula(paste("~", safeDeparse(
-        as.call(c(as.name("s"), x = as.symbol(yindvecname), bs.int)))))
-    }
-    environment(dots$varformula) <- newfrmlenv
-    newfrml <- list(newfrml, dots$varformula)
-  }
-  pffrdata <- list2df(as.list(newfrmlenv))
-
-  newcall <- expand.call(pffr, call)
-  newcall$yind <- newcall$tensortype <- newcall$bs.int <-
-    newcall$bs.yindex <- newcall$algorithm <- newcall$ydata <- NULL
-  newcall$formula <- newfrml
-  newcall$data <- quote(pffrdata)
-  newcall[[1]] <- algorithm
-  # make sure ...-args are taken from ..., not GlobalEnv:
-  dotargs <- names(newcall)[names(newcall) %in% names(dots)]
-  newcall[dotargs] <- dots[dotargs]
-  if("subset" %in% dotargs){
-    stop("<subset>-argument is not supported.")
-  }
-  if("weights" %in% dotargs){
-    wtsdone <- FALSE
-    if(length(dots$weights) == nobs){
-      newcall$weights <- dots$weights[stackpattern]
-      wtsdone <- TRUE
-    }
-    if (!is.null(dim(dots$weights)) &&
-        all(dim(dots$weights) == c(nobs, nyindex))) {
-      newcall$weights <- as.vector(t(dots$weights))
-      wtsdone <- TRUE
-    }
-    if(!wtsdone){
-      stop("weights have to be supplied as a vector with length=rows(data) or
-               a matrix with the same dimensions as the response.")
-    }
-  }
-  if("offset" %in% dotargs){
-    ofstdone <- FALSE
-    if(length(dots$offset) == nobs){
-      newcall$offset <- dots$offset[stackpattern]
-      ofstdone <- TRUE
-    }
-    if(!is.null(dim(dots$offset)) &&
-       all(dim(dots$offset) == c(nobs, nyindex))){
-      newcall$offset <- as.vector(t(dots$offset))
-      ofstdone <- TRUE
-    }
-    if(!ofstdone){
-      stop("offsets have to be supplied as a vector with length=rows(data) or
-             a matrix with the same dimensions as the response.")
-    }
-  }
-  if(as.character(algorithm) == "jagam"){
-    newcall <- newcall[names(newcall) %in% c("", names(formals(jagam)))]
-    if(is.null(newcall$file)) {
-      newcall$file <- tempfile("pffr2jagam", tmpdir = getwd(), fileext = ".jags")
-    }
-  }
-  # call algorithm to estimate model
-  m <- eval(newcall)
-  if(as.character(algorithm) == "jagam"){
-    m$modelfile <- newcall$file
+  m <- eval(prep$new_call)
+  if (algorithm_chr == "jagam") {
+    m$modelfile <- prep$new_call$file
     message("JAGS/BUGS model code written to \n", m$modelfile, ",\n see ?jagam")
     return(m)
   }
 
-  m.smooth <- if(as.character(algorithm) %in% c("gamm4","gamm")){
-    m$gam$smooth
-  } else m$smooth
-
-  #return some more info s.t. custom predict/plot/summary will work
-  trmmap <- newtrmstrings
-  names(trmmap) <- names(terms)
-  if(addFint) trmmap <- c(trmmap, intstring)
-
-  # map labels to terms --
-  # ffpc are associated with multiple smooths
-  # parametric are associated with multiple smooths if covariate is a factor
-  labelmap <- as.list(trmmap)
-  lbls <- sapply(m.smooth, function(x) x$label)
-  if(length(c(where.specials$par, where.specials$ffpc))){
-    if(length(where.specials$par)){
-      for(w in where.specials$par){
-        # only combine if <by>-variable is a factor!
-        if(is.factor(get(names(labelmap)[w], envir=newfrmlenv))){
-          labelmap[[w]] <- {
-            #covariates for parametric terms become by-variables:
-            where <- sapply(m.smooth, function(x) x$by) == names(labelmap)[w]
-            sapply(m.smooth[where], function(x) x$label)
-          }
-        } else {
-          labelmap[[w]] <- paste0("s(",yindvecname,"):",names(labelmap)[w])
-        }
-      }
+  # Families without a cluster score path, gamm/gamm4 and single-curve fits
+  # fall back to model-based intervals.
+  if (use_sandwich) {
+    reason <- pffr_cl2_unavailable(
+      m,
+      algorithm_chr,
+      build_cluster_id(meta_dims, cluster_value)
+    )
+    if (!is.null(reason)) {
+      msg <- paste0(
+        "pffr inference: model-based intervals (sandwich = FALSE) because ",
+        reason,
+        "."
+      )
+      if (sandwich_missing) message(msg) else warning(msg, call. = FALSE)
+      use_sandwich <- FALSE
     }
-    if(length(where.specials$ffpc)){
-      ind <- 1
-      for(w in where.specials$ffpc){
-        labelmap[[w]] <- {
-          #PCs for X become by-variables:
-          where <- sapply(m.smooth, function(x) x$id) == ffpcterms[[ind]]$id
-          sapply(m.smooth[where], function(x) x$label)
-        }
-        ind <- ind+1
-      }
-    }
-    labelmap[-c(where.specials$par, where.specials$ffpc)] <- lbls[pmatch(
-      sapply(labelmap[-c(where.specials$par, where.specials$ffpc)], function(x){
-        ## FUGLY: check whether x is a function call of some sort
-        ##  or simply a variable name.
-        if(length(parse(text=x)[[1]]) != 1){
-          tmp <- eval(parse(text=x))
-          return(tmp$label)
-        } else {
-          return(x)
-        }
-      }), lbls)]
-  } else{
-    labelmap[1:length(labelmap)] <-  lbls[pmatch(
-      sapply(labelmap[1:length(labelmap)], function(x){
-        ## FUGLY: check whether x is a function call of some sort
-        ##  or simply a variable name.
-        if(length(parse(text=x)[[1]]) != 1){
-          tmp <- eval(parse(text=x))
-          return(tmp$label)
-        } else {
-          return(x)
-        }
-      }), lbls)]
-
-  }
-  # check whether any parametric terms were left out & add them
-  nalbls <- sapply(labelmap,
-                   function(x) {
-                     any(is.null(x)) | any(is.na(x[!is.null(x)]))
-                   })
-  if (any(nalbls)) {
-    labelmap[nalbls] <- trmmap[nalbls]
   }
 
-  names(m.smooth) <- lbls
-  if(as.character(algorithm) %in% c("gamm4","gamm")){
-    m$gam$smooth <- m.smooth
-  } else{
-    m$smooth  <- m.smooth
-  }
+  # Post-processing
+  m_smooth <- if (algorithm_chr %in% c("gamm4", "gamm")) m$gam$smooth else
+    m$smooth
 
-  ret <-  list(
-    call=call,
-    formula=formula,
-    termmap=trmmap,
-    labelmap=labelmap,
-    responsename = responsename,
-    nobs=nobs,
-    nyindex=nyindex,
-    yindname = yindname,
-    yind=yind,
-    where=where.specials,
-    ff=ffterms,
-    ffpc=ffpcterms,
-    pcreterms=pcreterms,
-    missingind = missingind,
-    sparseOrNongrid=sparseOrNongrid,
-    ydata=ydata)
+  label_map_result <- pffr_build_label_map(
+    new_term_strings = prep$new_term_strings,
+    terms = prep$terms,
+    add_f_int = prep$add_f_int,
+    int_string = prep$int_string,
+    m_smooth = m_smooth,
+    where_specials = prep$where_specials,
+    ffpc_terms = prep$ffpc_terms,
+    formula_env = prep$formula_env,
+    yindex_vec_name = prep$yindex_vec_name
+  )
+  label_map <- label_map_result$label_map
+  term_map <- label_map_result$term_map
 
-  if(as.character(algorithm) %in% c("gamm4","gamm")){
-    m$gam$pffr <- ret
-    class(m$gam) <- c("pffr", class(m$gam))
+  names(m_smooth) <- sapply(m_smooth, \(x) x$label)
+  if (algorithm_chr %in% c("gamm4", "gamm")) {
+    m$gam$smooth <- m_smooth
   } else {
-    m$pffr <- ret
-    class(m) <- c("pffr", class(m))
+    m$smooth <- m_smooth
   }
-  return(m)
-}# end pffr()
+
+  short_labels <- create_shortlabels(
+    label_map = label_map,
+    m_smooth = m_smooth,
+    yind_name = prep$yind_name,
+    where_specials = prep$where_specials,
+    family = m$family
+  )
+
+  ret <- pffr_build_metadata(
+    call = call,
+    formula = formula,
+    term_map = term_map,
+    label_map = label_map,
+    short_labels = short_labels,
+    response_name = prep$response_name,
+    nobs = prep$nobs,
+    nyindex = prep$nyindex,
+    yind_name = prep$yind_name,
+    yind = prep$yind,
+    where_specials = prep$where_specials,
+    ff_terms = prep$ff_terms,
+    ffpc_terms = prep$ffpc_terms,
+    pcre_terms = prep$pcre_terms,
+    missing_indices = prep$missing_indices,
+    is_sparse = prep$is_sparse,
+    ydata = prep$ydata,
+    sandwich = if (use_sandwich) "cl2" else "none"
+  )
+  ret$cluster <- cluster_value
+  ret$ncv <- ncv$info
+  m <- pffr_attach_metadata(m, prep$algorithm, ret)
+
+  if (!use_sandwich) {
+    return(m)
+  }
+  # $Vp/$Vc/$Ve remain the model-based matrices mgcv produced; the CL2
+  # covariance is stored separately in $pffr$Vsandwich. Only gam/bam fits
+  # reach this point.
+  apply_sandwich_correction(m)
+}
