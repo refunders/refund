@@ -1,5 +1,11 @@
 context("Testing pffrSim")
 
+test_that("pffrSim preserves positional scenario calls", {
+  expect_warning(dat <- pffrSim("ff", n = 40), "pffr_simulate")
+  expect_equal(nrow(dat), 40)
+  expect_true("Y" %in% names(dat))
+})
+
 ###############################################################################
 # Structure and Grid Tests
 ###############################################################################

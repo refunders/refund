@@ -237,6 +237,10 @@ pffrSim <- function(
   k_truth = list()
 ) {
   .Deprecated("pffr_simulate")
+  if (is.character(formula) && is.null(scenario)) {
+    scenario <- formula
+    formula <- NULL
+  }
   pffr_simulate(
     formula = formula,
     scenario = scenario,
