@@ -21,9 +21,9 @@ vb_cs_fpca(
 \arguments{
 \item{formula}{a formula indicating the structure of the proposed model.}
 
-\item{data}{an optional data frame, list or environment containing the 
-variables in the model. If not found in data, the variables are taken from 
-environment(formula), typically the environment from which the function is 
+\item{data}{an optional data frame, list or environment containing the
+variables in the model. If not found in data, the variables are taken from
+environment(formula), typically the environment from which the function is
 called.}
 
 \item{verbose}{logical defaulting to \code{TRUE} -- should updates on progress be printed?}
@@ -49,6 +49,12 @@ for FPC effects}
 
 \item{argvals}{not currently implemented}
 }
+\value{
+A list of class \code{"fosr"} containing estimated coefficient
+  functions (\code{beta.hat}), credible bounds (\code{beta.UB},
+  \code{beta.LB}), fitted values (\code{Yhat}), and the estimated
+  residual FPC decomposition (\code{fpca.obj}).
+}
 \description{
 Fitting function for function-on-scalar regression for cross-sectional data.
 This function estimates model parameters using a VB and estimates
@@ -56,7 +62,7 @@ the residual covariance surface using FPCA.
 }
 \references{
 Goldsmith, J., Kitago, T. (2016).
-Assessing Systematic Effects of Stroke on Motor Control using Hierarchical 
+Assessing Systematic Effects of Stroke on Motor Control using Hierarchical
 Function-on-Scalar Regression. \emph{Journal of the Royal Statistical Society:
 Series C}, 65 215-236.
 }

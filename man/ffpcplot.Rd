@@ -41,7 +41,12 @@ Defaults to 2.}
 }
 \value{
 primarily produces plots, invisibly returns a list containing
-the data used for the plots.
+the data used for the plots: \code{betatilde} and \code{betatilde.se}, the
+estimated coefficient functions of the FPC scores on the response index and
+their standard errors (from \code{object$Vp}), and \code{phibeta}, the
+implied coefficient surfaces \eqn{\beta(s,t)} (rows: the covariate's index
+\code{xind}, columns: the response index), as returned by
+\code{\link{coef.pffr}}.
 }
 \description{
 Convenience function for graphical summaries of \code{ffpc}-terms from a

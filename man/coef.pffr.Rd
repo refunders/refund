@@ -9,12 +9,16 @@
   raw = FALSE,
   se = TRUE,
   freq = FALSE,
-  sandwich = FALSE,
+  sandwich = NULL,
+  cluster = NULL,
   seWithMean = TRUE,
   n1 = 100,
   n2 = 40,
   n3 = 20,
-  Ktt = NULL,
+  ci = c("none", "pointwise", "simultaneous"),
+  level = 0.95,
+  n_sim = 2000,
+  sim_seed = NULL,
   ...
 )
 }
@@ -25,13 +29,30 @@
 
 \item{se}{logical, defaults to TRUE. Return estimated standard error of the estimates?}
 
-\item{freq}{logical, defaults to FALSE. If FALSE, use posterior variance \code{object$Vp} for variability estimates,
-else use \code{object$Ve}. See \code{\link[mgcv]{gamObject}}}
+\item{freq}{deprecated and ignored: model-based standard errors use the
+Bayesian posterior covariance, and the CL2 sandwich its Bayesian form.}
 
-\item{sandwich}{logical, defaults to FALSE. Use a Sandwich-estimator for approximate variances? See Details.
-THIS IS AN EXPERIMENTAL FEATURE, USE A YOUR OWN RISK.}
+\item{sandwich}{\code{NULL} (default) uses the fit's covariance (see
+\code{\link{pffr}}); \code{TRUE} the CL2 sandwich; \code{FALSE} the
+model-based covariance (\code{object$Vp} for NCV fits, otherwise
+\code{object$Vc}), which is invalid under within-curve dependence. The
+character values of refund 0.1-40 are deprecated, see \code{\link{pffr}}.}
 
-\item{seWithMean}{logical, defaults to TRUE. Include uncertainty about the intercept/overall mean in  standard errors returned for smooth components?}
+\item{cluster}{optional grouping for the CL2 sandwich: a vector with one
+entry per curve (functional observation) mapping each curve to its
+independent unit. Defaults to \code{NULL}, inheriting the fit-time grouping
+(by curve if none was supplied). With several curves per subject, cluster
+by subject. Only supported for densely-observed responses. A fit-time
+\code{cluster} grouping cannot be switched back off with
+\code{cluster = NULL} (that inherits the fit); to force by-curve clustering
+on a fit that was given a coarser grouping, pass
+\code{cluster = seq_len(<number of curves>)}.}
+
+\item{seWithMean}{logical, defaults to TRUE. Include uncertainty about the
+intercept/overall mean in standard errors returned for smooth components?
+Acts only on terms with an identifiability constraint (e.g.
+\code{Intercept(yindex)}); \code{ff()} terms and varying coefficients of
+scalar covariates are unconstrained by-variable smooths and are unaffected.}
 
 \item{n1}{see below}
 
@@ -40,9 +61,21 @@ THIS IS AN EXPERIMENTAL FEATURE, USE A YOUR OWN RISK.}
 \item{n3}{\code{n1, n2, n3} give the number of gridpoints for 1-/2-/3-dimensional smooth terms
 used in the marginal equidistant grids over the range of the covariates at which the estimated effects are evaluated.}
 
-\item{Ktt}{(optional) an estimate of the covariance operator of the residual process \eqn{\epsilon_i(t) \sim N(0, K(t,t'))},
-evaluated on \code{yind} of \code{object}. If not supplied, this is estimated from the crossproduct matrices of the
-observed residual vectors. Only relevant for sandwich CIs.}
+\item{ci}{Type of confidence intervals to return in addition to standard
+errors. One of \code{"none"} (default), \code{"pointwise"}, or
+\code{"simultaneous"}. Only pointwise intervals were evaluated in the
+simulation study behind the defaults. Simultaneous bands use a
+simulation-based multiplier with a finite-sample \eqn{t_{G-1}}{t_(G-1)}
+reference (\eqn{G} curves or clusters) for the CL2 sandwich and a Gaussian
+reference for the model-based covariance.}
+
+\item{level}{Confidence level for confidence intervals, defaults to
+\code{0.95}.}
+
+\item{n_sim}{Number of simulations for simultaneous intervals, defaults to
+\code{2000}. Ignored unless \code{ci = "simultaneous"}.}
+
+\item{sim_seed}{Optional integer seed for simultaneous interval simulation.}
 
 \item{...}{other arguments, not used.}
 }
@@ -59,29 +92,75 @@ If \code{raw==FALSE}, a list containing \itemize{
          \item \code{dim} the dimensionality of the effect
          \item \code{main} the label of the smooth term (a short label, same as the one used in \code{summary.pffr})
 }}
+If \code{ci != "none"}, the returned matrices include columns \code{lower}
+and \code{upper}. For \code{ci = "pointwise"} they also include a \code{df}
+column giving the per-point reference degrees of freedom of the critical
+value (\code{Inf} for Gaussian critical values). The returned list also
+includes \code{ci_meta} with the interval settings: \code{type},
+\code{level}, \code{sandwich} (was the CL2 sandwich used?),
+\code{crit_used} (\code{"satterthwaite"} or \code{"z"} for pointwise
+intervals), and for simultaneous bands \code{n_sim}, \code{sim_seed},
+\code{ci_ref_used} and \code{ci_ref_df}.
 }
 \description{
 Returns estimated coefficient functions/surfaces \eqn{\beta(t), \beta(s,t)}
-and estimated smooth effects \eqn{f(z), f(x,z)} or \eqn{f(x, z, t)} and their point-wise estimated standard errors.
+and estimated smooth effects \eqn{f(z), f(x,z)} or \eqn{f(x, z, t)} and their
+point-wise estimated standard errors, optionally with confidence intervals.
 Not implemented for smooths in more than 3 dimensions.
 }
 \details{
-The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in \code{\link[mgcv]{predict.gam}}.
-The \code{sandwich}-options works as follows: Assuming that the residual vectors \eqn{\epsilon_i(t), i=1,\dots,n} are i.i.d.
-realizations of a mean zero Gaussian process with covariance \eqn{K(t,t')}, we can construct an estimator for
-\eqn{K(t,t')} from the \eqn{n} replicates of the observed residual vectors. The covariance matrix of the stacked observations
-vec\eqn{(Y_i(t))} is then given by a block-diagonal matrix with \eqn{n} copies of the estimated \eqn{K(t,t')} on the diagonal.
-This block-diagonal matrix is used to construct the "meat" of a sandwich covariance estimator, similar to Chen et al. (2012),
-see reference below.
-}
-\references{
-Chen, H., Wang, Y., Paik, M.C., and Choi, A. (2013).
-A marginal approach to reduced-rank penalized spline smoothing with application to multilevel functional data.
-\emph{Journal of the American Statistical Association}, 101, 1216--1229.
+Standard errors and intervals use the fit's covariance by default: for fits
+with \code{sandwich = TRUE} (the default of \code{\link{pffr}}) the
+curve-clustered CL2 sandwich (full-block leverage adjustment, Bayesian
+form), with Satterthwaite critical values for pointwise intervals, i.e.
+\eqn{t_\nu}{t_nu} quantiles with a separate working-model moment df
+\eqn{\nu}{nu} for every evaluation point (returned in column \code{df});
+otherwise the model-based covariance with Gaussian critical values. See the
+section \sQuote{Inference} of \code{\link{pffr}} for the evidence and its
+limits. Where a df is undefined (an evaluation point with zero sampling
+variance) the Gaussian critical value is used, with a message. The df are
+conditional on the fitted smoothing parameters and weights.
+
+For fits with \code{method = "NCV"}, use the estimate to describe the shape
+of coefficient surfaces, and a REML fit of the same model for intervals:
+intervals centred at the NCV estimate undercover (a message says so once per
+session).
+
+For an \code{\link{ffpc}} term, which enters the model as one coefficient
+function \eqn{\tilde\beta_k(t)} per FPC of the covariate, \code{smterms}
+contains a single entry: the implied coefficient surface
+\eqn{\hat\beta(s,t) = \sum_k \hat\psi_k(s)\hat{\tilde\beta}_k(t)}, with
+\eqn{\int X^c_i(s)\hat\psi_k(s)ds} the FPC scores of the fit, evaluated on
+the covariate's index \code{xind} times \code{n2} equidistant points over
+the range of the response index. Its standard errors and intervals are
+computed like those of all other terms, but treat the estimated FPCs
+\eqn{\hat\psi_k} as fixed, i.e., they condition on the estimated
+eigenfunctions. Its \eqn{\tilde\beta_k(t)} are unconstrained, so
+\code{seWithMean} does not affect it. Use \code{\link{ffpcplot}} for the
+\eqn{\tilde\beta_k(t)}.
+
+The \code{seWithMean}-option corresponds to the \code{"iterms"}-option in
+\code{\link[mgcv]{predict.gam}}.
+
+\strong{Functional intercept.} The \code{Intercept(yindex)} term is centred
+(sum-to-zero over the observed response grid); the level of
+\eqn{\alpha(t)}{alpha(t)} is the scalar \code{"(Intercept)"} in
+\code{pterms}. The full intercept is their sum,
+\preformatted{alpha_hat <- cf$smterms[["Intercept(yindex)"]]$coef[, "value"] +
+  cf$pterms["(Intercept)", "value"]}
+but the \code{se} and interval of the centred term do not describe it: they
+omit the level (\code{seWithMean = FALSE}) or add the column means of all
+other terms (\code{seWithMean = TRUE}). For an interval for the full
+\eqn{\alpha(t)}{alpha(t)} use \code{\link{pffr_predict_ci}} at covariate
+values at which every other term vanishes (e.g. \code{X = 0} for
+\code{ff(X)} and \code{z = 0} for a linear effect of a scalar \code{z}); its
+prediction rows are then exactly the intercept rows
+\eqn{(1, B(t))}{(1, B(t))}. See the examples of \code{\link{pffr_predict_ci}}.
 }
 \seealso{
-\code{\link[mgcv]{plot.gam}}, \code{\link[mgcv]{predict.gam}} which this routine is
-  based on.
+\code{\link{pffr}} (section \sQuote{Inference}),
+  \code{\link{pffr_predict_ci}}, \code{\link[mgcv]{plot.gam}},
+  \code{\link[mgcv]{predict.gam}} which this routine is based on.
 }
 \author{
 Fabian Scheipl

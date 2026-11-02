@@ -2,7 +2,7 @@
 % Please edit documentation in R/pffr-methods.R
 \name{pffr.check}
 \alias{pffr.check}
-\title{Some diagnostics for a fitted pffr model}
+\title{Some diagnostics for a fitted pffr model (deprecated)}
 \usage{
 pffr.check(
   b,
@@ -39,6 +39,13 @@ pffr.check(
 
 \item{...}{extra graphics parameters to pass to plotting functions.}
 }
-\description{
-This is simply a wrapper for \code{\link[mgcv]{gam.check}()}.
+\value{
+None, called for its side effect of producing diagnostic plots.
 }
+\description{
+**Deprecated**
+
+`pffr.check()` was renamed to [pffr_check()] for consistency with the
+package naming conventions.
+}
+\keyword{internal}

@@ -16,7 +16,11 @@ A list with summary information, see \code{\link[mgcv]{summary.gam}()}
 }
 \description{
 Take a fitted \code{pffr}-object and produce summaries from it.
-See \code{\link[mgcv]{summary.gam}()} for details.
+See \code{\link[mgcv]{summary.gam}()} for details. The standard errors and
+tests are mgcv's model-based ones, which assume independent errors within
+curves; for fits with \code{sandwich = TRUE} (the default) the printed
+summary says so. Use \code{\link{coef.pffr}} with \code{ci = "pointwise"}
+for CL2 intervals.
 }
 \author{
 Fabian Scheipl, adapted from \code{\link[mgcv]{summary.gam}()} by Simon Wood, Henric Nilsson
